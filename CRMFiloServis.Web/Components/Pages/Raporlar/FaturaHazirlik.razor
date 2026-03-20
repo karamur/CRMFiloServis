@@ -1,0 +1,425 @@
+@page "/fatura-hazirlik"
+@using CRMFiloServis.Shared.Entities
+@using CRMFiloServis.Web.Models
+@using CRMFiloServis.Web.Services
+@inject IFaturaHazirlikService FaturaHazirlikService
+@inject ICariService CariService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Fatura Hazýrlýk Listesi</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="bi bi-file-earmark-text me-2"></i>Fatura Hazýrlýk Listesi</h3>
+    </div>
+
+    <!-- Filtreler -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Baþlangýç Tarihi</label>
+                    <input type="date" class="form-control" @bind="baslangicTarihi" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Bitiþ Tarihi</label>
+                    <input type="date" class="form-control" @bind="bitisTarihi" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Müþteri (Opsiyonel)</label>
+                    <select class="form-select" @bind="secilenCariId">
+                        <option value="">-- Tüm Müþteriler --</option>
+                        @foreach (var cari in cariler)
+                        {
+                            <option value="@cari.Id">@cari.Unvan</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" @onclick="Listele">
+                        <i class="bi bi-search me-1"></i>Listele
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+        </div>
+    }
+    else if (liste != null)
+    {
+        <!-- Özet Kartlarý -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h6 class="card-title">Kesilecek Faturalar (Gelir)</h6>
+                        <h3>@liste.ToplamKesilecekTutar.ToString("N2") ?</h3>
+                        <small>@liste.KesilecekFaturalar.Count müþteri, @liste.KesilecekFaturalar.Sum(x => x.ToplamSeferSayisi) sefer</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <h6 class="card-title">Gelecek Faturalar (Gider)</h6>
+                        <h3>@liste.ToplamGelecekTutar.ToString("N2") ?</h3>
+                        <small>@liste.GelecekFaturalar.Count tedarikçi</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card @(liste.NetKar >= 0 ? "bg-primary" : "bg-warning") text-white">
+                    <div class="card-body">
+                        <h6 class="card-title">Net Kar/Zarar</h6>
+                        <h3>@liste.NetKar.ToString("N2") ?</h3>
+                        <small>@liste.BaslangicTarihi.ToString("dd.MM.yyyy") - @liste.BitisTarihi.ToString("dd.MM.yyyy")</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kesilecek Faturalar (Satýþ) -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-up-circle me-2"></i>
+                    Kesilecek Faturalar (Satýþ Faturalarý - Müþterilerden Alýnacak)
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (!liste.KesilecekFaturalar.Any())
+                {
+                    <div class="alert alert-info">Bu dönemde kesilecek fatura bulunmamaktadýr.</div>
+                }
+                else
+                {
+                    <div class="accordion" id="kesilecekFaturalar">
+                        @foreach (var fatura in liste.KesilecekFaturalar)
+                        {
+                            var accordionId = $"kesil_{fatura.CariId}";
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#@accordionId">
+                                        <div class="d-flex justify-content-between w-100 me-3">
+                                            <span>
+                                                <strong>@fatura.CariUnvan</strong>
+                                                <span class="badge bg-secondary ms-2">@fatura.CariKodu</span>
+                                            </span>
+                                            <span>
+                                                <span class="badge bg-info">@fatura.ToplamSeferSayisi sefer</span>
+                                                <strong class="text-success ms-2">@fatura.ToplamTutar.ToString("N2") ?</strong>
+                                            </span>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="@accordionId" class="accordion-collapse collapse" data-bs-parent="#kesilecekFaturalar">
+                                    <div class="accordion-body">
+                                        <table class="table table-sm table-striped">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Güzergah</th>
+                                                    <th>Baþlangýç - Bitiþ</th>
+                                                    <th class="text-center">Sefer</th>
+                                                    <th class="text-end">Birim Fiyat</th>
+                                                    <th class="text-end">Toplam</th>
+                                                    <th class="text-center">Detay</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var detay in fatura.Detaylar)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <strong>@detay.GuzergahAdi</strong>
+                                                            <br /><small class="text-muted">@detay.GuzergahKodu</small>
+                                                        </td>
+                                                        <td>@detay.BaslangicNoktasi ? @detay.BitisNoktasi</td>
+                                                        <td class="text-center">@detay.SeferSayisi</td>
+                                                        <td class="text-end">@detay.BirimFiyat.ToString("N2") ?</td>
+                                                        <td class="text-end"><strong>@detay.ToplamTutar.ToString("N2") ?</strong></td>
+                                                        <td class="text-center">
+                                                            <button class="btn btn-sm btn-outline-info" 
+                                                                    @onclick="() => ToggleSeferDetay(detay.GuzergahId)">
+                                                                <i class="bi bi-list-ul"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    @if (acikSeferDetaylari.Contains(detay.GuzergahId))
+                                                    {
+                                                        <tr>
+                                                            <td colspan="6" class="bg-light">
+                                                                <table class="table table-sm mb-0">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Tarih</th>
+                                                                            <th>Sefer</th>
+                                                                            <th>Araç</th>
+                                                                            <th>Þoför</th>
+                                                                            <th>Kiralýk</th>
+                                                                            <th>Komisyon</th>
+                                                                            <th class="text-end">Fiyat</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach (var sefer in detay.Seferler)
+                                                                        {
+                                                                            <tr>
+                                                                                <td>@sefer.Tarih.ToString("dd.MM.yyyy")</td>
+                                                                                <td>@sefer.ServisTuru</td>
+                                                                                <td>@sefer.AracPlaka</td>
+                                                                                <td>@sefer.SoforAdSoyad</td>
+                                                                                <td>
+                                                                                    @if (sefer.KiralikArac)
+                                                                                    {
+                                                                                        <span class="badge bg-warning text-dark">
+                                                                                            @sefer.KiralikAracSahibi<br/>
+                                                                                            @sefer.KiraBedeli?.ToString("N2") ?
+                                                                                        </span>
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <span class="text-muted">Özmal</span>
+                                                                                    }
+                                                                                </td>
+                                                                                <td>
+                                                                                    @if (sefer.KomisyonVar)
+                                                                                    {
+                                                                                        <span class="badge bg-info">
+                                                                                            @sefer.KomisyoncuUnvan<br/>
+                                                                                            @sefer.KomisyonTutari?.ToString("N2") ?
+                                                                                        </span>
+                                                                                    }
+                                                                                    else
+                                                                                    {
+                                                                                        <span class="text-muted">-</span>
+                                                                                    }
+                                                                                </td>
+                                                                                <td class="text-end">@sefer.Fiyat.ToString("N2") ?</td>
+                                                                            </tr>
+                                                                        }
+                                                                    </tbody>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                            </tbody>
+                                            <tfoot class="table-success">
+                                                <tr>
+                                                    <th colspan="4">TOPLAM</th>
+                                                    <th class="text-end">@fatura.ToplamTutar.ToString("N2") ?</th>
+                                                    <th></th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Gelecek Faturalar (Alýþ) -->
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-down-circle me-2"></i>
+                    Gelecek Faturalar (Alýþ Faturalarý - Tedarikçilere Ödenecek)
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (!liste.GelecekFaturalar.Any())
+                {
+                    <div class="alert alert-info">Bu dönemde gelecek fatura bulunmamaktadýr.</div>
+                }
+                else
+                {
+                    var kiraFaturalari = liste.GelecekFaturalar.Where(f => f.FaturaTipi == GelecekFaturaTipi.AracKirasi).ToList();
+                    var komisyonFaturalari = liste.GelecekFaturalar.Where(f => f.FaturaTipi == GelecekFaturaTipi.Komisyon).ToList();
+
+                    @if (kiraFaturalari.Any())
+                    {
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-truck me-2"></i>Araç Kira Ödemeleri
+                            <span class="badge bg-warning text-dark ms-2">@kiraFaturalari.Sum(x => x.ToplamTutar).ToString("N2") ?</span>
+                        </h6>
+
+                        <div class="accordion mb-4" id="kiraFaturalar">
+                            @foreach (var fatura in kiraFaturalari)
+                            {
+                                var accordionId = $"kira_{fatura.CariId}";
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#@accordionId">
+                                            <div class="d-flex justify-content-between w-100 me-3">
+                                                <span>
+                                                    <i class="bi bi-building me-2"></i>
+                                                    <strong>@fatura.CariUnvan</strong>
+                                                    <span class="badge bg-warning text-dark ms-2">Araç Kirasý</span>
+                                                </span>
+                                                <span>
+                                                    <span class="badge bg-secondary">@fatura.ToplamSeferSayisi sefer</span>
+                                                    <strong class="text-danger ms-2">@fatura.ToplamTutar.ToString("N2") ?</strong>
+                                                </span>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="@accordionId" class="accordion-collapse collapse" data-bs-parent="#kiraFaturalar">
+                                        <div class="accordion-body">
+                                            <table class="table table-sm table-striped">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Araç Plaka</th>
+                                                        <th>Çalýþýlan Müþteriler</th>
+                                                        <th class="text-center">Sefer</th>
+                                                        <th class="text-end">Birim Kira</th>
+                                                        <th class="text-end">Toplam</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var detay in fatura.Detaylar)
+                                                    {
+                                                        <tr>
+                                                            <td><strong>@detay.AracPlaka</strong></td>
+                                                            <td><small>@detay.MusteriUnvan</small></td>
+                                                            <td class="text-center">@detay.SeferSayisi</td>
+                                                            <td class="text-end">@detay.BirimTutar.ToString("N2") ?</td>
+                                                            <td class="text-end"><strong>@detay.ToplamTutar.ToString("N2") ?</strong></td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                                <tfoot class="table-danger">
+                                                    <tr>
+                                                        <th colspan="4">TOPLAM</th>
+                                                        <th class="text-end">@fatura.ToplamTutar.ToString("N2") ?</th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (komisyonFaturalari.Any())
+                    {
+                        <h6 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-percent me-2"></i>Komisyon Ödemeleri
+                            <span class="badge bg-info ms-2">@komisyonFaturalari.Sum(x => x.ToplamTutar).ToString("N2") ?</span>
+                        </h6>
+
+                        <div class="accordion" id="komisyonFaturalar">
+                            @foreach (var fatura in komisyonFaturalari)
+                            {
+                                var accordionId = $"komisyon_{fatura.CariId}";
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#@accordionId">
+                                            <div class="d-flex justify-content-between w-100 me-3">
+                                                <span>
+                                                    <i class="bi bi-person-badge me-2"></i>
+                                                    <strong>@fatura.CariUnvan</strong>
+                                                    <span class="badge bg-info ms-2">Komisyon</span>
+                                                </span>
+                                                <span>
+                                                    <span class="badge bg-secondary">@fatura.ToplamSeferSayisi sefer</span>
+                                                    <strong class="text-danger ms-2">@fatura.ToplamTutar.ToString("N2") ?</strong>
+                                                </span>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="@accordionId" class="accordion-collapse collapse" data-bs-parent="#komisyonFaturalar">
+                                        <div class="accordion-body">
+                                            <table class="table table-sm table-striped">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Araç Plaka</th>
+                                                        <th>Güzergahlar</th>
+                                                        <th>Çalýþýlan Müþteriler</th>
+                                                        <th class="text-center">Sefer</th>
+                                                        <th class="text-end">Komisyon</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var detay in fatura.Detaylar)
+                                                    {
+                                                        <tr>
+                                                            <td><strong>@detay.AracPlaka</strong></td>
+                                                            <td><small>@detay.GuzergahAdi</small></td>
+                                                            <td><small>@detay.MusteriUnvan</small></td>
+                                                            <td class="text-center">@detay.SeferSayisi</td>
+                                                            <td class="text-end"><strong>@detay.ToplamTutar.ToString("N2") ?</strong></td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                                <tfoot class="table-danger">
+                                                    <tr>
+                                                        <th colspan="4">TOPLAM</th>
+                                                        <th class="text-end">@fatura.ToplamTutar.ToString("N2") ?</th>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DateTime baslangicTarihi = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime bitisTarihi = DateTime.Today;
+    private int? secilenCariId;
+    private List<Cari> cariler = new();
+    private FaturaHazirlikListesi? liste;
+    private bool isLoading = false;
+    private HashSet<int> acikSeferDetaylari = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        cariler = await CariService.GetByTipAsync(CariTipi.Musteri);
+    }
+
+    private async Task Listele()
+    {
+        isLoading = true;
+        acikSeferDetaylari.Clear();
+
+        try
+        {
+            liste = await FaturaHazirlikService.GetFaturaHazirlikListesiAsync(
+                baslangicTarihi, bitisTarihi, secilenCariId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleSeferDetay(int guzergahId)
+    {
+        if (acikSeferDetaylari.Contains(guzergahId))
+            acikSeferDetaylari.Remove(guzergahId);
+        else
+            acikSeferDetaylari.Add(guzergahId);
+    }
+}

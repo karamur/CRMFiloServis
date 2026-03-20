@@ -3,6 +3,7 @@
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @inject IAracService AracService
+@inject ICariService CariService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -21,6 +22,9 @@
             <EditForm Model="arac" OnValidSubmit="Kaydet">
                 <DataAnnotationsValidator />
 
+                <!-- Temel Bilgiler -->
+                <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-info-circle me-2"></i>Temel Bilgiler</h5>
+                
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
@@ -89,6 +93,136 @@
                     </div>
                 </div>
 
+                <!-- Sahiplik ve Kiralama Bilgileri -->
+                <h5 class="border-bottom pb-2 mb-3 mt-4"><i class="bi bi-building me-2"></i>Sahiplik & Kiralama Bilgileri</h5>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Sahiplik Tipi *</label>
+                            <InputSelect @bind-Value="arac.SahiplikTipi" class="form-select" @oninput="OnSahiplikTipiChanged">
+                                @foreach (AracSahiplikTipi tip in Enum.GetValues(typeof(AracSahiplikTipi)))
+                                {
+                                    <option value="@tip">@GetSahiplikText(tip)</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    @if (arac.SahiplikTipi == AracSahiplikTipi.Kiralik)
+                    {
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Araç Sahibi (Kiralayan) *</label>
+                                <InputSelect @bind-Value="arac.KiralikCariId" class="form-select">
+                                    <option value="">-- Seçiniz --</option>
+                                    @foreach (var cari in tedarikciCariler)
+                                    {
+                                        <option value="@cari.Id">@cari.Unvan</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Kira Hesaplama Tipi</label>
+                                <InputSelect @bind-Value="arac.KiraHesaplamaTipi" class="form-select">
+                                    <option value="">-- Seçiniz --</option>
+                                    @foreach (KiraHesaplamaTipi tip in Enum.GetValues(typeof(KiraHesaplamaTipi)))
+                                    {
+                                        <option value="@tip">@GetKiraHesaplamaText(tip)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (arac.SahiplikTipi == AracSahiplikTipi.Kiralik)
+                {
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Günlük Kira Bedeli (?)</label>
+                                <InputNumber @bind-Value="arac.GunlukKiraBedeli" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Aylýk Kira Bedeli (?)</label>
+                                <InputNumber @bind-Value="arac.AylikKiraBedeli" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Sefer Baþýna Kira Bedeli (?)</label>
+                                <InputNumber @bind-Value="arac.SeferBasinaKiraBedeli" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Komisyon Bilgileri -->
+                <h5 class="border-bottom pb-2 mb-3 mt-4"><i class="bi bi-percent me-2"></i>Komisyon Bilgileri</h5>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3 pt-4">
+                            <div class="form-check">
+                                <InputCheckbox @bind-Value="arac.KomisyonVar" class="form-check-input" id="komisyonVar" />
+                                <label class="form-check-label" for="komisyonVar">Komisyon Var</label>
+                            </div>
+                        </div>
+                    </div>
+                    @if (arac.KomisyonVar)
+                    {
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Komisyoncu *</label>
+                                <InputSelect @bind-Value="arac.KomisyoncuCariId" class="form-select">
+                                    <option value="">-- Seçiniz --</option>
+                                    @foreach (var cari in tedarikciCariler)
+                                    {
+                                        <option value="@cari.Id">@cari.Unvan</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Komisyon Hesaplama Tipi</label>
+                                <InputSelect @bind-Value="arac.KomisyonHesaplamaTipi" class="form-select">
+                                    <option value="">-- Seçiniz --</option>
+                                    @foreach (KomisyonHesaplamaTipi tip in Enum.GetValues(typeof(KomisyonHesaplamaTipi)))
+                                    {
+                                        <option value="@tip">@GetKomisyonHesaplamaText(tip)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (arac.KomisyonVar)
+                {
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Komisyon Oraný (%)</label>
+                                <InputNumber @bind-Value="arac.KomisyonOrani" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Sabit Komisyon Tutarý (?)</label>
+                                <InputNumber @bind-Value="arac.SabitKomisyonTutari" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Sigorta ve Muayene Bilgileri -->
+                <h5 class="border-bottom pb-2 mb-3 mt-4"><i class="bi bi-calendar-check me-2"></i>Sigorta & Muayene</h5>
+                
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
@@ -150,10 +284,14 @@
     public int? Id { get; set; }
 
     private Arac arac = new();
+    private List<Cari> tedarikciCariler = new();
     private bool IsEdit => Id.HasValue;
 
     protected override async Task OnInitializedAsync()
     {
+        // Tedarikçi carilerini yükle
+        tedarikciCariler = await CariService.GetByTipAsync(CariTipi.Tedarikci);
+
         if (IsEdit)
         {
             var existing = await AracService.GetByIdAsync(Id!.Value);
@@ -170,6 +308,23 @@
         {
             arac.Aktif = true;
             arac.AracTipi = AracTipi.Minibus;
+            arac.SahiplikTipi = AracSahiplikTipi.Ozmal;
+        }
+    }
+
+    private void OnSahiplikTipiChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<AracSahiplikTipi>(e.Value?.ToString(), out var tip))
+        {
+            arac.SahiplikTipi = tip;
+            if (tip == AracSahiplikTipi.Ozmal)
+            {
+                arac.KiralikCariId = null;
+                arac.GunlukKiraBedeli = null;
+                arac.AylikKiraBedeli = null;
+                arac.SeferBasinaKiraBedeli = null;
+                arac.KiraHesaplamaTipi = null;
+            }
         }
     }
 
@@ -179,6 +334,25 @@
             return;
 
         arac.Plaka = arac.Plaka.ToUpper();
+
+        // Özmal araçlarda kira bilgilerini temizle
+        if (arac.SahiplikTipi == AracSahiplikTipi.Ozmal)
+        {
+            arac.KiralikCariId = null;
+            arac.GunlukKiraBedeli = null;
+            arac.AylikKiraBedeli = null;
+            arac.SeferBasinaKiraBedeli = null;
+            arac.KiraHesaplamaTipi = null;
+        }
+
+        // Komisyon yoksa bilgileri temizle
+        if (!arac.KomisyonVar)
+        {
+            arac.KomisyoncuCariId = null;
+            arac.KomisyonOrani = null;
+            arac.SabitKomisyonTutari = null;
+            arac.KomisyonHesaplamaTipi = null;
+        }
 
         if (IsEdit)
         {
@@ -203,6 +377,28 @@
         AracTipi.Otobus => "Otobüs",
         AracTipi.Otomobil => "Otomobil",
         AracTipi.Panelvan => "Panelvan",
+        _ => tip.ToString()
+    };
+
+    private string GetSahiplikText(AracSahiplikTipi tip) => tip switch
+    {
+        AracSahiplikTipi.Ozmal => "Özmal",
+        AracSahiplikTipi.Kiralik => "Kiralýk",
+        _ => tip.ToString()
+    };
+
+    private string GetKiraHesaplamaText(KiraHesaplamaTipi tip) => tip switch
+    {
+        KiraHesaplamaTipi.Gunluk => "Günlük",
+        KiraHesaplamaTipi.Aylik => "Aylýk",
+        KiraHesaplamaTipi.SeferBasina => "Sefer Baþýna",
+        _ => tip.ToString()
+    };
+
+    private string GetKomisyonHesaplamaText(KomisyonHesaplamaTipi tip) => tip switch
+    {
+        KomisyonHesaplamaTipi.YuzdeOrani => "Yüzde Oraný",
+        KomisyonHesaplamaTipi.SabitTutar => "Sabit Tutar",
         _ => tip.ToString()
     };
 }

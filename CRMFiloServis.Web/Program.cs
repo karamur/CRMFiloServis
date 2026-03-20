@@ -27,6 +27,7 @@ builder.Services.AddScoped<IBankaKasaHareketService, BankaKasaHareketService>();
 builder.Services.AddScoped<IOdemeEslestirmeService, OdemeEslestirmeService>();
 builder.Services.AddScoped<IRaporService, RaporService>();
 builder.Services.AddScoped<IExcelService, ExcelService>();
+builder.Services.AddScoped<IFaturaHazirlikService, FaturaHazirlikService>();
 
 var app = builder.Build();
 

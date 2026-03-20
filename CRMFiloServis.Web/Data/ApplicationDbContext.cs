@@ -65,6 +65,22 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Plaka).HasMaxLength(15);
             entity.Property(e => e.Marka).HasMaxLength(50);
             entity.Property(e => e.Model).HasMaxLength(50);
+            entity.Property(e => e.GunlukKiraBedeli).HasPrecision(18, 2);
+            entity.Property(e => e.AylikKiraBedeli).HasPrecision(18, 2);
+            entity.Property(e => e.SeferBasinaKiraBedeli).HasPrecision(18, 2);
+            entity.Property(e => e.KomisyonOrani).HasPrecision(5, 2);
+            entity.Property(e => e.SabitKomisyonTutari).HasPrecision(18, 2);
+            
+            entity.HasOne(e => e.KiralikCari)
+                .WithMany()
+                .HasForeignKey(e => e.KiralikCariId)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            entity.HasOne(e => e.KomisyoncuCari)
+                .WithMany()
+                .HasForeignKey(e => e.KomisyoncuCariId)
+                .OnDelete(DeleteBehavior.Restrict);
+                
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 
