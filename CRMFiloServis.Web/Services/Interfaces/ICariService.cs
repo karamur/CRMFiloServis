@@ -5,6 +5,7 @@ namespace CRMFiloServis.Web.Services;
 public interface ICariService
 {
     Task<List<Cari>> GetAllAsync();
+    Task<int> GetCountAsync();
     Task<Cari?> GetByIdAsync(int id);
     Task<Cari?> GetByKodAsync(string cariKodu);
     Task<List<Cari>> GetByTipAsync(CariTipi tip);

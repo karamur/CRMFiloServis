@@ -8,6 +8,7 @@
 @inject IServisCalismaService ServisCalismaService
 @inject IBankaKasaHareketService BankaKasaService
 @inject NavigationManager Navigation
+@inject ILogger<Home> Logger
 @rendermode InteractiveServer
 
 <PageTitle>CRM Filo Servis - Ana Sayfa</PageTitle>
@@ -68,7 +69,7 @@
                             <h6 class="card-title">Aktif Şoför</h6>
                             <h2>@soforSayisi</h2>
                         </div>
-                        <i class="bi bi-person-badge" style="font-size: 3rem; opacity: 0.5;"></i>
+                        <i class="bi bi-person-badge" style="font-size: 3rem, opacity: 0.5;"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
@@ -401,58 +402,45 @@
     {
         try
         {
-            // Sayısal veriler
-            var cariler = await CariService.GetAllAsync();
-            cariSayisi = cariler.Count;
+            // Optimized parallel data loading using count queries
+            var cariTask = CariService.GetCountAsync();
+            var aracTask = AracService.GetActiveCountAsync();
+            var soforTask = SoforService.GetActiveCountAsync();
+            var faturaStatsTask = FaturaService.GetDashboardStatsAsync();
+            var bankaStatsTask = BankaKasaService.GetDashboardStatsAsync();
+            var sonCalismaTask = ServisCalismaService.GetRecentAsync(5);
+            var sonHareketTask = BankaKasaService.GetRecentAsync(5);
 
-            var araclar = await AracService.GetActiveAsync();
-            aracSayisi = araclar.Count;
+            // Wait for all tasks to complete
+            await Task.WhenAll(
+                cariTask, aracTask, soforTask, faturaStatsTask, 
+                bankaStatsTask, sonCalismaTask, sonHareketTask);
 
-            var soforler = await SoforService.GetActiveAsync();
-            soforSayisi = soforler.Count;
+            // Assign counts
+            cariSayisi = await cariTask;
+            aracSayisi = await aracTask;
+            soforSayisi = await soforTask;
 
-            // Faturalar
-            var tumFaturalar = await FaturaService.GetAllAsync();
-            bekleyenFaturalar = tumFaturalar.Where(f => f.KalanTutar > 0 && f.Durum != FaturaDurum.IptalEdildi).ToList();
-            bekleyenFaturaSayisi = bekleyenFaturalar.Count;
+            // Assign invoice stats
+            var faturaStats = await faturaStatsTask;
+            bekleyenFaturaSayisi = faturaStats.BekleyenFaturaSayisi;
+            buAyGelir = faturaStats.BuAyGelir;
+            buAyGider = faturaStats.BuAyGider;
+            vadeGecmisFaturalar = faturaStats.VadeGecmisFaturalar;
+            vadeYaklasanFaturalar = faturaStats.VadeYaklasanFaturalar;
 
-            // Vadesi geçmiş ve yaklaşan faturalar
-            vadeGecmisFaturalar = bekleyenFaturalar
-                .Where(f => f.VadeTarihi.HasValue && f.VadeTarihi.Value < DateTime.Today)
-                .OrderBy(f => f.VadeTarihi)
-                .ToList();
+            // Assign bank/cash stats
+            var bankaStats = await bankaStatsTask;
+            toplamKasa = bankaStats.ToplamKasa;
+            toplamBanka = bankaStats.ToplamBanka;
 
-            vadeYaklasanFaturalar = bekleyenFaturalar
-                .Where(f => f.VadeTarihi.HasValue && f.VadeTarihi.Value >= DateTime.Today && f.VadeTarihi.Value <= DateTime.Today.AddDays(7))
-                .OrderBy(f => f.VadeTarihi)
-                .ToList();
-
-            // Bu ay gelir/gider hesabı
-            var buAyBaslangic = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            var buAyFaturalar = tumFaturalar.Where(f => f.FaturaTarihi >= buAyBaslangic).ToList();
-            buAyGelir = buAyFaturalar.Where(f => f.FaturaTipi == FaturaTipi.SatisFaturasi).Sum(f => f.GenelToplam);
-            buAyGider = buAyFaturalar.Where(f => f.FaturaTipi == FaturaTipi.AlisFaturasi).Sum(f => f.GenelToplam);
-
-            // Banka/Kasa durumu - Hesap bakiyelerini hesapla
-            var bankaHesaplar = await BankaKasaService.GetHesaplarAsync();
-            toplamKasa = bankaHesaplar
-                .Where(h => h.HesapTipi == HesapTipi.Kasa)
-                .Sum(h => h.AcilisBakiye + h.Hareketler.Sum(hr => hr.HareketTipi == HareketTipi.Giris ? hr.Tutar : -hr.Tutar));
-            toplamBanka = bankaHesaplar
-                .Where(h => h.HesapTipi != HesapTipi.Kasa)
-                .Sum(h => h.AcilisBakiye + h.Hareketler.Sum(hr => hr.HareketTipi == HareketTipi.Giris ? hr.Tutar : -hr.Tutar));
-
-            // Son servis çalışmaları
-            var calismalar = await ServisCalismaService.GetAllAsync();
-            sonCalismalar = calismalar.OrderByDescending(c => c.CalismaTarihi).Take(5).ToList();
-
-            // Son hareketler
-            var hareketler = await BankaKasaService.GetAllAsync();
-            sonHareketler = hareketler.OrderByDescending(h => h.IslemTarihi).Take(5).ToList();
+            // Assign recent items
+            sonCalismalar = await sonCalismaTask;
+            sonHareketler = await sonHareketTask;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Dashboard yükleme hatası: {ex.Message}");
+            Logger.LogError(ex, "Dashboard yükleme hatası");
         }
     }
 }

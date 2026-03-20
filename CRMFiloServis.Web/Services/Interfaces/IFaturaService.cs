@@ -18,4 +18,16 @@ public interface IFaturaService
     Task DeleteAsync(int id);
     Task<string> GenerateNextFaturaNoAsync(FaturaTipi tip);
     Task UpdateOdenenTutarAsync(int faturaId);
+    
+    // Dashboard optimized methods
+    Task<DashboardFaturaStats> GetDashboardStatsAsync();
+}
+
+public class DashboardFaturaStats
+{
+    public int BekleyenFaturaSayisi { get; set; }
+    public decimal BuAyGelir { get; set; }
+    public decimal BuAyGider { get; set; }
+    public List<Fatura> VadeGecmisFaturalar { get; set; } = [];
+    public List<Fatura> VadeYaklasanFaturalar { get; set; } = [];
 }

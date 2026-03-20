@@ -30,6 +30,13 @@ public class SoforService : ISoforService
             .ToListAsync();
     }
 
+    public async Task<int> GetActiveCountAsync()
+    {
+        return await _context.Soforler
+            .Where(s => s.Aktif)
+            .CountAsync();
+    }
+
     public async Task<Sofor?> GetByIdAsync(int id)
     {
         return await _context.Soforler.FindAsync(id);

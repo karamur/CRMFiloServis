@@ -6,6 +6,7 @@ public interface ISoforService
 {
     Task<List<Sofor>> GetAllAsync();
     Task<List<Sofor>> GetActiveAsync();
+    Task<int> GetActiveCountAsync();
     Task<Sofor?> GetByIdAsync(int id);
     Task<Sofor> CreateAsync(Sofor sofor);
     Task<Sofor> UpdateAsync(Sofor sofor);

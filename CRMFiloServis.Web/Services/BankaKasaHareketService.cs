@@ -22,6 +22,16 @@ public class BankaKasaHareketService : IBankaKasaHareketService
             .ToListAsync();
     }
 
+    public async Task<List<BankaKasaHareket>> GetRecentAsync(int count = 5)
+    {
+        return await _context.BankaKasaHareketleri
+            .Include(h => h.BankaHesap)
+            .Include(h => h.Cari)
+            .OrderByDescending(h => h.IslemTarihi)
+            .Take(count)
+            .ToListAsync();
+    }
+
     public async Task<List<BankaKasaHareket>> GetByHesapIdAsync(int hesapId)
     {
         return await _context.BankaKasaHareketleri
@@ -185,5 +195,36 @@ public class BankaKasaHareketService : IBankaKasaHareketService
             hesap.IsDeleted = true;
             await _context.SaveChangesAsync();
         }
+    }
+
+    public async Task<DashboardBankaStats> GetDashboardStatsAsync()
+    {
+        // Calculate balances using a single optimized query
+        var hesapBakiyeleri = await _context.BankaHesaplari
+            .Where(h => !h.IsDeleted)
+            .Select(h => new
+            {
+                h.HesapTipi,
+                h.AcilisBakiye,
+                Girisler = _context.BankaKasaHareketleri
+                    .Where(hr => hr.BankaHesapId == h.Id && !hr.IsDeleted && hr.HareketTipi == HareketTipi.Giris)
+                    .Sum(hr => (decimal?)hr.Tutar) ?? 0,
+                Cikislar = _context.BankaKasaHareketleri
+                    .Where(hr => hr.BankaHesapId == h.Id && !hr.IsDeleted && hr.HareketTipi == HareketTipi.Cikis)
+                    .Sum(hr => (decimal?)hr.Tutar) ?? 0
+            })
+            .ToListAsync();
+
+        var stats = new DashboardBankaStats
+        {
+            ToplamKasa = hesapBakiyeleri
+                .Where(h => h.HesapTipi == HesapTipi.Kasa)
+                .Sum(h => h.AcilisBakiye + h.Girisler - h.Cikislar),
+            ToplamBanka = hesapBakiyeleri
+                .Where(h => h.HesapTipi != HesapTipi.Kasa)
+                .Sum(h => h.AcilisBakiye + h.Girisler - h.Cikislar)
+        };
+
+        return stats;
     }
 }

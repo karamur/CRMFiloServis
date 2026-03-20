@@ -181,6 +181,85 @@ public class FaturaService : IFaturaService
         }
     }
 
+    public async Task<DashboardFaturaStats> GetDashboardStatsAsync()
+    {
+        var stats = new DashboardFaturaStats();
+        var today = DateTime.Today;
+        var buAyBaslangic = new DateTime(today.Year, today.Month, 1);
+
+        // Single optimized query for invoices needed for dashboard
+        var relevantFaturalar = await _context.Faturalar
+            .Include(f => f.Cari)
+            .Where(f => f.Durum != FaturaDurum.IptalEdildi)
+            .Select(f => new
+            {
+                f.Id,
+                f.FaturaNo,
+                f.FaturaTarihi,
+                f.FaturaTipi,
+                f.VadeTarihi,
+                f.GenelToplam,
+                f.OdenenTutar,
+                f.Durum,
+                KalanTutar = f.GenelToplam - f.OdenenTutar,
+                CariUnvan = f.Cari.Unvan
+            })
+            .ToListAsync();
+
+        // Count pending invoices
+        stats.BekleyenFaturaSayisi = relevantFaturalar
+            .Count(f => f.KalanTutar > 0);
+
+        // Calculate this month's income/expense
+        var buAyFaturalar = relevantFaturalar
+            .Where(f => f.FaturaTarihi >= buAyBaslangic);
+        
+        stats.BuAyGelir = buAyFaturalar
+            .Where(f => f.FaturaTipi == FaturaTipi.SatisFaturasi)
+            .Sum(f => f.GenelToplam);
+        
+        stats.BuAyGider = buAyFaturalar
+            .Where(f => f.FaturaTipi == FaturaTipi.AlisFaturasi)
+            .Sum(f => f.GenelToplam);
+
+        // Overdue invoices - need full entity for display
+        var vadeGecmisIds = relevantFaturalar
+            .Where(f => f.KalanTutar > 0 && f.VadeTarihi.HasValue && f.VadeTarihi.Value < today)
+            .OrderBy(f => f.VadeTarihi)
+            .Take(10)
+            .Select(f => f.Id)
+            .ToList();
+
+        if (vadeGecmisIds.Count > 0)
+        {
+            stats.VadeGecmisFaturalar = await _context.Faturalar
+                .Include(f => f.Cari)
+                .Where(f => vadeGecmisIds.Contains(f.Id))
+                .OrderBy(f => f.VadeTarihi)
+                .ToListAsync();
+        }
+
+        // Upcoming due invoices
+        var vadeYaklasanIds = relevantFaturalar
+            .Where(f => f.KalanTutar > 0 && f.VadeTarihi.HasValue && 
+                   f.VadeTarihi.Value >= today && f.VadeTarihi.Value <= today.AddDays(7))
+            .OrderBy(f => f.VadeTarihi)
+            .Take(10)
+            .Select(f => f.Id)
+            .ToList();
+
+        if (vadeYaklasanIds.Count > 0)
+        {
+            stats.VadeYaklasanFaturalar = await _context.Faturalar
+                .Include(f => f.Cari)
+                .Where(f => vadeYaklasanIds.Contains(f.Id))
+                .OrderBy(f => f.VadeTarihi)
+                .ToListAsync();
+        }
+
+        return stats;
+    }
+
     private static void CalculateTotals(Fatura fatura)
     {
         if (fatura.FaturaKalemleri != null && fatura.FaturaKalemleri.Count != 0)

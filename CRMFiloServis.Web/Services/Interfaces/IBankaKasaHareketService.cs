@@ -5,6 +5,7 @@ namespace CRMFiloServis.Web.Services;
 public interface IBankaKasaHareketService
 {
     Task<List<BankaKasaHareket>> GetAllAsync();
+    Task<List<BankaKasaHareket>> GetRecentAsync(int count = 5);
     Task<List<BankaKasaHareket>> GetByHesapIdAsync(int hesapId);
     Task<List<BankaKasaHareket>> GetByCariIdAsync(int cariId);
     Task<List<BankaKasaHareket>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
@@ -23,4 +24,13 @@ public interface IBankaKasaHareketService
     Task<BankaHesap> CreateHesapAsync(BankaHesap hesap);
     Task<BankaHesap> UpdateHesapAsync(BankaHesap hesap);
     Task DeleteHesapAsync(int id);
+    
+    // Dashboard optimized methods
+    Task<DashboardBankaStats> GetDashboardStatsAsync();
+}
+
+public class DashboardBankaStats
+{
+    public decimal ToplamKasa { get; set; }
+    public decimal ToplamBanka { get; set; }
 }

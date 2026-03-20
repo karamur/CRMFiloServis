@@ -28,6 +28,13 @@ public class AracService : IAracService
             .ToListAsync();
     }
 
+    public async Task<int> GetActiveCountAsync()
+    {
+        return await _context.Araclar
+            .Where(a => a.Aktif)
+            .CountAsync();
+    }
+
     public async Task<Arac?> GetByIdAsync(int id)
     {
         return await _context.Araclar.FindAsync(id);

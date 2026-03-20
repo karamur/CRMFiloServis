@@ -5,6 +5,7 @@ namespace CRMFiloServis.Web.Services;
 public interface IServisCalismaService
 {
     Task<List<ServisCalisma>> GetAllAsync();
+    Task<List<ServisCalisma>> GetRecentAsync(int count = 5);
     Task<List<ServisCalisma>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
     Task<List<ServisCalisma>> GetByAracIdAsync(int aracId, DateTime? startDate = null, DateTime? endDate = null);
     Task<List<ServisCalisma>> GetBySoforIdAsync(int soforId, DateTime? startDate = null, DateTime? endDate = null);

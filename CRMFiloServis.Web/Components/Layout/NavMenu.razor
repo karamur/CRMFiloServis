@@ -1,118 +1,177 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@rendermode InteractiveServer
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">CRM Filo Servis</a>
+        <a class="navbar-brand" href="">
+            <i class="bi bi-truck me-2"></i>CRM Filo Servis
+        </a>
     </div>
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="nav flex-column">
+        <!-- Ana Sayfa -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Ana Sayfa
+                <i class="bi bi-house-door-fill me-2"></i> Ana Sayfa
             </NavLink>
         </div>
 
-        <div class="nav-item px-3 nav-header">
-            <span class="text-muted small">CARİ MODÜLÜ</span>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="cariler">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Cariler
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3 nav-header">
-            <span class="text-muted small">FİLO SERVİS</span>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="araclar">
-                <span class="bi bi-truck-nav-menu" aria-hidden="true"></span> Araçlar
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="soforler">
-                <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Şoförler
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="guzergahlar">
-                <span class="bi bi-signpost-nav-menu" aria-hidden="true"></span> Güzergahlar
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="servis-calismalari">
-                <span class="bi bi-calendar-check-nav-menu" aria-hidden="true"></span> Servis Çalışmaları
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="servis-calismalari/toplu-ekle">
-                <span class="bi bi-list-check-nav-menu" aria-hidden="true"></span> Toplu Çalışma Girişi
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="masraf-kalemleri">
-                <span class="bi bi-list-task-nav-menu" aria-hidden="true"></span> Masraf Kalemleri
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="arac-masraflari">
-                <span class="bi bi-cash-stack-nav-menu" aria-hidden="true"></span> Araç Masrafları
-            </NavLink>
+        <!-- CARİ MODÜLÜ -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="() => ToggleSection(0)">
+                <span><i class="bi bi-people-fill me-2"></i>CARİ MODÜLÜ</span>
+                <i class="bi @(expandedSections[0] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+            </div>
+            @if (expandedSections[0])
+            {
+                <div class="nav-section-content">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="cariler">
+                            <i class="bi bi-person-lines-fill me-2"></i> Cariler
+                        </NavLink>
+                    </div>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 nav-header">
-            <span class="text-muted small">FATURA MODÜLÜ</span>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="faturalar">
-                <span class="bi bi-receipt-nav-menu" aria-hidden="true"></span> Faturalar
-            </NavLink>
+        <!-- FİLO SERVİS -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="() => ToggleSection(1)">
+                <span><i class="bi bi-truck me-2"></i>FİLO SERVİS</span>
+                <i class="bi @(expandedSections[1] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+            </div>
+            @if (expandedSections[1])
+            {
+                <div class="nav-section-content">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="araclar">
+                            <i class="bi bi-car-front-fill me-2"></i> Araçlar
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="soforler">
+                            <i class="bi bi-person-badge-fill me-2"></i> Şoförler
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="guzergahlar">
+                            <i class="bi bi-signpost-split-fill me-2"></i> Güzergahlar
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="servis-calismalari">
+                            <i class="bi bi-calendar-check-fill me-2"></i> Servis Çalışmaları
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="servis-calismalari/toplu-ekle">
+                            <i class="bi bi-list-check me-2"></i> Toplu Çalışma Girişi
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="masraf-kalemleri">
+                            <i class="bi bi-list-task me-2"></i> Masraf Kalemleri
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="arac-masraflari">
+                            <i class="bi bi-cash-stack me-2"></i> Araç Masrafları
+                        </NavLink>
+                    </div>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 nav-header">
-            <span class="text-muted small">BANKA / KASA</span>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="banka-hesaplari">
-                <span class="bi bi-bank-nav-menu" aria-hidden="true"></span> Banka Hesapları
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="banka-hareketleri">
-                <span class="bi bi-arrow-left-right-nav-menu" aria-hidden="true"></span> Hareketler
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="odeme-eslestirme">
-                <span class="bi bi-link-45deg-nav-menu" aria-hidden="true"></span> Ödeme Eşleştirme
-            </NavLink>
+        <!-- FATURA MODÜLÜ -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="() => ToggleSection(2)">
+                <span><i class="bi bi-receipt me-2"></i>FATURA MODÜLÜ</span>
+                <i class="bi @(expandedSections[2] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+            </div>
+            @if (expandedSections[2])
+            {
+                <div class="nav-section-content">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="faturalar">
+                            <i class="bi bi-file-earmark-text-fill me-2"></i> Faturalar
+                        </NavLink>
+                    </div>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 nav-header">
-            <span class="text-muted small">RAPORLAR</span>
+        <!-- BANKA / KASA -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="() => ToggleSection(3)">
+                <span><i class="bi bi-bank me-2"></i>BANKA / KASA</span>
+                <i class="bi @(expandedSections[3] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+            </div>
+            @if (expandedSections[3])
+            {
+                <div class="nav-section-content">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="banka-hesaplari">
+                            <i class="bi bi-bank2 me-2"></i> Banka Hesapları
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="banka-hareketleri">
+                            <i class="bi bi-arrow-left-right me-2"></i> Hareketler
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="odeme-eslestirme">
+                            <i class="bi bi-link-45deg me-2"></i> Ödeme Eşleştirme
+                        </NavLink>
+                    </div>
+                </div>
+            }
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="rapor/servis-calisma">
-                <span class="bi bi-file-earmark-bar-graph-nav-menu" aria-hidden="true"></span> Servis Raporu
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="rapor/fatura-odeme">
-                <span class="bi bi-file-earmark-text-nav-menu" aria-hidden="true"></span> Fatura Ödeme
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="rapor/arac-masraf">
-                <span class="bi bi-file-earmark-spreadsheet-nav-menu" aria-hidden="true"></span> Araç Masraf
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="raporlar/cari-ekstre">
-                <span class="bi bi-file-earmark-ruled-nav-menu" aria-hidden="true"></span> Cari Ekstre
-            </NavLink>
+
+        <!-- RAPORLAR -->
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="() => ToggleSection(4)">
+                <span><i class="bi bi-bar-chart-fill me-2"></i>RAPORLAR</span>
+                <i class="bi @(expandedSections[4] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+            </div>
+            @if (expandedSections[4])
+            {
+                <div class="nav-section-content">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="rapor/servis-calisma">
+                            <i class="bi bi-file-earmark-bar-graph me-2"></i> Servis Raporu
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="rapor/fatura-odeme">
+                            <i class="bi bi-file-earmark-text me-2"></i> Fatura Ödeme
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="rapor/arac-masraf">
+                            <i class="bi bi-file-earmark-spreadsheet me-2"></i> Araç Masraf
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="raporlar/cari-ekstre">
+                            <i class="bi bi-file-earmark-ruled me-2"></i> Cari Ekstre
+                        </NavLink>
+                    </div>
+                </div>
+            }
         </div>
     </nav>
 </div>
+
+@code {
+    private bool[] expandedSections = [true, true, true, true, true];
+
+    private void ToggleSection(int index)
+    {
+        expandedSections[index] = !expandedSections[index];
+    }
+}
 

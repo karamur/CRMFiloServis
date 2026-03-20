@@ -20,6 +20,11 @@ public class CariService : ICariService
             .ToListAsync();
     }
 
+    public async Task<int> GetCountAsync()
+    {
+        return await _context.Cariler.CountAsync();
+    }
+
     public async Task<Cari?> GetByIdAsync(int id)
     {
         return await _context.Cariler

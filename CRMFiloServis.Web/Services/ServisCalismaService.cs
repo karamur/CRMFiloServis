@@ -24,6 +24,18 @@ public class ServisCalismaService : IServisCalismaService
             .ToListAsync();
     }
 
+    public async Task<List<ServisCalisma>> GetRecentAsync(int count = 5)
+    {
+        return await _context.ServisCalismalari
+            .Include(s => s.Arac)
+            .Include(s => s.Sofor)
+            .Include(s => s.Guzergah)
+                .ThenInclude(g => g.Cari)
+            .OrderByDescending(s => s.CalismaTarihi)
+            .Take(count)
+            .ToListAsync();
+    }
+
     public async Task<List<ServisCalisma>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
     {
         return await _context.ServisCalismalari
