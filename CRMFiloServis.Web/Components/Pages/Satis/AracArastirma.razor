@@ -380,7 +380,7 @@
     private Task<List<AramaSonuc>> SimuleAramaYapAsync()
     {
         // Gercek implementasyonda Sahibinden/Arabam API veya web scraping yapilacak
-        // Simdilik ornek data dondur
+        // Simdilik ornek data dondur - SADECE AKTIF ILANLAR
         var random = new Random();
         var sehirler = new[] { "Istanbul", "Ankara", "Izmir", "Bursa", "Antalya", "Kocaeli", "Adana", "Konya" };
         var sonuclar = new List<AramaSonuc>();
@@ -390,6 +390,9 @@
             var yil = aramaKriteri.MinYil > 0 ? random.Next(aramaKriteri.MinYil, aramaKriteri.MaxYil > 0 ? aramaKriteri.MaxYil : DateTime.Today.Year) : random.Next(2015, DateTime.Today.Year);
             var km = random.Next(aramaKriteri.MinKm > 0 ? aramaKriteri.MinKm : 10000, aramaKriteri.MaxKm > 0 ? aramaKriteri.MaxKm : 250000);
             var fiyat = random.Next(400000, 2500000);
+            
+            // Sadece Aktif ilanlar - Satilmis, Kaldirilmis, Rezerve edilmis ilanlar eklenmez
+            var ilanDurumu = "Aktif"; // Gercek API'den gelecek
 
             sonuclar.Add(new AramaSonuc
             {
@@ -405,16 +408,25 @@
                 DegisenParca = random.Next(4) == 0 ? random.Next(1, 3) : 0,
                 TramerTutari = random.Next(5) == 0 ? random.Next(5000, 50000) : 0,
                 Fiyat = fiyat,
-                IlanUrl = $"https://www.sahibinden.com/ilan/{random.Next(100000000, 999999999)}"
+                IlanUrl = $"https://www.sahibinden.com/ilan/{random.Next(100000000, 999999999)}",
+                IlanDurumu = ilanDurumu, // Aktif, Satildi, Kaldirildi, Rezerve
+                IlanTarihi = DateTime.Today.AddDays(-random.Next(1, 60))
             });
         }
 
-        return Task.FromResult(sonuclar.OrderBy(s => s.Fiyat).ToList());
+        // Sadece Aktif ilanlari dondur - Satilmis, Kaldirilmis ve Rezerve edilmisleri filtrele
+        return Task.FromResult(sonuclar
+            .Where(s => s.IlanDurumu == "Aktif") 
+            .OrderBy(s => s.Fiyat)
+            .ToList());
     }
 
     private void FiltreUygula()
     {
         var query = aramaSonuclari.AsEnumerable();
+
+        // Aktif olmayanlarý filtrele (satýlmýþ, kaldýrýlmýþ, rezerve)
+        query = query.Where(s => s.IlanDurumu == "Aktif");
 
         if (!string.IsNullOrEmpty(filtreKaynak))
             query = query.Where(s => s.Kaynak == filtreKaynak);
@@ -428,6 +440,7 @@
             "fiyat_desc" => query.OrderByDescending(s => s.Fiyat),
             "km_asc" => query.OrderBy(s => s.Kilometre),
             "yil_desc" => query.OrderByDescending(s => s.Yil),
+            "tarih_desc" => query.OrderByDescending(s => s.IlanTarihi),
             _ => query
         };
 
@@ -492,5 +505,7 @@
         public decimal TramerTutari { get; set; }
         public decimal Fiyat { get; set; }
         public string? IlanUrl { get; set; }
+        public string IlanDurumu { get; set; } = "Aktif"; // Aktif, Satildi, Kaldirildi, Rezerve
+        public DateTime IlanTarihi { get; set; }
     }
 }

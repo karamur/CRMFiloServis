@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject IFaturaService FaturaService
 @inject ICariService CariService
+@inject IBankaKasaHareketService BankaKasaService
 @inject IToastService ToastService
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -53,12 +54,12 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small mb-1">Durum</label>
+                    <label class="form-label small mb-1">Tahsilat Durumu</label>
                     <select class="form-select form-select-sm" @bind="filtreDurum">
                         <option value="">Tumu</option>
-                        <option value="1">Beklemede</option>
-                        <option value="2">Kismi Odendi</option>
-                        <option value="3">Odendi</option>
+                        <option value="1">Tahsil Edilmedi</option>
+                        <option value="2">Kismi Tahsilat</option>
+                        <option value="3">Tahsil Edildi</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -102,7 +103,7 @@
         <div class="col-6 col-md-3">
             <div class="card bg-warning text-dark h-100">
                 <div class="card-body py-2 text-center">
-                    <small>Bekleyen</small>
+                    <small>Tahsil Bekleyen</small>
                     <h4 class="mb-0">@FormatPara(filtreliFaturalar.Sum(f => f.KalanTutar))</h4>
                 </div>
             </div>
@@ -126,9 +127,9 @@
                                 <th>Fatura No</th>
                                 <th>Tarih</th>
                                 <th>Cari</th>
-                                <th>Tip</th>
+                                <th>Vade</th>
                                 <th class="text-end">Tutar</th>
-                                <th class="text-end">Odenen</th>
+                                <th class="text-end">Tahsil</th>
                                 <th class="text-end">Kalan</th>
                                 <th class="text-center">Durum</th>
                                 <th class="text-center">Islem</th>
@@ -137,20 +138,23 @@
                         <tbody>
                             @foreach (var fatura in filtreliFaturalar)
                             {
-                                <tr>
+                                var vadeGecmis = fatura.VadeTarihi.HasValue && fatura.VadeTarihi.Value < DateTime.Today && fatura.KalanTutar > 0;
+                                <tr class="@(vadeGecmis ? "table-warning" : "")">
                                     <td>
                                         <strong>@fatura.FaturaNo</strong>
-                                        @if (!string.IsNullOrEmpty(fatura.EttnNo))
-                                        {
-                                            <br /><small class="text-muted">ETTN: @fatura.EttnNo.Substring(0, Math.Min(8, fatura.EttnNo.Length))...</small>
-                                        }
+                                        <span class="badge @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "bg-primary" : "bg-secondary") ms-1">
+                                            @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "E-F" : "E-A")
+                                        </span>
                                     </td>
                                     <td>@fatura.FaturaTarihi.ToString("dd.MM.yyyy")</td>
                                     <td>@fatura.Cari?.Unvan</td>
                                     <td>
-                                        <span class="badge @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "bg-primary" : "bg-secondary")">
-                                            @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "E-Fatura" : "E-Arsiv")
-                                        </span>
+                                        @if (fatura.VadeTarihi.HasValue)
+                                        {
+                                            <span class="@(vadeGecmis ? "text-danger fw-bold" : "")">
+                                                @fatura.VadeTarihi.Value.ToString("dd.MM.yyyy")
+                                            </span>
+                                        }
                                     </td>
                                     <td class="text-end">@FormatPara(fatura.GenelToplam)</td>
                                     <td class="text-end text-success">@FormatPara(fatura.OdenenTutar)</td>
@@ -160,6 +164,12 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
+                                            @if (fatura.KalanTutar > 0)
+                                            {
+                                                <button class="btn btn-success" @onclick="() => TahsilatYapAc(fatura)" title="Tahsilat Yap">
+                                                    <i class="bi bi-cash-coin"></i>
+                                                </button>
+                                            }
                                             <button class="btn btn-outline-primary" @onclick="() => FaturaDetayAc(fatura)" title="Detay">
                                                 <i class="bi bi-eye"></i>
                                             </button>
@@ -391,10 +401,65 @@
     </div>
 }
 
+<!-- Tahsilat Modal -->
+@if (showTahsilatModal && tahsilatFatura != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Tahsilat Yap</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="ModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        <strong>@tahsilatFatura.FaturaNo</strong> - @tahsilatFatura.Cari?.Unvan<br/>
+                        <span class="text-success">Tahsil Edilecek: @FormatPara(tahsilatFatura.KalanTutar)</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Tahsilat Tarihi *</label>
+                            <input type="date" class="form-control" @bind="tahsilatTarihi" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tahsilat Tutari *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" @bind="tahsilatTutar" step="0.01" max="@tahsilatFatura.KalanTutar" />
+                                <span class="input-group-text">TL</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Tahsilat Yontemi *</label>
+                            <select class="form-select" @bind="tahsilatHesapId">
+                                <option value="0">Secin...</option>
+                                @foreach (var hesap in bankaHesaplari)
+                                {
+                                    <option value="@hesap.Id">@hesap.HesapAdi (@hesap.HesapTipi)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Aciklama</label>
+                            <input type="text" class="form-control" @bind="tahsilatAciklama" placeholder="Tahsilat aciklamasi" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
+                    <button type="button" class="btn btn-success" @onclick="TahsilatKaydetAsync">
+                        <i class="bi bi-check-lg me-1"></i>Tahsilati Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Fatura> faturalar = new();
     private List<Fatura> filtreliFaturalar = new();
     private List<Cari> cariler = new();
+    private List<BankaHesap> bankaHesaplari = new();
     private bool isLoading = true;
 
     // Filtre
@@ -408,8 +473,16 @@
     private bool showFaturaModal = false;
     private bool showImportModal = false;
     private bool showDetayModal = false;
+    private bool showTahsilatModal = false;
     private Fatura editFatura = new();
     private Fatura? detayFatura;
+
+    // Tahsilat
+    private Fatura? tahsilatFatura;
+    private DateTime tahsilatTarihi = DateTime.Today;
+    private decimal tahsilatTutar;
+    private int tahsilatHesapId;
+    private string tahsilatAciklama = "";
 
     // Import
     private string importBaslik = "";
@@ -421,6 +494,7 @@
     protected override async Task OnInitializedAsync()
     {
         cariler = await CariService.GetAllAsync();
+        bankaHesaplari = await BankaKasaService.GetAktifHesaplarAsync();
         await YenileAsync();
     }
 
@@ -517,6 +591,16 @@
         showDetayModal = true;
     }
 
+    private void TahsilatYapAc(Fatura fatura)
+    {
+        tahsilatFatura = fatura;
+        tahsilatTutar = fatura.KalanTutar;
+        tahsilatTarihi = DateTime.Today;
+        tahsilatHesapId = bankaHesaplari.FirstOrDefault()?.Id ?? 0;
+        tahsilatAciklama = $"{fatura.FaturaNo} fatura tahsilati";
+        showTahsilatModal = true;
+    }
+
     private async Task FaturaKaydet()
     {
         if (string.IsNullOrWhiteSpace(editFatura.FaturaNo) || editFatura.CariId <= 0 || editFatura.GenelToplam <= 0)
@@ -539,6 +623,42 @@
                 await FaturaService.CreateAsync(editFatura);
 
             ToastService.ShowSuccess("Fatura kaydedildi.");
+            ModalKapat();
+            await YenileAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    private async Task TahsilatKaydetAsync()
+    {
+        if (tahsilatFatura == null || tahsilatHesapId <= 0 || tahsilatTutar <= 0)
+        {
+            ToastService.ShowWarning("Lutfen tum alanlari doldurun!");
+            return;
+        }
+
+        try
+        {
+            // Banka/Kasa hareket olustur (giris)
+            var hareket = new BankaKasaHareket
+            {
+                BankaHesapId = tahsilatHesapId,
+                IslemTarihi = DateTime.SpecifyKind(tahsilatTarihi, DateTimeKind.Utc),
+                HareketTipi = HareketTipi.Giris,
+                IslemKaynak = IslemKaynak.FaturaTahsilat,
+                Tutar = tahsilatTutar,
+                Aciklama = tahsilatAciklama,
+                CariId = tahsilatFatura.CariId
+            };
+            await BankaKasaService.CreateAsync(hareket);
+
+            // Fatura odenen tutari guncelle
+            await FaturaService.UpdateOdenenTutarAsync(tahsilatFatura.Id);
+
+            ToastService.ShowSuccess("Tahsilat kaydedildi.");
             ModalKapat();
             await YenileAsync();
         }
@@ -609,7 +729,6 @@
 
     private async Task ExcelExport()
     {
-        // TODO: Excel export
         ToastService.ShowInfo("Excel export ozelligi yaklasimda...");
     }
 
@@ -618,23 +737,24 @@
         showFaturaModal = false;
         showImportModal = false;
         showDetayModal = false;
+        showTahsilatModal = false;
     }
 
     private string GetDurumAdi(FaturaDurum d) => d switch
     {
-        FaturaDurum.Beklemede => "Beklemede",
-        FaturaDurum.KismiOdendi => "Kismi Odendi",
-        FaturaDurum.Odendi => "Odendi",
+        FaturaDurum.Beklemede => "Tahsil Edilmedi",
+        FaturaDurum.KismiOdendi => "Kismi Tahsilat",
+        FaturaDurum.Odendi => "Tahsil Edildi",
         FaturaDurum.IptalEdildi => "Iptal",
         _ => d.ToString()
     };
 
     private string GetDurumClass(FaturaDurum d) => d switch
     {
-        FaturaDurum.Beklemede => "bg-warning text-dark",
-        FaturaDurum.KismiOdendi => "bg-info",
+        FaturaDurum.Beklemede => "bg-danger",
+        FaturaDurum.KismiOdendi => "bg-warning text-dark",
         FaturaDurum.Odendi => "bg-success",
-        FaturaDurum.IptalEdildi => "bg-danger",
+        FaturaDurum.IptalEdildi => "bg-secondary",
         _ => "bg-secondary"
     };
 

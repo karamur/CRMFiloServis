@@ -88,6 +88,10 @@ using (var scope = app.Services.CreateScope())
     
     var satisService = scope.ServiceProvider.GetRequiredService<ISatisService>();
     await satisService.SeedMarkaModelAsync();
+    
+    // Muhasebe hesap plani seed
+    var muhasebeService = scope.ServiceProvider.GetRequiredService<IMuhasebeService>();
+    await muhasebeService.SeedVarsayilanHesapPlaniAsync();
 }
 
 // Configure the HTTP request pipeline.

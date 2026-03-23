@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject IFaturaService FaturaService
 @inject ICariService CariService
+@inject IBankaKasaHareketService BankaKasaService
 @inject IToastService ToastService
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -53,10 +54,10 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small mb-1">Durum</label>
+                    <label class="form-label small mb-1">Odeme Durumu</label>
                     <select class="form-select form-select-sm" @bind="filtreDurum">
                         <option value="">Tumu</option>
-                        <option value="1">Beklemede</option>
+                        <option value="1">Odenmedi</option>
                         <option value="2">Kismi Odendi</option>
                         <option value="3">Odendi</option>
                     </select>
@@ -126,31 +127,44 @@
                                 <th>Fatura No</th>
                                 <th>Tarih</th>
                                 <th>Tedarikci</th>
-                                <th>Tip</th>
+                                <th>Odeme Tarihi</th>
                                 <th class="text-end">Tutar</th>
                                 <th class="text-end">Odenen</th>
                                 <th class="text-end">Kalan</th>
-                                <th class="text-center">Durum</th>
+                                <th class="text-center">Odeme Durumu</th>
                                 <th class="text-center">Islem</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var fatura in filtreliFaturalar)
                             {
-                                <tr>
+                                var vadeGecmis = fatura.VadeTarihi.HasValue && fatura.VadeTarihi.Value < DateTime.Today && fatura.KalanTutar > 0;
+                                <tr class="@(vadeGecmis ? "table-danger" : "")">
                                     <td>
                                         <strong>@fatura.FaturaNo</strong>
-                                        @if (!string.IsNullOrEmpty(fatura.EttnNo))
-                                        {
-                                            <br /><small class="text-muted">ETTN: @fatura.EttnNo.Substring(0, Math.Min(8, fatura.EttnNo.Length))...</small>
-                                        }
+                                        <span class="badge @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "bg-primary" : "bg-secondary") ms-1">
+                                            @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "E-F" : "E-A")
+                                        </span>
                                     </td>
                                     <td>@fatura.FaturaTarihi.ToString("dd.MM.yyyy")</td>
                                     <td>@fatura.Cari?.Unvan</td>
                                     <td>
-                                        <span class="badge @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "bg-primary" : "bg-secondary")">
-                                            @(fatura.EFaturaTipi == EFaturaTipi.EFatura ? "E-Fatura" : "E-Arsiv")
-                                        </span>
+                                        @if (fatura.VadeTarihi.HasValue)
+                                        {
+                                            <span class="@(vadeGecmis ? "text-danger fw-bold" : "")">
+                                                @fatura.VadeTarihi.Value.ToString("dd.MM.yyyy")
+                                            </span>
+                                            @if (vadeGecmis)
+                                            {
+                                                <i class="bi bi-exclamation-triangle-fill text-danger ms-1" title="Vade Gecmis"></i>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-link btn-sm p-0 text-primary" @onclick="() => OdemeTarihiDegistirAc(fatura)">
+                                                <i class="bi bi-calendar-plus"></i> Belirle
+                                            </button>
+                                        }
                                     </td>
                                     <td class="text-end">@FormatPara(fatura.GenelToplam)</td>
                                     <td class="text-end text-success">@FormatPara(fatura.OdenenTutar)</td>
@@ -160,11 +174,20 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
+                                            @if (fatura.KalanTutar > 0)
+                                            {
+                                                <button class="btn btn-success" @onclick="() => OdemeYapAc(fatura)" title="Odeme Yap">
+                                                    <i class="bi bi-cash-coin"></i>
+                                                </button>
+                                            }
                                             <button class="btn btn-outline-primary" @onclick="() => FaturaDetayAc(fatura)" title="Detay">
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                             <button class="btn btn-outline-secondary" @onclick="() => FaturaDuzenle(fatura)" title="Duzenle">
                                                 <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info" @onclick="() => OdemeTarihiDegistirAc(fatura)" title="Odeme Tarihi">
+                                                <i class="bi bi-calendar-event"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -177,6 +200,86 @@
         </div>
     }
 </div>
+
+<!-- Odeme Yap Modal -->
+@if (showOdemeModal && odemeFatura != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Odeme Yap</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="ModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        <strong>@odemeFatura.FaturaNo</strong> - @odemeFatura.Cari?.Unvan<br/>
+                        <span class="text-danger">Kalan: @FormatPara(odemeFatura.KalanTutar)</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Odeme Tarihi *</label>
+                            <input type="date" class="form-control" @bind="odemeTarihi" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Odeme Tutari *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" @bind="odemeTutar" step="0.01" max="@odemeFatura.KalanTutar" />
+                                <span class="input-group-text">TL</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Odeme Yontemi *</label>
+                            <select class="form-select" @bind="odemeHesapId">
+                                <option value="0">Secin...</option>
+                                @foreach (var hesap in bankaHesaplari)
+                                {
+                                    <option value="@hesap.Id">@hesap.HesapAdi (@hesap.HesapTipi)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Aciklama</label>
+                            <input type="text" class="form-control" @bind="odemeAciklama" placeholder="Odeme aciklamasi" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
+                    <button type="button" class="btn btn-success" @onclick="OdemeKaydetAsync">
+                        <i class="bi bi-check-lg me-1"></i>Odemeyi Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Odeme Tarihi Degistir Modal -->
+@if (showOdemeTarihiModal && odemeTarihiFatura != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calendar-event me-2"></i>Odeme Tarihi</h5>
+                    <button type="button" class="btn-close" @onclick="ModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2"><strong>@odemeTarihiFatura.FaturaNo</strong></p>
+                    <label class="form-label">Planlanan Odeme Tarihi</label>
+                    <input type="date" class="form-control" @bind="yeniOdemeTarihi" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
+                    <button type="button" class="btn btn-primary" @onclick="OdemeTarihiKaydetAsync">
+                        <i class="bi bi-check-lg me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- Yeni/Duzenle Fatura Modal -->
 @if (showFaturaModal)
@@ -395,6 +498,7 @@
     private List<Fatura> faturalar = new();
     private List<Fatura> filtreliFaturalar = new();
     private List<Cari> cariler = new();
+    private List<BankaHesap> bankaHesaplari = new();
     private bool isLoading = true;
 
     // Filtre
@@ -408,8 +512,21 @@
     private bool showFaturaModal = false;
     private bool showImportModal = false;
     private bool showDetayModal = false;
+    private bool showOdemeModal = false;
+    private bool showOdemeTarihiModal = false;
     private Fatura editFatura = new();
     private Fatura? detayFatura;
+
+    // Odeme Modal
+    private Fatura? odemeFatura;
+    private DateTime odemeTarihi = DateTime.Today;
+    private decimal odemeTutar;
+    private int odemeHesapId;
+    private string odemeAciklama = "";
+
+    // Odeme Tarihi Modal
+    private Fatura? odemeTarihiFatura;
+    private DateTime yeniOdemeTarihi = DateTime.Today;
 
     // Import
     private string importBaslik = "";
@@ -421,6 +538,7 @@
     protected override async Task OnInitializedAsync()
     {
         cariler = await CariService.GetAllAsync();
+        bankaHesaplari = await BankaKasaService.GetAktifHesaplarAsync();
         await YenileAsync();
     }
 
@@ -517,6 +635,23 @@
         showDetayModal = true;
     }
 
+    private void OdemeYapAc(Fatura fatura)
+    {
+        odemeFatura = fatura;
+        odemeTarihi = DateTime.Today;
+        odemeTutar = fatura.KalanTutar;
+        odemeHesapId = bankaHesaplari.FirstOrDefault()?.Id ?? 0;
+        odemeAciklama = $"{fatura.FaturaNo} fatura odemesi";
+        showOdemeModal = true;
+    }
+
+    private void OdemeTarihiDegistirAc(Fatura fatura)
+    {
+        odemeTarihiFatura = fatura;
+        yeniOdemeTarihi = fatura.VadeTarihi ?? DateTime.Today.AddDays(30);
+        showOdemeTarihiModal = true;
+    }
+
     private async Task FaturaKaydet()
     {
         if (string.IsNullOrWhiteSpace(editFatura.FaturaNo) || editFatura.CariId <= 0 || editFatura.GenelToplam <= 0)
@@ -539,6 +674,61 @@
                 await FaturaService.CreateAsync(editFatura);
 
             ToastService.ShowSuccess("Fatura kaydedildi.");
+            ModalKapat();
+            await YenileAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    private async Task OdemeKaydetAsync()
+    {
+        if (odemeFatura == null || odemeTutar <= 0 || odemeHesapId <= 0)
+        {
+            ToastService.ShowWarning("Lutfen tum alanlari doldurun!");
+            return;
+        }
+
+        try
+        {
+            // Banka/Kasa hareket olustur
+            var hareket = new BankaKasaHareket
+            {
+                BankaHesapId = odemeHesapId,
+                IslemTarihi = DateTime.SpecifyKind(odemeTarihi, DateTimeKind.Utc),
+                HareketTipi = HareketTipi.Cikis,
+                IslemKaynak = IslemKaynak.FaturaOdeme,
+                Tutar = odemeTutar,
+                Aciklama = odemeAciklama,
+                CariId = odemeFatura.CariId
+            };
+            await BankaKasaService.CreateAsync(hareket);
+
+            // Fatura odenen tutari guncelle
+            await FaturaService.UpdateOdenenTutarAsync(odemeFatura.Id);
+
+            ToastService.ShowSuccess("Odeme kaydedildi.");
+            ModalKapat();
+            await YenileAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    private async Task OdemeTarihiKaydetAsync()
+    {
+        if (odemeTarihiFatura == null) return;
+
+        try
+        {
+            odemeTarihiFatura.VadeTarihi = DateTime.SpecifyKind(yeniOdemeTarihi, DateTimeKind.Utc);
+            await FaturaService.UpdateAsync(odemeTarihiFatura);
+
+            ToastService.ShowSuccess("Odeme tarihi guncellendi.");
             ModalKapat();
             await YenileAsync();
         }
@@ -609,7 +799,6 @@
 
     private async Task ExcelExport()
     {
-        // TODO: Excel export
         ToastService.ShowInfo("Excel export ozelligi yaklasimda...");
     }
 
@@ -618,11 +807,13 @@
         showFaturaModal = false;
         showImportModal = false;
         showDetayModal = false;
+        showOdemeModal = false;
+        showOdemeTarihiModal = false;
     }
 
     private string GetDurumAdi(FaturaDurum d) => d switch
     {
-        FaturaDurum.Beklemede => "Beklemede",
+        FaturaDurum.Beklemede => "Odenmedi",
         FaturaDurum.KismiOdendi => "Kismi Odendi",
         FaturaDurum.Odendi => "Odendi",
         FaturaDurum.IptalEdildi => "Iptal",
@@ -631,10 +822,10 @@
 
     private string GetDurumClass(FaturaDurum d) => d switch
     {
-        FaturaDurum.Beklemede => "bg-warning text-dark",
-        FaturaDurum.KismiOdendi => "bg-info",
+        FaturaDurum.Beklemede => "bg-danger",
+        FaturaDurum.KismiOdendi => "bg-warning text-dark",
         FaturaDurum.Odendi => "bg-success",
-        FaturaDurum.IptalEdildi => "bg-danger",
+        FaturaDurum.IptalEdildi => "bg-secondary",
         _ => "bg-secondary"
     };
 
