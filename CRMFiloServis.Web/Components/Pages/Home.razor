@@ -8,6 +8,7 @@
 @inject IServisCalismaService ServisCalismaService
 @inject IBankaKasaHareketService BankaKasaService
 @inject IBelgeUyariService BelgeUyariService
+@inject IBudgetService BudgetService
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 @rendermode InteractiveServer
@@ -176,21 +177,80 @@
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Bu Ay Bütçe</h6>
+                </div>
+                <div class="card-body">
+                    @if (butceOzet != null)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Planlanan Ödeme:</span>
+                            <strong class="text-danger">@butceOzet.ToplamOdeme.ToString("N0") ₺</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Ödenen:</span>
+                            <strong class="text-success">@butceOzet.OdenenToplam.ToString("N0") ₺</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Bekleyen:</span>
+                            <strong class="text-warning">@butceOzet.BekleyenToplam.ToString("N0") ₺</strong>
+                        </div>
+                        <hr />
+                        <div class="progress" style="height: 20px;">
+                            @{
+                                var yuzde = butceOzet.ToplamOdeme > 0 ? (butceOzet.OdenenToplam / butceOzet.ToplamOdeme * 100) : 0;
+                            }
+                            <div class="progress-bar bg-success" style="width: @yuzde.ToString("F0")%">
+                                %@yuzde.ToString("F0")
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <p class="mb-0 mt-2">Bütçe verisi yok</p>
+                        </div>
+                    }
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="/butce" class="btn btn-outline-primary btn-sm w-100">
+                        <i class="bi bi-arrow-right me-1"></i>Bütçe Analiz
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hızlı İşlemler Row -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Hızlı İşlemler</h6>
                 </div>
-                <div class="card-body d-grid gap-2">
-                    <button class="btn btn-outline-primary" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/yeni"))'>
-                        <i class="bi bi-plus-circle me-2"></i>Yeni Servis Çalışması
-                    </button>
-                    <button class="btn btn-outline-success" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/toplu-ekle"))'>
-                        <i class="bi bi-list-check me-2"></i>Toplu Çalışma Girişi
-                    </button>
-                    <button class="btn btn-outline-warning" @onclick='@(() => Navigation.NavigateTo("/faturalar/yeni"))'>
-                        <i class="bi bi-receipt me-2"></i>Yeni Fatura
-                    </button>
-                    <button class="btn btn-outline-info" @onclick='@(() => Navigation.NavigateTo("/banka-kasa/yeni"))'>
-                        <i class="bi bi-cash me-2"></i>Tahsilat/Ödeme Girişi
-                    </button>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-primary w-100" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/yeni"))'>
+                                <i class="bi bi-plus-circle me-2"></i>Yeni Servis Çalışması
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-success w-100" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/toplu-ekle"))'>
+                                <i class="bi bi-list-check me-2"></i>Toplu Çalışma Girişi
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-warning w-100" @onclick='@(() => Navigation.NavigateTo("/faturalar/yeni"))'>
+                                <i class="bi bi-receipt me-2"></i>Yeni Fatura
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-info w-100" @onclick='@(() => Navigation.NavigateTo("/butce"))'>
+                                <i class="bi bi-wallet2 me-2"></i>Bütçe/Ödeme Girişi
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -487,6 +547,7 @@
     private List<BankaKasaHareket>? sonHareketler;
     
     private BelgeUyariOzet? belgeUyarilar;
+    private BudgetOzet? butceOzet;
     private bool showBelgeModal = false;
 
     protected override async Task OnInitializedAsync()
@@ -502,11 +563,12 @@
             var sonCalismaTask = ServisCalismaService.GetRecentAsync(5);
             var sonHareketTask = BankaKasaService.GetRecentAsync(5);
             var belgeUyariTask = BelgeUyariService.GetBelgeUyarilarAsync(30);
+            var butceTask = BudgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
 
             // Wait for all tasks to complete
             await Task.WhenAll(
                 cariTask, aracTask, soforTask, faturaStatsTask, 
-                bankaStatsTask, sonCalismaTask, sonHareketTask, belgeUyariTask);
+                bankaStatsTask, sonCalismaTask, sonHareketTask, belgeUyariTask, butceTask);
 
             // Assign counts
             cariSayisi = await cariTask;
@@ -532,6 +594,9 @@
             
             // Assign belge uyarıları
             belgeUyarilar = await belgeUyariTask;
+
+            // Assign budget overview
+            butceOzet = await butceTask;
         }
         catch (Exception ex)
         {
