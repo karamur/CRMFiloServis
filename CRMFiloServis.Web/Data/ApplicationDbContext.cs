@@ -43,6 +43,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<BudgetOdeme> BudgetOdemeler { get; set; }
     public DbSet<BudgetMasrafKalemi> BudgetMasrafKalemleri { get; set; }
 
+    // Muhasebe Modülü
+    public DbSet<MuhasebeHesap> MuhasebeHesaplari { get; set; }
+    public DbSet<MuhasebeFis> MuhasebeFisleri { get; set; }
+    public DbSet<MuhasebeFisKalem> MuhasebeFisKalemleri { get; set; }
+    public DbSet<MuhasebeDonem> MuhasebeDonemleri { get; set; }
+
     // Sistem Modülü
     public DbSet<AktiviteLog> AktiviteLoglar { get; set; }
 
@@ -353,6 +359,56 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Kategori).HasMaxLength(100);
             entity.Property(e => e.Renk).HasMaxLength(20);
             entity.Property(e => e.Icon).HasMaxLength(50);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Muhasebe Hesap
+        modelBuilder.Entity<MuhasebeHesap>(entity =>
+        {
+            entity.HasIndex(e => e.HesapKodu).IsUnique();
+            entity.Property(e => e.HesapKodu).HasMaxLength(10);
+            entity.Property(e => e.HesapAdi).HasMaxLength(200);
+            entity.HasOne(e => e.UstHesap)
+                .WithMany()
+                .HasForeignKey(e => e.UstHesapId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Muhasebe Fis
+        modelBuilder.Entity<MuhasebeFis>(entity =>
+        {
+            entity.HasIndex(e => e.FisNo).IsUnique();
+            entity.Property(e => e.FisNo).HasMaxLength(50);
+            entity.Property(e => e.ToplamBorc).HasPrecision(18, 2);
+            entity.Property(e => e.ToplamAlacak).HasPrecision(18, 2);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Muhasebe Fis Kalem
+        modelBuilder.Entity<MuhasebeFisKalem>(entity =>
+        {
+            entity.Property(e => e.Borc).HasPrecision(18, 2);
+            entity.Property(e => e.Alacak).HasPrecision(18, 2);
+            entity.HasOne(e => e.Fis)
+                .WithMany(f => f.Kalemler)
+                .HasForeignKey(e => e.FisId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Hesap)
+                .WithMany(h => h.FisKalemleri)
+                .HasForeignKey(e => e.HesapId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Cari)
+                .WithMany()
+                .HasForeignKey(e => e.CariId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Muhasebe Donem
+        modelBuilder.Entity<MuhasebeDonem>(entity =>
+        {
+            entity.HasIndex(e => new { e.Yil, e.Ay }).IsUnique();
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 

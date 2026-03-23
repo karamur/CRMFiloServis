@@ -1,0 +1,267 @@
+@page "/muhasebe"
+@using CRMFiloServis.Shared.Entities
+@using CRMFiloServis.Web.Services
+@inject IMuhasebeService MuhasebeService
+@inject IToastService ToastService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Muhasebe</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-journal-text me-2"></i>Muhasebe Modulu</h3>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" @onclick="HesapPlaniOlustur" disabled="@hesapPlaniVar">
+                <i class="bi bi-plus-lg me-1"></i>Hesap Plani Olustur
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else
+    {
+        <!-- Ozet Kartlari -->
+        <div class="row mb-4 g-3">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white h-100" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/muhasebe/hesap-plani")'>
+                    <div class="card-body text-center">
+                        <i class="bi bi-list-nested fs-1 mb-2"></i>
+                        <h6>Hesap Plani</h6>
+                        <h3>@hesapSayisi</h3>
+                        <small>Aktif Hesap</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white h-100" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/muhasebe/fisler")'>
+                    <div class="card-body text-center">
+                        <i class="bi bi-receipt fs-1 mb-2"></i>
+                        <h6>Muhasebe Fisleri</h6>
+                        <h3>@fisSayisi</h3>
+                        <small>Bu Ay</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white h-100" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/muhasebe/raporlar")'>
+                    <div class="card-body text-center">
+                        <i class="bi bi-file-earmark-bar-graph fs-1 mb-2"></i>
+                        <h6>Raporlar</h6>
+                        <p class="mb-0 small">Muavin, Yevmiye, Bilanco</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark h-100" style="cursor: pointer;" @onclick='() => Navigation.NavigateTo("/muhasebe/analiz")'>
+                    <div class="card-body text-center">
+                        <i class="bi bi-graph-up-arrow fs-1 mb-2"></i>
+                        <h6>Mali Analiz</h6>
+                        <p class="mb-0 small">Gelir/Gider, Trendler</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hizli Erisim -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Hizli Islemler</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo("/muhasebe/fisler/yeni")'>
+                                <i class="bi bi-plus-circle me-2"></i>Yeni Muhasebe Fisi
+                            </button>
+                            <button class="btn btn-outline-success" @onclick='() => Navigation.NavigateTo("/muhasebe/raporlar/muavin")'>
+                                <i class="bi bi-file-text me-2"></i>Muavin Raporu
+                            </button>
+                            <button class="btn btn-outline-info" @onclick='() => Navigation.NavigateTo("/muhasebe/raporlar/mizan")'>
+                                <i class="bi bi-table me-2"></i>Mizan
+                            </button>
+                            <button class="btn btn-outline-warning" @onclick='() => Navigation.NavigateTo("/muhasebe/raporlar/bilanco")'>
+                                <i class="bi bi-layout-split me-2"></i>Bilanco
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Bu Ay Ozeti</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (gelirGiderRapor != null)
+                        {
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <h6 class="text-muted">Gelir</h6>
+                                    <h4 class="text-success">@FormatPara(gelirGiderRapor.ToplamGelir)</h4>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-muted">Gider</h6>
+                                    <h4 class="text-danger">@FormatPara(gelirGiderRapor.ToplamGider)</h4>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-muted">Net</h6>
+                                    <h4 class="@(gelirGiderRapor.NetKar >= 0 ? "text-success" : "text-danger")">
+                                        @FormatPara(gelirGiderRapor.NetKar)
+                                    </h4>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">Veri bulunamadi</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Son Fisler -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Son Fisler</h5>
+                <a href="/muhasebe/fisler" class="btn btn-sm btn-outline-primary">Tumu</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fis No</th>
+                                <th>Tarih</th>
+                                <th>Tip</th>
+                                <th>Aciklama</th>
+                                <th class="text-end">Borc</th>
+                                <th class="text-end">Alacak</th>
+                                <th class="text-center">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (sonFisler != null && sonFisler.Any())
+                            {
+                                @foreach (var fis in sonFisler)
+                                {
+                                    <tr style="cursor: pointer;" @onclick='() => Navigation.NavigateTo($"/muhasebe/fisler/{fis.Id}")'>
+                                        <td><strong>@fis.FisNo</strong></td>
+                                        <td>@fis.FisTarihi.ToString("dd.MM.yyyy")</td>
+                                        <td><span class="badge bg-secondary">@GetFisTipAdi(fis.FisTipi)</span></td>
+                                        <td>@(fis.Aciklama?.Length > 50 ? fis.Aciklama.Substring(0, 50) + "..." : fis.Aciklama)</td>
+                                        <td class="text-end">@FormatPara(fis.ToplamBorc)</td>
+                                        <td class="text-end">@FormatPara(fis.ToplamAlacak)</td>
+                                        <td class="text-center">
+                                            <span class="badge @GetDurumClass(fis.Durum)">@GetDurumAdi(fis.Durum)</span>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">Fis bulunamadi</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool hesapPlaniVar = false;
+    private int hesapSayisi = 0;
+    private int fisSayisi = 0;
+    private List<MuhasebeFis>? sonFisler;
+    private GelirGiderRapor? gelirGiderRapor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var hesaplar = await MuhasebeService.GetHesapPlaniAsync();
+            hesapSayisi = hesaplar.Count;
+            hesapPlaniVar = hesapSayisi > 0;
+
+            var buAy = DateTime.Today.Month;
+            var buYil = DateTime.Today.Year;
+            var fisler = await MuhasebeService.GetFislerAsync(buYil, buAy);
+            fisSayisi = fisler.Count;
+            sonFisler = fisler.Take(10).ToList();
+
+            try
+            {
+                gelirGiderRapor = await MuhasebeService.GetGelirGiderRaporuAsync(buYil, buAy);
+            }
+            catch { }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HesapPlaniOlustur()
+    {
+        try
+        {
+            await MuhasebeService.SeedVarsayilanHesapPlaniAsync();
+            ToastService.ShowSuccess("Hesap plani olusturuldu!");
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    private string GetFisTipAdi(FisTipi tip) => tip switch
+    {
+        FisTipi.Mahsup => "Mahsup",
+        FisTipi.Tahsilat => "Tahsilat",
+        FisTipi.Tediye => "Tediye",
+        FisTipi.Acilis => "Acilis",
+        FisTipi.Kapanis => "Kapanis",
+        FisTipi.Devir => "Devir",
+        _ => tip.ToString()
+    };
+
+    private string GetDurumAdi(FisDurum durum) => durum switch
+    {
+        FisDurum.Taslak => "Taslak",
+        FisDurum.Onaylandi => "Onaylandi",
+        FisDurum.IptalEdildi => "Iptal",
+        _ => durum.ToString()
+    };
+
+    private string GetDurumClass(FisDurum durum) => durum switch
+    {
+        FisDurum.Taslak => "bg-warning text-dark",
+        FisDurum.Onaylandi => "bg-success",
+        FisDurum.IptalEdildi => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string FormatPara(decimal tutar) => tutar.ToString("N2") + " TL";
+}
