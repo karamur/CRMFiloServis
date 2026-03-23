@@ -550,15 +550,34 @@
     private BelgeUyariOzet? belgeUyarilar;
     private BudgetOzet? butceOzet;
     private bool showBelgeModal = false;
+    private bool isLoading = true;
+    private static readonly SemaphoreSlim _semaphore = new(1, 1);
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadDashboardDataAsync();
+    }
+
+    private async Task LoadDashboardDataAsync()
+    {
+        // Semaphore ile ayni anda tek islem
+        if (!await _semaphore.WaitAsync(0))
+            return;
+
         try
         {
-            // Sirayla veri yukle (DbContext thread-safe degil)
+            isLoading = true;
+            StateHasChanged();
+
+            // Her cagri arasinda kucuk bir bekleme ekle
             cariSayisi = await CariService.GetCountAsync();
+            await Task.Delay(10);
+            
             aracSayisi = await AracService.GetActiveCountAsync();
+            await Task.Delay(10);
+            
             soforSayisi = await SoforService.GetActiveCountAsync();
+            await Task.Delay(10);
             
             var faturaStats = await FaturaService.GetDashboardStatsAsync();
             bekleyenFaturaSayisi = faturaStats.BekleyenFaturaSayisi;
@@ -566,19 +585,33 @@
             buAyGider = faturaStats.BuAyGider;
             vadeGecmisFaturalar = faturaStats.VadeGecmisFaturalar;
             vadeYaklasanFaturalar = faturaStats.VadeYaklasanFaturalar;
+            await Task.Delay(10);
 
             var bankaStats = await BankaKasaService.GetDashboardStatsAsync();
             toplamKasa = bankaStats.ToplamKasa;
             toplamBanka = bankaStats.ToplamBanka;
+            await Task.Delay(10);
 
             sonCalismalar = await ServisCalismaService.GetRecentAsync(5);
+            await Task.Delay(10);
+            
             sonHareketler = await BankaKasaService.GetRecentAsync(5);
+            await Task.Delay(10);
+            
             belgeUyarilar = await BelgeUyariService.GetBelgeUyarilarAsync(30);
+            await Task.Delay(10);
+            
             butceOzet = await BudgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Dashboard yukleme hatasi");
+        }
+        finally
+        {
+            isLoading = false;
+            _semaphore.Release();
+            StateHasChanged();
         }
     }
 }

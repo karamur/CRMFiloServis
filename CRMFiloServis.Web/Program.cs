@@ -13,8 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// PostgreSQL Database - connection pooling ayarlari
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+// PostgreSQL Database - Pooled DbContextFactory kullan (thread-safe)
+builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsqlOptions =>
     {
@@ -24,10 +24,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
             errorCodesToAdd: null);
         npgsqlOptions.CommandTimeout(30);
     });
-    // Blazor Server icin tracking kapatildi - concurrent access sorunlarini onler
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
     options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
 });
+
+// DbContext - Factory'den olustur
+builder.Services.AddScoped<ApplicationDbContext>(sp =>
+    sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
 
 // Application Services
 builder.Services.AddScoped<ICariService, CariService>();
