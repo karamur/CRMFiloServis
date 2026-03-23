@@ -9,11 +9,11 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
-<PageTitle>Bütçe Analiz</PageTitle>
+<PageTitle>Butce Analiz</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-wallet2 me-2"></i>Bütçe Analiz</h3>
+        <h3><i class="bi bi-wallet2 me-2"></i>Butce Analiz</h3>
         <div class="d-flex gap-2">
             <select class="form-select" style="width: 100px;" @bind="secilenYil" @bind:after="YenileDataAsync">
                 @for (int y = DateTime.Today.Year + 1; y >= DateTime.Today.Year - 3; y--)
@@ -22,25 +22,25 @@
                 }
             </select>
             <select class="form-select" style="width: 130px;" @bind="secilenAy" @bind:after="YenileDataAsync">
-                <option value="0">Tüm Yýl</option>
+                <option value="0">Tum Yil</option>
                 @for (int m = 1; m <= 12; m++)
                 {
                     <option value="@m">@GetAyAdi(m)</option>
                 }
             </select>
             <div class="btn-group">
-                <button class="btn btn-outline-success" @onclick="ExcelSablonIndir" title="Excel Þablon Ýndir">
-                    <i class="bi bi-download me-1"></i>Þablon
+                <button class="btn btn-outline-success" @onclick="ExcelSablonIndir" title="Excel Sablon Indir">
+                    <i class="bi bi-download me-1"></i>Sablon
                 </button>
-                <button class="btn btn-outline-success" @onclick="() => showExcelImportModal = true" title="Excel'den Yükle">
-                    <i class="bi bi-upload me-1"></i>Yükle
+                <button class="btn btn-outline-success" @onclick="() => showExcelImportModal = true" title="Excel'den Yukle">
+                    <i class="bi bi-upload me-1"></i>Yukle
                 </button>
             </div>
             <button class="btn btn-primary" @onclick="YeniOdemeAc">
-                <i class="bi bi-plus-lg me-1"></i>Yeni Ödeme
+                <i class="bi bi-plus-lg me-1"></i>Yeni Odeme
             </button>
             <button class="btn btn-success" @onclick="TaksitliOdemeAc">
-                <i class="bi bi-calendar-plus me-1"></i>Taksitli Ödeme
+                <i class="bi bi-calendar-plus me-1"></i>Taksitli Odeme
             </button>
         </div>
     </div>
@@ -53,23 +53,23 @@
     }
     else
     {
-        <!-- Özet Kartlarý -->
+        <!-- Ozet Kartlari -->
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card bg-primary text-white h-100">
                     <div class="card-body">
-                        <h6 class="card-title">Toplam Ödeme</h6>
-                        <h3 class="mb-0">@ozet?.ToplamOdeme.ToString("N0") ?</h3>
-                        <small>@ozet?.ToplamKayit kayýt</small>
+                        <h6 class="card-title">Toplam Odeme</h6>
+                        <h3 class="mb-0">@FormatPara(ozet?.ToplamOdeme ?? 0)</h3>
+                        <small>@ozet?.ToplamKayit kayit</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card bg-success text-white h-100">
                     <div class="card-body">
-                        <h6 class="card-title">Ödenen</h6>
-                        <h3 class="mb-0">@ozet?.OdenenToplam.ToString("N0") ?</h3>
-                        <small>@ozet?.OdenenKayit kayýt</small>
+                        <h6 class="card-title">Odenen</h6>
+                        <h3 class="mb-0">@FormatPara(ozet?.OdenenToplam ?? 0)</h3>
+                        <small>@ozet?.OdenenKayit kayit</small>
                     </div>
                 </div>
             </div>
@@ -77,15 +77,15 @@
                 <div class="card bg-warning text-dark h-100">
                     <div class="card-body">
                         <h6 class="card-title">Bekleyen</h6>
-                        <h3 class="mb-0">@ozet?.BekleyenToplam.ToString("N0") ?</h3>
-                        <small>@ozet?.BekleyenKayit kayýt</small>
+                        <h3 class="mb-0">@FormatPara(ozet?.BekleyenToplam ?? 0)</h3>
+                        <small>@ozet?.BekleyenKayit kayit</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card bg-info text-white h-100">
                     <div class="card-body">
-                        <h6 class="card-title">Kalan Gün</h6>
+                        <h6 class="card-title">Kalan Gun</h6>
                         <h3 class="mb-0">@GetKalanGun()</h3>
                         <small>ay sonuna</small>
                     </div>
@@ -98,7 +98,7 @@
             <div class="col-md-8">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Ödeme Takvimi - @GetAyAdi(secilenAy > 0 ? secilenAy : DateTime.Today.Month) @secilenYil</h6>
+                        <h6 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Odeme Takvimi - @GetAyAdi(secilenAy > 0 ? secilenAy : DateTime.Today.Month) @secilenYil</h6>
                         @if (secilenAy == 0)
                         {
                             <div class="btn-group btn-group-sm">
@@ -121,7 +121,7 @@
                                         <tr class="text-center bg-light">
                                             <th style="width: 14.28%;">Pzt</th>
                                             <th style="width: 14.28%;">Sal</th>
-                                            <th style="width: 14.28%;">Çar</th>
+                                            <th style="width: 14.28%;">Car</th>
                                             <th style="width: 14.28%;">Per</th>
                                             <th style="width: 14.28%;">Cum</th>
                                             <th style="width: 14.28%;">Cmt</th>
@@ -164,7 +164,7 @@
                                                             @if (gunData?.ToplamOdeme > 0)
                                                             {
                                                                 <div class="small text-danger mt-1" title="@GetGunDetay(gunData)">
-                                                                    @gunData.ToplamOdeme.ToString("N0") ?
+                                                                    @FormatPara(gunData.ToplamOdeme)
                                                                 </div>
                                                                 @foreach (var odeme in gunData.Odemeler.Take(2))
                                                                 {
@@ -191,11 +191,11 @@
                 </div>
             </div>
 
-            <!-- Kategori Grafiði -->
+            <!-- Kategori Grafigi -->
             <div class="col-md-4">
                 <div class="card h-100">
                     <div class="card-header">
-                        <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Harcama Daðýlýmý</h6>
+                        <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Harcama Dagilimi</h6>
                     </div>
                     <div class="card-body">
                         <canvas id="kategoriChart" style="max-height: 250px;"></canvas>
@@ -209,7 +209,7 @@
                                             <span class="me-2" style="width: 12px; height: 12px; background-color: @(k.Renk ?? "#6c757d"); display: inline-block; border-radius: 2px;"></span>
                                             <small>@k.MasrafKalemi</small>
                                         </div>
-                                        <small class="text-muted">@k.Toplam.ToString("N0") ? (%@k.Yuzde)</small>
+                                        <small class="text-muted">@FormatPara(k.Toplam) (%@k.Yuzde)</small>
                                     </div>
                                 }
                             }
@@ -219,12 +219,12 @@
             </div>
         </div>
 
-        <!-- Aylýk Liste ve Grafik -->
+        <!-- Aylik Liste ve Grafik -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Aylýk Harcama Grafiði (@secilenYil)</h6>
+                        <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Aylik Harcama Grafigi (@secilenYil)</h6>
                     </div>
                     <div class="card-body">
                         <canvas id="aylikChart" style="height: 200px;"></canvas>
@@ -233,11 +233,11 @@
             </div>
         </div>
 
-        <!-- Ödeme Listesi -->
+        <!-- Odeme Listesi -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Ödeme Listesi</h6>
-                <span class="badge bg-secondary">@odemeler.Count kayýt - Toplam: @odemeler.Sum(o => o.Miktar).ToString("N0") ?</span>
+                <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Odeme Listesi</h6>
+                <span class="badge bg-secondary">@odemeler.Count kayit - Toplam: @FormatPara(odemeler.Sum(o => o.Miktar))</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -246,11 +246,11 @@
                             <tr>
                                 <th>Tarih</th>
                                 <th>Masraf Kalemi</th>
-                                <th>Açýklama</th>
+                                <th>Aciklama</th>
                                 <th class="text-end">Miktar</th>
                                 <th class="text-center">Taksit</th>
                                 <th class="text-center">Durum</th>
-                                <th class="text-center" style="width: 120px;">Ýþlem</th>
+                                <th class="text-center" style="width: 120px;">Islem</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -260,7 +260,7 @@
                                     <td>@odeme.OdemeTarihi.ToString("dd.MM.yyyy")</td>
                                     <td><strong>@odeme.MasrafKalemi</strong></td>
                                     <td>@(odeme.Aciklama ?? "-")</td>
-                                    <td class="text-end"><strong>@odeme.Miktar.ToString("N2") ?</strong></td>
+                                    <td class="text-end"><strong>@FormatPara(odeme.Miktar)</strong></td>
                                     <td class="text-center">
                                         @if (odeme.TaksitliMi)
                                         {
@@ -280,11 +280,11 @@
                                         <div class="btn-group btn-group-sm">
                                             @if (odeme.Durum == OdemeDurum.Bekliyor)
                                             {
-                                                <button class="btn btn-success" title="Ödendi Ýþaretle" @onclick="() => OdendiIsaretle(odeme)">
+                                                <button class="btn btn-success" title="Odendi Isaretle" @onclick="() => OdendiIsaretle(odeme)">
                                                     <i class="bi bi-check-lg"></i>
                                                 </button>
                                             }
-                                            <button class="btn btn-outline-primary" title="Düzenle" @onclick="() => OdemeDuzenle(odeme)">
+                                            <button class="btn btn-outline-primary" title="Duzenle" @onclick="() => OdemeDuzenle(odeme)">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             @if (odeme.TaksitliMi && odeme.TaksitGrupId.HasValue)
@@ -305,7 +305,7 @@
                                 <tr>
                                     <td colspan="7" class="text-center text-muted py-4">
                                         <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                                        <p class="mb-0 mt-2">Bu dönemde ödeme kaydý bulunmuyor</p>
+                                        <p class="mb-0 mt-2">Bu donemde odeme kaydi bulunmuyor</p>
                                     </td>
                                 </tr>
                             }
@@ -317,19 +317,19 @@
     }
 </div>
 
-<!-- Yeni/Düzenle Ödeme Modal -->
+<!-- Yeni/Duzenle Odeme Modal -->
 @if (showOdemeModal)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(editOdeme.Id > 0 ? "Ödeme Düzenle" : "Yeni Ödeme")</h5>
+                    <h5 class="modal-title">@(editOdeme.Id > 0 ? "Odeme Duzenle" : "Yeni Odeme")</h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Ödeme Tarihi *</label>
+                        <label class="form-label">Odeme Tarihi *</label>
                         <input type="date" class="form-control" @bind="editOdeme.OdemeTarihi" />
                     </div>
                     <div class="mb-3">
@@ -343,23 +343,23 @@
                         </datalist>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Açýklama</label>
+                        <label class="form-label">Aciklama</label>
                         <input type="text" class="form-control" @bind="editOdeme.Aciklama" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Miktar *</label>
                         <div class="input-group">
                             <input type="number" class="form-control" @bind="editOdeme.Miktar" step="0.01" />
-                            <span class="input-group-text">?</span>
+                            <span class="input-group-text">TL</span>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Durum</label>
                         <select class="form-select" @bind="editOdeme.Durum">
                             <option value="@OdemeDurum.Bekliyor">Bekliyor</option>
-                            <option value="@OdemeDurum.Odendi">Ödendi</option>
+                            <option value="@OdemeDurum.Odendi">Odendi</option>
                             <option value="@OdemeDurum.Ertelendi">Ertelendi</option>
-                            <option value="@OdemeDurum.Iptal">Ýptal</option>
+                            <option value="@OdemeDurum.Iptal">Iptal</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -368,7 +368,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Ýptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
                     <button type="button" class="btn btn-primary" @onclick="OdemeKaydet">Kaydet</button>
                 </div>
             </div>
@@ -376,27 +376,27 @@
     </div>
 }
 
-<!-- Taksitli Ödeme Modal -->
+<!-- Taksitli Odeme Modal -->
 @if (showTaksitModal)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Taksitli Ödeme Oluþtur</h5>
+                    <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Taksitli Odeme Olustur</h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Baþlangýç Tarihi *</label>
+                                <label class="form-label">Baslangic Tarihi *</label>
                                 <input type="date" class="form-control" @bind="taksitRequest.BaslangicTarihi" />
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Taksit Sayýsý *</label>
+                                <label class="form-label">Taksit Sayisi *</label>
                                 <input type="number" class="form-control" @bind="taksitRequest.TaksitSayisi" min="2" max="60" @bind:after="TaksitOnizlemeGuncelle" />
                             </div>
                         </div>
@@ -412,7 +412,7 @@
                         </datalist>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Açýklama</label>
+                        <label class="form-label">Aciklama</label>
                         <input type="text" class="form-control" @bind="taksitRequest.Aciklama" />
                     </div>
                     <div class="row">
@@ -421,16 +421,16 @@
                                 <label class="form-label">Toplam Tutar *</label>
                                 <div class="input-group">
                                     <input type="number" class="form-control" @bind="taksitRequest.ToplamTutar" step="0.01" @bind:after="TaksitOnizlemeGuncelle" />
-                                    <span class="input-group-text">?</span>
+                                    <span class="input-group-text">TL</span>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Taksit Tutarý</label>
+                                <label class="form-label">Taksit Tutari</label>
                                 <div class="input-group">
                                     <input type="text" class="form-control" value="@(taksitRequest.TaksitSayisi > 0 ? (taksitRequest.ToplamTutar / taksitRequest.TaksitSayisi).ToString("N2") : "0")" readonly />
-                                    <span class="input-group-text">?</span>
+                                    <span class="input-group-text">TL</span>
                                 </div>
                             </div>
                         </div>
@@ -440,8 +440,8 @@
                     {
                         <div class="card bg-light mt-3">
                             <div class="card-header py-2">
-                                <strong>Taksit Önizleme</strong>
-                                <span class="float-end badge bg-primary">Toplam: @taksitOnizleme.Sum(t => t.Tutar).ToString("N2") ?</span>
+                                <strong>Taksit Onizleme</strong>
+                                <span class="float-end badge bg-primary">Toplam: @FormatPara(taksitOnizleme.Sum(t => t.Tutar))</span>
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive" style="max-height: 200px;">
@@ -459,7 +459,7 @@
                                                 <tr>
                                                     <td>@t.TaksitNo / @taksitRequest.TaksitSayisi</td>
                                                     <td>@t.Ay</td>
-                                                    <td class="text-end">@t.Tutar.ToString("N2") ?</td>
+                                                    <td class="text-end">@FormatPara(t.Tutar)</td>
                                                 </tr>
                                             }
                                         </tbody>
@@ -470,9 +470,9 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Ýptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
                     <button type="button" class="btn btn-primary" @onclick="TaksitliOdemeKaydet">
-                        <i class="bi bi-calendar-plus me-1"></i>@taksitRequest.TaksitSayisi Taksit Oluþtur
+                        <i class="bi bi-calendar-plus me-1"></i>@taksitRequest.TaksitSayisi Taksit Olustur
                     </button>
                 </div>
             </div>
@@ -492,9 +492,9 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        <strong>Toplam:</strong> @taksitGrubu.Sum(t => t.Miktar).ToString("N2") ? | 
-                        <strong>Ödenen:</strong> @taksitGrubu.Where(t => t.Durum == OdemeDurum.Odendi).Sum(t => t.Miktar).ToString("N2") ? |
-                        <strong>Kalan:</strong> @taksitGrubu.Where(t => t.Durum == OdemeDurum.Bekliyor).Sum(t => t.Miktar).ToString("N2") ?
+                        <strong>Toplam:</strong> @FormatPara(taksitGrubu.Sum(t => t.Miktar)) | 
+                        <strong>Odenen:</strong> @FormatPara(taksitGrubu.Where(t => t.Durum == OdemeDurum.Odendi).Sum(t => t.Miktar)) |
+                        <strong>Kalan:</strong> @FormatPara(taksitGrubu.Where(t => t.Durum == OdemeDurum.Bekliyor).Sum(t => t.Miktar))
                     </div>
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -504,7 +504,7 @@
                                     <th>Tarih</th>
                                     <th class="text-end">Tutar</th>
                                     <th class="text-center">Durum</th>
-                                    <th class="text-center">Ýþlem</th>
+                                    <th class="text-center">Islem</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -523,7 +523,7 @@
                                         <td class="text-center">
                                             <select class="form-select form-select-sm" style="width: 100px;" @bind="t.Durum">
                                                 <option value="@OdemeDurum.Bekliyor">Bekliyor</option>
-                                                <option value="@OdemeDurum.Odendi">Ödendi</option>
+                                                <option value="@OdemeDurum.Odendi">Odendi</option>
                                             </select>
                                         </td>
                                         <td class="text-center">
@@ -537,7 +537,7 @@
                             <tfoot>
                                 <tr class="table-light">
                                     <td colspan="2"><strong>TOPLAM</strong></td>
-                                    <td class="text-end"><strong>@taksitGrubu.Sum(t => t.Miktar).ToString("N2") ?</strong></td>
+                                    <td class="text-end"><strong>@FormatPara(taksitGrubu.Sum(t => t.Miktar))</strong></td>
                                     <td colspan="2"></td>
                                 </tr>
                             </tfoot>
@@ -547,7 +547,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
                     <button type="button" class="btn btn-primary" @onclick="TaksitGrubuKaydet">
-                        <i class="bi bi-check-lg me-1"></i>Deðiþiklikleri Kaydet
+                        <i class="bi bi-check-lg me-1"></i>Degisiklikleri Kaydet
                     </button>
                 </div>
             </div>
@@ -555,7 +555,7 @@
     </div>
 }
 
-<!-- Gün Detay Modal -->
+<!-- Gun Detay Modal -->
 @if (showGunDetayModal && secilenGunOdemeleri.Any())
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
@@ -582,14 +582,14 @@
                                     }
                                 </div>
                                 <div class="text-end">
-                                    <strong class="text-danger">@odeme.Miktar.ToString("N2") ?</strong>
+                                    <strong class="text-danger">@FormatPara(odeme.Miktar)</strong>
                                     <br /><span class="badge @GetDurumClass(odeme.Durum)">@GetDurumAdi(odeme.Durum)</span>
                                 </div>
                             </div>
                         }
                     </div>
                     <div class="alert alert-secondary mt-3 mb-0">
-                        <strong>Toplam:</strong> @secilenGunOdemeleri.Sum(o => o.Miktar).ToString("N2") ?
+                        <strong>Toplam:</strong> @FormatPara(secilenGunOdemeleri.Sum(o => o.Miktar))
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -607,23 +607,31 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Excel'den Ödeme Yükle</h5>
+                    <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Excel'den Odeme Yukle</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        <h6><i class="bi bi-info-circle me-2"></i>Kullaným Adýmlarý:</h6>
+                        <h6><i class="bi bi-info-circle me-2"></i>Kullanim Adimlari:</h6>
                         <ol class="mb-0">
-                            <li>Önce <strong>"Þablon Ýndir"</strong> butonuna týklayarak Excel þablonunu indirin</li>
-                            <li>Þablonu açýp ödemelerinizi girin</li>
-                            <li>Dosyayý kaydedin ve aþaðýdan yükleyin</li>
+                            <li>Once <strong>"Sablon Indir"</strong> butonuna tiklayarak Excel sablonunu indirin</li>
+                            <li>Sablonu acip odemelerinizi girin</li>
+                            <li>Dosyayi kaydedin ve asagidan yukleyin</li>
                         </ol>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Excel Dosyasý Seçin (.xlsx)</label>
+                        <label class="form-label fw-bold">Excel Dosyasi Secin (.xlsx)</label>
                         <InputFile OnChange="ExcelDosyaYukle" accept=".xls,.xlsx" class="form-control form-control-lg" />
                     </div>
+
+                    @if (isImporting)
+                    {
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-success" role="status"></div>
+                            <p class="mt-2">Dosya yukleniyor...</p>
+                        </div>
+                    }
 
                     <div class="row">
                         <div class="col-md-6">
@@ -631,9 +639,9 @@
                                 <div class="card-body">
                                     <h6 class="card-title"><i class="bi bi-check-circle text-success me-2"></i>Desteklenen Formatlar</h6>
                                     <ul class="mb-0 small">
-                                        <li>Tarih: GG.AA.YYYY (örn: 15.01.2025)</li>
-                                        <li>Miktar: Sayýsal (örn: 1500.50)</li>
-                                        <li>Durum: Bekliyor, Ödendi, Ertelendi, Ýptal</li>
+                                        <li>Tarih: GG.AA.YYYY (orn: 15.01.2025)</li>
+                                        <li>Miktar: Sayisal (orn: 1500.50)</li>
+                                        <li>Durum: Bekliyor, Odendi, Ertelendi, Iptal</li>
                                     </ul>
                                 </div>
                             </div>
@@ -643,7 +651,7 @@
                                 <div class="card-body">
                                     <h6 class="card-title"><i class="bi bi-list-check text-primary me-2"></i>Zorunlu Alanlar</h6>
                                     <ul class="mb-0 small">
-                                        <li><strong>Ödeme Tarihi</strong></li>
+                                        <li><strong>Odeme Tarihi</strong></li>
                                         <li><strong>Masraf Kalemi</strong></li>
                                         <li><strong>Miktar</strong></li>
                                     </ul>
@@ -654,7 +662,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-success" @onclick="ExcelSablonIndir">
-                        <i class="bi bi-download me-1"></i>Þablon Ýndir
+                        <i class="bi bi-download me-1"></i>Sablon Indir
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
                 </div>
@@ -671,6 +679,7 @@
     private int secilenAy;
     private int takvimAy;
     private bool isLoading = true;
+    private bool isImporting = false;
     private bool showExcelImportModal = false;
 
     private BudgetOzet? ozet;
@@ -693,8 +702,8 @@
     private List<BudgetOdeme> secilenGunOdemeleri = new();
     private DateTime secilenGunTarih;
 
-    private static readonly string[] AyAdlari = { "", "Ocak", "Þubat", "Mart", "Nisan", "Mayýs", "Haziran", 
-                                                   "Temmuz", "Aðustos", "Eylül", "Ekim", "Kasým", "Aralýk" };
+    private static readonly string[] AyAdlari = { "", "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran", 
+                                                   "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -760,20 +769,24 @@
 
     private async Task RenderChartsAsync()
     {
-        if (yillikOzet != null)
+        try
         {
-            var aylar = yillikOzet.AylikToplamlar.Select(a => GetAyKisa(a.Ay)).ToArray();
-            var toplamlar = yillikOzet.AylikToplamlar.Select(a => (double)a.Toplam).ToArray();
-            await JS.InvokeVoidAsync("createBarChart", "aylikChart", aylar, toplamlar, new double[12], "Harcama", "");
-        }
+            if (yillikOzet != null)
+            {
+                var aylar = yillikOzet.AylikToplamlar.Select(a => GetAyKisa(a.Ay)).ToArray();
+                var toplamlar = yillikOzet.AylikToplamlar.Select(a => (double)a.Toplam).ToArray();
+                await JS.InvokeVoidAsync("createBarChart", "aylikChart", aylar, toplamlar, new double[12], "Harcama", "");
+            }
 
-        if (kategoriOzet != null && kategoriOzet.Any())
-        {
-            var labels = kategoriOzet.Take(6).Select(k => k.MasrafKalemi).ToArray();
-            var data = kategoriOzet.Take(6).Select(k => (double)k.Toplam).ToArray();
-            var colors = kategoriOzet.Take(6).Select(k => k.Renk ?? GetRandomColor()).ToArray();
-            await JS.InvokeVoidAsync("createDoughnutChart", "kategoriChart", labels, data, colors);
+            if (kategoriOzet != null && kategoriOzet.Any())
+            {
+                var labels = kategoriOzet.Take(6).Select(k => k.MasrafKalemi).ToArray();
+                var data = kategoriOzet.Take(6).Select(k => (double)k.Toplam).ToArray();
+                var colors = kategoriOzet.Take(6).Select(k => k.Renk ?? GetRandomColor()).ToArray();
+                await JS.InvokeVoidAsync("createDoughnutChart", "kategoriChart", labels, data, colors);
+            }
         }
+        catch { }
     }
 
     private async Task TakvimAyDegistir(int ay)
@@ -825,12 +838,12 @@
             if (editOdeme.Id > 0)
             {
                 await BudgetService.UpdateOdemeAsync(editOdeme);
-                ToastService.ShowSuccess("Ödeme güncellendi.");
+                ToastService.ShowSuccess("Odeme guncellendi.");
             }
             else
             {
                 await BudgetService.CreateOdemeAsync(editOdeme);
-                ToastService.ShowSuccess("Ödeme eklendi.");
+                ToastService.ShowSuccess("Odeme eklendi.");
             }
 
             ModalKapat();
@@ -846,14 +859,14 @@
     {
         odeme.Durum = OdemeDurum.Odendi;
         await BudgetService.UpdateOdemeAsync(odeme);
-        ToastService.ShowSuccess($"{odeme.MasrafKalemi} ödendi olarak iþaretlendi.");
+        ToastService.ShowSuccess($"{odeme.MasrafKalemi} odendi olarak isaretlendi.");
         await YenileDataAsync();
     }
 
     private async Task OdemeSil(BudgetOdeme odeme)
     {
         await BudgetService.DeleteOdemeAsync(odeme.Id);
-        ToastService.ShowSuccess("Ödeme silindi.");
+        ToastService.ShowSuccess("Odeme silindi.");
         await YenileDataAsync();
     }
 
@@ -894,14 +907,14 @@
     {
         if (string.IsNullOrWhiteSpace(taksitRequest.MasrafKalemi) || taksitRequest.ToplamTutar <= 0 || taksitRequest.TaksitSayisi < 2)
         {
-            ToastService.ShowWarning("Tüm alanlarý doðru doldurun!");
+            ToastService.ShowWarning("Tum alanlari dogru doldurun!");
             return;
         }
 
         try
         {
             await BudgetService.CreateTaksitliOdemeAsync(taksitRequest);
-            ToastService.ShowSuccess($"{taksitRequest.TaksitSayisi} taksitli ödeme oluþturuldu.");
+            ToastService.ShowSuccess($"{taksitRequest.TaksitSayisi} taksitli odeme olusturuldu.");
             ModalKapat();
             await YenileDataAsync();
         }
@@ -919,7 +932,7 @@
 
     private void TaksitGuncellendiIsaretle(BudgetOdeme taksit)
     {
-        // Deðiþiklik takibi için
+        // Degisiklik takibi icin
     }
 
     private async Task TaksitGrubuKaydet()
@@ -927,7 +940,7 @@
         try
         {
             await BudgetService.UpdateTaksitGrubuAsync(taksitGrubu);
-            ToastService.ShowSuccess("Taksit grubu güncellendi.");
+            ToastService.ShowSuccess("Taksit grubu guncellendi.");
             ModalKapat();
             await YenileDataAsync();
         }
@@ -980,8 +993,8 @@
     private string GetDurumAdi(OdemeDurum durum) => durum switch
     {
         OdemeDurum.Bekliyor => "Bekliyor",
-        OdemeDurum.Odendi => "Ödendi",
-        OdemeDurum.Iptal => "Ýptal",
+        OdemeDurum.Odendi => "Odendi",
+        OdemeDurum.Iptal => "Iptal",
         OdemeDurum.Ertelendi => "Ertelendi",
         _ => durum.ToString()
     };
@@ -998,13 +1011,18 @@
     private string GetGunDetay(BudgetGunlukOzet? gunData)
     {
         if (gunData == null || !gunData.Odemeler.Any()) return "";
-        return string.Join("\n", gunData.Odemeler.Select(o => $"{o.MasrafKalemi}: {o.Miktar:N0} ?"));
+        return string.Join("\n", gunData.Odemeler.Select(o => $"{o.MasrafKalemi}: {FormatPara(o.Miktar)}"));
     }
 
     private string GetRandomColor()
     {
         var rnd = new Random();
         return $"#{rnd.Next(0x1000000):X6}";
+    }
+
+    private string FormatPara(decimal tutar)
+    {
+        return $"{tutar:N0} TL";
     }
 
     private async Task ExcelSablonIndir()
@@ -1014,8 +1032,8 @@
             var excelBytes = BudgetService.GenerateExcelTemplate();
             var fileName = $"OdemeSablonu_{DateTime.Now:yyyyMMdd}.xlsx";
             var base64 = Convert.ToBase64String(excelBytes);
-            await JS.InvokeVoidAsync("downloadFile", fileName, base64, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            ToastService.ShowSuccess("Þablon indirildi.");
+            await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, base64);
+            ToastService.ShowSuccess("Sablon indirildi.");
         }
         catch (Exception ex)
         {
@@ -1025,6 +1043,9 @@
 
     private async Task ExcelDosyaYukle(InputFileChangeEventArgs e)
     {
+        isImporting = true;
+        StateHasChanged();
+
         try
         {
             var file = e.File;
@@ -1041,12 +1062,12 @@
             {
                 if (result.ImportedCount > 0)
                 {
-                    ToastService.ShowSuccess($"{result.ImportedCount} ödeme baþarýyla yüklendi.");
+                    ToastService.ShowSuccess($"{result.ImportedCount} odeme basariyla yuklendi.");
                 }
-                
+
                 if (result.ErrorCount > 0)
                 {
-                    ToastService.ShowWarning($"{result.ErrorCount} satýrda hata oluþtu.");
+                    ToastService.ShowWarning($"{result.ErrorCount} satirda hata olustu.");
                 }
 
                 ModalKapat();
@@ -1055,12 +1076,17 @@
             else
             {
                 var errorMsg = result.Errors.Any() ? string.Join(", ", result.Errors.Take(3)) : "Bilinmeyen hata";
-                ToastService.ShowError($"Yükleme baþarýsýz: {errorMsg}");
+                ToastService.ShowError($"Yukleme basarisiz: {errorMsg}");
             }
         }
         catch (Exception ex)
         {
             ToastService.ShowError($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isImporting = false;
+            StateHasChanged();
         }
     }
 
