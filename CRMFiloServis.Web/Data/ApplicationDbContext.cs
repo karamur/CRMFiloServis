@@ -39,6 +39,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<PersonelIzin> PersonelIzinleri { get; set; }
     public DbSet<PersonelIzinHakki> PersonelIzinHaklari { get; set; }
 
+    // Bütçe Modülü
+    public DbSet<BudgetOdeme> BudgetOdemeler { get; set; }
+    public DbSet<BudgetMasrafKalemi> BudgetMasrafKalemleri { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -322,6 +326,29 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.SoforId)
                 .OnDelete(DeleteBehavior.Restrict);
                 
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Budget Ödeme
+        modelBuilder.Entity<BudgetOdeme>(entity =>
+        {
+            entity.HasIndex(e => new { e.OdemeYil, e.OdemeAy, e.MasrafKalemi });
+            entity.HasIndex(e => e.TaksitGrupId);
+            entity.Property(e => e.MasrafKalemi).HasMaxLength(200);
+            entity.Property(e => e.Aciklama).HasMaxLength(500);
+            entity.Property(e => e.Notlar).HasMaxLength(1000);
+            entity.Property(e => e.Miktar).HasPrecision(18, 2);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Budget Masraf Kalemi
+        modelBuilder.Entity<BudgetMasrafKalemi>(entity =>
+        {
+            entity.HasIndex(e => e.KalemAdi);
+            entity.Property(e => e.KalemAdi).HasMaxLength(200);
+            entity.Property(e => e.Kategori).HasMaxLength(100);
+            entity.Property(e => e.Renk).HasMaxLength(20);
+            entity.Property(e => e.Icon).HasMaxLength(50);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
     }

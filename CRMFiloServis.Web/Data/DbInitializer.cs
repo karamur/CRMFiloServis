@@ -10,6 +10,9 @@ public static class DbInitializer
         // Veritabanýný oluþtur
         await context.Database.MigrateAsync();
 
+        // Budget masraf kalemleri her zaman kontrol et
+        await SeedBudgetMasrafKalemleriAsync(context);
+
         // Eðer veri varsa çýk
         if (await context.Cariler.AnyAsync())
             return;
@@ -339,6 +342,36 @@ public static class DbInitializer
         };
 
         await context.BankaHesaplari.AddRangeAsync(hesaplar);
+        await context.SaveChangesAsync();
+    }
+
+    public static async Task SeedBudgetMasrafKalemleriAsync(ApplicationDbContext context)
+    {
+        if (await context.BudgetMasrafKalemleri.AnyAsync())
+            return;
+
+        var kalemler = new List<BudgetMasrafKalemi>
+        {
+            new() { KalemAdi = "Kira", Kategori = "Sabit Gider", Renk = "#dc3545", Icon = "bi-house", SiraNo = 1 },
+            new() { KalemAdi = "Elektrik", Kategori = "Fatura", Renk = "#ffc107", Icon = "bi-lightning", SiraNo = 2 },
+            new() { KalemAdi = "Su", Kategori = "Fatura", Renk = "#0dcaf0", Icon = "bi-droplet", SiraNo = 3 },
+            new() { KalemAdi = "Doðalgaz", Kategori = "Fatura", Renk = "#fd7e14", Icon = "bi-fire", SiraNo = 4 },
+            new() { KalemAdi = "Ýnternet", Kategori = "Fatura", Renk = "#6610f2", Icon = "bi-wifi", SiraNo = 5 },
+            new() { KalemAdi = "Telefon", Kategori = "Fatura", Renk = "#20c997", Icon = "bi-phone", SiraNo = 6 },
+            new() { KalemAdi = "Personel Maaþ", Kategori = "Personel", Renk = "#0d6efd", Icon = "bi-people", SiraNo = 7 },
+            new() { KalemAdi = "SGK Primi", Kategori = "Personel", Renk = "#198754", Icon = "bi-shield-check", SiraNo = 8 },
+            new() { KalemAdi = "Vergi", Kategori = "Resmi", Renk = "#6c757d", Icon = "bi-bank", SiraNo = 9 },
+            new() { KalemAdi = "Sigorta", Kategori = "Sabit Gider", Renk = "#d63384", Icon = "bi-shield", SiraNo = 10 },
+            new() { KalemAdi = "Yakýt", Kategori = "Araç", Renk = "#212529", Icon = "bi-fuel-pump", SiraNo = 11 },
+            new() { KalemAdi = "Araç Bakým", Kategori = "Araç", Renk = "#495057", Icon = "bi-tools", SiraNo = 12 },
+            new() { KalemAdi = "Kredi Taksiti", Kategori = "Kredi", Renk = "#e74c3c", Icon = "bi-credit-card", SiraNo = 13 },
+            new() { KalemAdi = "Araç Kredisi", Kategori = "Kredi", Renk = "#c0392b", Icon = "bi-truck", SiraNo = 14 },
+            new() { KalemAdi = "Ofis Giderleri", Kategori = "Genel", Renk = "#9b59b6", Icon = "bi-building", SiraNo = 15 },
+            new() { KalemAdi = "Reklam/Pazarlama", Kategori = "Genel", Renk = "#3498db", Icon = "bi-megaphone", SiraNo = 16 },
+            new() { KalemAdi = "Diðer", Kategori = "Genel", Renk = "#95a5a6", Icon = "bi-three-dots", SiraNo = 99 }
+        };
+
+        await context.BudgetMasrafKalemleri.AddRangeAsync(kalemler);
         await context.SaveChangesAsync();
     }
 }

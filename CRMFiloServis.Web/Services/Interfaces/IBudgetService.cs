@@ -1,0 +1,88 @@
+using CRMFiloServis.Shared.Entities;
+
+namespace CRMFiloServis.Web.Services;
+
+public interface IBudgetService
+{
+    // Ödeme Ýþlemleri
+    Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null);
+    Task<BudgetOdeme?> GetOdemeByIdAsync(int id);
+    Task<BudgetOdeme> CreateOdemeAsync(BudgetOdeme odeme);
+    Task<BudgetOdeme> UpdateOdemeAsync(BudgetOdeme odeme);
+    Task DeleteOdemeAsync(int id);
+
+    // Taksitli Ödeme Ýþlemleri
+    Task<List<BudgetOdeme>> CreateTaksitliOdemeAsync(TaksitliOdemeRequest request);
+    Task<List<BudgetOdeme>> GetTaksitGrubuAsync(Guid taksitGrupId);
+    Task UpdateTaksitGrubuAsync(List<BudgetOdeme> taksitler);
+
+    // Masraf Kalemleri
+    Task<List<BudgetMasrafKalemi>> GetMasrafKalemleriAsync();
+    Task<BudgetMasrafKalemi> CreateMasrafKalemiAsync(BudgetMasrafKalemi kalem);
+    Task<BudgetMasrafKalemi> UpdateMasrafKalemiAsync(BudgetMasrafKalemi kalem);
+    Task DeleteMasrafKalemiAsync(int id);
+
+    // Raporlar
+    Task<BudgetOzet> GetAylikOzetAsync(int yil, int ay);
+    Task<BudgetYillikOzet> GetYillikOzetAsync(int yil);
+    Task<List<BudgetGunlukOzet>> GetTakvimDataAsync(int yil, int ay);
+    Task<List<BudgetKategoriOzet>> GetKategoriOzetAsync(int yil, int? ay = null);
+}
+
+public class TaksitliOdemeRequest
+{
+    public DateTime BaslangicTarihi { get; set; }
+    public string MasrafKalemi { get; set; } = string.Empty;
+    public string? Aciklama { get; set; }
+    public decimal ToplamTutar { get; set; }
+    public int TaksitSayisi { get; set; }
+    public string? Notlar { get; set; }
+}
+
+public class BudgetOzet
+{
+    public int Yil { get; set; }
+    public int Ay { get; set; }
+    public decimal ToplamOdeme { get; set; }
+    public decimal OdenenToplam { get; set; }
+    public decimal BekleyenToplam { get; set; }
+    public int ToplamKayit { get; set; }
+    public int OdenenKayit { get; set; }
+    public int BekleyenKayit { get; set; }
+    public List<BudgetKategoriOzet> KategoriOzetleri { get; set; } = new();
+}
+
+public class BudgetYillikOzet
+{
+    public int Yil { get; set; }
+    public decimal ToplamOdeme { get; set; }
+    public List<BudgetAylikToplam> AylikToplamlar { get; set; } = new();
+    public List<BudgetKategoriOzet> KategoriOzetleri { get; set; } = new();
+}
+
+public class BudgetAylikToplam
+{
+    public int Ay { get; set; }
+    public string AyAdi { get; set; } = string.Empty;
+    public decimal Toplam { get; set; }
+    public decimal Odenen { get; set; }
+    public decimal Bekleyen { get; set; }
+}
+
+public class BudgetGunlukOzet
+{
+    public DateTime Tarih { get; set; }
+    public int Gun { get; set; }
+    public decimal ToplamOdeme { get; set; }
+    public int OdemeSayisi { get; set; }
+    public List<BudgetOdeme> Odemeler { get; set; } = new();
+}
+
+public class BudgetKategoriOzet
+{
+    public string MasrafKalemi { get; set; } = string.Empty;
+    public string? Renk { get; set; }
+    public decimal Toplam { get; set; }
+    public int Adet { get; set; }
+    public decimal Yuzde { get; set; }
+}

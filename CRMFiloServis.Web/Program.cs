@@ -35,6 +35,7 @@ builder.Services.AddScoped<IDashboardGrafikService, DashboardGrafikService>();
 builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
 
 var app = builder.Build();
 
