@@ -32,6 +32,7 @@ builder.Services.AddScoped<IMaliAnalizService, MaliAnalizService>();
 builder.Services.AddScoped<IPersonelMaasIzinService, PersonelMaasIzinService>();
 builder.Services.AddScoped<IBelgeUyariService, BelgeUyariService>();
 builder.Services.AddScoped<IDashboardGrafikService, DashboardGrafikService>();
+builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
 
 var app = builder.Build();
 
