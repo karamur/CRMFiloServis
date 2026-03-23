@@ -255,9 +255,9 @@
 @code {
     private int secilenYil = DateTime.Today.Year;
     private IzinRaporOzet? izinRapor;
-    private List<Shared.Entities.PersonelIzin> bekleyenIzinler = new();
+    private List<PersonelIzin> bekleyenIzinler = new();
     private List<Sofor> soforler = new();
-    private Shared.Entities.PersonelIzin yeniIzin = new();
+    private PersonelIzin yeniIzin = new();
     private bool isLoading = false;
     private bool showYeniIzinModal = false;
 
@@ -290,7 +290,7 @@
 
     private void YeniIzinAc()
     {
-        yeniIzin = new Shared.Entities.PersonelIzin
+        yeniIzin = new PersonelIzin
         {
             BaslangicTarihi = DateTime.Today,
             BitisTarihi = DateTime.Today,

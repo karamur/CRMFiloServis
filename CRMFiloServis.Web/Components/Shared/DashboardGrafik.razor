@@ -1,0 +1,201 @@
+@using CRMFiloServis.Web.Services
+@inject IDashboardGrafikService GrafikService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<div class="row mb-4">
+    <!-- Aylýk Gelir/Gider Grafiði -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Aylýk Gelir / Gider (@secilenYil)</h6>
+                <select class="form-select form-select-sm" style="width: 100px;" @bind="secilenYil" @bind:after="YenileGrafiklerAsync">
+                    @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="card-body">
+                <canvas id="gelirGiderChart" style="height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aylýk Sefer Sayýsý -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Aylýk Sefer Sayýsý</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="seferChart" style="height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Araç Performans -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Araç Performansý (Bu Ay)</h6>
+            </div>
+            <div class="card-body p-0">
+                @if (aracPerformans != null && aracPerformans.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Plaka</th>
+                                    <th class="text-center">Sefer</th>
+                                    <th class="text-end">Ciro</th>
+                                    <th class="text-end">Masraf</th>
+                                    <th class="text-end">Net</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var arac in aracPerformans)
+                                {
+                                    <tr>
+                                        <td><strong>@arac.Plaka</strong></td>
+                                        <td class="text-center"><span class="badge bg-primary">@arac.SeferSayisi</span></td>
+                                        <td class="text-end text-success">@arac.ToplamCiro.ToString("N0") ?</td>
+                                        <td class="text-end text-danger">@arac.ToplamMasraf.ToString("N0") ?</td>
+                                        <td class="text-end">
+                                            <strong class="@(arac.NetKar >= 0 ? "text-success" : "text-danger")">
+                                                @arac.NetKar.ToString("N0") ?
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mb-0 mt-2">Bu ay veri bulunmuyor</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Cari Performans -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-people me-2"></i>Müþteri Performansý (Bu Ay)</h6>
+            </div>
+            <div class="card-body p-0">
+                @if (cariPerformans != null && cariPerformans.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Müþteri</th>
+                                    <th class="text-end">Ciro</th>
+                                    <th class="text-end">Ödenen</th>
+                                    <th class="text-end">Kalan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cari in cariPerformans)
+                                {
+                                    <tr>
+                                        <td><strong>@TruncateText(cari.CariUnvan, 25)</strong></td>
+                                        <td class="text-end">@cari.ToplamCiro.ToString("N0") ?</td>
+                                        <td class="text-end text-success">@cari.OdenenTutar.ToString("N0") ?</td>
+                                        <td class="text-end">
+                                            <span class="@(cari.KalanBakiye > 0 ? "text-danger" : "text-success")">
+                                                @cari.KalanBakiye.ToString("N0") ?
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mb-0 mt-2">Bu ay veri bulunmuyor</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int secilenYil = DateTime.Today.Year;
+    private AylikGrafikData? gelirGiderData;
+    private AylikGrafikData? seferData;
+    private List<AracPerformansData>? aracPerformans;
+    private List<CariPerformansData>? cariPerformans;
+    private bool chartsInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender || !chartsInitialized)
+        {
+            await InitializeChartsAsync();
+            chartsInitialized = true;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        var buAy = DateTime.Today.Month;
+
+        gelirGiderData = await GrafikService.GetAylikGelirGiderAsync(secilenYil);
+        seferData = await GrafikService.GetAylikSeferSayisiAsync(secilenYil);
+        aracPerformans = await GrafikService.GetAracPerformansAsync(secilenYil, buAy);
+        cariPerformans = await GrafikService.GetCariPerformansAsync(secilenYil, buAy);
+    }
+
+    private async Task YenileGrafiklerAsync()
+    {
+        await LoadDataAsync();
+        await InitializeChartsAsync();
+    }
+
+    private async Task InitializeChartsAsync()
+    {
+        if (gelirGiderData != null)
+        {
+            await JS.InvokeVoidAsync("createBarChart", "gelirGiderChart", 
+                gelirGiderData.Aylar.ToArray(),
+                gelirGiderData.Veri1.Select(v => (double)v).ToArray(),
+                gelirGiderData.Veri2.Select(v => (double)v).ToArray(),
+                "Gelir", "Gider");
+        }
+
+        if (seferData != null)
+        {
+            await JS.InvokeVoidAsync("createLineChart", "seferChart",
+                seferData.Aylar.ToArray(),
+                seferData.Veri1.Select(v => (double)v).ToArray(),
+                "Sefer Sayýsý");
+        }
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+    }
+}
