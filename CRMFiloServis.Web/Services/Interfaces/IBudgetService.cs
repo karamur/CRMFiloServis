@@ -6,10 +6,12 @@ public interface IBudgetService
 {
     // Ödeme Ýþlemleri
     Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null);
+    Task<List<BudgetOdeme>> GetOdemelerByDateRangeAsync(DateTime baslangic, DateTime bitis);
     Task<BudgetOdeme?> GetOdemeByIdAsync(int id);
     Task<BudgetOdeme> CreateOdemeAsync(BudgetOdeme odeme);
     Task<BudgetOdeme> UpdateOdemeAsync(BudgetOdeme odeme);
     Task DeleteOdemeAsync(int id);
+    Task<BudgetOdeme> OdemeYapAsync(int odemeId, OdemeYapRequest request);
 
     // Taksitli Ödeme Ýþlemleri
     Task<List<BudgetOdeme>> CreateTaksitliOdemeAsync(TaksitliOdemeRequest request);
@@ -29,9 +31,12 @@ public interface IBudgetService
 
     // Raporlar
     Task<BudgetOzet> GetAylikOzetAsync(int yil, int ay);
+    Task<BudgetOzet> GetPeriyodOzetAsync(DateTime baslangic, DateTime bitis);
     Task<BudgetYillikOzet> GetYillikOzetAsync(int yil);
     Task<List<BudgetGunlukOzet>> GetTakvimDataAsync(int yil, int ay);
     Task<List<BudgetKategoriOzet>> GetKategoriOzetAsync(int yil, int? ay = null);
+    Task<List<BudgetKategoriOzet>> GetKategoriOzetByDateRangeAsync(DateTime baslangic, DateTime bitis);
+    Task<List<BudgetTrendData>> GetTrendDataAsync(DateTime baslangic, DateTime bitis, string periyod);
     
     // Kredi/Taksit Raporlari
     Task<List<KrediOzet>> GetAktifKredilerAsync();
@@ -48,10 +53,28 @@ public class TaksitliOdemeRequest
     public string? Notlar { get; set; }
 }
 
+public class OdemeYapRequest
+{
+    public OdemeTipi OdemeTipi { get; set; }
+    public int? BankaHesapId { get; set; }
+    public string? Aciklama { get; set; }
+    public DateTime OdemeTarihi { get; set; } = DateTime.Today;
+    public decimal? KismiOdemeTutari { get; set; }
+}
+
+public enum OdemeTipi
+{
+    Kasa = 1,
+    Banka = 2,
+    Mahsup = 3
+}
+
 public class BudgetOzet
 {
     public int Yil { get; set; }
     public int Ay { get; set; }
+    public DateTime? BaslangicTarihi { get; set; }
+    public DateTime? BitisTarihi { get; set; }
     public decimal ToplamOdeme { get; set; }
     public decimal OdenenToplam { get; set; }
     public decimal BekleyenToplam { get; set; }
@@ -94,6 +117,16 @@ public class BudgetKategoriOzet
     public decimal Toplam { get; set; }
     public int Adet { get; set; }
     public decimal Yuzde { get; set; }
+}
+
+public class BudgetTrendData
+{
+    public string Etiket { get; set; } = string.Empty;
+    public DateTime Tarih { get; set; }
+    public decimal Toplam { get; set; }
+    public decimal Odenen { get; set; }
+    public decimal Bekleyen { get; set; }
+    public int OdemeSayisi { get; set; }
 }
 
 public class ExcelImportResult
