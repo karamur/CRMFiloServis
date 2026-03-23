@@ -610,33 +610,32 @@
     private static readonly string[] AyAdlari = { "", "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran", 
                                                    "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik" };
 
+    private bool chartRendered = false;
+
     protected override async Task OnInitializedAsync()
     {
         secilenYil = Yil > 0 ? Yil : DateTime.Today.Year;
         secilenAy = Ay > 0 ? Ay : DateTime.Today.Month;
         aktifTakvimAy = secilenAy > 0 ? secilenAy : DateTime.Today.Month;
 
-        await LoadMasrafKalemleriAsync();
+        masrafKalemleri = await BudgetService.GetMasrafKalemleriAsync();
         await YenileDataAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!isLoading && !secilenGun.HasValue)
+        if (firstRender || (!isLoading && !secilenGun.HasValue && !chartRendered))
         {
+            chartRendered = true;
             await RenderChartAsync();
         }
-    }
-
-    private async Task LoadMasrafKalemleriAsync()
-    {
-        masrafKalemleri = await BudgetService.GetMasrafKalemleriAsync();
     }
 
     private async Task YenileDataAsync()
     {
         isLoading = true;
         secilenGun = null;
+        chartRendered = false;
         StateHasChanged();
 
         try

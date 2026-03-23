@@ -554,53 +554,30 @@
     {
         try
         {
-            // Optimized parallel data loading using count queries
-            var cariTask = CariService.GetCountAsync();
-            var aracTask = AracService.GetActiveCountAsync();
-            var soforTask = SoforService.GetActiveCountAsync();
-            var faturaStatsTask = FaturaService.GetDashboardStatsAsync();
-            var bankaStatsTask = BankaKasaService.GetDashboardStatsAsync();
-            var sonCalismaTask = ServisCalismaService.GetRecentAsync(5);
-            var sonHareketTask = BankaKasaService.GetRecentAsync(5);
-            var belgeUyariTask = BelgeUyariService.GetBelgeUyarilarAsync(30);
-            var butceTask = BudgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
-
-            // Wait for all tasks to complete
-            await Task.WhenAll(
-                cariTask, aracTask, soforTask, faturaStatsTask, 
-                bankaStatsTask, sonCalismaTask, sonHareketTask, belgeUyariTask, butceTask);
-
-            // Assign counts
-            cariSayisi = await cariTask;
-            aracSayisi = await aracTask;
-            soforSayisi = await soforTask;
-
-            // Assign invoice stats
-            var faturaStats = await faturaStatsTask;
+            // Sirayla veri yukle (DbContext thread-safe degil)
+            cariSayisi = await CariService.GetCountAsync();
+            aracSayisi = await AracService.GetActiveCountAsync();
+            soforSayisi = await SoforService.GetActiveCountAsync();
+            
+            var faturaStats = await FaturaService.GetDashboardStatsAsync();
             bekleyenFaturaSayisi = faturaStats.BekleyenFaturaSayisi;
             buAyGelir = faturaStats.BuAyGelir;
             buAyGider = faturaStats.BuAyGider;
             vadeGecmisFaturalar = faturaStats.VadeGecmisFaturalar;
             vadeYaklasanFaturalar = faturaStats.VadeYaklasanFaturalar;
 
-            // Assign bank/cash stats
-            var bankaStats = await bankaStatsTask;
+            var bankaStats = await BankaKasaService.GetDashboardStatsAsync();
             toplamKasa = bankaStats.ToplamKasa;
             toplamBanka = bankaStats.ToplamBanka;
 
-            // Assign recent items
-            sonCalismalar = await sonCalismaTask;
-            sonHareketler = await sonHareketTask;
-            
-            // Assign belge uyarıları
-            belgeUyarilar = await belgeUyariTask;
-
-            // Assign budget overview
-            butceOzet = await butceTask;
+            sonCalismalar = await ServisCalismaService.GetRecentAsync(5);
+            sonHareketler = await BankaKasaService.GetRecentAsync(5);
+            belgeUyarilar = await BelgeUyariService.GetBelgeUyarilarAsync(30);
+            butceOzet = await BudgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Dashboard yükleme hatası");
+            Logger.LogError(ex, "Dashboard yukleme hatasi");
         }
     }
 }
