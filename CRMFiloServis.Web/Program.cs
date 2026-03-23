@@ -30,6 +30,7 @@ builder.Services.AddScoped<IExcelService, ExcelService>();
 builder.Services.AddScoped<IFaturaHazirlikService, FaturaHazirlikService>();
 builder.Services.AddScoped<IMaliAnalizService, MaliAnalizService>();
 builder.Services.AddScoped<IPersonelMaasIzinService, PersonelMaasIzinService>();
+builder.Services.AddScoped<IBelgeUyariService, BelgeUyariService>();
 
 var app = builder.Build();
 

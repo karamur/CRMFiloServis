@@ -7,6 +7,7 @@
 @inject IFaturaService FaturaService
 @inject IServisCalismaService ServisCalismaService
 @inject IBankaKasaHareketService BankaKasaService
+@inject IBelgeUyariService BelgeUyariService
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 @rendermode InteractiveServer
@@ -20,6 +21,21 @@
         </h3>
         <small class="text-muted">Son güncelleme: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</small>
     </div>
+
+    <!-- Kritik Uyarılar Banner -->
+    @if (belgeUyarilar != null && belgeUyarilar.ToplamKritikUyari > 0)
+    {
+        <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5rem;"></i>
+            <div class="flex-grow-1">
+                <strong>@belgeUyarilar.ToplamKritikUyari kritik belge uyarısı var!</strong>
+                Süresi geçmiş veya 7 gün içinde dolacak belgeler bulunuyor.
+            </div>
+            <button class="btn btn-outline-danger btn-sm" @onclick="() => showBelgeModal = true">
+                <i class="bi bi-eye me-1"></i>Görüntüle
+            </button>
+        </div>
+    }
 
     <!-- Özet Kartlar -->
     <div class="row mb-4">
@@ -381,6 +397,76 @@
     </div>
 </div>
 
+<!-- Belge Uyarıları Modal -->
+@if (showBelgeModal && belgeUyarilar != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <i class="bi bi-file-earmark-medical me-2"></i>Belge Süre Uyarıları
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="() => showBelgeModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (belgeUyarilar.TumUyarilar.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Durum</th>
+                                        <th>Belge Türü</th>
+                                        <th>Ad / Plaka</th>
+                                        <th>Bitiş Tarihi</th>
+                                        <th class="text-center">Kalan Gün</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var uyari in belgeUyarilar.TumUyarilar)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <i class="bi @uyari.Icon @(uyari.Seviye == BelgeUyariSeviye.Kritik ? "text-danger" : uyari.Seviye == BelgeUyariSeviye.Acil ? "text-warning" : "text-info")"></i>
+                                            </td>
+                                            <td>@uyari.BelgeTuru</td>
+                                            <td><strong>@uyari.Baslik</strong></td>
+                                            <td>@uyari.BitisTarihi.ToString("dd.MM.yyyy")</td>
+                                            <td class="text-center">
+                                                <span class="badge @uyari.SeviyeClass">
+                                                    @if (uyari.KalanGun < 0)
+                                                    {
+                                                        <text>@Math.Abs(uyari.KalanGun) gün geçti!</text>
+                                                    }
+                                                    else
+                                                    {
+                                                        <text>@uyari.KalanGun gün</text>
+                                                    }
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-success py-4">
+                            <i class="bi bi-check-circle" style="font-size: 3rem;"></i>
+                            <p class="mb-0 mt-2">Tüm belgeler güncel!</p>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showBelgeModal = false">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private int cariSayisi = 0;
     private int aracSayisi = 0;
@@ -397,6 +483,9 @@
     private List<Fatura> vadeGecmisFaturalar = new();
     private List<Fatura> vadeYaklasanFaturalar = new();
     private List<BankaKasaHareket>? sonHareketler;
+    
+    private BelgeUyariOzet? belgeUyarilar;
+    private bool showBelgeModal = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -410,11 +499,12 @@
             var bankaStatsTask = BankaKasaService.GetDashboardStatsAsync();
             var sonCalismaTask = ServisCalismaService.GetRecentAsync(5);
             var sonHareketTask = BankaKasaService.GetRecentAsync(5);
+            var belgeUyariTask = BelgeUyariService.GetBelgeUyarilarAsync(30);
 
             // Wait for all tasks to complete
             await Task.WhenAll(
                 cariTask, aracTask, soforTask, faturaStatsTask, 
-                bankaStatsTask, sonCalismaTask, sonHareketTask);
+                bankaStatsTask, sonCalismaTask, sonHareketTask, belgeUyariTask);
 
             // Assign counts
             cariSayisi = await cariTask;
@@ -437,6 +527,9 @@
             // Assign recent items
             sonCalismalar = await sonCalismaTask;
             sonHareketler = await sonHareketTask;
+            
+            // Assign belge uyarıları
+            belgeUyarilar = await belgeUyariTask;
         }
         catch (Exception ex)
         {
