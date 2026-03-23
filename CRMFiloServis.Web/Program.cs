@@ -7,6 +7,9 @@ using OfficeOpenXml;
 // EPPlus lisans ayari (NonCommercial kullanim icin)
 ExcelPackage.License.SetNonCommercialPersonal("CRMFiloServis");
 
+// PostgreSQL timestamp ayari - DateTime.Kind = Unspecified olanlari UTC olarak kabul et
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -26,6 +29,8 @@ builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
     });
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
     options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
+    // Pending migration uyarisini devre disi birak
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
 // DbContext - Factory'den olustur

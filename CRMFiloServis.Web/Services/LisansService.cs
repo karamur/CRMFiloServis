@@ -58,8 +58,8 @@ public class LisansService : ILisansService
         {
             LisansAnahtari = lisansAnahtari,
             Tur = lisansBilgi.Tur,
-            BaslangicTarihi = DateTime.Now,
-            BitisTarihi = DateTime.Now.AddDays(lisansBilgi.Gun),
+            BaslangicTarihi = DateTime.UtcNow,
+            BitisTarihi = DateTime.UtcNow.AddDays(lisansBilgi.Gun),
             MaxKullaniciSayisi = lisansBilgi.KullaniciSayisi,
             MakineKodu = await GetMakineKoduAsync(),
             ExcelExportIzni = true,
@@ -112,8 +112,8 @@ public class LisansService : ILisansService
         {
             LisansAnahtari = GenerateTrialKey(),
             Tur = LisansTuru.Trial,
-            BaslangicTarihi = DateTime.Now,
-            BitisTarihi = DateTime.Now.AddDays(30), // 30 gun trial
+            BaslangicTarihi = DateTime.UtcNow,
+            BitisTarihi = DateTime.UtcNow.AddDays(30), // 30 gun trial
             MaxKullaniciSayisi = 5, // 5 kullanici
             MakineKodu = await GetMakineKoduAsync(),
             ExcelExportIzni = true,

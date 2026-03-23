@@ -14,8 +14,8 @@ public class Lisans : BaseEntity
 
     public LisansTuru Tur { get; set; } = LisansTuru.Trial;
 
-    public DateTime BaslangicTarihi { get; set; } = DateTime.Now;
-    public DateTime BitisTarihi { get; set; } = DateTime.Now.AddDays(30);
+    public DateTime BaslangicTarihi { get; set; } = DateTime.UtcNow;
+    public DateTime BitisTarihi { get; set; } = DateTime.UtcNow.AddDays(30);
 
     public string? FirmaAdi { get; set; }
     public string? YetkiliKisi { get; set; }
@@ -36,8 +36,8 @@ public class Lisans : BaseEntity
     public string? Imza { get; set; }
 
     // Hesaplanan ozellikler
-    public LisansDurumu Durum => DateTime.Now > BitisTarihi ? LisansDurumu.SuresiDolmus : LisansDurumu.Aktif;
-    public int KalanGun => Math.Max(0, (BitisTarihi.Date - DateTime.Now.Date).Days);
+    public LisansDurumu Durum => DateTime.UtcNow > BitisTarihi ? LisansDurumu.SuresiDolmus : LisansDurumu.Aktif;
+    public int KalanGun => Math.Max(0, (BitisTarihi.Date - DateTime.UtcNow.Date).Days);
     public bool Gecerli => Durum == LisansDurumu.Aktif && !string.IsNullOrEmpty(LisansAnahtari);
 }
 
