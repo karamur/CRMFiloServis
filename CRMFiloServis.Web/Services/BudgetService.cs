@@ -38,8 +38,17 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetOdeme> CreateOdemeAsync(BudgetOdeme odeme)
     {
+        // Varsayilan degerler
         odeme.OdemeAy = odeme.OdemeTarihi.Month;
         odeme.OdemeYil = odeme.OdemeTarihi.Year;
+        
+        if (!odeme.TaksitliMi)
+        {
+            odeme.ToplamTaksitSayisi = 1;
+            odeme.KacinciTaksit = 1;
+        }
+        
+        odeme.CreatedAt = DateTime.UtcNow;
 
         _context.BudgetOdemeler.Add(odeme);
         await _context.SaveChangesAsync();
@@ -48,12 +57,22 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetOdeme> UpdateOdemeAsync(BudgetOdeme odeme)
     {
-        odeme.OdemeAy = odeme.OdemeTarihi.Month;
-        odeme.OdemeYil = odeme.OdemeTarihi.Year;
+        var existing = await _context.BudgetOdemeler.FindAsync(odeme.Id);
+        if (existing == null)
+            throw new Exception("Odeme bulunamadi");
+        
+        existing.OdemeTarihi = odeme.OdemeTarihi;
+        existing.OdemeAy = odeme.OdemeTarihi.Month;
+        existing.OdemeYil = odeme.OdemeTarihi.Year;
+        existing.MasrafKalemi = odeme.MasrafKalemi;
+        existing.Aciklama = odeme.Aciklama;
+        existing.Miktar = odeme.Miktar;
+        existing.Durum = odeme.Durum;
+        existing.Notlar = odeme.Notlar;
+        existing.UpdatedAt = DateTime.UtcNow;
 
-        _context.BudgetOdemeler.Update(odeme);
         await _context.SaveChangesAsync();
-        return odeme;
+        return existing;
     }
 
     public async Task DeleteOdemeAsync(int id)
@@ -62,6 +81,7 @@ public class BudgetService : IBudgetService
         if (odeme != null)
         {
             odeme.IsDeleted = true;
+            odeme.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
     }
@@ -123,16 +143,23 @@ public class BudgetService : IBudgetService
     {
         foreach (var taksit in taksitler)
         {
-            taksit.OdemeAy = taksit.OdemeTarihi.Month;
-            taksit.OdemeYil = taksit.OdemeTarihi.Year;
-            _context.BudgetOdemeler.Update(taksit);
+            var existing = await _context.BudgetOdemeler.FindAsync(taksit.Id);
+            if (existing != null)
+            {
+                existing.OdemeTarihi = taksit.OdemeTarihi;
+                existing.OdemeAy = taksit.OdemeTarihi.Month;
+                existing.OdemeYil = taksit.OdemeTarihi.Year;
+                existing.Miktar = taksit.Miktar;
+                existing.Durum = taksit.Durum;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
         }
         await _context.SaveChangesAsync();
     }
 
     #endregion
 
-    #region Toplu Ýþlemler (Excel)
+    #region Toplu Islemler (Excel)
 
     public async Task<List<BudgetOdeme>> CreateBulkOdemeAsync(List<BudgetOdeme> odemeler)
     {
@@ -140,9 +167,14 @@ public class BudgetService : IBudgetService
         {
             odeme.OdemeAy = odeme.OdemeTarihi.Month;
             odeme.OdemeYil = odeme.OdemeTarihi.Year;
+            odeme.TaksitliMi = false;
+            odeme.ToplamTaksitSayisi = 1;
+            odeme.KacinciTaksit = 1;
+            odeme.CreatedAt = DateTime.UtcNow;
+            
+            _context.BudgetOdemeler.Add(odeme);
         }
         
-        _context.BudgetOdemeler.AddRange(odemeler);
         await _context.SaveChangesAsync();
         return odemeler;
     }
@@ -150,10 +182,10 @@ public class BudgetService : IBudgetService
     public byte[] GenerateExcelTemplate()
     {
         using var workbook = new ClosedXML.Excel.XLWorkbook();
-        var worksheet = workbook.Worksheets.Add("Ödeme Þablonu");
+        var worksheet = workbook.Worksheets.Add("Odeme Sablonu");
 
-        // Baþlýklar
-        var headers = new[] { "Ödeme Tarihi*", "Masraf Kalemi*", "Açýklama", "Miktar*", "Durum", "Notlar" };
+        // Basliklar
+        var headers = new[] { "Odeme Tarihi*", "Masraf Kalemi*", "Aciklama", "Miktar*", "Durum", "Notlar" };
         for (int i = 0; i < headers.Length; i++)
         {
             worksheet.Cell(1, i + 1).Value = headers[i];
@@ -161,31 +193,31 @@ public class BudgetService : IBudgetService
             worksheet.Cell(1, i + 1).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightBlue;
         }
 
-        // Örnek satýrlar
+        // Ornek satirlar
         worksheet.Cell(2, 1).Value = DateTime.Today.ToString("dd.MM.yyyy");
         worksheet.Cell(2, 2).Value = "Kira";
-        worksheet.Cell(2, 3).Value = "Ocak ayý kirasý";
+        worksheet.Cell(2, 3).Value = "Ocak ayi kirasi";
         worksheet.Cell(2, 4).Value = 5000;
         worksheet.Cell(2, 5).Value = "Bekliyor";
         worksheet.Cell(2, 6).Value = "";
 
         worksheet.Cell(3, 1).Value = DateTime.Today.AddDays(5).ToString("dd.MM.yyyy");
         worksheet.Cell(3, 2).Value = "Elektrik";
-        worksheet.Cell(3, 3).Value = "Ocak faturasý";
+        worksheet.Cell(3, 3).Value = "Ocak faturasi";
         worksheet.Cell(3, 4).Value = 850;
         worksheet.Cell(3, 5).Value = "Bekliyor";
         worksheet.Cell(3, 6).Value = "";
 
-        // Açýklama satýrlarý
-        worksheet.Cell(5, 1).Value = "AÇIKLAMALAR:";
+        // Aciklama satirlari
+        worksheet.Cell(5, 1).Value = "ACIKLAMALAR:";
         worksheet.Cell(5, 1).Style.Font.Bold = true;
-        worksheet.Cell(6, 1).Value = "* Ödeme Tarihi: GG.AA.YYYY formatýnda";
-        worksheet.Cell(7, 1).Value = "* Masraf Kalemi: Kira, Elektrik, Su, Doðalgaz, Personel Maaþ vb.";
-        worksheet.Cell(8, 1).Value = "* Miktar: Sayýsal deðer (virgül veya nokta kullanabilirsiniz)";
-        worksheet.Cell(9, 1).Value = "* Durum: Bekliyor, Ödendi, Ertelendi, Ýptal";
+        worksheet.Cell(6, 1).Value = "* Odeme Tarihi: GG.AA.YYYY formatinda";
+        worksheet.Cell(7, 1).Value = "* Masraf Kalemi: Kira, Elektrik, Su, Dogalgaz, Personel Maas vb.";
+        worksheet.Cell(8, 1).Value = "* Miktar: Sayisal deger (virgul veya nokta kullanabilirsiniz)";
+        worksheet.Cell(9, 1).Value = "* Durum: Bekliyor, Odendi, Ertelendi, Iptal";
 
         // Masraf kalemleri listesi
-        worksheet.Cell(11, 1).Value = "MASRAF KALEMLERÝ:";
+        worksheet.Cell(11, 1).Value = "MASRAF KALEMLERI:";
         worksheet.Cell(11, 1).Style.Font.Bold = true;
         
         var masrafKalemleri = _context.BudgetMasrafKalemleri.Where(m => m.Aktif).OrderBy(m => m.SiraNo).ToList();
@@ -197,7 +229,7 @@ public class BudgetService : IBudgetService
             row++;
         }
 
-        // Sütun geniþlikleri
+        // Sutun genislikleri
         worksheet.Column(1).Width = 15;
         worksheet.Column(2).Width = 20;
         worksheet.Column(3).Width = 30;
@@ -292,21 +324,27 @@ public class BudgetService : IBudgetService
                         Notlar = string.IsNullOrEmpty(notlar) ? null : notlar,
                         TaksitliMi = false,
                         ToplamTaksitSayisi = 1,
-                        KacinciTaksit = 1
+                        KacinciTaksit = 1,
+                        CreatedAt = DateTime.UtcNow
                     };
 
                     odemeler.Add(odeme);
                 }
                 catch (Exception ex)
                 {
-                    result.Errors.Add($"Satýr {rowNum}: {ex.Message}");
+                    result.Errors.Add($"Satir {rowNum}: {ex.Message}");
                     result.ErrorCount++;
                 }
             }
 
             if (odemeler.Any())
             {
-                await CreateBulkOdemeAsync(odemeler);
+                // Toplu ekleme
+                foreach (var odeme in odemeler)
+                {
+                    _context.BudgetOdemeler.Add(odeme);
+                }
+                await _context.SaveChangesAsync();
                 result.ImportedCount = odemeler.Count;
                 result.ImportedItems = odemeler;
             }
@@ -316,7 +354,7 @@ public class BudgetService : IBudgetService
         catch (Exception ex)
         {
             result.Success = false;
-            result.Errors.Add($"Excel dosyasý okunamadý: {ex.Message}");
+            result.Errors.Add($"Excel dosyasi okunamadi: {ex.Message}");
         }
 
         return result;
