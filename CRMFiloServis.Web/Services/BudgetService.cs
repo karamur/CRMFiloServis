@@ -38,6 +38,9 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetOdeme> CreateOdemeAsync(BudgetOdeme odeme)
     {
+        // DateTime'i UTC olarak ayarla
+        odeme.OdemeTarihi = DateTime.SpecifyKind(odeme.OdemeTarihi, DateTimeKind.Utc);
+        
         // Varsayilan degerler
         odeme.OdemeAy = odeme.OdemeTarihi.Month;
         odeme.OdemeYil = odeme.OdemeTarihi.Year;
@@ -61,7 +64,8 @@ public class BudgetService : IBudgetService
         if (existing == null)
             throw new Exception("Odeme bulunamadi");
         
-        existing.OdemeTarihi = odeme.OdemeTarihi;
+        // DateTime'i UTC olarak ayarla
+        existing.OdemeTarihi = DateTime.SpecifyKind(odeme.OdemeTarihi, DateTimeKind.Utc);
         existing.OdemeAy = odeme.OdemeTarihi.Month;
         existing.OdemeYil = odeme.OdemeTarihi.Year;
         existing.MasrafKalemi = odeme.MasrafKalemi;
@@ -100,9 +104,12 @@ public class BudgetService : IBudgetService
         var toplamHesaplanan = taksitTutari * request.TaksitSayisi;
         var fark = request.ToplamTutar - toplamHesaplanan;
 
+        // Baslangic tarihini UTC olarak ayarla
+        var baslangicUtc = DateTime.SpecifyKind(request.BaslangicTarihi, DateTimeKind.Utc);
+
         for (int i = 0; i < request.TaksitSayisi; i++)
         {
-            var taksitTarihi = request.BaslangicTarihi.AddMonths(i);
+            var taksitTarihi = baslangicUtc.AddMonths(i);
             var tutar = i == request.TaksitSayisi - 1 ? taksitTutari + fark : taksitTutari;
 
             var odeme = new BudgetOdeme
@@ -117,10 +124,11 @@ public class BudgetService : IBudgetService
                 ToplamTaksitSayisi = request.TaksitSayisi,
                 KacinciTaksit = i + 1,
                 TaksitGrupId = taksitGrupId,
-                TaksitBaslangicAy = request.BaslangicTarihi,
-                TaksitBitisAy = request.BaslangicTarihi.AddMonths(request.TaksitSayisi - 1),
+                TaksitBaslangicAy = baslangicUtc,
+                TaksitBitisAy = baslangicUtc.AddMonths(request.TaksitSayisi - 1),
                 Notlar = request.Notlar,
-                Durum = OdemeDurum.Bekliyor
+                Durum = OdemeDurum.Bekliyor,
+                CreatedAt = DateTime.UtcNow
             };
 
             taksitler.Add(odeme);
@@ -146,7 +154,8 @@ public class BudgetService : IBudgetService
             var existing = await _context.BudgetOdemeler.FindAsync(taksit.Id);
             if (existing != null)
             {
-                existing.OdemeTarihi = taksit.OdemeTarihi;
+                // DateTime'i UTC olarak ayarla
+                existing.OdemeTarihi = DateTime.SpecifyKind(taksit.OdemeTarihi, DateTimeKind.Utc);
                 existing.OdemeAy = taksit.OdemeTarihi.Month;
                 existing.OdemeYil = taksit.OdemeTarihi.Year;
                 existing.Miktar = taksit.Miktar;
@@ -165,6 +174,8 @@ public class BudgetService : IBudgetService
     {
         foreach (var odeme in odemeler)
         {
+            // DateTime'i UTC olarak ayarla
+            odeme.OdemeTarihi = DateTime.SpecifyKind(odeme.OdemeTarihi, DateTimeKind.Utc);
             odeme.OdemeAy = odeme.OdemeTarihi.Month;
             odeme.OdemeYil = odeme.OdemeTarihi.Year;
             odeme.TaksitliMi = false;
@@ -331,7 +342,7 @@ public class BudgetService : IBudgetService
                     var durumStr = row.Cell(5).GetString().Trim().ToLower();
                     var durum = durumStr switch
                     {
-                        "odendi" or "ödendi" => OdemeDurum.Odendi,
+                        "odendi" or " ödendi" => OdemeDurum.Odendi,
                         "ertelendi" => OdemeDurum.Ertelendi,
                         "iptal" => OdemeDurum.Iptal,
                         _ => OdemeDurum.Bekliyor
@@ -339,9 +350,12 @@ public class BudgetService : IBudgetService
 
                     var notlar = row.Cell(6).GetString().Trim();
 
+                    // DateTime'i UTC olarak ayarla
+                    var tarihUtc = DateTime.SpecifyKind(tarih, DateTimeKind.Utc);
+
                     var odeme = new BudgetOdeme
                     {
-                        OdemeTarihi = tarih,
+                        OdemeTarihi = tarihUtc,
                         OdemeAy = tarih.Month,
                         OdemeYil = tarih.Year,
                         MasrafKalemi = masrafKalemi,
