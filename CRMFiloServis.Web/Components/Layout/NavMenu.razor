@@ -31,10 +31,10 @@
             </NavLink>
         </div>
 
-        <!-- CARİ MODÜLÜ -->
+        <!-- CARI MODULU -->
         <div class="nav-section">
             <div class="nav-section-header" @onclick="() => ToggleSection(0)">
-                <span><i class="bi bi-people-fill me-2"></i>CARİ MODÜLÜ</span>
+                <span><i class="bi bi-people-fill me-2"></i>CARI MODULU</span>
                 <i class="bi @(expandedSections[0] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
             @if (expandedSections[0])
@@ -45,14 +45,24 @@
                             <i class="bi bi-person-lines-fill me-2"></i> Cariler
                         </NavLink>
                     </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="efatura/giden">
+                            <i class="bi bi-file-earmark-arrow-up me-2 text-success"></i> Kesilen Faturalar
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="efatura/gelen">
+                            <i class="bi bi-file-earmark-arrow-down me-2 text-danger"></i> Gelen Faturalar
+                        </NavLink>
+                    </div>
                 </div>
             }
         </div>
 
-        <!-- FİLO SERVİS -->
+        <!-- FILO SERVIS -->
         <div class="nav-section">
             <div class="nav-section-header" @onclick="() => ToggleSection(1)">
-                <span><i class="bi bi-truck me-2"></i>FİLO SERVİS</span>
+                <span><i class="bi bi-truck me-2"></i>FILO SERVIS</span>
                 <i class="bi @(expandedSections[1] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
             @if (expandedSections[1])

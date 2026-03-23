@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
+@using FaturaEntity = CRMFiloServis.Shared.Entities.Fatura
 @inject ICariService CariService
 @inject IAracService AracService
 @inject ISoforService SoforService
@@ -542,8 +543,8 @@
     private decimal toplamBanka = 0;
 
     private List<ServisCalisma>? sonCalismalar;
-    private List<Fatura> vadeGecmisFaturalar = new();
-    private List<Fatura> vadeYaklasanFaturalar = new();
+    private List<FaturaEntity> vadeGecmisFaturalar = new();
+    private List<FaturaEntity> vadeYaklasanFaturalar = new();
     private List<BankaKasaHareket>? sonHareketler;
     
     private BelgeUyariOzet? belgeUyarilar;

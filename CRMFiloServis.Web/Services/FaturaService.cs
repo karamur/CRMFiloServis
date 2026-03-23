@@ -1,6 +1,7 @@
 using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -259,6 +260,264 @@ public class FaturaService : IFaturaService
 
         return stats;
     }
+
+    #region E-Fatura / E-Arsiv Metodlari
+
+    public async Task<List<Fatura>> GetByYonAsync(FaturaYonu yon)
+    {
+        return await _context.Faturalar
+            .Include(f => f.Cari)
+            .Where(f => f.FaturaYonu == yon)
+            .OrderByDescending(f => f.FaturaTarihi)
+            .ToListAsync();
+    }
+
+    public async Task<List<Fatura>> GetByYonAndDateRangeAsync(FaturaYonu yon, DateTime? baslangic, DateTime? bitis)
+    {
+        var query = _context.Faturalar
+            .Include(f => f.Cari)
+            .Where(f => f.FaturaYonu == yon);
+
+        if (baslangic.HasValue)
+            query = query.Where(f => f.FaturaTarihi >= baslangic.Value);
+        
+        if (bitis.HasValue)
+            query = query.Where(f => f.FaturaTarihi <= bitis.Value);
+
+        return await query.OrderByDescending(f => f.FaturaTarihi).ToListAsync();
+    }
+
+    public async Task<List<Fatura>> GetByEFaturaTipiAsync(EFaturaTipi tip)
+    {
+        return await _context.Faturalar
+            .Include(f => f.Cari)
+            .Where(f => f.EFaturaTipi == tip)
+            .OrderByDescending(f => f.FaturaTarihi)
+            .ToListAsync();
+    }
+
+    public async Task<EFaturaImportResult> ImportFromExcelAsync(byte[] fileContent, FaturaYonu yon)
+    {
+        var result = new EFaturaImportResult();
+        
+        try
+        {
+            using var stream = new MemoryStream(fileContent);
+            using var package = new OfficeOpenXml.ExcelPackage(stream);
+            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+            
+            if (worksheet == null)
+            {
+                result.Errors.Add("Excel dosyasinda sayfa bulunamadi.");
+                return result;
+            }
+
+            var rowCount = worksheet.Dimension?.Rows ?? 0;
+            
+            for (int row = 2; row <= rowCount; row++)
+            {
+                try
+                {
+                    var faturaNo = worksheet.Cells[row, 1].Text?.Trim();
+                    var tarihStr = worksheet.Cells[row, 2].Text?.Trim();
+                    var cariVkn = worksheet.Cells[row, 3].Text?.Trim();
+                    var cariUnvan = worksheet.Cells[row, 4].Text?.Trim();
+                    var araToplam = ParseDecimal(worksheet.Cells[row, 5].Text);
+                    var kdvTutar = ParseDecimal(worksheet.Cells[row, 6].Text);
+                    var genelToplam = ParseDecimal(worksheet.Cells[row, 7].Text);
+                    var ettnNo = worksheet.Cells[row, 8].Text?.Trim();
+                    var eFaturaTipiStr = worksheet.Cells[row, 9].Text?.Trim();
+
+                    if (string.IsNullOrEmpty(faturaNo)) continue;
+
+                    // Fatura zaten var mi kontrol et
+                    var existingFatura = await _context.Faturalar.FirstOrDefaultAsync(f => f.FaturaNo == faturaNo);
+                    if (existingFatura != null)
+                    {
+                        result.SkippedCount++;
+                        continue;
+                    }
+
+                    // Cari bul veya olustur
+                    var cari = await _context.Cariler.FirstOrDefaultAsync(c => c.VergiNo == cariVkn);
+                    if (cari == null && !string.IsNullOrEmpty(cariUnvan))
+                    {
+                        cari = new Cari
+                        {
+                            Unvan = cariUnvan,
+                            VergiNo = cariVkn ?? "",
+                            CariTipi = yon == FaturaYonu.Giden ? CariTipi.Musteri : CariTipi.Tedarikci,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.Cariler.Add(cari);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    if (cari == null)
+                    {
+                        result.Errors.Add($"Satir {row}: Cari bulunamadi veya olusturulamadi.");
+                        result.ErrorCount++;
+                        continue;
+                    }
+
+                    var fatura = new Fatura
+                    {
+                        FaturaNo = faturaNo,
+                        FaturaTarihi = DateTime.TryParse(tarihStr, out var tarih) ? DateTime.SpecifyKind(tarih, DateTimeKind.Utc) : DateTime.UtcNow,
+                        CariId = cari.Id,
+                        FaturaYonu = yon,
+                        FaturaTipi = yon == FaturaYonu.Giden ? FaturaTipi.SatisFaturasi : FaturaTipi.AlisFaturasi,
+                        EFaturaTipi = eFaturaTipiStr?.ToLower() == "e-fatura" ? EFaturaTipi.EFatura : EFaturaTipi.EArsiv,
+                        AraToplam = araToplam,
+                        KdvTutar = kdvTutar,
+                        GenelToplam = genelToplam > 0 ? genelToplam : araToplam + kdvTutar,
+                        EttnNo = ettnNo,
+                        ImportKaynak = "Excel",
+                        Durum = FaturaDurum.Beklemede,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Faturalar.Add(fatura);
+                    result.ImportedItems.Add(fatura);
+                    result.ImportedCount++;
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add($"Satir {row}: {ex.Message}");
+                    result.ErrorCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            result.Success = result.ImportedCount > 0;
+        }
+        catch (Exception ex)
+        {
+            result.Errors.Add($"Excel okuma hatasi: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    public async Task<EFaturaImportResult> ImportFromLucaAsync(byte[] fileContent, FaturaYonu yon)
+    {
+        var result = new EFaturaImportResult();
+        
+        try
+        {
+            using var stream = new MemoryStream(fileContent);
+            using var package = new OfficeOpenXml.ExcelPackage(stream);
+            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+            
+            if (worksheet == null)
+            {
+                result.Errors.Add("Excel dosyasinda sayfa bulunamadi.");
+                return result;
+            }
+
+            var rowCount = worksheet.Dimension?.Rows ?? 0;
+            
+            // Luca formatinda kolonlar:
+            // A: Fatura No, B: Tarih, C: VKN/TCKN, D: Unvan, E: Matrah, F: KDV, G: Toplam, H: ETTN, I: Fatura Tipi
+            for (int row = 2; row <= rowCount; row++)
+            {
+                try
+                {
+                    var faturaNo = worksheet.Cells[row, 1].Text?.Trim();
+                    if (string.IsNullOrEmpty(faturaNo)) continue;
+
+                    // Fatura zaten var mi kontrol et
+                    var existingFatura = await _context.Faturalar.FirstOrDefaultAsync(f => f.FaturaNo == faturaNo);
+                    if (existingFatura != null)
+                    {
+                        result.SkippedCount++;
+                        continue;
+                    }
+
+                    var tarihStr = worksheet.Cells[row, 2].Text?.Trim();
+                    var cariVkn = worksheet.Cells[row, 3].Text?.Trim();
+                    var cariUnvan = worksheet.Cells[row, 4].Text?.Trim();
+                    var matrah = ParseDecimal(worksheet.Cells[row, 5].Text);
+                    var kdvTutar = ParseDecimal(worksheet.Cells[row, 6].Text);
+                    var genelToplam = ParseDecimal(worksheet.Cells[row, 7].Text);
+                    var ettnNo = worksheet.Cells[row, 8].Text?.Trim();
+                    var faturaTipiStr = worksheet.Cells[row, 9].Text?.Trim();
+
+                    // Cari bul veya olustur
+                    var cari = await _context.Cariler.FirstOrDefaultAsync(c => c.VergiNo == cariVkn);
+                    if (cari == null && !string.IsNullOrEmpty(cariUnvan))
+                    {
+                        cari = new Cari
+                        {
+                            Unvan = cariUnvan,
+                            VergiNo = cariVkn ?? "",
+                            CariTipi = yon == FaturaYonu.Giden ? CariTipi.Musteri : CariTipi.Tedarikci,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.Cariler.Add(cari);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    if (cari == null)
+                    {
+                        result.Errors.Add($"Satir {row}: Cari bulunamadi veya olusturulamadi.");
+                        result.ErrorCount++;
+                        continue;
+                    }
+
+                    var eFaturaTipi = faturaTipiStr?.ToLower() switch
+                    {
+                        "e-fatura" or "efatura" => EFaturaTipi.EFatura,
+                        _ => EFaturaTipi.EArsiv
+                    };
+
+                    var fatura = new Fatura
+                    {
+                        FaturaNo = faturaNo,
+                        FaturaTarihi = DateTime.TryParse(tarihStr, out var tarih) ? DateTime.SpecifyKind(tarih, DateTimeKind.Utc) : DateTime.UtcNow,
+                        CariId = cari.Id,
+                        FaturaYonu = yon,
+                        FaturaTipi = yon == FaturaYonu.Giden ? FaturaTipi.SatisFaturasi : FaturaTipi.AlisFaturasi,
+                        EFaturaTipi = eFaturaTipi,
+                        AraToplam = matrah,
+                        KdvTutar = kdvTutar,
+                        GenelToplam = genelToplam > 0 ? genelToplam : matrah + kdvTutar,
+                        EttnNo = ettnNo,
+                        ImportKaynak = "Luca",
+                        Durum = FaturaDurum.Beklemede,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Faturalar.Add(fatura);
+                    result.ImportedItems.Add(fatura);
+                    result.ImportedCount++;
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add($"Satir {row}: {ex.Message}");
+                    result.ErrorCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            result.Success = result.ImportedCount > 0;
+        }
+        catch (Exception ex)
+        {
+            result.Errors.Add($"Luca dosyasi okuma hatasi: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    private static decimal ParseDecimal(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return 0;
+        value = value.Replace(".", "").Replace(",", ".").Trim();
+        return decimal.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : 0;
+    }
+
+    #endregion
 
     private static void CalculateTotals(Fatura fatura)
     {

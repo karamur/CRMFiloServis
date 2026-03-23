@@ -19,6 +19,13 @@ public interface IFaturaService
     Task<string> GenerateNextFaturaNoAsync(FaturaTipi tip);
     Task UpdateOdenenTutarAsync(int faturaId);
     
+    // E-Fatura / E-Arsiv metodlari
+    Task<List<Fatura>> GetByYonAsync(FaturaYonu yon);
+    Task<List<Fatura>> GetByYonAndDateRangeAsync(FaturaYonu yon, DateTime? baslangic, DateTime? bitis);
+    Task<List<Fatura>> GetByEFaturaTipiAsync(EFaturaTipi tip);
+    Task<EFaturaImportResult> ImportFromExcelAsync(byte[] fileContent, FaturaYonu yon);
+    Task<EFaturaImportResult> ImportFromLucaAsync(byte[] fileContent, FaturaYonu yon);
+    
     // Dashboard optimized methods
     Task<DashboardFaturaStats> GetDashboardStatsAsync();
 }
@@ -30,4 +37,14 @@ public class DashboardFaturaStats
     public decimal BuAyGider { get; set; }
     public List<Fatura> VadeGecmisFaturalar { get; set; } = [];
     public List<Fatura> VadeYaklasanFaturalar { get; set; } = [];
+}
+
+public class EFaturaImportResult
+{
+    public bool Success { get; set; }
+    public int ImportedCount { get; set; }
+    public int SkippedCount { get; set; }
+    public int ErrorCount { get; set; }
+    public List<string> Errors { get; set; } = new();
+    public List<Fatura> ImportedItems { get; set; } = new();
 }

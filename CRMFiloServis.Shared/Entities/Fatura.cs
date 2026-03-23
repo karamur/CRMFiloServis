@@ -10,6 +10,14 @@ public class Fatura : BaseEntity
     public DateTime? VadeTarihi { get; set; }
     public FaturaTipi FaturaTipi { get; set; }
     public FaturaDurum Durum { get; set; } = FaturaDurum.Beklemede;
+    
+    // E-Fatura / E-Arsiv
+    public EFaturaTipi EFaturaTipi { get; set; } = EFaturaTipi.EArsiv;
+    public FaturaYonu FaturaYonu { get; set; } = FaturaYonu.Giden;
+    public string? EttnNo { get; set; } // E-Fatura ETTN numarasi
+    public string? GibKodu { get; set; } // GIB onay kodu
+    public DateTime? GibOnayTarihi { get; set; }
+    public string? ImportKaynak { get; set; } // Excel, Luca, Manuel
 
     // Tutarlar
     public decimal AraToplam { get; set; }
@@ -33,8 +41,8 @@ public class Fatura : BaseEntity
 
 public enum FaturaTipi
 {
-    SatisFaturasi = 1,      // Müþteriye kesilen
-    AlisFaturasi = 2,       // Tedarikçiden alýnan
+    SatisFaturasi = 1,      // Musteriye kesilen
+    AlisFaturasi = 2,       // Tedarikçiden alinan
     SatisIadeFaturasi = 3,
     AlisIadeFaturasi = 4
 }
@@ -45,4 +53,16 @@ public enum FaturaDurum
     KismiOdendi = 2,
     Odendi = 3,
     IptalEdildi = 4
+}
+
+public enum EFaturaTipi
+{
+    EFatura = 1,    // E-Fatura (Tescilli mukellefler arasi)
+    EArsiv = 2      // E-Arsiv Fatura
+}
+
+public enum FaturaYonu
+{
+    Giden = 1,      // Kesilen fatura
+    Gelen = 2       // Alinan fatura
 }
