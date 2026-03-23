@@ -34,6 +34,7 @@ builder.Services.AddScoped<IBelgeUyariService, BelgeUyariService>();
 builder.Services.AddScoped<IDashboardGrafikService, DashboardGrafikService>();
 builder.Services.AddScoped<IGlobalSearchService, GlobalSearchService>();
 builder.Services.AddScoped<IToastService, ToastService>();
+builder.Services.AddScoped<IPdfService, PdfService>();
 
 var app = builder.Build();
 

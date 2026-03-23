@@ -2,6 +2,7 @@
 @using CRMFiloServis.Web.Services
 @inject IBelgeUyariService BelgeUyariService
 @inject IExcelService ExcelService
+@inject IPdfService PdfService
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -19,6 +20,9 @@
                 <option value="60">60 Gün Ýçinde</option>
                 <option value="90">90 Gün Ýçinde</option>
             </select>
+            <button class="btn btn-danger" @onclick="PdfExport" disabled="@(uyarilar == null || !uyarilar.TumUyarilar.Any())">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </button>
             <button class="btn btn-success" @onclick="ExcelExport" disabled="@(uyarilar == null || !uyarilar.TumUyarilar.Any())">
                 <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </button>
@@ -280,6 +284,17 @@
             var fileName = $"BelgeUyarilari_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
             var base64 = Convert.ToBase64String(excelBytes);
             await JS.InvokeVoidAsync("downloadFile", fileName, base64, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+    }
+
+    private async Task PdfExport()
+    {
+        if (uyarilar != null && uyarilar.TumUyarilar.Any())
+        {
+            var pdfBytes = PdfService.GenerateBelgeUyariRaporuPdf(uyarilar.TumUyarilar);
+            var fileName = $"BelgeUyarilari_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+            var base64 = Convert.ToBase64String(pdfBytes);
+            await JS.InvokeVoidAsync("downloadFile", fileName, base64, "application/pdf");
         }
     }
 }
