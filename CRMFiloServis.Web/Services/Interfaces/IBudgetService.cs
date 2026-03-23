@@ -6,12 +6,16 @@ public interface IBudgetService
 {
     // Ödeme Ýþlemleri
     Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null);
+    Task<List<BudgetOdeme>> GetBekleyenOdemelerAsync(int yil, int? ay = null); // Sadece bekleyenler
     Task<List<BudgetOdeme>> GetOdemelerByDateRangeAsync(DateTime baslangic, DateTime bitis);
     Task<BudgetOdeme?> GetOdemeByIdAsync(int id);
     Task<BudgetOdeme> CreateOdemeAsync(BudgetOdeme odeme);
     Task<BudgetOdeme> UpdateOdemeAsync(BudgetOdeme odeme);
-    Task DeleteOdemeAsync(int id);
-    Task<BudgetOdeme> OdemeYapAsync(int odemeId, OdemeYapRequest request);
+    Task DeleteOdemeAsync(int id); // Soft delete - silinene ceker
+    Task<BudgetOdeme> OdemeYapAsync(int odemeId, OdemeYapRequest request); // Kasa=Borc, Odeme=Alacak
+
+    // Fatura ile kapatma
+    Task<BudgetOdeme> FaturaIleKapatAsync(int odemeId, int faturaId);
 
     // Taksitli Ödeme Ýþlemleri
     Task<List<BudgetOdeme>> CreateTaksitliOdemeAsync(TaksitliOdemeRequest request);

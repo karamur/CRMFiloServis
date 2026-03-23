@@ -419,17 +419,21 @@
                             </button>
                         </div>
                     </div>
-                    @if (odemeYapRequest.OdemeTipi == OdemeTipi.Banka && bankaHesaplari != null)
+                    @if ((odemeYapRequest.OdemeTipi == OdemeTipi.Kasa || odemeYapRequest.OdemeTipi == OdemeTipi.Banka) && bankaHesaplari != null)
                     {
                         <div class="mb-3">
-                            <label class="form-label">Banka Hesabi *</label>
+                            <label class="form-label">@(odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? "Kasa Hesabi" : "Banka Hesabi") *</label>
                             <select class="form-select" @bind="odemeYapRequest.BankaHesapId">
                                 <option value="">Secin...</option>
-                                @foreach (var hesap in bankaHesaplari)
+                                @foreach (var hesap in bankaHesaplari.Where(h => odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? h.HesapTipi == HesapTipi.Kasa : h.HesapTipi != HesapTipi.Kasa))
                                 {
-                                    <option value="@hesap.Id">@hesap.HesapAdi - @hesap.BankaAdi</option>
+                                    <option value="@hesap.Id">@hesap.HesapAdi @(hesap.BankaAdi != null ? $"- {hesap.BankaAdi}" : "")</option>
                                 }
                             </select>
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                @(odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? "Kasa = BORC (Para Cikisi)" : "Banka = BORC (Para Cikisi)")
+                            </small>
                         </div>
                     }
                     <div class="mb-3">

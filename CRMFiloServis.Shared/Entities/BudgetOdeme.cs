@@ -37,9 +37,25 @@ public class BudgetOdeme : BaseEntity
 
     public string? Notlar { get; set; }
 
+    // Ödeme bilgileri - Kasa/Banka hareketi
+    public DateTime? GercekOdemeTarihi { get; set; }
+    public int? OdemeYapildigiHesapId { get; set; } // BankaHesap ID
+    public decimal? OdenenTutar { get; set; }
+    public string? OdemeNotu { get; set; }
+    public int? BankaKasaHareketId { get; set; } // Ýliþkili hareket
+
+    // Fatura ile eþleþtirme
+    public int? FaturaId { get; set; }
+    public bool FaturaIleKapatildi { get; set; } = false;
+
+    // Navigation
+    public virtual BankaHesap? OdemeYapildigiHesap { get; set; }
+    public virtual Fatura? Fatura { get; set; }
+
     // Hesaplanan alanlar
     public int KalanTaksitSayisi => ToplamTaksitSayisi - KacinciTaksit;
     public decimal ToplamTaksitTutari => Miktar * ToplamTaksitSayisi;
+    public bool OdenmisVeyaKapatilmis => Durum == OdemeDurum.Odendi || FaturaIleKapatildi;
 }
 
 public enum OdemeDurum

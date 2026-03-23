@@ -31,6 +31,25 @@ public class BudgetService : IBudgetService
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Sadece bekleyen odemeleri getirir (Odenmis ve fatura ile kapatilmis olanlar haric)
+    /// </summary>
+    public async Task<List<BudgetOdeme>> GetBekleyenOdemelerAsync(int yil, int? ay = null)
+    {
+        var query = _context.BudgetOdemeler
+            .Where(o => o.OdemeYil == yil && 
+                        o.Durum != OdemeDurum.Odendi && 
+                        !o.FaturaIleKapatildi);
+
+        if (ay.HasValue)
+            query = query.Where(o => o.OdemeAy == ay.Value);
+
+        return await query
+            .OrderBy(o => o.OdemeAy)
+            .ThenBy(o => o.OdemeTarihi)
+            .ToListAsync();
+    }
+
     public async Task<List<BudgetOdeme>> GetOdemelerByDateRangeAsync(DateTime baslangic, DateTime bitis)
     {
         var baslangicUtc = DateTime.SpecifyKind(baslangic.Date, DateTimeKind.Utc);
@@ -90,6 +109,9 @@ public class BudgetService : IBudgetService
         return existing;
     }
 
+    /// <summary>
+    /// Soft delete - silinen hicbir yerde gorunmez
+    /// </summary>
     public async Task DeleteOdemeAsync(int id)
     {
         var odeme = await _context.BudgetOdemeler.FindAsync(id);
@@ -101,33 +123,74 @@ public class BudgetService : IBudgetService
         }
     }
 
+    /// <summary>
+    /// Kasa'dan odeme yapildiginda:
+    /// - Kasa = Borc (Cikis)
+    /// - Odeme kaydi = Alacak olarak islenir
+    /// </summary>
     public async Task<BudgetOdeme> OdemeYapAsync(int odemeId, OdemeYapRequest request)
     {
         var odeme = await _context.BudgetOdemeler.FindAsync(odemeId);
         if (odeme == null)
             throw new Exception("Odeme bulunamadi");
 
+        var odemeTutari = request.KismiOdemeTutari ?? odeme.Miktar;
+        var odemeTarihi = DateTime.SpecifyKind(request.OdemeTarihi, DateTimeKind.Utc);
+
         // Odeme durumunu guncelle
         odeme.Durum = OdemeDurum.Odendi;
+        odeme.GercekOdemeTarihi = odemeTarihi;
+        odeme.OdenenTutar = odemeTutari;
+        odeme.OdemeYapildigiHesapId = request.BankaHesapId;
+        odeme.OdemeNotu = request.Aciklama;
         odeme.UpdatedAt = DateTime.UtcNow;
 
         // Kasa/Banka hareketi olustur (Mahsup disinda)
+        // KASA = BORC (Cikis hareket), ODEME = ALACAK
         if (request.OdemeTipi != OdemeTipi.Mahsup && request.BankaHesapId.HasValue)
         {
             var hareket = new BankaKasaHareket
             {
-                IslemNo = $"BUTCE-{odeme.Id}-{DateTime.Now:yyyyMMddHHmmss}",
-                IslemTarihi = DateTime.SpecifyKind(request.OdemeTarihi, DateTimeKind.Utc),
-                HareketTipi = HareketTipi.Cikis,
+                IslemNo = $"BORC-{odeme.Id}-{DateTime.Now:yyyyMMddHHmmss}",
+                IslemTarihi = odemeTarihi,
+                HareketTipi = HareketTipi.Cikis, // Kasa = Borc (para cikiyor)
                 BankaHesapId = request.BankaHesapId.Value,
-                Tutar = request.KismiOdemeTutari ?? odeme.Miktar,
-                Aciklama = $"Butce Odemesi: {odeme.MasrafKalemi}" + (string.IsNullOrEmpty(request.Aciklama) ? "" : $" - {request.Aciklama}"),
+                Tutar = odemeTutari,
+                Aciklama = $"Butce Odemesi (Borc): {odeme.MasrafKalemi}" + 
+                          (string.IsNullOrEmpty(request.Aciklama) ? "" : $" - {request.Aciklama}"),
                 IslemKaynak = IslemKaynak.Manuel,
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.BankaKasaHareketleri.Add(hareket);
+            await _context.SaveChangesAsync();
+            
+            // Hareket ID'sini kaydet
+            odeme.BankaKasaHareketId = hareket.Id;
         }
+
+        await _context.SaveChangesAsync();
+        return odeme;
+    }
+
+    /// <summary>
+    /// Fatura ile kapatma - fatura girildiginde hesaplari kapatir
+    /// </summary>
+    public async Task<BudgetOdeme> FaturaIleKapatAsync(int odemeId, int faturaId)
+    {
+        var odeme = await _context.BudgetOdemeler.FindAsync(odemeId);
+        if (odeme == null)
+            throw new Exception("Odeme bulunamadi");
+
+        var fatura = await _context.Faturalar.FindAsync(faturaId);
+        if (fatura == null)
+            throw new Exception("Fatura bulunamadi");
+
+        // Odeme fatura ile kapatildi
+        odeme.FaturaId = faturaId;
+        odeme.FaturaIleKapatildi = true;
+        odeme.Durum = OdemeDurum.Odendi;
+        odeme.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return odeme;
