@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Models;
 
 namespace CRMFiloServis.Web.Services;
@@ -179,5 +180,279 @@ public class ExcelService : IExcelService
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    public byte[] ExportCariler(List<Cari> data)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Cariler");
+
+        var headers = new[] { "Cari Kodu", "Ünvan", "Tip", "Vergi Dairesi", "Vergi No", "Telefon", "Email", "Yetkili" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = worksheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+
+        int row = 2;
+        foreach (var item in data)
+        {
+            worksheet.Cell(row, 1).Value = item.CariKodu;
+            worksheet.Cell(row, 2).Value = item.Unvan;
+            worksheet.Cell(row, 3).Value = item.CariTipi.ToString();
+            worksheet.Cell(row, 4).Value = item.VergiDairesi ?? "-";
+            worksheet.Cell(row, 5).Value = item.VergiNo ?? "-";
+            worksheet.Cell(row, 6).Value = item.Telefon ?? "-";
+            worksheet.Cell(row, 7).Value = item.Email ?? "-";
+            worksheet.Cell(row, 8).Value = item.YetkiliKisi ?? "-";
+            row++;
+        }
+
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] ExportAraclar(List<Arac> data)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Araçlar");
+
+        var headers = new[] { "Plaka", "Marka", "Model", "Yýl", "Tip", "Sahiplik", "Koltuk", "Muayene", "Kasko", "Trafik Sig.", "Durum" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = worksheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightGreen;
+
+        int row = 2;
+        foreach (var item in data)
+        {
+            worksheet.Cell(row, 1).Value = item.Plaka;
+            worksheet.Cell(row, 2).Value = item.Marka ?? "-";
+            worksheet.Cell(row, 3).Value = item.Model ?? "-";
+            worksheet.Cell(row, 4).Value = item.ModelYili?.ToString() ?? "-";
+            worksheet.Cell(row, 5).Value = item.AracTipi.ToString();
+            worksheet.Cell(row, 6).Value = item.SahiplikTipi.ToString();
+            worksheet.Cell(row, 7).Value = item.KoltukSayisi;
+            worksheet.Cell(row, 8).Value = item.MuayeneBitisTarihi?.ToString("dd.MM.yyyy") ?? "-";
+            worksheet.Cell(row, 9).Value = item.KaskoBitisTarihi?.ToString("dd.MM.yyyy") ?? "-";
+            worksheet.Cell(row, 10).Value = item.TrafikSigortaBitisTarihi?.ToString("dd.MM.yyyy") ?? "-";
+            worksheet.Cell(row, 11).Value = item.Aktif ? "Aktif" : "Pasif";
+            row++;
+        }
+
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] ExportPersonel(List<Sofor> data)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Personel");
+
+        var headers = new[] { "Kod", "Ad Soyad", "Görev", "TC Kimlik", "Telefon", "Email", "Ýþe Baþlama", "Ehliyet Bitiþ", "SRC Bitiþ", "Net Maaþ", "Durum" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = worksheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightYellow;
+
+        int row = 2;
+        foreach (var item in data)
+        {
+            worksheet.Cell(row, 1).Value = item.SoforKodu;
+            worksheet.Cell(row, 2).Value = item.TamAd;
+            worksheet.Cell(row, 3).Value = GetGorevAdi(item.Gorev);
+            worksheet.Cell(row, 4).Value = item.TcKimlikNo ?? "-";
+            worksheet.Cell(row, 5).Value = item.Telefon ?? "-";
+            worksheet.Cell(row, 6).Value = item.Email ?? "-";
+            worksheet.Cell(row, 7).Value = item.IseBaslamaTarihi?.ToString("dd.MM.yyyy") ?? "-";
+            worksheet.Cell(row, 8).Value = item.EhliyetGecerlilikTarihi?.ToString("dd.MM.yyyy") ?? "-";
+            worksheet.Cell(row, 9).Value = item.SrcBelgesiGecerlilikTarihi?.ToString("dd.MM.yyyy") ?? "-";
+            worksheet.Cell(row, 10).Value = item.NetMaas;
+            worksheet.Cell(row, 11).Value = item.Aktif ? "Aktif" : "Pasif";
+            row++;
+        }
+
+        worksheet.Column(10).Style.NumberFormat.Format = "#,##0.00 ?";
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] ExportBelgeUyarilari(List<BelgeUyari> data)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Belge Uyarýlarý");
+
+        var headers = new[] { "Ad / Plaka", "Belge Türü", "Bitiþ Tarihi", "Kalan Gün", "Durum" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = worksheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightCoral;
+
+        int row = 2;
+        foreach (var item in data)
+        {
+            worksheet.Cell(row, 1).Value = item.Baslik;
+            worksheet.Cell(row, 2).Value = item.BelgeTuru;
+            worksheet.Cell(row, 3).Value = item.BitisTarihi.ToString("dd.MM.yyyy");
+            worksheet.Cell(row, 4).Value = item.KalanGun;
+            worksheet.Cell(row, 5).Value = item.Seviye switch
+            {
+                BelgeUyariSeviye.Kritik => "Süresi Geçmiþ",
+                BelgeUyariSeviye.Acil => "Acil (7 gün)",
+                BelgeUyariSeviye.Uyari => "Uyarý (30 gün)",
+                _ => "Bilgi"
+            };
+
+            if (item.KalanGun < 0)
+                worksheet.Row(row).Style.Fill.BackgroundColor = XLColor.LightPink;
+            else if (item.KalanGun <= 7)
+                worksheet.Row(row).Style.Fill.BackgroundColor = XLColor.LightYellow;
+            
+            row++;
+        }
+
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] ExportAracPerformans(List<AracPerformansData> data, int yil, int ay)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add($"Araç Performans {ay:D2}-{yil}");
+
+        var headers = new[] { "Plaka", "Sefer Sayýsý", "Toplam Ciro", "Toplam Masraf", "Net Kar" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = worksheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightGreen;
+
+        int row = 2;
+        foreach (var item in data)
+        {
+            worksheet.Cell(row, 1).Value = item.Plaka;
+            worksheet.Cell(row, 2).Value = item.SeferSayisi;
+            worksheet.Cell(row, 3).Value = item.ToplamCiro;
+            worksheet.Cell(row, 4).Value = item.ToplamMasraf;
+            worksheet.Cell(row, 5).Value = item.NetKar;
+
+            if (item.NetKar < 0)
+                worksheet.Cell(row, 5).Style.Font.FontColor = XLColor.Red;
+            else
+                worksheet.Cell(row, 5).Style.Font.FontColor = XLColor.Green;
+            
+            row++;
+        }
+
+        // Toplam satýrý
+        worksheet.Cell(row, 1).Value = "TOPLAM";
+        worksheet.Cell(row, 1).Style.Font.Bold = true;
+        worksheet.Cell(row, 2).FormulaA1 = $"SUM(B2:B{row - 1})";
+        worksheet.Cell(row, 3).FormulaA1 = $"SUM(C2:C{row - 1})";
+        worksheet.Cell(row, 4).FormulaA1 = $"SUM(D2:D{row - 1})";
+        worksheet.Cell(row, 5).FormulaA1 = $"SUM(E2:E{row - 1})";
+        worksheet.Row(row).Style.Font.Bold = true;
+
+        worksheet.Column(3).Style.NumberFormat.Format = "#,##0.00 ?";
+        worksheet.Column(4).Style.NumberFormat.Format = "#,##0.00 ?";
+        worksheet.Column(5).Style.NumberFormat.Format = "#,##0.00 ?";
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] ExportCariPerformans(List<CariPerformansData> data, int yil, int ay)
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add($"Müþteri Performans {ay:D2}-{yil}");
+
+        var headers = new[] { "Müþteri", "Fatura Sayýsý", "Toplam Ciro", "Ödenen Tutar", "Kalan Bakiye" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = worksheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+
+        int row = 2;
+        foreach (var item in data)
+        {
+            worksheet.Cell(row, 1).Value = item.CariUnvan;
+            worksheet.Cell(row, 2).Value = item.SeferSayisi;
+            worksheet.Cell(row, 3).Value = item.ToplamCiro;
+            worksheet.Cell(row, 4).Value = item.OdenenTutar;
+            worksheet.Cell(row, 5).Value = item.KalanBakiye;
+
+            if (item.KalanBakiye > 0)
+                worksheet.Cell(row, 5).Style.Font.FontColor = XLColor.Red;
+            
+            row++;
+        }
+
+        // Toplam satýrý
+        worksheet.Cell(row, 1).Value = "TOPLAM";
+        worksheet.Cell(row, 1).Style.Font.Bold = true;
+        worksheet.Cell(row, 2).FormulaA1 = $"SUM(B2:B{row - 1})";
+        worksheet.Cell(row, 3).FormulaA1 = $"SUM(C2:C{row - 1})";
+        worksheet.Cell(row, 4).FormulaA1 = $"SUM(D2:D{row - 1})";
+        worksheet.Cell(row, 5).FormulaA1 = $"SUM(E2:E{row - 1})";
+        worksheet.Row(row).Style.Font.Bold = true;
+
+        worksheet.Column(3).Style.NumberFormat.Format = "#,##0.00 ?";
+        worksheet.Column(4).Style.NumberFormat.Format = "#,##0.00 ?";
+        worksheet.Column(5).Style.NumberFormat.Format = "#,##0.00 ?";
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private string GetGorevAdi(PersonelGorev gorev)
+    {
+        return gorev switch
+        {
+            PersonelGorev.Sofor => "Þoför",
+            PersonelGorev.OfisCalisani => "Ofis Çalýþaný",
+            PersonelGorev.Muhasebe => "Muhasebe",
+            PersonelGorev.Yonetici => "Yönetici",
+            PersonelGorev.Teknik => "Teknik",
+            PersonelGorev.Diger => "Diðer",
+            _ => gorev.ToString()
+        };
     }
 }

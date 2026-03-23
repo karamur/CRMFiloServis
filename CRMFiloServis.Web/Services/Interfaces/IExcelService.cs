@@ -1,3 +1,5 @@
+using CRMFiloServis.Shared.Entities;
+
 namespace CRMFiloServis.Web.Services;
 
 public interface IExcelService
@@ -6,4 +8,12 @@ public interface IExcelService
     byte[] ExportServisCalismaRaporu(List<Models.ServisCalismaRaporItem> data);
     byte[] ExportFaturaOdemeRaporu(List<Models.FaturaOdemeRaporItem> data);
     byte[] ExportAracMasrafRaporu(List<Models.AracMasrafRaporItem> data);
+    
+    // Yeni Export Metodlarý
+    byte[] ExportCariler(List<Cari> data);
+    byte[] ExportAraclar(List<Arac> data);
+    byte[] ExportPersonel(List<Sofor> data);
+    byte[] ExportBelgeUyarilari(List<BelgeUyari> data);
+    byte[] ExportAracPerformans(List<AracPerformansData> data, int yil, int ay);
+    byte[] ExportCariPerformans(List<CariPerformansData> data, int yil, int ay);
 }

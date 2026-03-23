@@ -1,6 +1,8 @@
 @page "/belge-uyarilari"
 @using CRMFiloServis.Web.Services
 @inject IBelgeUyariService BelgeUyariService
+@inject IExcelService ExcelService
+@inject IJSRuntime JS
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -17,6 +19,9 @@
                 <option value="60">60 Gün Ýçinde</option>
                 <option value="90">90 Gün Ýçinde</option>
             </select>
+            <button class="btn btn-success" @onclick="ExcelExport" disabled="@(uyarilar == null || !uyarilar.TumUyarilar.Any())">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </button>
         </div>
     </div>
 
@@ -264,6 +269,17 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async Task ExcelExport()
+    {
+        if (uyarilar != null && uyarilar.TumUyarilar.Any())
+        {
+            var excelBytes = ExcelService.ExportBelgeUyarilari(uyarilar.TumUyarilar);
+            var fileName = $"BelgeUyarilari_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var base64 = Convert.ToBase64String(excelBytes);
+            await JS.InvokeVoidAsync("downloadFile", fileName, base64, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         }
     }
 }
