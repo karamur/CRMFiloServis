@@ -24,20 +24,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
             errorCodesToAdd: null);
         npgsqlOptions.CommandTimeout(30);
     });
+    // Blazor Server icin tracking kapatildi - concurrent access sorunlarini onler
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
     options.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
 });
-
-// DbContext Factory - paralel islemler icin
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
-{
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsqlOptions =>
-    {
-        npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 3,
-            maxRetryDelay: TimeSpan.FromSeconds(5),
-            errorCodesToAdd: null);
-    });
-}, ServiceLifetime.Scoped);
 
 // Application Services
 builder.Services.AddScoped<ICariService, CariService>();
