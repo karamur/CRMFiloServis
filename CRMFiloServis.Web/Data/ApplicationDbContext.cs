@@ -10,10 +10,13 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    // Cari Modülü
+    // Firma Modulu
+    public DbSet<Firma> Firmalar { get; set; }
+
+    // Cari Modulu
     public DbSet<Cari> Cariler { get; set; }
 
-    // Filo Servis Modülü
+    // Filo Servis Modulu
     public DbSet<Sofor> Soforler { get; set; }
     public DbSet<Arac> Araclar { get; set; }
     public DbSet<Guzergah> Guzergahlar { get; set; }
@@ -21,40 +24,50 @@ public class ApplicationDbContext : DbContext
     public DbSet<AracMasraf> AracMasraflari { get; set; }
     public DbSet<ServisCalisma> ServisCalismalari { get; set; }
 
-    // Fatura Modülü
+    // Fatura Modulu
     public DbSet<Fatura> Faturalar { get; set; }
     public DbSet<FaturaKalem> FaturaKalemleri { get; set; }
 
-    // Banka/Kasa Modülü
+    // Banka/Kasa Modulu
     public DbSet<BankaHesap> BankaHesaplari { get; set; }
     public DbSet<BankaKasaHareket> BankaKasaHareketleri { get; set; }
     public DbSet<OdemeEslestirme> OdemeEslestirmeleri { get; set; }
 
-    // Checklist Modülü
+    // Checklist Modulu
     public DbSet<AylikChecklist> AylikChecklistler { get; set; }
     public DbSet<ChecklistKalem> ChecklistKalemleri { get; set; }
 
-    // Personel Maaþ/Ýzin Modülü
+    // Personel Maas/Izin Modulu
     public DbSet<PersonelMaas> PersonelMaaslari { get; set; }
     public DbSet<PersonelIzin> PersonelIzinleri { get; set; }
     public DbSet<PersonelIzinHakki> PersonelIzinHaklari { get; set; }
 
-    // Bütçe Modülü
+    // Butce Modulu
     public DbSet<BudgetOdeme> BudgetOdemeler { get; set; }
     public DbSet<BudgetMasrafKalemi> BudgetMasrafKalemleri { get; set; }
 
-    // Muhasebe Modülü
+    // Muhasebe Modulu
     public DbSet<MuhasebeHesap> MuhasebeHesaplari { get; set; }
     public DbSet<MuhasebeFis> MuhasebeFisleri { get; set; }
     public DbSet<MuhasebeFisKalem> MuhasebeFisKalemleri { get; set; }
     public DbSet<MuhasebeDonem> MuhasebeDonemleri { get; set; }
 
-    // Sistem Modülü
+    // Sistem Modulu
     public DbSet<AktiviteLog> AktiviteLoglar { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Firma
+        modelBuilder.Entity<Firma>(entity =>
+        {
+            entity.HasIndex(e => e.FirmaKodu).IsUnique();
+            entity.Property(e => e.FirmaKodu).HasMaxLength(50);
+            entity.Property(e => e.FirmaAdi).HasMaxLength(250);
+            entity.Property(e => e.VergiNo).HasMaxLength(11);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
 
         // Cari
         modelBuilder.Entity<Cari>(entity =>

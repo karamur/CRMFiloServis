@@ -446,13 +446,56 @@ public class ExcelService : IExcelService
     {
         return gorev switch
         {
-            PersonelGorev.Sofor => "Þoför",
-            PersonelGorev.OfisCalisani => "Ofis Çalýþaný",
+            PersonelGorev.Sofor => "Sofor",
+            PersonelGorev.OfisCalisani => "Ofis Calisani",
             PersonelGorev.Muhasebe => "Muhasebe",
-            PersonelGorev.Yonetici => "Yönetici",
+            PersonelGorev.Yonetici => "Yonetici",
             PersonelGorev.Teknik => "Teknik",
-            PersonelGorev.Diger => "Diðer",
+            PersonelGorev.Diger => "Diger",
             _ => gorev.ToString()
         };
+    }
+
+    public byte[] CreateExcel(string[] headers, List<object[]> data, string sheetName = "Rapor")
+    {
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add(sheetName);
+
+        // Basliklar
+        for (int i = 0; i < headers.Length; i++)
+        {
+            worksheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        // Header stili
+        var headerRange = worksheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+        // Veriler
+        int row = 2;
+        foreach (var rowData in data)
+        {
+            for (int col = 0; col < rowData.Length; col++)
+            {
+                var value = rowData[col];
+                if (value is decimal decimalVal)
+                    worksheet.Cell(row, col + 1).Value = decimalVal;
+                else if (value is int intVal)
+                    worksheet.Cell(row, col + 1).Value = intVal;
+                else if (value is double doubleVal)
+                    worksheet.Cell(row, col + 1).Value = doubleVal;
+                else
+                    worksheet.Cell(row, col + 1).Value = value?.ToString() ?? "";
+            }
+            row++;
+        }
+
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
     }
 }

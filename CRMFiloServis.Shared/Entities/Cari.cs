@@ -16,6 +16,14 @@ public class Cari : BaseEntity
     public string? YetkiliKisi { get; set; }
     public string? Notlar { get; set; }
 
+    // Muhasebe Hesap Eslestirme
+    public int? MuhasebeHesapId { get; set; } // 120.xxx veya 320.xxx
+    public virtual MuhasebeHesap? MuhasebeHesap { get; set; }
+
+    // Firma iliskisi (coklu firma destegi)
+    public int? FirmaId { get; set; }
+    public virtual Firma? Firma { get; set; }
+
     // Navigation Properties
     public virtual ICollection<Fatura> Faturalar { get; set; } = new List<Fatura>();
     public virtual ICollection<Guzergah> Guzergahlar { get; set; } = new List<Guzergah>();

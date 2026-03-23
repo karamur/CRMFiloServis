@@ -16,4 +16,7 @@ public interface IExcelService
     byte[] ExportBelgeUyarilari(List<BelgeUyari> data);
     byte[] ExportAracPerformans(List<AracPerformansData> data, int yil, int ay);
     byte[] ExportCariPerformans(List<CariPerformansData> data, int yil, int ay);
+
+    // Genel Excel Oluþturma
+    byte[] CreateExcel(string[] headers, List<object[]> data, string sheetName = "Rapor");
 }

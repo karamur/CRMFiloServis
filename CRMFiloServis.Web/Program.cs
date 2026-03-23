@@ -33,6 +33,7 @@ builder.Services.AddScoped<ApplicationDbContext>(sp =>
     sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
 
 // Application Services
+builder.Services.AddSingleton<IFirmaService, FirmaService>(); // Singleton - aktif firma state tutmak icin
 builder.Services.AddScoped<ICariService, CariService>();
 builder.Services.AddScoped<ISoforService, SoforService>();
 builder.Services.AddScoped<IAracService, AracService>();
