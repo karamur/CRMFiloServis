@@ -24,16 +24,16 @@
             </NavLink>
         </div>
         
-        <!-- Belge Uyarıları -->
+        <!-- Belge Uyarilari -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="belge-uyarilari">
-                <i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i> Belge Uyarıları
+                <i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i> Belge Uyarilari
             </NavLink>
         </div>
 
         <!-- CARI MODULU -->
         <div class="nav-section">
-            <div class="nav-section-header" @onclick="() => ToggleSection(0)">
+            <div class="nav-section-header" @onclick="() => ToggleSection(0)" style="cursor: pointer;">
                 <span><i class="bi bi-people-fill me-2"></i>CARI MODULU</span>
                 <i class="bi @(expandedSections[0] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
@@ -61,7 +61,7 @@
 
         <!-- FILO SERVIS -->
         <div class="nav-section">
-            <div class="nav-section-header" @onclick="() => ToggleSection(1)">
+            <div class="nav-section-header" @onclick="() => ToggleSection(1)" style="cursor: pointer;">
                 <span><i class="bi bi-truck me-2"></i>FILO SERVIS</span>
                 <i class="bi @(expandedSections[1] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
@@ -70,12 +70,12 @@
                 <div class="nav-section-content">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="araclar">
-                            <i class="bi bi-car-front-fill me-2"></i> Araçlar
+                            <i class="bi bi-car-front-fill me-2"></i> Araclar
                         </NavLink>
                     </div>
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="guzergahlar">
-                            <i class="bi bi-signpost-split-fill me-2"></i> Güzergahlar
+                            <i class="bi bi-signpost-split-fill me-2"></i> Guzergahlar
                         </NavLink>
                     </div>
                     <div class="nav-item px-3">
@@ -104,7 +104,7 @@
 
         <!-- PERSONEL YÖNETİMİ -->
         <div class="nav-section">
-            <div class="nav-section-header" @onclick="() => ToggleSection(5)">
+            <div class="nav-section-header" @onclick="() => ToggleSection(5)" style="cursor: pointer;">
                 <span><i class="bi bi-people-fill me-2"></i>PERSONEL</span>
                 <i class="bi @(expandedSections.Length > 5 && expandedSections[5] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
@@ -132,7 +132,7 @@
 
         <!-- FATURA MODÜLÜ -->
         <div class="nav-section">
-            <div class="nav-section-header" @onclick="() => ToggleSection(2)">
+            <div class="nav-section-header" @onclick="() => ToggleSection(2)" style="cursor: pointer;">
                 <span><i class="bi bi-receipt me-2"></i>FATURA MODÜLÜ</span>
                 <i class="bi @(expandedSections[2] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
@@ -155,7 +155,7 @@
 
         <!-- BANKA / KASA -->
         <div class="nav-section">
-            <div class="nav-section-header" @onclick="() => ToggleSection(3)">
+            <div class="nav-section-header" @onclick="() => ToggleSection(3)" style="cursor: pointer;">
                 <span><i class="bi bi-bank me-2"></i>BANKA / KASA</span>
                 <i class="bi @(expandedSections[3] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
@@ -183,7 +183,7 @@
 
         <!-- RAPORLAR -->
         <div class="nav-section">
-            <div class="nav-section-header" @onclick="() => ToggleSection(4)">
+            <div class="nav-section-header" @onclick="() => ToggleSection(4)" style="cursor: pointer;">
                 <span><i class="bi bi-bar-chart-fill me-2"></i>RAPORLAR</span>
                 <i class="bi @(expandedSections[4] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
@@ -246,7 +246,7 @@
 
         <!-- AYARLAR -->
         <div class="nav-section">
-            <div class="nav-section-header" @onclick="() => ToggleSection(6)">
+            <div class="nav-section-header" @onclick="() => ToggleSection(6)" style="cursor: pointer;">
                 <span><i class="bi bi-gear-fill me-2"></i>AYARLAR</span>
                 <i class="bi @(expandedSections.Length > 6 && expandedSections[6] ? "bi-chevron-up" : "bi-chevron-down")"></i>
             </div>
