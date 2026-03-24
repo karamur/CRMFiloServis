@@ -71,6 +71,10 @@ public class ApplicationDbContext : DbContext
     // Sistem Modulu
     public DbSet<AktiviteLog> AktiviteLoglar { get; set; }
 
+    // Aylik Odeme Modulu
+    public DbSet<AylikOdemePlani> AylikOdemePlanlari { get; set; }
+    public DbSet<AylikOdemeGerceklesen> AylikOdemeGerceklesenler { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
