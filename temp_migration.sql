@@ -1,0 +1,1 @@
+ALTER TABLE "Cariler" ADD COLUMN IF NOT EXISTS "TcKimlikNo" character varying(11) NULL;
