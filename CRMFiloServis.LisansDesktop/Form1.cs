@@ -29,30 +29,47 @@ namespace CRMFiloServis.LisansDesktop
 
             try
             {
-                // Lisans Tipi ve Süre
+                // Lisans Tipi - Sadece isim için
                 string lisansTip;
-                int sure;
-
+                
                 if (radioTrial.Checked)
                 {
                     lisansTip = "Trial";
-                    sure = 30;
                 }
                 else if (radioStandard.Checked)
                 {
                     lisansTip = "Standard";
-                    sure = 365;
                 }
                 else if (radioProfessional.Checked)
                 {
                     lisansTip = "Professional";
-                    sure = 730;
                 }
                 else
                 {
                     lisansTip = "Enterprise";
-                    sure = 1825;
                 }
+
+                // Süreyi kullanýcýdan al
+                int toplamGun = (int)numGun.Value;
+                int toplamAy = (int)numAy.Value;
+                int toplamYil = (int)numYil.Value;
+
+                // En az bir süre girilmiþ mi?
+                if (toplamGun == 0 && toplamAy == 0 && toplamYil == 0)
+                {
+                    MessageBox.Show("Lütfen en az bir süre deðeri girin (Gün, Ay veya Yýl)!", 
+                        "Uyarý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    numYil.Focus();
+                    return;
+                }
+
+                // Bitiþ tarihini hesapla
+                var bitisTarihi = DateTime.Today
+                    .AddYears(toplamYil)
+                    .AddMonths(toplamAy)
+                    .AddDays(toplamGun);
+
+                var toplamSure = (bitisTarihi - DateTime.Today).Days;
 
                 // Lisans Oluþtur
                 var lisans = new LisansBilgi
@@ -64,7 +81,7 @@ namespace CRMFiloServis.LisansDesktop
                     Telefon = txtTelefon.Text.Trim(),
                     LisansTipi = lisansTip,
                     BaslangicTarihi = DateTime.Today,
-                    BitisTarihi = DateTime.Today.AddDays(sure),
+                    BitisTarihi = bitisTarihi,
                     MaxKullaniciSayisi = (int)numMaxKullanici.Value,
                     MaxAracSayisi = (int)numMaxArac.Value,
                     Aktif = true
@@ -76,7 +93,7 @@ namespace CRMFiloServis.LisansDesktop
 
                 // Sonuçlarý Göster
                 mevcutLisans = lisans;
-
+                
                 txtLisansBilgi.Text = $@"?????????????????????????????????????????????????????????
 ?           LÝSANS BAÞARIYLA OLUÞTURULDU!              ?
 ?????????????????????????????????????????????????????????
@@ -89,13 +106,15 @@ Telefon           : {lisans.Telefon}
 Lisans Tipi       : {lisans.LisansTipi}
 Baþlangýç Tarihi  : {lisans.BaslangicTarihi:dd.MM.yyyy}
 Bitiþ Tarihi      : {lisans.BitisTarihi:dd.MM.yyyy}
+Lisans Süresi     : {toplamYil} yýl, {toplamAy} ay, {toplamGun} gün
+Toplam Gün        : {toplamSure} gün
 Max Kullanýcý     : {lisans.MaxKullaniciSayisi}
 Max Araç          : {lisans.MaxAracSayisi}
 
 ???????????????????????????????????????????????????????
 LÝSANS ANAHTARI (Aþaðýda):
 ";
-
+                
                 txtLisansAnahtari.Text = lisansAnahtari;
 
                 btnKopyala.Enabled = true;
