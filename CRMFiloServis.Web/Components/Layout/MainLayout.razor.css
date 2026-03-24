@@ -42,6 +42,23 @@ main {
         text-overflow: ellipsis;
     }
 
+    /* Dropdown ve buton stilleri */
+    .top-row ::deep .btn-outline-secondary {
+        color: #495057;
+        border-color: #ced4da;
+        background-color: #fff;
+    }
+    
+    .top-row ::deep .btn-outline-secondary:hover {
+        color: #fff;
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+    
+    .top-row ::deep .dropdown-toggle {
+        color: #333 !important;
+    }
+
 @media (max-width: 640.98px) {
     .top-row {
         justify-content: space-between;
