@@ -11,12 +11,12 @@
     <AssemblyName>CRMFiloServisLisans</AssemblyName>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
-    <Product>CRM Filo Servis - Lisans Oluþturucu</Product>
+    <Product>CRM Filo Servis - Lisans Oluï¿½turucu</Product>
     <Company>CRM Filo Servis</Company>
-    <Copyright>Copyright © 2026</Copyright>
+    <Copyright>Copyright ï¿½ 2026</Copyright>
     
 
-    <!-- Publish Ayarlarý -->
+    <!-- Publish Ayarlarï¿½ -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -24,5 +24,9 @@
     <PublishTrimmed>false</PublishTrimmed>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="10.0.5" />
+  </ItemGroup>
 
 </Project>
