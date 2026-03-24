@@ -1,12 +1,12 @@
 {
   "Id": 0,
-  "Provider": 2,
+  "Provider": 1,
   "Host": "localhost",
-  "Port": 5432,
-  "DatabaseName": "DestekCRMServisBlazorDb",
+  "Port": 0,
+  "DatabaseName": "CRMFiloServis",
   "Username": "postgres",
   "Password": "Fast123",
   "UseIntegratedSecurity": false,
   "AdditionalOptions": null,
-  "LastUpdated": "2026-03-24T07:26:48.2449625Z"
+  "LastUpdated": "2026-03-24T12:54:13.8300781Z"
 }

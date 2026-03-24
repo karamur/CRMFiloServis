@@ -82,6 +82,9 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DbInitializer.InitializeAsync(context);
     
+    // Seed kritik verileri
+    await DbSeeder.SeedAsync(context);
+    
     // Kullanici ve Lisans seed
     var kullaniciService = scope.ServiceProvider.GetRequiredService<IKullaniciService>();
     await kullaniciService.SeedAdminAsync();
