@@ -662,7 +662,7 @@
     private async Task YenileDataAsync()
     {
         isLoading = true;
-        secilenGun = null;
+        var oncekiSecilenGun = secilenGun; // Onceki secimi sakla
         StateHasChanged();
 
         try
@@ -670,7 +670,7 @@
             // Firma filtresine gore odemeler
             odemeler = await BudgetService.GetOdemelerAsync(secilenYil, secilenAy > 0 ? secilenAy : null, secilenFirmaId > 0 ? secilenFirmaId : null);
 
-            // Sadece bekleyen odemeler
+            // Sadece bekleyen odemeler - ODENMIS VE SILINMIS OLANLAR HARIC
             bekleyenOdemeler = odemeler.Where(o => o.Durum == OdemeDurum.Bekliyor).OrderBy(o => o.OdemeTarihi).ToList();
 
             if (secilenAy > 0)
@@ -699,6 +699,20 @@
             var krediOdemeler = odemeler.Where(o => o.TaksitliMi && o.Durum == OdemeDurum.Bekliyor).ToList();
             krediTaksitToplam = krediOdemeler.Sum(o => o.Miktar);
             krediTaksitAdet = krediOdemeler.Count;
+
+            // Onceki gun seciliyse, gun verilerini de guncelle
+            if (oncekiSecilenGun.HasValue)
+            {
+                secilenGun = oncekiSecilenGun;
+                secilenGunTarih = new DateTime(secilenYil, aktifTakvimAy, oncekiSecilenGun.Value);
+                var gunData = takvimData?.FirstOrDefault(t => t.Gun == oncekiSecilenGun.Value);
+                secilenGunOdemeleri = gunData?.Odemeler?.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList() ?? new List<BudgetOdeme>();
+            }
+            else
+            {
+                secilenGun = null;
+                secilenGunOdemeleri.Clear();
+            }
         }
         finally
         {
@@ -776,16 +790,8 @@
             ToastService.ShowSuccess(odemeYapilacak.MasrafKalemi + " odendi!");
             ModalKapat();
             
-            // Tum veriyi yenile
+            // Tum veriyi yenile (gun secimi korunacak)
             await YenileDataAsync();
-            
-            // Gun seciliyse, takvim verisi yenilendikten sonra tekrar sec
-            if (secilenGun.HasValue)
-            {
-                var gunData = takvimData?.FirstOrDefault(t => t.Gun == secilenGun.Value);
-                secilenGunOdemeleri = gunData?.Odemeler?.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList() ?? new List<BudgetOdeme>();
-                StateHasChanged();
-            }
         }
         catch (Exception ex)
         {
@@ -856,16 +862,8 @@
                 await BudgetService.HardDeleteOdemeAsync(odeme.Id);
                 ToastService.ShowSuccess("Odeme silindi.");
                 
-                // Tum veriyi yenile
+                // Tum veriyi yenile (gun secimi korunacak)
                 await YenileDataAsync();
-                
-                // Gun seciliyse guncelle
-                if (secilenGun.HasValue)
-                {
-                    var gunData = takvimData?.FirstOrDefault(t => t.Gun == secilenGun.Value);
-                    secilenGunOdemeleri = gunData?.Odemeler?.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList() ?? new List<BudgetOdeme>();
-                    StateHasChanged();
-                }
             }
             catch (Exception ex)
             {

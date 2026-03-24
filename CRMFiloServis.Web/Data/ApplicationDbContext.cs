@@ -588,6 +588,37 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
+
+        // AracEvrak
+        modelBuilder.Entity<AracEvrak>(entity =>
+        {
+            entity.HasIndex(e => new { e.AracId, e.EvrakKategorisi });
+            entity.Property(e => e.EvrakKategorisi).HasMaxLength(100);
+            entity.Property(e => e.EvrakAdi).HasMaxLength(200);
+            entity.Property(e => e.Aciklama).HasMaxLength(500);
+            entity.Property(e => e.SigortaSirketi).HasMaxLength(100);
+            entity.Property(e => e.PoliceNo).HasMaxLength(100);
+            entity.Property(e => e.Tutar).HasPrecision(18, 2);
+            entity.HasOne(e => e.Arac)
+                .WithMany()
+                .HasForeignKey(e => e.AracId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // AracEvrakDosya
+        modelBuilder.Entity<AracEvrakDosya>(entity =>
+        {
+            entity.Property(e => e.DosyaAdi).HasMaxLength(255);
+            entity.Property(e => e.DosyaYolu).HasMaxLength(500);
+            entity.Property(e => e.DosyaTipi).HasMaxLength(20);
+            entity.Property(e => e.Aciklama).HasMaxLength(500);
+            entity.HasOne(e => e.AracEvrak)
+                .WithMany(e => e.Dosyalar)
+                .HasForeignKey(e => e.AracEvrakId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
     }
 
     public override int SaveChanges()
