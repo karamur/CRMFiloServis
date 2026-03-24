@@ -332,35 +332,31 @@ public class FaturaService : IFaturaService
                 return result;
             }
 
-            // Dongu oncesi son CariKodu'yu al - her yeni cari icin arttiracagiz
-            var sonCariKodu = await _context.Cariler
-                .IgnoreQueryFilters() // Silinmis carileri de dahil et
-                .Where(c => c.CariKodu.StartsWith("C"))
-                .OrderByDescending(c => c.CariKodu)
-                .Select(c => c.CariKodu)
-                .FirstOrDefaultAsync();
+            // Son CariKodu numarasini al (silinmisler dahil)
+            var maxCariNum = await _context.Cariler
+                .IgnoreQueryFilters()
+                .Where(c => c.CariKodu.StartsWith("C") && c.CariKodu.Length == 6)
+                .Select(c => c.CariKodu.Substring(1))
+                .ToListAsync();
             
             int nextCariNum = 1;
-            if (!string.IsNullOrEmpty(sonCariKodu) && sonCariKodu.Length > 1)
+            if (maxCariNum.Any())
             {
-                if (int.TryParse(sonCariKodu.Substring(1), out var lastNum))
-                {
-                    nextCariNum = lastNum + 1;
-                }
+                var maxNum = maxCariNum
+                    .Where(s => int.TryParse(s, out _))
+                    .Select(s => int.Parse(s))
+                    .DefaultIfEmpty(0)
+                    .Max();
+                nextCariNum = maxNum + 1;
             }
 
-            // Olusturulan carileri takip et (ayni unvan/vkn tekrar gelmemesi icin)
-            var olusturulanCariler = new Dictionary<string, Cari>();
+            // Bu importta olusturulan carileri takip et
+            var importCarileri = new Dictionary<string, Cari>(StringComparer.OrdinalIgnoreCase);
 
             for (int row = 2; row <= rowCount; row++)
             {
                 try
                 {
-                    // Ornek dosya formati:
-                    // A: Unvani/Adi Soyadi, B: Vkn/Tckn, C: Fatura Tipi, D: Fatura Tarihi, E: Fatura No
-                    // F: Iskonto, G: Kdv Matrahi %0, H: Kdv Matrahi %1, I: Kdv Matrahi %10, J: Kdv Matrahi %20
-                    // K: Kdv%1, L: Kdv%10, M: Kdv%20, N: Odenecek Tutar
-                    
                     var cariUnvan = worksheet.Cells[row, 1].Text?.Trim();
                     var cariVkn = worksheet.Cells[row, 2].Text?.Trim();
                     var faturaTipiStr = worksheet.Cells[row, 3].Text?.Trim();
@@ -439,12 +435,12 @@ public class FaturaService : IFaturaService
                         continue;
                     }
 
-                    // CARÝ KONTROL: VKN ile bul, yoksa unvan ile bul, yoksa olustur
+                    // CARÝ KONTROL
                     Cari? cari = null;
-                    var cariKey = $"{cariUnvan?.ToLower()}|{cariVkn}";
+                    var cariKey = !string.IsNullOrEmpty(cariVkn) ? cariVkn : cariUnvan?.ToLower() ?? "";
                     
                     // Once bu importta olusturulmus carilere bak
-                    if (olusturulanCariler.TryGetValue(cariKey, out var mevcutCari))
+                    if (!string.IsNullOrEmpty(cariKey) && importCarileri.TryGetValue(cariKey, out var mevcutCari))
                     {
                         cari = mevcutCari;
                     }
@@ -465,10 +461,23 @@ public class FaturaService : IFaturaService
                     // Hala bulunamadiysa yeni olustur
                     if (cari == null)
                     {
+                        // Benzersiz CariKodu - timestamp ile garantili
+                        var uniqueCode = $"C{nextCariNum:D5}";
+                        
+                        // Kod zaten varsa timestamp ekle
+                        var codeExists = await _context.Cariler
+                            .IgnoreQueryFilters()
+                            .AnyAsync(c => c.CariKodu == uniqueCode);
+                        
+                        if (codeExists)
+                        {
+                            uniqueCode = $"C{DateTime.Now:HHmmssfff}";
+                        }
+                        
                         cari = new Cari
                         {
-                            CariKodu = $"C{nextCariNum:D5}",
-                            Unvan = cariUnvan,
+                            CariKodu = uniqueCode,
+                            Unvan = cariUnvan ?? "Bilinmeyen",
                             VergiNo = cariVkn ?? "",
                             CariTipi = yon == FaturaYonu.Giden ? CariTipi.Musteri : CariTipi.Tedarikci,
                             Aktif = true,
@@ -476,9 +485,12 @@ public class FaturaService : IFaturaService
                         };
                         
                         _context.Cariler.Add(cari);
-                        await _context.SaveChangesAsync(); // Id almak icin hemen kaydet
+                        await _context.SaveChangesAsync();
                         
-                        olusturulanCariler[cariKey] = cari;
+                        if (!string.IsNullOrEmpty(cariKey))
+                        {
+                            importCarileri[cariKey] = cari;
+                        }
                         nextCariNum++;
                     }
 
