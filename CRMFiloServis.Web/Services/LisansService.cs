@@ -88,7 +88,13 @@ public class LisansService : ILisansService
     {
         try
         {
-            // Basit makine kodu olusturma - cross-platform uyumlu
+            // Windows için System.Management ile donaným bilgilerini al
+            if (OperatingSystem.IsWindows())
+            {
+                return Task.FromResult(CRMFiloServis.Shared.LisansHelper.GetMachineCode());
+            }
+            
+            // Diðer platformlar için basit kod
             var machineName = Environment.MachineName;
             var userName = Environment.UserName;
             var osVersion = Environment.OSVersion.ToString();
@@ -96,7 +102,7 @@ public class LisansService : ILisansService
             var combined = $"{machineName}-{userName}-{osVersion}";
             using var sha = SHA256.Create();
             var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(combined));
-            return Task.FromResult(Convert.ToBase64String(hash).Substring(0, 16));
+            return Task.FromResult(Convert.ToBase64String(hash).Substring(0, 32).Replace("/", "").Replace("+", ""));
         }
         catch
         {

@@ -1,18 +1,50 @@
-ï»¿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject CRMFiloServis.Web.Services.IKullaniciService KullaniciService
+@inject CRMFiloServis.Web.Services.ILisansService LisansService
+@inject CRMFiloServis.Web.Services.IFirmaService FirmaService
 @inject NavigationManager Navigation
+@rendermode InteractiveServer
 
 @if (!isInitialized)
 {
     <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
         <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Yukleniyor...</span>
+            <span class="visually-hidden">Yükleniyor...</span>
         </div>
     </div>
 }
 else if (aktifKullanici == null)
 {
-    <!-- Kullanici giris yapmamis - Login sayfasina yonlendir -->
+    <!-- Kullanýcý giriþ yapmamýþ - Login sayfasýna yönlendir -->
+}
+else if (!lisansGecerli)
+{
+    <div class="d-flex justify-content-center align-items-center flex-column" style="height: 100vh; background: #f8f9fa;">
+        <div class="card shadow-lg" style="max-width: 500px;">
+            <div class="card-body text-center p-5">
+                <i class="bi bi-shield-exclamation text-danger" style="font-size: 4rem;"></i>
+                <h3 class="mt-3 text-danger">Lisans Geçersiz</h3>
+                <p class="text-muted">@lisansHataMesaji</p>
+                <hr />
+                <div class="alert alert-warning">
+                    <strong>Makine Kodu:</strong><br/>
+                    <code class="fs-5">@makineKodu</code>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="KopyalaMakineKodu">
+                        <i class="bi bi-clipboard"></i> Kopyala
+                    </button>
+                </div>
+                <p class="small text-muted">Bu kodu yetkili kiþiye göndererek lisans alabilirsiniz.</p>
+                <div class="d-grid gap-2">
+                    <a href="/ayarlar/lisans" class="btn btn-primary">
+                        <i class="bi bi-key me-2"></i>Lisans Gir
+                    </a>
+                    <button class="btn btn-outline-danger" @onclick="CikisYap">
+                        <i class="bi bi-box-arrow-right me-2"></i>Çýkýþ Yap
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 else
 {
@@ -22,19 +54,80 @@ else
         </div>
 
         <main>
-            <div class="top-row px-4 d-flex justify-content-between align-items-center">
-                <span class="text-muted">@DateTime.Now.ToString("dd MMMM yyyy, dddd")</span>
+            <div class="top-row px-4 d-flex justify-content-between align-items-center bg-white border-bottom">
+                <!-- Sol Taraf: Kullanýcý ve Tarih -->
                 <div class="d-flex align-items-center gap-3">
-                    <CRMFiloServis.Web.Components.Shared.FirmaSelector />
+                    <div class="d-flex align-items-center text-muted">
+                        <i class="bi bi-person-circle me-2 fs-5"></i>
+                        <div>
+                            <div class="fw-bold">@aktifKullanici.AdSoyad</div>
+                            <small class="text-muted">@aktifKullanici.Rol?.RolAdi</small>
+                        </div>
+                    </div>
+                    <div class="vr"></div>
+                    <div class="text-muted">
+                        <i class="bi bi-calendar3 me-2"></i>
+                        @DateTime.Now.ToString("dd MMMM yyyy, dddd", new System.Globalization.CultureInfo("tr-TR"))
+                    </div>
+                    @if (kalanLisansGunu <= 30)
+                    {
+                        <div class="vr"></div>
+                        <div class="badge bg-warning text-dark">
+                            <i class="bi bi-clock-history me-1"></i>
+                            Lisans: @kalanLisansGunu gün kaldý
+                        </div>
+                    }
+                </div>
+
+                <!-- Sað Taraf: Firma ve Ayarlar -->
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Firma Seçici -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-building me-1"></i>@aktifFirmaAdi
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" style="min-width: 250px;">
+                            @foreach (var firma in firmalar)
+                            {
+                                <li>
+                                    <button class="dropdown-item @(firma.Id == aktifFirmaId ? "active" : "")" 
+                                            @onclick="() => FirmaSecildi(firma)">
+                                        <i class="bi bi-building me-2"></i>@firma.FirmaAdi
+                                        @if (firma.VarsayilanFirma)
+                                        {
+                                            <i class="bi bi-star-fill text-warning ms-2"></i>
+                                        }
+                                    </button>
+                                </li>
+                            }
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-primary" href="/ayarlar/firma">
+                                    <i class="bi bi-gear me-2"></i>Firma Ayarlarý
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Ayarlar Menüsü -->
                     <div class="dropdown">
                         <button class="btn btn-light btn-sm dropdown-toggle border" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle me-1"></i>@aktifKullanici.AdSoyad
+                            <i class="bi bi-gear me-1"></i>Ayarlar
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><span class="dropdown-item-text text-muted small">@aktifKullanici.Rol?.RolAdi</span></li>
+                            <li><a class="dropdown-item" href="/ayarlar/profil">
+                                <i class="bi bi-person me-2"></i>Profil Ayarlarý
+                            </a></li>
+                            <li><a class="dropdown-item" href="/ayarlar/lisans">
+                                <i class="bi bi-key me-2"></i>Lisans Bilgileri
+                            </a></li>
+                            <li><a class="dropdown-item" href="/ayarlar/veritabani">
+                                <i class="bi bi-database me-2"></i>Veritabaný Ayarlarý
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/ayarlar/profil"><i class="bi bi-gear me-2"></i>Ayarlar</a></li>
-                            <li><a class="dropdown-item text-danger" @onclick="CikisYap" style="cursor:pointer;"><i class="bi bi-box-arrow-right me-2"></i>Cikis Yap</a></li>
+                            <li><a class="dropdown-item text-danger" @onclick="CikisYap" style="cursor:pointer;">
+                                <i class="bi bi-box-arrow-right me-2"></i>Çýkýþ Yap
+                            </a></li>
                         </ul>
                     </div>
                 </div>
@@ -53,12 +146,20 @@ else
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
-    <span class="dismiss">ðŸ—™</span>
+    <span class="dismiss">??</span>
 </div>
 
 @code {
     private CRMFiloServis.Shared.Entities.Kullanici? aktifKullanici;
     private bool isInitialized = false;
+    private bool lisansGecerli = false;
+    private string lisansHataMesaji = "";
+    private string makineKodu = "";
+    private int kalanLisansGunu = 0;
+
+    private List<CRMFiloServis.Shared.Entities.Firma> firmalar = new();
+    private int aktifFirmaId;
+    private string aktifFirmaAdi = "Firma";
 
     protected override async Task OnInitializedAsync()
     {
@@ -68,7 +169,85 @@ else
         if (aktifKullanici == null)
         {
             Navigation.NavigateTo("/login", true);
+            return;
         }
+
+        // Lisans kontrolü
+        await LisansKontrol();
+
+        if (lisansGecerli)
+        {
+            // Firma bilgilerini yükle
+            await FirmalariYukle();
+        }
+    }
+
+    private async Task LisansKontrol()
+    {
+        try
+        {
+            var lisans = await LisansService.GetAktifLisansAsync();
+            makineKodu = await LisansService.GetMakineKoduAsync();
+
+            if (lisans == null)
+            {
+                lisansGecerli = false;
+                lisansHataMesaji = "Lisans bulunamadý. Lütfen geçerli bir lisans anahtarý girin.";
+                return;
+            }
+
+            // Tarih kontrolü
+            if (DateTime.UtcNow > lisans.BitisTarihi)
+            {
+                lisansGecerli = false;
+                lisansHataMesaji = $"Lisans süresi {lisans.BitisTarihi:dd.MM.yyyy} tarihinde dolmuþ. Lütfen lisansý yenileyin.";
+                return;
+            }
+
+            // Makine kodu kontrolü
+            if (!string.IsNullOrEmpty(lisans.MakineKodu) && lisans.MakineKodu != makineKodu)
+            {
+                lisansGecerli = false;
+                lisansHataMesaji = $"Bu lisans baþka bir bilgisayar için geçerlidir. Lütfen bu bilgisayar için yeni lisans alýn.";
+                return;
+            }
+
+            lisansGecerli = true;
+            kalanLisansGunu = lisans.KalanGun;
+        }
+        catch (Exception ex)
+        {
+            lisansGecerli = false;
+            lisansHataMesaji = $"Lisans kontrolü sýrasýnda hata oluþtu: {ex.Message}";
+        }
+    }
+
+    private async Task FirmalariYukle()
+    {
+        try
+        {
+            var aktifFirma = FirmaService.GetAktifFirma();
+            aktifFirmaId = aktifFirma.FirmaId;
+            aktifFirmaAdi = aktifFirma.FirmaAdi;
+        }
+        catch { }
+    }
+
+    private void FirmaSecildi(CRMFiloServis.Shared.Entities.Firma firma)
+    {
+        FirmaService.SetAktifFirma(firma.Id);
+        aktifFirmaId = firma.Id;
+        aktifFirmaAdi = firma.FirmaAdi;
+        StateHasChanged();
+        
+        // Sayfayý yenile
+        Navigation.NavigateTo(Navigation.Uri, true);
+    }
+
+    private void KopyalaMakineKodu()
+    {
+        // JavaScript interop ile clipboard'a kopyalama yapýlacak
+        // Þimdilik basit alert
     }
 
     private async Task CikisYap()
