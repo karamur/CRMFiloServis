@@ -78,12 +78,17 @@
                                         }
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(arac.Id)" title="Düzenle">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => SilOnay(arac)" title="Sil">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-info" @onclick="() => EvraklarGit(arac.Id)" title="Evraklar">
+                                                <i class="bi bi-folder2-open"></i>
+                                            </button>
+                                            <button class="btn btn-outline-primary" @onclick="() => Duzenle(arac.Id)" title="Duzenle">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" @onclick="() => SilOnay(arac)" title="Sil">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -167,4 +172,9 @@
         AracTipi.Panelvan => "Panelvan",
         _ => tip.ToString()
     };
+
+    private void EvraklarGit(int aracId)
+    {
+        Navigation.NavigateTo($"/araclar/{aracId}/evraklar");
+    }
 }

@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<MasrafKalemi> MasrafKalemleri { get; set; }
     public DbSet<AracMasraf> AracMasraflari { get; set; }
     public DbSet<ServisCalisma> ServisCalismalari { get; set; }
+    public DbSet<AracEvrak> AracEvraklari { get; set; }
+    public DbSet<AracEvrakDosya> AracEvrakDosyalari { get; set; }
 
     // Fatura Modulu
     public DbSet<Fatura> Faturalar { get; set; }

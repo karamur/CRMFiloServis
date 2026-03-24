@@ -775,12 +775,16 @@
             await BudgetService.OdemeYapAsync(odemeYapilacak.Id, odemeYapRequest);
             ToastService.ShowSuccess(odemeYapilacak.MasrafKalemi + " odendi!");
             ModalKapat();
+            
+            // Tum veriyi yenile
             await YenileDataAsync();
             
-            // Gun seciliyse guncelle
+            // Gun seciliyse, takvim verisi yenilendikten sonra tekrar sec
             if (secilenGun.HasValue)
             {
-                GunSec(secilenGun.Value);
+                var gunData = takvimData?.FirstOrDefault(t => t.Gun == secilenGun.Value);
+                secilenGunOdemeleri = gunData?.Odemeler?.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList() ?? new List<BudgetOdeme>();
+                StateHasChanged();
             }
         }
         catch (Exception ex)
@@ -843,19 +847,24 @@
 
     private async Task OdemeSilOnay(BudgetOdeme odeme)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", $" '{odeme.MasrafKalemi}' odemesini silmek istediginizden emin misiniz? ");
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"'{odeme.MasrafKalemi}' odemesini silmek istediginizden emin misiniz?");
         if (confirmed)
         {
             try
             {
-                // Gercek silme - IsDeleted yerine kalici silme
+                // Kalici silme
                 await BudgetService.HardDeleteOdemeAsync(odeme.Id);
                 ToastService.ShowSuccess("Odeme silindi.");
+                
+                // Tum veriyi yenile
                 await YenileDataAsync();
                 
+                // Gun seciliyse guncelle
                 if (secilenGun.HasValue)
                 {
-                    GunSec(secilenGun.Value);
+                    var gunData = takvimData?.FirstOrDefault(t => t.Gun == secilenGun.Value);
+                    secilenGunOdemeleri = gunData?.Odemeler?.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList() ?? new List<BudgetOdeme>();
+                    StateHasChanged();
                 }
             }
             catch (Exception ex)
