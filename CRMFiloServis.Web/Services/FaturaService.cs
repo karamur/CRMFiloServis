@@ -415,7 +415,7 @@ public class FaturaService : IFaturaService
                     if (existingFatura != null)
                     {
                         result.SkippedCount++;
-                        result.Errors.Add($"Satir {row}: '{faturaNo}' zaten mevcut.");
+                        result.Errors.Add $"Satir {row}: '{faturaNo}' zaten mevcut.");
                         continue;
                     }
 
@@ -478,26 +478,36 @@ public class FaturaService : IFaturaService
                     };
 
                     _context.Faturalar.Add(fatura);
+                    
+                    // Her faturayý tek tek kaydet - hata durumunda diger faturalar etkilenmesin
+                    await _context.SaveChangesAsync();
+                    
                     result.ImportedItems.Add(fatura);
                     result.ImportedCount++;
                 }
                 catch (Exception ex)
                 {
-                    result.Errors.Add($"Satir {row}: {ex.Message}");
+                    // Detayli hata mesaji
+                    var errorMessage = ex.InnerException?.Message ?? ex.Message;
+                    result.Errors.Add($"Satir {row}: {errorMessage}");
                     result.ErrorCount++;
+                    
+                    // Context'i temizle - hatali entity'leri kaldir
+                    foreach (var entry in _context.ChangeTracker.Entries().ToList())
+                    {
+                        if (entry.State == EntityState.Added)
+                        {
+                            entry.State = EntityState.Detached;
+                        }
+                    }
                 }
-            }
-
-            if (result.ImportedCount > 0)
-            {
-                await _context.SaveChangesAsync();
             }
             
             result.Success = result.ImportedCount > 0;
         }
         catch (Exception ex)
         {
-            result.Errors.Add($"Excel okuma hatasi: {ex.Message}");
+            result.Errors.Add($"Excel okuma hatasi: {ex.InnerException?.Message ?? ex.Message}");
         }
 
         return result;
