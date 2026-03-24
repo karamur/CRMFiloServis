@@ -3,6 +3,7 @@ using System;
 using CRMFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CRMFiloServis.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260323234714_CariAktifBorcAlacak")]
+    partial class CariAktifBorcAlacak
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -818,9 +821,6 @@ namespace CRMFiloServis.Web.Data.Migrations
                     b.Property<bool>("FaturaIleKapatildi")
                         .HasColumnType("boolean");
 
-                    b.Property<int?>("FirmaId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime?>("GercekOdemeTarihi")
                         .HasColumnType("timestamp without time zone");
 
@@ -882,8 +882,6 @@ namespace CRMFiloServis.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("FaturaId");
-
-                    b.HasIndex("FirmaId");
 
                     b.HasIndex("OdemeYapildigiHesapId");
 
@@ -2528,17 +2526,11 @@ namespace CRMFiloServis.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("FaturaId");
 
-                    b.HasOne("CRMFiloServis.Shared.Entities.Firma", "Firma")
-                        .WithMany()
-                        .HasForeignKey("FirmaId");
-
                     b.HasOne("CRMFiloServis.Shared.Entities.BankaHesap", "OdemeYapildigiHesap")
                         .WithMany()
                         .HasForeignKey("OdemeYapildigiHesapId");
 
                     b.Navigation("Fatura");
-
-                    b.Navigation("Firma");
 
                     b.Navigation("OdemeYapildigiHesap");
                 });

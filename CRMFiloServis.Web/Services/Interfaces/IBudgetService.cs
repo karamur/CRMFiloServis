@@ -4,28 +4,28 @@ namespace CRMFiloServis.Web.Services;
 
 public interface IBudgetService
 {
-    // Ödeme Ýþlemleri
-    Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null);
-    Task<List<BudgetOdeme>> GetBekleyenOdemelerAsync(int yil, int? ay = null); // Sadece bekleyenler
+    // Odeme Islemleri
+    Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null, int? firmaId = null);
+    Task<List<BudgetOdeme>> GetBekleyenOdemelerAsync(int yil, int? ay = null);
     Task<List<BudgetOdeme>> GetOdemelerByDateRangeAsync(DateTime baslangic, DateTime bitis);
     Task<BudgetOdeme?> GetOdemeByIdAsync(int id);
     Task<BudgetOdeme> CreateOdemeAsync(BudgetOdeme odeme);
     Task<BudgetOdeme> UpdateOdemeAsync(BudgetOdeme odeme);
-    Task DeleteOdemeAsync(int id); // Soft delete - silinene ceker
+    Task DeleteOdemeAsync(int id); // Soft delete
+    Task HardDeleteOdemeAsync(int id); // Kalici silme
     Task<BudgetOdeme> OdemeYapAsync(int odemeId, OdemeYapRequest request); // Kasa=Borc, Odeme=Alacak
 
     // Fatura ile kapatma
     Task<BudgetOdeme> FaturaIleKapatAsync(int odemeId, int faturaId);
 
-    // Taksitli Ödeme Ýþlemleri
+    // Taksitli Odeme Islemleri
     Task<List<BudgetOdeme>> CreateTaksitliOdemeAsync(TaksitliOdemeRequest request);
     Task<List<BudgetOdeme>> GetTaksitGrubuAsync(Guid taksitGrupId);
     Task UpdateTaksitGrubuAsync(List<BudgetOdeme> taksitler);
     
-    // Toplu Ýþlemler (Excel)
-    Task<List<BudgetOdeme>> CreateBulkOdemeAsync(List<BudgetOdeme> odemeler);
-    byte[] GenerateExcelTemplate();
-    Task<ExcelImportResult> ImportFromExcelAsync(byte[] fileContent);
+    // Excel Islemleri
+    Task<byte[]> GetExcelSablonAsync(List<Firma> firmalar);
+    Task<int> ImportFromExcelAsync(byte[] fileContent);
 
     // Masraf Kalemleri
     Task<List<BudgetMasrafKalemi>> GetMasrafKalemleriAsync();
@@ -34,16 +34,16 @@ public interface IBudgetService
     Task DeleteMasrafKalemiAsync(int id);
 
     // Raporlar
-    Task<BudgetOzet> GetAylikOzetAsync(int yil, int ay);
+    Task<BudgetOzet> GetAylikOzetAsync(int yil, int ay, int? firmaId = null);
     Task<BudgetOzet> GetPeriyodOzetAsync(DateTime baslangic, DateTime bitis);
-    Task<BudgetYillikOzet> GetYillikOzetAsync(int yil);
-    Task<List<BudgetGunlukOzet>> GetTakvimDataAsync(int yil, int ay);
+    Task<BudgetYillikOzet> GetYillikOzetAsync(int yil, int? firmaId = null);
+    Task<List<BudgetGunlukOzet>> GetTakvimDataAsync(int yil, int ay, int? firmaId = null);
     Task<List<BudgetKategoriOzet>> GetKategoriOzetAsync(int yil, int? ay = null);
     Task<List<BudgetKategoriOzet>> GetKategoriOzetByDateRangeAsync(DateTime baslangic, DateTime bitis);
     Task<List<BudgetTrendData>> GetTrendDataAsync(DateTime baslangic, DateTime bitis, string periyod);
     
     // Kredi/Taksit Raporlari
-    Task<List<KrediOzet>> GetAktifKredilerAsync();
+    Task<List<KrediOzet>> GetAktifKredilerAsync(int? firmaId = null);
     Task<List<AylikKrediTaksitRapor>> GetAylikKrediTaksitRaporuAsync(int yil);
 }
 
@@ -55,6 +55,7 @@ public class TaksitliOdemeRequest
     public decimal ToplamTutar { get; set; }
     public int TaksitSayisi { get; set; }
     public string? Notlar { get; set; }
+    public int? FirmaId { get; set; }
 }
 
 public class OdemeYapRequest
@@ -111,6 +112,8 @@ public class BudgetGunlukOzet
     public int Gun { get; set; }
     public decimal ToplamOdeme { get; set; }
     public int OdemeSayisi { get; set; }
+    public decimal BekleyenToplamOdeme { get; set; }
+    public int BekleyenOdemeSayisi { get; set; }
     public List<BudgetOdeme> Odemeler { get; set; } = new();
 }
 

@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject IBudgetService BudgetService
 @inject IBankaHesapService BankaHesapService
+@inject IFirmaService FirmaService
 @inject IToastService ToastService
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -27,38 +28,41 @@
             }
         </div>
         <div class="d-flex gap-2 flex-wrap align-items-center">
+            <!-- Firma Filtresi -->
+            <select class="form-select form-select-sm" style="width: 150px;" @bind="secilenFirmaId" @bind:after="YenileDataAsync">
+                <option value="0">Tum Firmalar</option>
+                @if (firmalar != null)
+                {
+                    @foreach (var firma in firmalar)
+                    {
+                        <option value="@firma.Id">@firma.FirmaAdi</option>
+                    }
+                }
+            </select>
             <!-- Periyod Secimi -->
             <div class="btn-group btn-group-sm">
-                <button class="btn @(secilenPeriyod == "gunluk" ? "btn-primary" : "btn-outline-primary")" @onclick="PeriyodGunlukSec">Gunluk</button>
-                <button class="btn @(secilenPeriyod == "haftalik" ? "btn-primary" : "btn-outline-primary")" @onclick="PeriyodHaftalikSec">Haftalik</button>
-                <button class="btn @(secilenPeriyod == "15gunluk" ? "btn-primary" : "btn-outline-primary")" @onclick="Periyod15GunlukSec">15 Gun</button>
                 <button class="btn @(secilenPeriyod == "aylik" ? "btn-primary" : "btn-outline-primary")" @onclick="PeriyodAylikSec">Aylik</button>
-                <button class="btn @(secilenPeriyod == "ozel" ? "btn-primary" : "btn-outline-primary")" @onclick="PeriyodOzelSec">Ozel</button>
+                <button class="btn @(secilenPeriyod == "yillik" ? "btn-primary" : "btn-outline-primary")" @onclick="PeriyodYillikSec">Yillik</button>
             </div>
-            @if (secilenPeriyod == "ozel")
-            {
-                <input type="date" class="form-control form-control-sm" style="width:130px;" @bind="ozelBaslangic" />
-                <input type="date" class="form-control form-control-sm" style="width:130px;" @bind="ozelBitis" />
-                <button class="btn btn-sm btn-primary" @onclick="OzelTarihUygula">Uygula</button>
-            }
-            else
-            {
-                <select class="form-select form-select-sm" style="width: 90px;" @bind="secilenYil" @bind:after="YenileDataAsync">
-                    @for (int y = DateTime.Today.Year + 2; y >= DateTime.Today.Year - 5; y--)
-                    {
-                        <option value="@y">@y</option>
-                    }
-                </select>
-                <select class="form-select form-select-sm" style="width: 110px;" @bind="secilenAy" @bind:after="YenileDataAsync">
-                    <option value="0">Tum Yil</option>
-                    @for (int m = 1; m <= 12; m++)
-                    {
-                        <option value="@m">@GetAyAdi(m)</option>
-                    }
-                </select>
-            }
-            <button class="btn btn-primary btn-sm" @onclick="YeniOdemeAc" title="Yeni Odeme"><i class="bi bi-plus-lg"></i></button>
-            <button class="btn btn-success btn-sm" @onclick="TaksitliOdemeAc" title="Taksitli Odeme"><i class="bi bi-calendar-plus"></i></button>
+            <select class="form-select form-select-sm" style="width: 90px;" @bind="secilenYil" @bind:after="YenileDataAsync">
+                @for (int y = DateTime.Today.Year + 2; y >= DateTime.Today.Year - 5; y--)
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+            <select class="form-select form-select-sm" style="width: 110px;" @bind="secilenAy" @bind:after="YenileDataAsync">
+                <option value="0">Tum Yil</option>
+                @for (int m = 1; m <= 12; m++)
+                {
+                    <option value="@m">@GetAyAdi(m)</option>
+                }
+            </select>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-primary" @onclick="YeniOdemeAc" title="Yeni Odeme"><i class="bi bi-plus-lg"></i></button>
+                <button class="btn btn-success" @onclick="TaksitliOdemeAc" title="Taksitli Odeme"><i class="bi bi-calendar-plus"></i></button>
+                <button class="btn btn-info" @onclick="SablonIndir" title="Excel Sablon Indir"><i class="bi bi-download"></i></button>
+                <button class="btn btn-warning" @onclick="ExcelYukleModalAc" title="Excel Yukle"><i class="bi bi-upload"></i></button>
+            </div>
         </div>
     </div>
 
@@ -111,7 +115,7 @@
         </div>
 
         <div class="row g-3">
-            <!-- Sol: Takvim ve Kredi Listesi -->
+            <!-- Sol: Takvim -->
             <div class="col-md-5">
                 <!-- Takvim -->
                 <div class="card mb-3">
@@ -162,15 +166,15 @@
                                                     @onclick="() => GunSec(currentGun)">
                                                     <div class="d-flex justify-content-between">
                                                         <strong>@currentGun</strong>
-                                                        @if (gunData != null && gunData.OdemeSayisi > 0)
+                                                        @if (gunData != null && gunData.BekleyenOdemeSayisi > 0)
                                                         {
-                                                            <span class="badge @(seciliMi ? "bg-light text-primary" : "bg-danger") rounded-pill" style="font-size: 0.6rem;">@gunData.OdemeSayisi</span>
+                                                            <span class="badge @(seciliMi ? "bg-light text-primary" : "bg-danger") rounded-pill" style="font-size: 0.6rem;">@gunData.BekleyenOdemeSayisi</span>
                                                         }
                                                     </div>
-                                                    @if (gunData != null && gunData.ToplamOdeme > 0)
+                                                    @if (gunData != null && gunData.BekleyenToplamOdeme > 0)
                                                     {
                                                         <div class="@(seciliMi ? "" : "text-danger")" style="font-size: 0.65rem;">
-                                                            @FormatPara(gunData.ToplamOdeme)
+                                                            @FormatPara(gunData.BekleyenToplamOdeme)
                                                         </div>
                                                     }
                                                 </td>
@@ -185,18 +189,18 @@
                 </div>
 
                 <!-- Kredi Taksit Listesi -->
-                <div class="card mb-3">
+                <div class="card">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center">
                         <h6 class="mb-0"><i class="bi bi-credit-card me-2"></i>Kredi/Taksitler</h6>
-                        <a href="/butce/kredi-raporu" class="btn btn-outline-info btn-sm py-0">Rapor</a>
+                        <a href="/butce/odemeler" class="btn btn-outline-info btn-sm py-0">Tum Odemeler</a>
                     </div>
                     <div class="card-body p-0">
-                        <div class="list-group list-group-flush" style="max-height: 180px; overflow-y: auto;">
+                        <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
                             @if (aktifKrediler != null && aktifKrediler.Any())
                             {
                                 @foreach (var kredi in aktifKrediler.Take(5))
                                 {
-                                    <div class="list-group-item list-group-item-action p-2" style="cursor: pointer;" @onclick="() => KrediFiltrele(kredi)">
+                                    <div class="list-group-item list-group-item-action p-2">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
                                                 <small><strong>@kredi.MasrafKalemi</strong></small>
@@ -221,19 +225,9 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Trend Grafik -->
-                <div class="card">
-                    <div class="card-header py-2">
-                        <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Trend</h6>
-                    </div>
-                    <div class="card-body py-2">
-                        <canvas id="trendChart" style="height: 120px;"></canvas>
-                    </div>
-                </div>
             </div>
 
-            <!-- Sag: Detay ve Listeler -->
+            <!-- Sag: Odeme Listesi -->
             <div class="col-md-7">
                 @if (secilenGun.HasValue)
                 {
@@ -249,31 +243,33 @@
                                 {
                                     <div class="list-group-item p-2">
                                         <div class="d-flex justify-content-between align-items-start">
-                                            <div class="flex-grow-1" style="cursor: pointer;" @onclick="() => OdemeDetayAc(odeme)">
+                                            <div>
                                                 <strong>@odeme.MasrafKalemi</strong>
-                                                @if (!string.IsNullOrEmpty(odeme.Aciklama))
-                                                {
-                                                    <br /><small class="text-muted">@odeme.Aciklama</small>
-                                                }
                                                 @if (odeme.TaksitliMi)
                                                 {
                                                     <span class="badge bg-info ms-1">@odeme.KacinciTaksit/@odeme.ToplamTaksitSayisi</span>
                                                 }
+                                                <br /><small class="text-muted">@(odeme.Aciklama ?? "")</small>
                                             </div>
                                             <div class="text-end">
                                                 <strong class="text-danger">@FormatPara(odeme.Miktar)</strong>
                                                 <br />
-                                                @if (odeme.Durum == OdemeDurum.Bekliyor)
-                                                {
-                                                    <button class="btn btn-success btn-sm py-0 px-1" @onclick="() => OdemeYapModalAc(odeme)">
-                                                        <i class="bi bi-cash"></i> Ode
-                                                    </button>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-success">Odendi</span>
-                                                }
+                                                <span class="badge @GetDurumClass(odeme.Durum)">@GetDurumAdi(odeme.Durum)</span>
                                             </div>
+                                        </div>
+                                        <div class="mt-2 d-flex gap-1">
+                                            @if (odeme.Durum == OdemeDurum.Bekliyor)
+                                            {
+                                                <button class="btn btn-success btn-sm py-0" @onclick="() => OdemeYapModalAc(odeme)">
+                                                    <i class="bi bi-cash me-1"></i>Ode
+                                                </button>
+                                            }
+                                            <button class="btn btn-outline-primary btn-sm py-0" @onclick="() => OdemeDuzenle(odeme)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm py-0" @onclick="() => OdemeSilOnay(odeme)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 }
@@ -293,60 +289,51 @@
                 }
                 else
                 {
-                    <!-- Odeme Listesi -->
-                    <div class="card mb-3">
+                    <!-- Bekleyen Odeme Listesi -->
+                    <div class="card">
                         <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Odemeler</h6>
-                            <div class="d-flex gap-2 align-items-center">
-                                <select class="form-select form-select-sm" style="width:120px;" @bind="krediFiltre" @bind:after="FiltreUygula">
-                                    <option value="tum">Tum</option>
-                                    <option value="kredi">Kredi/Taksit</option>
-                                    <option value="normal">Normal</option>
-                                    <option value="bekleyen">Bekleyen</option>
-                                    <option value="odenen">Odenen</option>
-                                </select>
-                                <span class="badge bg-secondary">@filtrelenmisOdemeler.Count</span>
-                            </div>
+                            <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Bekleyen Odemeler</h6>
+                            <span class="badge bg-warning text-dark">@bekleyenOdemeler.Count kayit</span>
                         </div>
                         <div class="card-body p-0">
-                            <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                                 <table class="table table-hover table-sm mb-0">
                                     <thead class="table-light sticky-top">
                                         <tr>
                                             <th>Tarih</th>
                                             <th>Masraf</th>
                                             <th class="text-end">Tutar</th>
-                                            <th class="text-center">Durum</th>
+                                            <th class="text-center">Taksit</th>
                                             <th class="text-center">Islem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var odeme in filtrelenmisOdemeler.Take(50))
+                                        @foreach (var odeme in bekleyenOdemeler.Take(50))
                                         {
                                             <tr>
-                                                <td style="cursor: pointer;" @onclick="() => OdemeDetayAc(odeme)">
-                                                    <small>@odeme.OdemeTarihi.ToString("dd.MM")</small>
-                                                    @if (odeme.TaksitliMi)
+                                                <td><small>@odeme.OdemeTarihi.ToString("dd.MM")</small></td>
+                                                <td>
+                                                    @odeme.MasrafKalemi
+                                                    @if (!string.IsNullOrEmpty(odeme.Aciklama))
                                                     {
-                                                        <span class="badge bg-info ms-1" style="font-size: 0.55rem;">T</span>
+                                                        <br /><small class="text-muted">@odeme.Aciklama</small>
                                                     }
                                                 </td>
-                                                <td style="cursor: pointer;" @onclick="() => OdemeDetayAc(odeme)">@odeme.MasrafKalemi</td>
-                                                <td class="text-end">@FormatPara(odeme.Miktar)</td>
+                                                <td class="text-end"><strong>@FormatPara(odeme.Miktar)</strong></td>
                                                 <td class="text-center">
-                                                    <span class="badge @GetDurumClass(odeme.Durum)" style="font-size: 0.6rem;">@GetDurumAdi(odeme.Durum)</span>
+                                                    @if (odeme.TaksitliMi)
+                                                    {
+                                                        <span class="badge bg-info">@odeme.KacinciTaksit/@odeme.ToplamTaksitSayisi</span>
+                                                    }
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group btn-group-sm">
-                                                        <button class="btn btn-outline-secondary py-0 px-1" @onclick="() => OdemeDuzenle(odeme)" title="Duzenle">
+                                                        <button class="btn btn-success py-0 px-1" @onclick="() => OdemeYapModalAc(odeme)" title="Ode">
+                                                            <i class="bi bi-cash" style="font-size: 0.7rem;"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-primary py-0 px-1" @onclick="() => OdemeDuzenle(odeme)" title="Duzenle">
                                                             <i class="bi bi-pencil" style="font-size: 0.7rem;"></i>
                                                         </button>
-                                                        @if (odeme.Durum == OdemeDurum.Bekliyor)
-                                                        {
-                                                            <button class="btn btn-success py-0 px-1" @onclick="() => OdemeYapModalAc(odeme)" title="Ode">
-                                                                <i class="bi bi-cash" style="font-size: 0.7rem;"></i>
-                                                            </button>
-                                                        }
                                                         <button class="btn btn-outline-danger py-0 px-1" @onclick="() => OdemeSilOnay(odeme)" title="Sil">
                                                             <i class="bi bi-trash" style="font-size: 0.7rem;"></i>
                                                         </button>
@@ -356,35 +343,6 @@
                                         }
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Kategori Grafik -->
-                    <div class="card">
-                        <div class="card-header py-2">
-                            <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Kategori Dagilimi</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-6">
-                                    <canvas id="kategoriChart" style="height: 150px;"></canvas>
-                                </div>
-                                <div class="col-6">
-                                    @if (kategoriOzet != null && kategoriOzet.Any())
-                                    {
-                                        @foreach (var kat in kategoriOzet.Take(5))
-                                        {
-                                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                                <small>
-                                                    <span class="badge me-1" style="background-color: @(kat.Renk ?? "#6c757d"); width: 10px; height: 10px; padding: 0;"></span>
-                                                    @kat.MasrafKalemi
-                                                </small>
-                                                <small><strong>@FormatPara(kat.Toplam)</strong></small>
-                                            </div>
-                                        }
-                                    }
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -435,13 +393,9 @@
                                 <option value="">Secin...</option>
                                 @foreach (var hesap in bankaHesaplari.Where(h => odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? h.HesapTipi == HesapTipi.Kasa : h.HesapTipi != HesapTipi.Kasa))
                                 {
-                                    <option value="@hesap.Id">@hesap.HesapAdi @(hesap.BankaAdi != null ? $"- {hesap.BankaAdi}" : "")</option>
+                                    <option value="@hesap.Id">@hesap.HesapAdi</option>
                                 }
                             </select>
-                            <small class="text-muted">
-                                <i class="bi bi-info-circle me-1"></i>
-                                @(odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? "Kasa = BORC (Para Cikisi)" : "Banka = BORC (Para Cikisi)")
-                            </small>
                         </div>
                     }
                     <div class="mb-3">
@@ -460,49 +414,6 @@
     </div>
 }
 
-<!-- Odeme Detay Modal -->
-@if (showOdemeDetayModal && detayOdeme != null)
-{
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>Odeme Detayi</h5>
-                    <button type="button" class="btn-close" @onclick="ModalKapat"></button>
-                </div>
-                <div class="modal-body">
-                    <table class="table table-borderless mb-0">
-                        <tr><th width="120">Tarih:</th><td>@detayOdeme.OdemeTarihi.ToString("dd.MM.yyyy")</td></tr>
-                        <tr><th>Masraf:</th><td><strong>@detayOdeme.MasrafKalemi</strong></td></tr>
-                        <tr><th>Aciklama:</th><td>@(detayOdeme.Aciklama ?? "-")</td></tr>
-                        <tr><th>Tutar:</th><td><strong class="text-danger fs-4">@FormatPara(detayOdeme.Miktar)</strong></td></tr>
-                        <tr><th>Durum:</th><td><span class="badge @GetDurumClass(detayOdeme.Durum) fs-6">@GetDurumAdi(detayOdeme.Durum)</span></td></tr>
-                        @if (detayOdeme.TaksitliMi)
-                        {
-                            <tr><th>Taksit:</th><td><span class="badge bg-info fs-6">@detayOdeme.KacinciTaksit / @detayOdeme.ToplamTaksitSayisi</span></td></tr>
-                        }
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    @if (detayOdeme.Durum == OdemeDurum.Bekliyor)
-                    {
-                        <button class="btn btn-success" @onclick="DetayOdemeYap">
-                            <i class="bi bi-cash me-1"></i>Odeme Yap
-                        </button>
-                    }
-                    <button class="btn btn-primary" @onclick="() => OdemeDuzenle(detayOdeme)">
-                        <i class="bi bi-pencil me-1"></i>Duzenle
-                    </button>
-                    <button class="btn btn-outline-danger" @onclick="() => OdemeSil(detayOdeme)">
-                        <i class="bi bi-trash me-1"></i>Sil
-                    </button>
-                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 <!-- Yeni/Duzenle Odeme Modal -->
 @if (showOdemeModal)
 {
@@ -514,6 +425,19 @@
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Firma</label>
+                        <select class="form-select" @bind="editOdeme.FirmaId">
+                            <option value="">Firma Secin...</option>
+                            @if (firmalar != null)
+                            {
+                                @foreach (var f in firmalar)
+                                {
+                                    <option value="@f.Id">@f.FirmaAdi</option>
+                                }
+                            }
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Odeme Tarihi *</label>
                         <input type="date" class="form-control" @bind="editOdeme.OdemeTarihi" />
@@ -572,6 +496,19 @@
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Firma</label>
+                        <select class="form-select" @bind="taksitRequest.FirmaId">
+                            <option value="">Firma Secin...</option>
+                            @if (firmalar != null)
+                            {
+                                @foreach (var f in firmalar)
+                                {
+                                    <option value="@f.Id">@f.FirmaAdi</option>
+                                }
+                            }
+                        </select>
+                    </div>
                     <div class="row">
                         <div class="col-6">
                             <div class="mb-3">
@@ -582,7 +519,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label class="form-label">Taksit Sayisi *</label>
-                                <input type="number" class="form-control" @bind="taksitRequest.TaksitSayisi" min="2" max="60" />
+                                <input type="number" class="form-control" @bind="taksitRequest.TaksitSayisi" min="2" max="120" />
                             </div>
                         </div>
                     </div>
@@ -635,43 +572,73 @@
     </div>
 }
 
+<!-- Excel Yukle Modal -->
+@if (showExcelModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel me-2"></i>Excel'den Yukle</h5>
+                    <button type="button" class="btn-close" @onclick="ModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Excel Dosyasi Sec</label>
+                        <InputFile class="form-control" OnChange="ExcelDosyaSecildi" accept=".xlsx,.xls" />
+                    </div>
+                    <div class="alert alert-info py-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Sablon dosyasiniindirip doldurduktan sonra yukleyin.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-info" @onclick="SablonIndir">
+                        <i class="bi bi-download me-1"></i>Sablon Indir
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
+                    <button type="button" class="btn btn-success" @onclick="ExcelYukle" disabled="@(excelDosya == null)">
+                        <i class="bi bi-upload me-1"></i>Yukle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private int secilenYil;
     private int secilenAy;
     private int aktifTakvimAy;
+    private int secilenFirmaId = 0;
     private string secilenPeriyod = "aylik";
-    private string krediFiltre = "tum";
-    private DateTime ozelBaslangic = DateTime.Today.AddDays(-30);
-    private DateTime ozelBitis = DateTime.Today;
 
     private int? secilenGun = null;
     private DateTime secilenGunTarih;
     private List<BudgetOdeme> secilenGunOdemeleri = new();
+    private List<BudgetOdeme> bekleyenOdemeler = new();
 
     private bool isLoading = true;
-    private bool chartRendered = false;
     private BudgetOzet? ozet;
     private List<BudgetOdeme> odemeler = new();
-    private List<BudgetOdeme> filtrelenmisOdemeler = new();
     private List<BudgetGunlukOzet>? takvimData;
-    private List<BudgetKategoriOzet>? kategoriOzet;
-    private List<BudgetTrendData>? trendData;
     private List<BudgetMasrafKalemi>? masrafKalemleri;
     private List<BankaHesap>? bankaHesaplari;
+    private List<Firma>? firmalar;
     private List<KrediOzet>? aktifKrediler;
     private decimal krediTaksitToplam = 0;
     private int krediTaksitAdet = 0;
 
     private bool showOdemeModal = false;
-    private bool showOdemeDetayModal = false;
     private bool showOdemeYapModal = false;
     private bool showTaksitModal = false;
+    private bool showExcelModal = false;
 
     private BudgetOdeme editOdeme = new();
-    private BudgetOdeme? detayOdeme;
     private BudgetOdeme? odemeYapilacak;
     private OdemeYapRequest odemeYapRequest = new();
     private TaksitliOdemeRequest taksitRequest = new();
+    private IBrowserFile? excelDosya;
 
     private static readonly string[] AyAdlari = { "", "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran", 
                                                    "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik" };
@@ -682,88 +649,56 @@
         secilenAy = DateTime.Today.Month;
         aktifTakvimAy = secilenAy;
 
+        firmalar = await FirmaService.GetAktifFirmalarAsync();
+        var aktifFirma = FirmaService.GetAktifFirma();
+        if (!aktifFirma.TumFirmalar && aktifFirma.FirmaId > 0)
+            secilenFirmaId = aktifFirma.FirmaId;
+
         masrafKalemleri = await BudgetService.GetMasrafKalemleriAsync();
         bankaHesaplari = await BankaHesapService.GetAllAsync();
         await YenileDataAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!isLoading && !secilenGun.HasValue && !chartRendered)
-        {
-            chartRendered = true;
-            await RenderChartsAsync();
-        }
     }
 
     private async Task YenileDataAsync()
     {
         isLoading = true;
         secilenGun = null;
-        chartRendered = false;
         StateHasChanged();
 
         try
         {
-            DateTime baslangic, bitis;
+            // Firma filtresine gore odemeler
+            odemeler = await BudgetService.GetOdemelerAsync(secilenYil, secilenAy > 0 ? secilenAy : null, secilenFirmaId > 0 ? secilenFirmaId : null);
 
-            if (secilenPeriyod == "ozel")
+            // Sadece bekleyen odemeler
+            bekleyenOdemeler = odemeler.Where(o => o.Durum == OdemeDurum.Bekliyor).OrderBy(o => o.OdemeTarihi).ToList();
+
+            if (secilenAy > 0)
             {
-                baslangic = ozelBaslangic;
-                bitis = ozelBitis;
-                odemeler = await BudgetService.GetOdemelerByDateRangeAsync(baslangic, bitis);
-                ozet = await BudgetService.GetPeriyodOzetAsync(baslangic, bitis);
+                ozet = await BudgetService.GetAylikOzetAsync(secilenYil, secilenAy, secilenFirmaId > 0 ? secilenFirmaId : null);
+                aktifTakvimAy = secilenAy;
             }
             else
             {
-                odemeler = await BudgetService.GetOdemelerAsync(secilenYil, secilenAy > 0 ? secilenAy : null);
-
-                if (secilenAy > 0)
+                var yillikOzet = await BudgetService.GetYillikOzetAsync(secilenYil, secilenFirmaId > 0 ? secilenFirmaId : null);
+                ozet = new BudgetOzet
                 {
-                    ozet = await BudgetService.GetAylikOzetAsync(secilenYil, secilenAy);
-                    aktifTakvimAy = secilenAy;
-                    baslangic = new DateTime(secilenYil, secilenAy, 1);
-                    bitis = baslangic.AddMonths(1).AddDays(-1);
-                }
-                else
-                {
-                    var yillikOzet = await BudgetService.GetYillikOzetAsync(secilenYil);
-                    ozet = new BudgetOzet
-                    {
-                        Yil = secilenYil,
-                        ToplamOdeme = yillikOzet.ToplamOdeme,
-                        OdenenToplam = odemeler.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
-                        BekleyenToplam = odemeler.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
-                        ToplamKayit = odemeler.Count,
-                        OdenenKayit = odemeler.Count(o => o.Durum == OdemeDurum.Odendi),
-                        BekleyenKayit = odemeler.Count(o => o.Durum == OdemeDurum.Bekliyor)
-                    };
-                    baslangic = new DateTime(secilenYil, 1, 1);
-                    bitis = new DateTime(secilenYil, 12, 31);
-                }
+                    Yil = secilenYil,
+                    ToplamOdeme = yillikOzet.ToplamOdeme,
+                    OdenenToplam = odemeler.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
+                    BekleyenToplam = odemeler.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
+                    ToplamKayit = odemeler.Count,
+                    OdenenKayit = odemeler.Count(o => o.Durum == OdemeDurum.Odendi),
+                    BekleyenKayit = odemeler.Count(o => o.Durum == OdemeDurum.Bekliyor)
+                };
             }
 
-            takvimData = await BudgetService.GetTakvimDataAsync(secilenYil, aktifTakvimAy);
-            kategoriOzet = await BudgetService.GetKategoriOzetAsync(secilenYil, secilenAy > 0 ? secilenAy : null);
-            aktifKrediler = await BudgetService.GetAktifKredilerAsync();
+            takvimData = await BudgetService.GetTakvimDataAsync(secilenYil, aktifTakvimAy, secilenFirmaId > 0 ? secilenFirmaId : null);
+            aktifKrediler = await BudgetService.GetAktifKredilerAsync(secilenFirmaId > 0 ? secilenFirmaId : null);
 
-            // Trend data
-            if (secilenPeriyod != "ozel")
-            {
-                var trendBaslangic = secilenAy > 0 ? new DateTime(secilenYil, secilenAy, 1) : new DateTime(secilenYil, 1, 1);
-                var trendBitis = secilenAy > 0 ? trendBaslangic.AddMonths(1).AddDays(-1) : new DateTime(secilenYil, 12, 31);
-                trendData = await BudgetService.GetTrendDataAsync(trendBaslangic, trendBitis, secilenPeriyod);
-            }
-            else
-            {
-                trendData = await BudgetService.GetTrendDataAsync(ozelBaslangic, ozelBitis, secilenPeriyod);
-            }
-
-            var krediOdemeler = odemeler.Where(o => o.TaksitliMi).ToList();
+            var krediOdemeler = odemeler.Where(o => o.TaksitliMi && o.Durum == OdemeDurum.Bekliyor).ToList();
             krediTaksitToplam = krediOdemeler.Sum(o => o.Miktar);
             krediTaksitAdet = krediOdemeler.Count;
-
-            FiltreUygula();
         }
         finally
         {
@@ -772,68 +707,15 @@
         }
     }
 
-    private async Task RenderChartsAsync()
-    {
-        try
-        {
-            // Trend Chart
-            if (trendData != null && trendData.Any())
-            {
-                var labels = trendData.Select(t => t.Etiket).ToArray();
-                var toplam = trendData.Select(t => (double)t.Toplam).ToArray();
-                var odenen = trendData.Select(t => (double)t.Odenen).ToArray();
-                await JS.InvokeVoidAsync("createLineChart", "trendChart", labels, toplam, odenen);
-            }
-
-            // Kategori Chart
-            if (kategoriOzet != null && kategoriOzet.Any())
-            {
-                var labels = kategoriOzet.Take(6).Select(k => k.MasrafKalemi).ToArray();
-                var data = kategoriOzet.Take(6).Select(k => (double)k.Toplam).ToArray();
-                var colors = kategoriOzet.Take(6).Select(k => k.Renk ?? "#6c757d").ToArray();
-                await JS.InvokeVoidAsync("createDoughnutChart", "kategoriChart", labels, data, colors);
-            }
-        }
-        catch { }
-    }
-
-    // Periyod secim metodlari
-    private void PeriyodGunlukSec() { secilenPeriyod = "gunluk"; _ = YenileDataAsync(); }
-    private void PeriyodHaftalikSec() { secilenPeriyod = "haftalik"; _ = YenileDataAsync(); }
-    private void Periyod15GunlukSec() { secilenPeriyod = "15gunluk"; _ = YenileDataAsync(); }
     private void PeriyodAylikSec() { secilenPeriyod = "aylik"; _ = YenileDataAsync(); }
-    private void PeriyodOzelSec() { secilenPeriyod = "ozel"; StateHasChanged(); }
-    private async Task OzelTarihUygula() { await YenileDataAsync(); }
-
-    private void FiltreUygula()
-    {
-        filtrelenmisOdemeler = krediFiltre switch
-        {
-            "kredi" => odemeler.Where(o => o.TaksitliMi).OrderBy(o => o.OdemeTarihi).ToList(),
-            "normal" => odemeler.Where(o => !o.TaksitliMi).OrderBy(o => o.OdemeTarihi).ToList(),
-            "bekleyen" => odemeler.Where(o => o.Durum == OdemeDurum.Bekliyor).OrderBy(o => o.OdemeTarihi).ToList(),
-            "odenen" => odemeler.Where(o => o.Durum == OdemeDurum.Odendi).OrderBy(o => o.OdemeTarihi).ToList(),
-            _ => odemeler.OrderBy(o => o.OdemeTarihi).ToList()
-        };
-        StateHasChanged();
-    }
-
-    private void KrediFiltrele(KrediOzet kredi)
-    {
-        krediFiltre = "kredi";
-        filtrelenmisOdemeler = odemeler
-            .Where(o => o.TaksitGrupId == kredi.TaksitGrupId)
-            .OrderBy(o => o.OdemeTarihi)
-            .ToList();
-        StateHasChanged();
-    }
+    private void PeriyodYillikSec() { secilenPeriyod = "yillik"; secilenAy = 0; _ = YenileDataAsync(); }
 
     private async Task OncekiAy()
     {
         if (aktifTakvimAy > 1)
         {
             aktifTakvimAy--;
-            takvimData = await BudgetService.GetTakvimDataAsync(secilenYil, aktifTakvimAy);
+            takvimData = await BudgetService.GetTakvimDataAsync(secilenYil, aktifTakvimAy, secilenFirmaId > 0 ? secilenFirmaId : null);
             secilenGun = null;
             StateHasChanged();
         }
@@ -844,7 +726,7 @@
         if (aktifTakvimAy < 12)
         {
             aktifTakvimAy++;
-            takvimData = await BudgetService.GetTakvimDataAsync(secilenYil, aktifTakvimAy);
+            takvimData = await BudgetService.GetTakvimDataAsync(secilenYil, aktifTakvimAy, secilenFirmaId > 0 ? secilenFirmaId : null);
             secilenGun = null;
             StateHasChanged();
         }
@@ -855,7 +737,8 @@
         secilenGun = gun;
         secilenGunTarih = new DateTime(secilenYil, aktifTakvimAy, gun);
         var gunData = takvimData?.FirstOrDefault(t => t.Gun == gun);
-        secilenGunOdemeleri = gunData?.Odemeler ?? new List<BudgetOdeme>();
+        // Sadece bekleyen odemeler gosterilsin
+        secilenGunOdemeleri = gunData?.Odemeler?.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList() ?? new List<BudgetOdeme>();
         StateHasChanged();
     }
 
@@ -863,14 +746,7 @@
     {
         secilenGun = null;
         secilenGunOdemeleri.Clear();
-        chartRendered = false;
         StateHasChanged();
-    }
-
-    private void OdemeDetayAc(BudgetOdeme odeme)
-    {
-        detayOdeme = odeme;
-        showOdemeDetayModal = true;
     }
 
     private void OdemeYapModalAc(BudgetOdeme odeme)
@@ -884,22 +760,13 @@
         showOdemeYapModal = true;
     }
 
-    private void DetayOdemeYap()
-    {
-        if (detayOdeme != null)
-        {
-            showOdemeDetayModal = false;
-            OdemeYapModalAc(detayOdeme);
-        }
-    }
-
     private async Task OdemeYap()
     {
         if (odemeYapilacak == null) return;
 
-        if (odemeYapRequest.OdemeTipi == OdemeTipi.Banka && !odemeYapRequest.BankaHesapId.HasValue)
+        if ((odemeYapRequest.OdemeTipi == OdemeTipi.Kasa || odemeYapRequest.OdemeTipi == OdemeTipi.Banka) && !odemeYapRequest.BankaHesapId.HasValue)
         {
-            ToastService.ShowWarning("Banka hesabi secin!");
+            ToastService.ShowWarning("Hesap secin!");
             return;
         }
 
@@ -910,13 +777,10 @@
             ModalKapat();
             await YenileDataAsync();
             
-            // Eger gun seciliyse, gun odemelerini de guncelle
+            // Gun seciliyse guncelle
             if (secilenGun.HasValue)
             {
-                takvimData = await BudgetService.GetTakvimDataAsync(secilenYil, aktifTakvimAy);
-                var gunData = takvimData?.FirstOrDefault(t => t.Gun == secilenGun.Value);
-                secilenGunOdemeleri = gunData?.Odemeler?.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList() ?? new List<BudgetOdeme>();
-                StateHasChanged();
+                GunSec(secilenGun.Value);
             }
         }
         catch (Exception ex)
@@ -927,10 +791,12 @@
 
     private void YeniOdemeAc()
     {
+        var aktifFirma = FirmaService.GetAktifFirma();
         editOdeme = new BudgetOdeme
         {
             OdemeTarihi = secilenGun.HasValue ? secilenGunTarih : DateTime.Today,
-            Durum = OdemeDurum.Bekliyor
+            Durum = OdemeDurum.Bekliyor,
+            FirmaId = aktifFirma.TumFirmalar ? null : aktifFirma.FirmaId
         };
         showOdemeModal = true;
     }
@@ -944,9 +810,9 @@
             MasrafKalemi = odeme.MasrafKalemi,
             Aciklama = odeme.Aciklama,
             Miktar = odeme.Miktar,
-            Durum = odeme.Durum
+            Durum = odeme.Durum,
+            FirmaId = odeme.FirmaId
         };
-        showOdemeDetayModal = false;
         showOdemeModal = true;
     }
 
@@ -977,34 +843,36 @@
 
     private async Task OdemeSilOnay(BudgetOdeme odeme)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", $"'{odeme.MasrafKalemi}' odemesini silmek istediginizden emin misiniz?");
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $" '{odeme.MasrafKalemi}' odemesini silmek istediginizden emin misiniz? ");
         if (confirmed)
         {
-            await OdemeSil(odeme);
+            try
+            {
+                // Gercek silme - IsDeleted yerine kalici silme
+                await BudgetService.HardDeleteOdemeAsync(odeme.Id);
+                ToastService.ShowSuccess("Odeme silindi.");
+                await YenileDataAsync();
+                
+                if (secilenGun.HasValue)
+                {
+                    GunSec(secilenGun.Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError("Silme hatasi: " + ex.Message);
+            }
         }
     }
 
-    private async Task OdemeSil(BudgetOdeme odeme)
+    private void TaksitliOdemeAc()
     {
-        try
-        {
-            await BudgetService.DeleteOdemeAsync(odeme.Id);
-            ToastService.ShowSuccess("Odeme silindi.");
-            ModalKapat();
-            await YenileDataAsync();
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowError("Silme hatasi: " + ex.Message);
-        }
-    }
-
-    private async Task TaksitliOdemeAc()
-    {
+        var aktifFirma = FirmaService.GetAktifFirma();
         taksitRequest = new TaksitliOdemeRequest
         {
             BaslangicTarihi = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
-            TaksitSayisi = 12
+            TaksitSayisi = 12,
+            FirmaId = aktifFirma.TumFirmalar ? null : aktifFirma.FirmaId
         };
         showTaksitModal = true;
     }
@@ -1030,12 +898,59 @@
         }
     }
 
+    private void ExcelYukleModalAc()
+    {
+        excelDosya = null;
+        showExcelModal = true;
+    }
+
+    private void ExcelDosyaSecildi(InputFileChangeEventArgs e)
+    {
+        excelDosya = e.File;
+    }
+
+    private async Task SablonIndir()
+    {
+        try
+        {
+            var bytes = await BudgetService.GetExcelSablonAsync(firmalar ?? new List<Firma>());
+            await JS.InvokeVoidAsync("downloadFileFromBase64", "butce_sablon.xlsx", Convert.ToBase64String(bytes));
+            ToastService.ShowSuccess("Sablon indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    private async Task ExcelYukle()
+    {
+        if (excelDosya == null) return;
+
+        try
+        {
+            using var stream = excelDosya.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            var sonuc = await BudgetService.ImportFromExcelAsync(bytes);
+            ToastService.ShowSuccess($"{sonuc} odeme yuklendi!");
+            ModalKapat();
+            await YenileDataAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Yukleme hatasi: " + ex.Message);
+        }
+    }
+
     private void ModalKapat()
     {
         showOdemeModal = false;
-        showOdemeDetayModal = false;
         showOdemeYapModal = false;
         showTaksitModal = false;
+        showExcelModal = false;
     }
 
     private string GetAyAdi(int ay) => AyAdlari[ay];

@@ -17,13 +17,16 @@ public class BudgetService : IBudgetService
 
     #region Odeme Islemleri
 
-    public async Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null)
+    public async Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null, int? firmaId = null)
     {
         var query = _context.BudgetOdemeler
             .Where(o => o.OdemeYil == yil);
 
         if (ay.HasValue)
             query = query.Where(o => o.OdemeAy == ay.Value);
+
+        if (firmaId.HasValue)
+            query = query.Where(o => o.FirmaId == firmaId.Value);
 
         return await query
             .OrderBy(o => o.OdemeAy)
@@ -38,8 +41,7 @@ public class BudgetService : IBudgetService
     {
         var query = _context.BudgetOdemeler
             .Where(o => o.OdemeYil == yil && 
-                        o.Durum != OdemeDurum.Odendi && 
-                        !o.FaturaIleKapatildi);
+                        o.Durum == OdemeDurum.Bekliyor);
 
         if (ay.HasValue)
             query = query.Where(o => o.OdemeAy == ay.Value);
@@ -102,6 +104,7 @@ public class BudgetService : IBudgetService
         existing.Aciklama = odeme.Aciklama;
         existing.Miktar = odeme.Miktar;
         existing.Durum = odeme.Durum;
+        existing.FirmaId = odeme.FirmaId;
         existing.Notlar = odeme.Notlar;
         existing.UpdatedAt = DateTime.UtcNow;
 
@@ -119,6 +122,22 @@ public class BudgetService : IBudgetService
         {
             odeme.IsDeleted = true;
             odeme.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Kalici silme - veritabanindan tamamen siler
+    /// </summary>
+    public async Task HardDeleteOdemeAsync(int id)
+    {
+        var odeme = await _context.BudgetOdemeler
+            .IgnoreQueryFilters() // Soft delete filtresini atla
+            .FirstOrDefaultAsync(o => o.Id == id);
+            
+        if (odeme != null)
+        {
+            _context.BudgetOdemeler.Remove(odeme);
             await _context.SaveChangesAsync();
         }
     }
@@ -156,7 +175,7 @@ public class BudgetService : IBudgetService
                 HareketTipi = HareketTipi.Cikis, // Kasa = Borc (para cikiyor)
                 BankaHesapId = request.BankaHesapId.Value,
                 Tutar = odemeTutari,
-                Aciklama = $"Butce Odemesi (Borc): {odeme.MasrafKalemi}" + 
+                Aciklama = $"Butce Odemesi: {odeme.MasrafKalemi}" + 
                           (string.IsNullOrEmpty(request.Aciklama) ? "" : $" - {request.Aciklama}"),
                 IslemKaynak = IslemKaynak.Manuel,
                 CreatedAt = DateTime.UtcNow
@@ -233,6 +252,7 @@ public class BudgetService : IBudgetService
                 TaksitBaslangicAy = baslangicUtc,
                 TaksitBitisAy = baslangicUtc.AddMonths(request.TaksitSayisi - 1),
                 Notlar = request.Notlar,
+                FirmaId = request.FirmaId,
                 Durum = OdemeDurum.Bekliyor,
                 CreatedAt = DateTime.UtcNow
             };
@@ -274,35 +294,15 @@ public class BudgetService : IBudgetService
 
     #endregion
 
-    #region Toplu Islemler (Excel)
+    #region Excel Islemleri
 
-    public async Task<List<BudgetOdeme>> CreateBulkOdemeAsync(List<BudgetOdeme> odemeler)
-    {
-        foreach (var odeme in odemeler)
-        {
-            // DateTime'i UTC olarak ayarla
-            odeme.OdemeTarihi = DateTime.SpecifyKind(odeme.OdemeTarihi, DateTimeKind.Utc);
-            odeme.OdemeAy = odeme.OdemeTarihi.Month;
-            odeme.OdemeYil = odeme.OdemeTarihi.Year;
-            odeme.TaksitliMi = false;
-            odeme.ToplamTaksitSayisi = 1;
-            odeme.KacinciTaksit = 1;
-            odeme.CreatedAt = DateTime.UtcNow;
-            
-            _context.BudgetOdemeler.Add(odeme);
-        }
-        
-        await _context.SaveChangesAsync();
-        return odemeler;
-    }
-
-    public byte[] GenerateExcelTemplate()
+    public async Task<byte[]> GetExcelSablonAsync(List<Firma> firmalar)
     {
         using var workbook = new ClosedXML.Excel.XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Odeme Sablonu");
 
         // Basliklar
-        var headers = new[] { "Odeme Tarihi*", "Masraf Kalemi*", "Aciklama", "Miktar*", "Durum", "Notlar" };
+        var headers = new[] { "Odeme Tarihi*", "Masraf Kalemi*", "Aciklama", "Miktar*", "Durum", "Firma", "Notlar" };
         for (int i = 0; i < headers.Length; i++)
         {
             worksheet.Cell(1, i + 1).Value = headers[i];
@@ -316,206 +316,128 @@ public class BudgetService : IBudgetService
         worksheet.Cell(2, 3).Value = "Ocak ayi kirasi";
         worksheet.Cell(2, 4).Value = 5000;
         worksheet.Cell(2, 5).Value = "Bekliyor";
-        worksheet.Cell(2, 6).Value = "";
+        worksheet.Cell(2, 6).Value = firmalar.FirstOrDefault()?.FirmaAdi ?? "";
+        worksheet.Cell(2, 7).Value = "";
 
-        worksheet.Cell(3, 1).Value = DateTime.Today.AddDays(5).ToString("dd.MM.yyyy");
-        worksheet.Cell(3, 2).Value = "Elektrik";
-        worksheet.Cell(3, 3).Value = "Ocak faturasi";
-        worksheet.Cell(3, 4).Value = 850;
-        worksheet.Cell(3, 5).Value = "Bekliyor";
-        worksheet.Cell(3, 6).Value = "";
-
-        // Aciklama satirlari
+        // Aciklama
         worksheet.Cell(5, 1).Value = "ACIKLAMALAR:";
         worksheet.Cell(5, 1).Style.Font.Bold = true;
         worksheet.Cell(6, 1).Value = "* Odeme Tarihi: GG.AA.YYYY formatinda";
-        worksheet.Cell(7, 1).Value = "* Masraf Kalemi: Kira, Elektrik, Su, Dogalgaz, Personel Maas vb.";
-        worksheet.Cell(8, 1).Value = "* Miktar: Sayisal deger (virgul veya nokta kullanabilirsiniz)";
-        worksheet.Cell(9, 1).Value = "* Durum: Bekliyor, Odendi, Ertelendi, Iptal";
-
-        // Masraf kalemleri listesi
-        worksheet.Cell(11, 1).Value = "MASRAF KALEMLERI:";
-        worksheet.Cell(11, 1).Style.Font.Bold = true;
+        worksheet.Cell(7, 1).Value = "* Durum: Bekliyor, Odendi, Ertelendi, Iptal";
         
-        var masrafKalemleri = _context.BudgetMasrafKalemleri.Where(m => m.Aktif).OrderBy(m => m.SiraNo).ToList();
-        int row = 12;
-        foreach (var kalem in masrafKalemleri)
+        // Firma listesi
+        worksheet.Cell(9, 1).Value = "FIRMALAR:";
+        worksheet.Cell(9, 1).Style.Font.Bold = true;
+        int row = 10;
+        foreach (var firma in firmalar)
         {
-            worksheet.Cell(row, 1).Value = kalem.KalemAdi;
-            worksheet.Cell(row, 2).Value = kalem.Kategori;
-            row++;
+            worksheet.Cell(row++, 1).Value = firma.FirmaAdi;
         }
 
-        // Sutun genislikleri
-        worksheet.Column(1).Width = 15;
-        worksheet.Column(2).Width = 20;
-        worksheet.Column(3).Width = 30;
-        worksheet.Column(4).Width = 15;
-        worksheet.Column(5).Width = 12;
-        worksheet.Column(6).Width = 30;
+        // Masraf kalemleri
+        row += 2;
+        worksheet.Cell(row, 1).Value = "MASRAF KALEMLERI:";
+        worksheet.Cell(row++, 1).Style.Font.Bold = true;
+        
+        var masrafKalemleri = await _context.BudgetMasrafKalemleri.Where(m => m.Aktif).OrderBy(m => m.KalemAdi).ToListAsync();
+        foreach (var kalem in masrafKalemleri)
+        {
+            worksheet.Cell(row++, 1).Value = kalem.KalemAdi;
+        }
+
+        worksheet.Columns().AdjustToContents();
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
     }
 
-    public async Task<ExcelImportResult> ImportFromExcelAsync(byte[] fileContent)
+    public async Task<int> ImportFromExcelAsync(byte[] fileContent)
     {
-        var result = new ExcelImportResult();
         var odemeler = new List<BudgetOdeme>();
 
-        try
+        using var stream = new MemoryStream(fileContent);
+        using var workbook = new ClosedXML.Excel.XLWorkbook(stream);
+        var worksheet = workbook.Worksheet(1);
+
+        var rows = worksheet.RowsUsed().Skip(1);
+
+        foreach (var row in rows)
         {
-            using var stream = new MemoryStream(fileContent);
-            using var workbook = new ClosedXML.Excel.XLWorkbook(stream);
-            var worksheet = workbook.Worksheet(1);
+            var tarihStr = row.Cell(1).GetString().Trim();
+            if (string.IsNullOrEmpty(tarihStr) || tarihStr.StartsWith("ACIKLAMA") || tarihStr.StartsWith("FIRMA") || tarihStr.StartsWith("MASRAF") || tarihStr.StartsWith("*"))
+                continue;
 
-            var rows = worksheet.RowsUsed().Skip(1); // Baþlýk satýrýný atla
+            DateTime tarih;
+            if (row.Cell(1).DataType == ClosedXML.Excel.XLDataType.DateTime)
+                tarih = row.Cell(1).GetDateTime();
+            else if (row.Cell(1).DataType == ClosedXML.Excel.XLDataType.Number)
+                tarih = DateTime.FromOADate(row.Cell(1).GetDouble());
+            else if (!DateTime.TryParse(tarihStr, new System.Globalization.CultureInfo("tr-TR"), out tarih))
+                continue;
 
-            int rowNum = 1;
-            foreach (var row in rows)
+            var masrafKalemi = row.Cell(2).GetString().Trim();
+            if (string.IsNullOrEmpty(masrafKalemi)) continue;
+
+            decimal miktar;
+            if (row.Cell(4).DataType == ClosedXML.Excel.XLDataType.Number)
+                miktar = (decimal)row.Cell(4).GetDouble();
+            else
             {
-                rowNum++;
-                
-                // Bos satir veya aciklama satirlarini atla
-                var tarihStr = row.Cell(1).GetString().Trim();
-                if (string.IsNullOrEmpty(tarihStr) || tarihStr.StartsWith("ACIKLAMA") || tarihStr.StartsWith("MASRAF") || tarihStr.StartsWith("*"))
+                var miktarStr = row.Cell(4).GetString().Replace(".", "").Replace(",", ".");
+                if (!decimal.TryParse(miktarStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out miktar))
                     continue;
-
-                try
-                {
-                    // Tarih parse - Excel'den sayi olarak da gelebilir
-                    DateTime tarih;
-                    if (row.Cell(1).DataType == ClosedXML.Excel.XLDataType.DateTime)
-                    {
-                        tarih = row.Cell(1).GetDateTime();
-                    }
-                    else if (row.Cell(1).DataType == ClosedXML.Excel.XLDataType.Number)
-                    {
-                        tarih = DateTime.FromOADate(row.Cell(1).GetDouble());
-                    }
-                    else if (!DateTime.TryParse(tarihStr, new System.Globalization.CultureInfo("tr-TR"), out tarih))
-                    {
-                        // GG.AA.YYYY formatini dene
-                        if (!DateTime.TryParseExact(tarihStr, new[] { "dd.MM.yyyy", "d.M.yyyy", "dd/MM/yyyy", "yyyy-MM-dd" }, 
-                            new System.Globalization.CultureInfo("tr-TR"), System.Globalization.DateTimeStyles.None, out tarih))
-                        {
-                            result.Errors.Add($"Satir {rowNum}: Gecersiz tarih formati - '{tarihStr}'");
-                            result.ErrorCount++;
-                            continue;
-                        }
-                    }
-
-                    var masrafKalemi = row.Cell(2).GetString().Trim();
-                    if (string.IsNullOrEmpty(masrafKalemi))
-                    {
-                        result.Errors.Add($"Satir {rowNum}: Masraf kalemi bos olamaz");
-                        result.ErrorCount++;
-                        continue;
-                    }
-
-                    var aciklama = row.Cell(3).GetString().Trim();
-                    
-                    // Miktar parse - Excel'den sayi olarak da gelebilir
-                    decimal miktar;
-                    if (row.Cell(4).DataType == ClosedXML.Excel.XLDataType.Number)
-                    {
-                        miktar = (decimal)row.Cell(4).GetDouble();
-                    }
-                    else
-                    {
-                        var miktarStr = row.Cell(4).GetString().Trim()
-                            .Replace(".", "")  // Binlik ayirici noktayi kaldir
-                            .Replace(",", "."); // Virgulu noktaya cevir
-                        
-                        if (!decimal.TryParse(miktarStr, System.Globalization.NumberStyles.Any, 
-                            System.Globalization.CultureInfo.InvariantCulture, out miktar))
-                        {
-                            result.Errors.Add($"Satir {rowNum}: Gecersiz miktar - '{row.Cell(4).GetString()}'");
-                            result.ErrorCount++;
-                            continue;
-                        }
-                    }
-                    
-                    if (miktar <= 0)
-                    {
-                        result.Errors.Add($"Satir {rowNum}: Miktar sifirdan buyuk olmali");
-                        result.ErrorCount++;
-                        continue;
-                    }
-
-                    // Durum parse
-                    var durumStr = row.Cell(5).GetString().Trim().ToLower();
-                    var durum = durumStr switch
-                    {
-                        "odendi" or " ödendi" => OdemeDurum.Odendi,
-                        "ertelendi" => OdemeDurum.Ertelendi,
-                        "iptal" => OdemeDurum.Iptal,
-                        _ => OdemeDurum.Bekliyor
-                    };
-
-                    var notlar = row.Cell(6).GetString().Trim();
-
-                    // DateTime'i UTC olarak ayarla
-                    var tarihUtc = DateTime.SpecifyKind(tarih, DateTimeKind.Utc);
-
-                    var odeme = new BudgetOdeme
-                    {
-                        OdemeTarihi = tarihUtc,
-                        OdemeAy = tarih.Month,
-                        OdemeYil = tarih.Year,
-                        MasrafKalemi = masrafKalemi,
-                        Aciklama = string.IsNullOrEmpty(aciklama) ? null : aciklama,
-                        Miktar = miktar,
-                        Durum = durum,
-                        Notlar = string.IsNullOrEmpty(notlar) ? null : notlar,
-                        TaksitliMi = false,
-                        ToplamTaksitSayisi = 1,
-                        KacinciTaksit = 1,
-                        CreatedAt = DateTime.UtcNow
-                    };
-
-                    odemeler.Add(odeme);
-                }
-                catch (Exception ex)
-                {
-                    result.Errors.Add($"Satir {rowNum}: {ex.Message}");
-                    result.ErrorCount++;
-                }
             }
 
-            if (odemeler.Any())
+            if (miktar <= 0) continue;
+
+            var durumStr = row.Cell(5).GetString().Trim().ToLower();
+            var durum = durumStr switch
             {
-                try
-                {
-                    // Toplu ekleme
-                    foreach (var odeme in odemeler)
-                    {
-                        _context.BudgetOdemeler.Add(odeme);
-                    }
-                    await _context.SaveChangesAsync();
-                    result.ImportedCount = odemeler.Count;
-                    result.ImportedItems = odemeler;
-                }
-                catch (Exception dbEx)
-                {
-                    var innerMsg = dbEx.InnerException?.Message ?? dbEx.Message;
-                    result.Errors.Add($"Veritabani kayit hatasi: {innerMsg}");
-                    result.Success = false;
-                    return result;
-                }
+                "odendi" => OdemeDurum.Odendi,
+                "ertelendi" => OdemeDurum.Ertelendi,
+                "iptal" => OdemeDurum.Iptal,
+                _ => OdemeDurum.Bekliyor
+            };
+
+            // Firma bul
+            var firmaAdi = row.Cell(6).GetString().Trim();
+            int? firmaId = null;
+            if (!string.IsNullOrEmpty(firmaAdi))
+            {
+                var firma = await _context.Firmalar.FirstOrDefaultAsync(f => f.FirmaAdi == firmaAdi);
+                firmaId = firma?.Id;
             }
 
-            result.Success = result.ErrorCount == 0 || result.ImportedCount > 0;
-        }
-        catch (Exception ex)
-        {
-            result.Success = false;
-            var innerMsg = ex.InnerException?.Message ?? ex.Message;
-            result.Errors.Add($"Excel dosyasi okunamadi: {innerMsg}");
+            var tarihUtc = DateTime.SpecifyKind(tarih, DateTimeKind.Utc);
+
+            var odeme = new BudgetOdeme
+            {
+                OdemeTarihi = tarihUtc,
+                OdemeAy = tarih.Month,
+                OdemeYil = tarih.Year,
+                MasrafKalemi = masrafKalemi,
+                Aciklama = row.Cell(3).GetString().Trim(),
+                Miktar = miktar,
+                Durum = durum,
+                FirmaId = firmaId,
+                Notlar = row.Cell(7).GetString().Trim(),
+                TaksitliMi = false,
+                ToplamTaksitSayisi = 1,
+                KacinciTaksit = 1,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            odemeler.Add(odeme);
         }
 
-        return result;
+        if (odemeler.Any())
+        {
+            _context.BudgetOdemeler.AddRange(odemeler);
+            await _context.SaveChangesAsync();
+        }
+
+        return odemeler.Count;
     }
 
     #endregion
@@ -550,7 +472,7 @@ public class BudgetService : IBudgetService
         var kalem = await _context.BudgetMasrafKalemleri.FindAsync(id);
         if (kalem != null)
         {
-            kalem.IsDeleted = true;
+            kalem.Aktif = false;
             await _context.SaveChangesAsync();
         }
     }
@@ -559,11 +481,15 @@ public class BudgetService : IBudgetService
 
     #region Raporlar
 
-    public async Task<BudgetOzet> GetAylikOzetAsync(int yil, int ay)
+    public async Task<BudgetOzet> GetAylikOzetAsync(int yil, int ay, int? firmaId = null)
     {
-        var odemeler = await _context.BudgetOdemeler
-            .Where(o => o.OdemeYil == yil && o.OdemeAy == ay)
-            .ToListAsync();
+        var query = _context.BudgetOdemeler
+            .Where(o => o.OdemeYil == yil && o.OdemeAy == ay);
+
+        if (firmaId.HasValue)
+            query = query.Where(o => o.FirmaId == firmaId.Value);
+
+        var odemeler = await query.ToListAsync();
 
         var ozet = new BudgetOzet
         {
@@ -592,11 +518,14 @@ public class BudgetService : IBudgetService
         return ozet;
     }
 
-    public async Task<BudgetYillikOzet> GetYillikOzetAsync(int yil)
+    public async Task<BudgetYillikOzet> GetYillikOzetAsync(int yil, int? firmaId = null)
     {
-        var odemeler = await _context.BudgetOdemeler
-            .Where(o => o.OdemeYil == yil)
-            .ToListAsync();
+        var query = _context.BudgetOdemeler.Where(o => o.OdemeYil == yil);
+
+        if (firmaId.HasValue)
+            query = query.Where(o => o.FirmaId == firmaId.Value);
+
+        var odemeler = await query.ToListAsync();
 
         var ozet = new BudgetYillikOzet
         {
@@ -604,7 +533,6 @@ public class BudgetService : IBudgetService
             ToplamOdeme = odemeler.Sum(o => o.Miktar)
         };
 
-        // Aylýk toplamlar
         for (int ay = 1; ay <= 12; ay++)
         {
             var aylikOdemeler = odemeler.Where(o => o.OdemeAy == ay).ToList();
@@ -618,7 +546,6 @@ public class BudgetService : IBudgetService
             });
         }
 
-        // Kategori özetleri
         ozet.KategoriOzetleri = odemeler
             .GroupBy(o => o.MasrafKalemi)
             .Select(g => new BudgetKategoriOzet
@@ -634,13 +561,15 @@ public class BudgetService : IBudgetService
         return ozet;
     }
 
-    public async Task<List<BudgetGunlukOzet>> GetTakvimDataAsync(int yil, int ay)
+    public async Task<List<BudgetGunlukOzet>> GetTakvimDataAsync(int yil, int ay, int? firmaId = null)
     {
-        // SADECE BEKLEYEN odemeleri getir (Odenmis olanlar takvimde gozukmez)
-        var odemeler = await _context.BudgetOdemeler
-            .Where(o => o.OdemeYil == yil && o.OdemeAy == ay && o.Durum == OdemeDurum.Bekliyor)
-            .OrderBy(o => o.OdemeTarihi)
-            .ToListAsync();
+        var query = _context.BudgetOdemeler
+            .Where(o => o.OdemeYil == yil && o.OdemeAy == ay);
+
+        if (firmaId.HasValue)
+            query = query.Where(o => o.FirmaId == firmaId.Value);
+
+        var odemeler = await query.OrderBy(o => o.OdemeTarihi).ToListAsync();
 
         var gunlukOzetler = new List<BudgetGunlukOzet>();
         var gunSayisi = DateTime.DaysInMonth(yil, ay);
@@ -649,6 +578,7 @@ public class BudgetService : IBudgetService
         {
             var tarih = new DateTime(yil, ay, gun);
             var gunOdemeleri = odemeler.Where(o => o.OdemeTarihi.Day == gun).ToList();
+            var bekleyenOdemeler = gunOdemeleri.Where(o => o.Durum == OdemeDurum.Bekliyor).ToList();
 
             gunlukOzetler.Add(new BudgetGunlukOzet
             {
@@ -656,6 +586,8 @@ public class BudgetService : IBudgetService
                 Gun = gun,
                 ToplamOdeme = gunOdemeleri.Sum(o => o.Miktar),
                 OdemeSayisi = gunOdemeleri.Count,
+                BekleyenToplamOdeme = bekleyenOdemeler.Sum(o => o.Miktar),
+                BekleyenOdemeSayisi = bekleyenOdemeler.Count,
                 Odemeler = gunOdemeleri
             });
         }
@@ -695,11 +627,15 @@ public class BudgetService : IBudgetService
 
     #region Kredi/Taksit Raporlari
 
-    public async Task<List<KrediOzet>> GetAktifKredilerAsync()
+    public async Task<List<KrediOzet>> GetAktifKredilerAsync(int? firmaId = null)
     {
-        var taksitliOdemeler = await _context.BudgetOdemeler
-            .Where(o => o.TaksitliMi && o.TaksitGrupId.HasValue)
-            .ToListAsync();
+        var query = _context.BudgetOdemeler
+            .Where(o => o.TaksitliMi && o.TaksitGrupId.HasValue);
+
+        if (firmaId.HasValue)
+            query = query.Where(o => o.FirmaId == firmaId.Value);
+
+        var taksitliOdemeler = await query.ToListAsync();
 
         var krediler = taksitliOdemeler
             .GroupBy(o => o.TaksitGrupId!.Value)
@@ -839,90 +775,40 @@ public class BudgetService : IBudgetService
         var odemeler = await GetOdemelerByDateRangeAsync(baslangic, bitis);
         var trendData = new List<BudgetTrendData>();
 
-        switch (periyod.ToLower())
+        if (periyod == "gunluk")
         {
-            case "gunluk":
-                var gunler = odemeler.GroupBy(o => o.OdemeTarihi.Date);
-                foreach (var gun in gunler.OrderBy(g => g.Key))
+            var gunler = odemeler.GroupBy(o => o.OdemeTarihi.Date);
+            foreach (var gun in gunler.OrderBy(g => g.Key))
+            {
+                trendData.Add(new BudgetTrendData
                 {
-                    trendData.Add(new BudgetTrendData
-                    {
-                        Tarih = gun.Key,
-                        Etiket = gun.Key.ToString("dd.MM"),
-                        Toplam = gun.Sum(o => o.Miktar),
-                        Odenen = gun.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
-                        Bekleyen = gun.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
-                        OdemeSayisi = gun.Count()
-                    });
-                }
-                break;
-
-            case "haftalik":
-                var haftalar = odemeler.GroupBy(o => GetHaftaBaslangic(o.OdemeTarihi));
-                foreach (var hafta in haftalar.OrderBy(h => h.Key))
+                    Etiket = gun.Key.ToString("dd.MM"),
+                    Tarih = gun.Key,
+                    Toplam = gun.Sum(o => o.Miktar),
+                    Odenen = gun.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
+                    Bekleyen = gun.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
+                    OdemeSayisi = gun.Count()
+                });
+            }
+        }
+        else
+        {
+            var aylar = odemeler.GroupBy(o => new { o.OdemeYil, o.OdemeAy });
+            foreach (var ay in aylar.OrderBy(a => a.Key.OdemeYil).ThenBy(a => a.Key.OdemeAy))
+            {
+                trendData.Add(new BudgetTrendData
                 {
-                    trendData.Add(new BudgetTrendData
-                    {
-                        Tarih = hafta.Key,
-                        Etiket = $"{hafta.Key:dd.MM} - {hafta.Key.AddDays(6):dd.MM}",
-                        Toplam = hafta.Sum(o => o.Miktar),
-                        Odenen = hafta.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
-                        Bekleyen = hafta.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
-                        OdemeSayisi = hafta.Count()
-                    });
-                }
-                break;
-
-            case "15gunluk":
-                var onbesGunler = odemeler.GroupBy(o => Get15GunBaslangic(o.OdemeTarihi));
-                foreach (var donem in onbesGunler.OrderBy(d => d.Key))
-                {
-                    var bitisGun = donem.Key.Day <= 15 ? 15 : DateTime.DaysInMonth(donem.Key.Year, donem.Key.Month);
-                    trendData.Add(new BudgetTrendData
-                    {
-                        Tarih = donem.Key,
-                        Etiket = $"{donem.Key:dd.MM} - {bitisGun}.{donem.Key:MM}",
-                        Toplam = donem.Sum(o => o.Miktar),
-                        Odenen = donem.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
-                        Bekleyen = donem.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
-                        OdemeSayisi = donem.Count()
-                    });
-                }
-                break;
-
-            case "aylik":
-            default:
-                var aylar = odemeler.GroupBy(o => new DateTime(o.OdemeTarihi.Year, o.OdemeTarihi.Month, 1));
-                foreach (var ay in aylar.OrderBy(a => a.Key))
-                {
-                    trendData.Add(new BudgetTrendData
-                    {
-                        Tarih = ay.Key,
-                        Etiket = AyAdlari[ay.Key.Month].Substring(0, 3) + " " + ay.Key.Year,
-                        Toplam = ay.Sum(o => o.Miktar),
-                        Odenen = ay.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
-                        Bekleyen = ay.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
-                        OdemeSayisi = ay.Count()
-                    });
-                }
-                break;
+                    Etiket = AyAdlari[ay.Key.OdemeAy],
+                    Tarih = new DateTime(ay.Key.OdemeYil, ay.Key.OdemeAy, 1),
+                    Toplam = ay.Sum(o => o.Miktar),
+                    Odenen = ay.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
+                    Bekleyen = ay.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
+                    OdemeSayisi = ay.Count()
+                });
+            }
         }
 
         return trendData;
-    }
-
-    private DateTime GetHaftaBaslangic(DateTime tarih)
-    {
-        var gun = (int)tarih.DayOfWeek;
-        var pazartesiOffset = gun == 0 ? -6 : 1 - gun;
-        return tarih.Date.AddDays(pazartesiOffset);
-    }
-
-    private DateTime Get15GunBaslangic(DateTime tarih)
-    {
-        return tarih.Day <= 15 
-            ? new DateTime(tarih.Year, tarih.Month, 1) 
-            : new DateTime(tarih.Year, tarih.Month, 16);
     }
 
     #endregion

@@ -24,6 +24,10 @@ public class BudgetOdeme : BaseEntity
     [Required]
     public decimal Miktar { get; set; }
 
+    // Firma bilgisi
+    public int? FirmaId { get; set; }
+    public virtual Firma? Firma { get; set; }
+
     // Taksit bilgileri
     public bool TaksitliMi { get; set; } = false;
     public int ToplamTaksitSayisi { get; set; } = 1;
