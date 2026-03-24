@@ -1,7 +1,7 @@
 namespace CRMFiloServis.Shared.Entities;
 
 /// <summary>
-/// Cari hesap (Müşteri/Tedarikçi/Firma)
+/// Cari hesap (Musteri/Tedarikci/Firma)
 /// </summary>
 public class Cari : BaseEntity
 {
@@ -10,6 +10,7 @@ public class Cari : BaseEntity
     public CariTipi CariTipi { get; set; }
     public string? VergiDairesi { get; set; }
     public string? VergiNo { get; set; }
+    public string? TcKimlikNo { get; set; } // TC Kimlik Numarasi
     public string? Adres { get; set; }
     public string? Telefon { get; set; }
     public string? Email { get; set; }

@@ -12,6 +12,6 @@ public interface ICariService
     Task<List<Cari>> GetByTipAsync(CariTipi tip);
     Task<Cari> CreateAsync(Cari cari);
     Task<Cari> UpdateAsync(Cari cari);
-    Task DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id);
     Task<string> GenerateNextKodAsync();
 }

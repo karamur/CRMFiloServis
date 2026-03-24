@@ -365,9 +365,22 @@
         {
             try
             {
-                await CariService.DeleteAsync(silinecekCari.Id);
-                ToastService.ShowSuccess("Cari silindi.");
-                await LoadData();
+                var result = await CariService.DeleteAsync(silinecekCari.Id);
+                if (result)
+                {
+                    ToastService.ShowSuccess($"{silinecekCari.Unvan} silindi.");
+                    showDeleteModal = false;
+                    silinecekCari = null;
+                    
+                    // Listeyi yenile
+                    await LoadData();
+                    FiltreUygula();
+                    StateHasChanged();
+                }
+                else
+                {
+                    ToastService.ShowError("Silme islemi basarisiz.");
+                }
             }
             catch (Exception ex)
             {
