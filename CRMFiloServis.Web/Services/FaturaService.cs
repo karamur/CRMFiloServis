@@ -105,12 +105,35 @@ public class FaturaService : IFaturaService
 
     public async Task<Fatura> UpdateAsync(Fatura fatura)
     {
-        // Tutarlarý yeniden hesapla
-        CalculateTotals(fatura);
+        var existing = await _context.Faturalar.FindAsync(fatura.Id);
+        if (existing == null) throw new Exception("Fatura bulunamadi");
 
-        _context.Faturalar.Update(fatura);
+        // Mevcut entity'yi guncelle
+        existing.FaturaNo = fatura.FaturaNo;
+        existing.FaturaTarihi = fatura.FaturaTarihi;
+        existing.VadeTarihi = fatura.VadeTarihi;
+        existing.FaturaTipi = fatura.FaturaTipi;
+        existing.EFaturaTipi = fatura.EFaturaTipi;
+        existing.FaturaYonu = fatura.FaturaYonu;
+        existing.CariId = fatura.CariId;
+        existing.FirmaId = fatura.FirmaId;
+        existing.AraToplam = fatura.AraToplam;
+        existing.IskontoTutar = fatura.IskontoTutar;
+        existing.KdvOrani = fatura.KdvOrani;
+        existing.KdvTutar = fatura.KdvTutar;
+        existing.GenelToplam = fatura.GenelToplam;
+        existing.Durum = fatura.Durum;
+        existing.Aciklama = fatura.Aciklama;
+        existing.Notlar = fatura.Notlar;
+        existing.EttnNo = fatura.EttnNo;
+        existing.GibKodu = fatura.GibKodu;
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        // Tutarlari yeniden hesapla
+        CalculateTotals(existing);
+
         await _context.SaveChangesAsync();
-        return fatura;
+        return existing;
     }
 
     public async Task DeleteAsync(int id)
@@ -308,9 +331,12 @@ public class FaturaService : IFaturaService
     /// F: Iskonto, G: Kdv Matrahi %0, H: Kdv Matrahi %1, I: Kdv Matrahi %10, J: Kdv Matrahi %20
     /// K: Kdv%1, L: Kdv%10, M: Kdv%20, N: Odenecek Tutar Turk Lirasi
     /// </summary>
-    public async Task<EFaturaImportResult> ImportFromExcelAsync(byte[] fileContent, FaturaYonu yon, int? firmaId = null)
+    public async Task<EFaturaImportResult> ImportFromExcelAsync(byte[] fileContent, FaturaYonu yon, int? firmaId = null, EFaturaTipi? eFaturaTipi = null)
     {
         var result = new EFaturaImportResult();
+        
+        // Varsayilan E-Fatura tipi
+        var defaultEFaturaTipi = eFaturaTipi ?? EFaturaTipi.EArsiv;
         
         try
         {
@@ -515,7 +541,7 @@ public class FaturaService : IFaturaService
                         FirmaId = firmaId,
                         FaturaYonu = yon,
                         FaturaTipi = yon == FaturaYonu.Giden ? FaturaTipi.SatisFaturasi : FaturaTipi.AlisFaturasi,
-                        EFaturaTipi = EFaturaTipi.EArsiv,
+                        EFaturaTipi = defaultEFaturaTipi,
                         AraToplam = toplamMatrah > 0 ? toplamMatrah : genelToplam,
                         IskontoTutar = iskonto,
                         KdvTutar = toplamKdv,

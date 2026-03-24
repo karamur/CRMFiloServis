@@ -23,7 +23,7 @@ public interface IFaturaService
     Task<List<Fatura>> GetByYonAsync(FaturaYonu yon, int? firmaId = null);
     Task<List<Fatura>> GetByYonAndDateRangeAsync(FaturaYonu yon, DateTime? baslangic, DateTime? bitis, int? firmaId = null);
     Task<List<Fatura>> GetByEFaturaTipiAsync(EFaturaTipi tip);
-    Task<EFaturaImportResult> ImportFromExcelAsync(byte[] fileContent, FaturaYonu yon, int? firmaId = null);
+    Task<EFaturaImportResult> ImportFromExcelAsync(byte[] fileContent, FaturaYonu yon, int? firmaId = null, EFaturaTipi? eFaturaTipi = null);
     
     // Excel Sablon ve Export - Yeni format (ornek dosya ile uyumlu)
     Task<byte[]> GetExcelSablonAsync(FaturaYonu yon);

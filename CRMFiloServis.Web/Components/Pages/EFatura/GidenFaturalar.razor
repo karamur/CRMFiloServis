@@ -323,10 +323,22 @@
                         <i class="bi bi-info-circle me-1"></i>
                         Sablon dosyasini indirip doldurduktan sonra yukleyin.
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Excel Dosyasi Secin *</label>
-                        <InputFile class="form-control" OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">E-Fatura Tipi *</label>
+                            <select class="form-select" @bind="importEFaturaTipi">
+                                <option value="2">E-Arsiv Fatura</option>
+                                <option value="1">E-Fatura</option>
+                            </select>
+                            <small class="text-muted">Tum aktarilan faturalara uygulanacak</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Excel Dosyasi *</label>
+                            <InputFile class="form-control" OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+                        </div>
                     </div>
+                    
                     @if (importResult != null)
                     {
                         <!-- Ozet -->
@@ -547,6 +559,7 @@
     private IBrowserFile? importFile;
     private EFaturaImportResult? importResult;
     private bool isImporting = false;
+    private int importEFaturaTipi = 2; // Default to E-Arsiv
 
     protected override async Task OnInitializedAsync()
     {
@@ -590,14 +603,18 @@
             filtered = filtered.Where(f => (int)f.Durum == durum);
         
         if (filtreFirmaId > 0)
-            filtered = filtered.Where(f => f.Cari != null && f.Cari.FirmaId == filtreFirmaId);
+            filtered = filtered.Where(f => f.FirmaId == filtreFirmaId || (f.Cari != null && f.Cari.FirmaId == filtreFirmaId));
         
         if (!string.IsNullOrEmpty(aramaMetni))
             filtered = filtered.Where(f => 
                 f.FaturaNo.Contains(aramaMetni, StringComparison.OrdinalIgnoreCase) ||
                 (f.Cari?.Unvan?.Contains(aramaMetni, StringComparison.OrdinalIgnoreCase) ?? false));
         
-        filtreliFaturalar = filtered.OrderByDescending(f => f.FaturaTarihi).ToList();
+        // Tarihe gore azalan, sonra fatura numarasina gore azalan sirala
+        filtreliFaturalar = filtered
+            .OrderByDescending(f => f.FaturaTarihi)
+            .ThenByDescending(f => f.FaturaNo)
+            .ToList();
         StateHasChanged();
     }
 
@@ -757,9 +774,10 @@
             await importFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
             var fileContent = stream.ToArray();
 
-            // Secili firmaya gore import
+            // Secili firmaya ve E-Fatura tipine gore import
             var firmaId = filtreFirmaId > 0 ? filtreFirmaId : (int?)null;
-            importResult = await FaturaService.ImportFromExcelAsync(fileContent, FaturaYonu.Giden, firmaId);
+            var eFaturaTip = (EFaturaTipi)importEFaturaTipi;
+            importResult = await FaturaService.ImportFromExcelAsync(fileContent, FaturaYonu.Giden, firmaId, eFaturaTip);
 
             if (importResult.Success)
             {
