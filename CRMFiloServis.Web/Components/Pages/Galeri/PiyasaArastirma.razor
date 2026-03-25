@@ -132,20 +132,39 @@
                         </div>
                     </div>
 
-                    <!-- Kapasite -->
+                    <!-- Tasima Kapasitesi / Koltuk Sayisi -->
                     <div class="mb-3">
-                        <label class="form-label">Motor Kapasitesi</label>
-                        <select class="form-select form-select-sm" @bind="request.Kapasite">
+                        <label class="form-label">
+                            @if (selectedVasitaTuru == "ticari-arac" || selectedVasitaTuru == "minivan-panelvan")
+                            {
+                                <span>Koltuk Sayisi</span>
+                            }
+                            else
+                            {
+                                <span>Tasima Kapasitesi</span>
+                            }
+                        </label>
+                        <select class="form-select form-select-sm" @bind="request.TasimaKapasitesi">
                             <option value="">Tumu</option>
-                            <option value="1.0">1.0 L ve alti</option>
-                            <option value="1.2">1.2 L</option>
-                            <option value="1.4">1.4 L</option>
-                            <option value="1.5">1.5 L</option>
-                            <option value="1.6">1.6 L</option>
-                            <option value="1.8">1.8 L</option>
-                            <option value="2.0">2.0 L</option>
-                            <option value="2.5">2.5 L</option>
-                            <option value="3.0">3.0 L ve ustu</option>
+                            @if (selectedVasitaTuru == "ticari-arac" || selectedVasitaTuru == "minivan-panelvan")
+                            {
+                                <option value="2">2 Koltuk</option>
+                                <option value="3">3 Koltuk</option>
+                                <option value="5">5 Koltuk</option>
+                                <option value="7">7 Koltuk</option>
+                                <option value="8">8 Koltuk</option>
+                                <option value="9">9 Koltuk</option>
+                                <option value="10+">10+ Koltuk</option>
+                                <option value="14+">14+ Koltuk (Minibus)</option>
+                            }
+                            else
+                            {
+                                <option value="2">2 Kisi</option>
+                                <option value="4">4 Kisi</option>
+                                <option value="5">5 Kisi</option>
+                                <option value="7">7 Kisi</option>
+                                <option value="8+">8+ Kisi</option>
+                            }
                         </select>
                     </div>
 
@@ -267,7 +286,16 @@
                                         <th>Arac</th>
                                         <th class="text-center">Yil</th>
                                         <th class="text-end">KM</th>
-                                        <th class="text-center">Kapasite</th>
+                                        <th class="text-center">
+                                            @if (selectedVasitaTuru == "ticari-arac" || selectedVasitaTuru == "minivan-panelvan")
+                                            {
+                                                <span>Koltuk</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Kapasite</span>
+                                            }
+                                        </th>
                                         <th class="text-end">Fiyat</th>
                                         <th class="text-center">Durum</th>
                                         <th>Konum</th>
@@ -314,13 +342,15 @@
                                             <td class="text-center">@ilan.ModelYili</td>
                                             <td class="text-end">@ilan.Kilometre.ToString("N0") km</td>
                                             <td class="text-center">
-                                                @if (!string.IsNullOrEmpty(ilan.Kapasite))
+                                                @if (!string.IsNullOrEmpty(ilan.TasimaKapasitesi))
+                                                {
+                                                    <span class="badge bg-info">
+                                                        <i class="bi bi-people-fill me-1"></i>@ilan.TasimaKapasitesi
+                                                    </span>
+                                                }
+                                                else if (!string.IsNullOrEmpty(ilan.Kapasite))
                                                 {
                                                     <span class="badge bg-secondary">@ilan.Kapasite</span>
-                                                }
-                                                else if (!string.IsNullOrEmpty(ilan.MotorHacmi))
-                                                {
-                                                    <span class="badge bg-secondary">@ilan.MotorHacmi</span>
                                                 }
                                                 else
                                                 {
@@ -598,9 +628,11 @@
                     <div>
                         <span class="badge bg-secondary me-2">@secilenIlan.ModelYili</span>
                         <span class="badge bg-info me-2">@secilenIlan.Kilometre.ToString("N0") km</span>
-                        @if (!string.IsNullOrEmpty(secilenIlan.Kapasite))
+                        @if (!string.IsNullOrEmpty(secilenIlan.TasimaKapasitesi))
                         {
-                            <span class="badge bg-warning text-dark me-2">@secilenIlan.Kapasite</span>
+                            <span class="badge bg-warning text-dark me-2">
+                                <i class="bi bi-people-fill me-1"></i>@secilenIlan.TasimaKapasitesi
+                            </span>
                         }
                         <span class="badge bg-success">@FormatPara(secilenIlan.Fiyat)</span>
                     </div>
@@ -890,7 +922,9 @@
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Piyasa");
 
-            var headers = new[] { "Yil", "Marka", "Model", "Versiyon", "KM", "Kapasite", "Fiyat", "Yakit", "Vites", "Durum", "Sehir", "Kaynak", "URL" };
+            var kapasiteBaslik = (selectedVasitaTuru == "ticari-arac" || selectedVasitaTuru == "minivan-panelvan") 
+                ? "Koltuk" : "Kapasite";
+            var headers = new[] { "Yil", "Marka", "Model", "Versiyon", "KM", kapasiteBaslik, "Fiyat", "Yakit", "Vites", "Durum", "Sehir", "Kaynak", "URL" };
             for (int i = 0; i < headers.Length; i++)
             {
                 ws.Cell(1, i + 1).Value = headers[i];
@@ -902,7 +936,8 @@
             foreach (var ilan in sonuclar)
             {
                 var durum = ilan.HasarKayitli ? "Hasarli" : ((ilan.BoyaliParcaSayisi ?? 0) > 0 ? "Boyali" : "Temiz");
-                var kapasite = !string.IsNullOrEmpty(ilan.Kapasite) ? ilan.Kapasite : ilan.MotorHacmi ?? "";
+                var kapasite = !string.IsNullOrEmpty(ilan.TasimaKapasitesi) ? ilan.TasimaKapasitesi : 
+                               (!string.IsNullOrEmpty(ilan.Kapasite) ? ilan.Kapasite : "");
                 ws.Cell(row, 1).Value = ilan.ModelYili;
                 ws.Cell(row, 2).Value = ilan.Marka;
                 ws.Cell(row, 3).Value = ilan.Model;
@@ -951,7 +986,7 @@
     }
 
     private string FormatPara(decimal tutar) => tutar.ToString("N0") + " TL";
-    private string GetKaynakClass(string k) => k == "Sahibinden" ? "bg-danger" : "bg-primary";
+    private string GetKaynakClass(String k) => k == "Sahibinden" ? "bg-danger" : "bg-primary";
 
     private string FormatAnaliz(string analiz)
     {

@@ -63,6 +63,7 @@ public class PiyasaArastirmaIlan : BaseEntity
     public string? MotorGucu { get; set; }
     public string? Renk { get; set; }
     public string? Kapasite { get; set; } // Motor kapasitesi (cc veya kW)
+    public string? TasimaKapasitesi { get; set; } // Koltuk sayisi / Yolcu kapasitesi
 
     public int? BoyaliParcaSayisi { get; set; }
     public int? DegisenParcaSayisi { get; set; }

@@ -514,7 +514,7 @@ public class AracPiyasaArastirmaRequest
     public int? YilBitis { get; set; }
     public string? YakitTipi { get; set; }
     public string? VitesTipi { get; set; }
-    public string? Kapasite { get; set; } // Motor kapasitesi filtresi
+    public string? TasimaKapasitesi { get; set; } // Koltuk sayisi / Yolcu kapasitesi filtresi
     public int? MinKilometre { get; set; }
     public int? MaxKilometre { get; set; }
     public decimal? MinFiyat { get; set; }
