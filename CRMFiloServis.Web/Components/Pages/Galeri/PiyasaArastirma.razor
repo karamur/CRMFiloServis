@@ -132,6 +132,23 @@
                         </div>
                     </div>
 
+                    <!-- Kapasite -->
+                    <div class="mb-3">
+                        <label class="form-label">Motor Kapasitesi</label>
+                        <select class="form-select form-select-sm" @bind="request.Kapasite">
+                            <option value="">Tumu</option>
+                            <option value="1.0">1.0 L ve alti</option>
+                            <option value="1.2">1.2 L</option>
+                            <option value="1.4">1.4 L</option>
+                            <option value="1.5">1.5 L</option>
+                            <option value="1.6">1.6 L</option>
+                            <option value="1.8">1.8 L</option>
+                            <option value="2.0">2.0 L</option>
+                            <option value="2.5">2.5 L</option>
+                            <option value="3.0">3.0 L ve ustu</option>
+                        </select>
+                    </div>
+
                     <!-- Arama Butonu -->
                     <button class="btn btn-primary w-100" @onclick="ArastirmaBaslat"
                             disabled="@(isSearching || string.IsNullOrEmpty(selectedMarka) || string.IsNullOrEmpty(selectedModel))">
@@ -217,14 +234,40 @@
                 @if (activeTab == "ilanlar")
                 {
                     <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-list-ul me-2"></i>Ilan Listesi</span>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn @(resimBoyutu == "kucuk" ? "btn-primary" : "btn-outline-primary")" 
+                                        @onclick='() => resimBoyutu = "kucuk"' title="Kucuk Resim">
+                                    <i class="bi bi-grid-3x3"></i>
+                                </button>
+                                <button class="btn @(resimBoyutu == "orta" ? "btn-primary" : "btn-outline-primary")" 
+                                        @onclick='() => resimBoyutu = "orta"' title="Orta Resim">
+                                    <i class="bi bi-grid"></i>
+                                </button>
+                                <button class="btn @(resimBoyutu == "buyuk" ? "btn-primary" : "btn-outline-primary")" 
+                                        @onclick='() => resimBoyutu = "buyuk"' title="Buyuk Resim">
+                                    <i class="bi bi-square"></i>
+                                </button>
+                                <button class="btn @(resimBoyutu == "gizle" ? "btn-primary" : "btn-outline-primary")" 
+                                        @onclick='() => resimBoyutu = "gizle"' title="Resimsiz">
+                                    <i class="bi bi-eye-slash"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
                             <table class="table table-hover table-sm mb-0">
                                 <thead class="table-light sticky-top">
                                     <tr>
                                         <th style="width: 40px;"></th>
+                                        @if (resimBoyutu != "gizle")
+                                        {
+                                            <th style="width: @GetResimGenislik();">Foto</th>
+                                        }
                                         <th>Arac</th>
                                         <th class="text-center">Yil</th>
-                                        <th class="text-end">Kilometre</th>
+                                        <th class="text-end">KM</th>
+                                        <th class="text-center">Kapasite</th>
                                         <th class="text-end">Fiyat</th>
                                         <th class="text-center">Durum</th>
                                         <th>Konum</th>
@@ -243,12 +286,47 @@
                                                     <i class="bi bi-star-fill text-warning" title="Firsat!"></i>
                                                 }
                                             </td>
+                                            @if (resimBoyutu != "gizle")
+                                            {
+                                                <td class="align-middle">
+                                                    @if (!string.IsNullOrEmpty(ilan.ResimUrl))
+                                                    {
+                                                        <img src="@ilan.ResimUrl" 
+                                                             alt="@ilan.IlanBasligi"
+                                                             class="rounded cursor-pointer"
+                                                             style="width: @GetResimBoyut(); height: auto; object-fit: cover;"
+                                                             @onclick="() => ResimBuyut(ilan)" 
+                                                             onerror="this.style.display='none'" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                                             style="width: @GetResimBoyut(); height: @GetResimBoyut();">
+                                                            <i class="bi bi-image text-muted"></i>
+                                                        </div>
+                                                    }
+                                                </td>
+                                            }
                                             <td>
                                                 <div class="fw-semibold">@ilan.IlanBasligi</div>
                                                 <small class="text-muted">@ilan.Versiyon | @ilan.YakitTipi / @ilan.VitesTipi</small>
                                             </td>
                                             <td class="text-center">@ilan.ModelYili</td>
                                             <td class="text-end">@ilan.Kilometre.ToString("N0") km</td>
+                                            <td class="text-center">
+                                                @if (!string.IsNullOrEmpty(ilan.Kapasite))
+                                                {
+                                                    <span class="badge bg-secondary">@ilan.Kapasite</span>
+                                                }
+                                                else if (!string.IsNullOrEmpty(ilan.MotorHacmi))
+                                                {
+                                                    <span class="badge bg-secondary">@ilan.MotorHacmi</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
                                             <td class="text-end fw-bold">@FormatPara(ilan.Fiyat)</td>
                                             <td class="text-center">
                                                 @if (ilan.HasarKayitli)
@@ -499,12 +577,50 @@
     </div>
 }
 
+<!-- Resim Onizleme Modal -->
+@if (showResimModal && secilenIlan != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.85);" tabindex="-1" @onclick="ResimModalKapat">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-white" @onclick:stopPropagation>
+                <div class="modal-header border-0">
+                    <h6 class="modal-title">@secilenIlan.IlanBasligi</h6>
+                    <button type="button" class="btn-close btn-close-white" @onclick="ResimModalKapat"></button>
+                </div>
+                <div class="modal-body text-center p-0">
+                    @if (!string.IsNullOrEmpty(secilenIlan.ResimUrl))
+                    {
+                        <img src="@secilenIlan.ResimUrl" alt="@secilenIlan.IlanBasligi" 
+                             class="img-fluid" style="max-height: 70vh;" />
+                    }
+                </div>
+                <div class="modal-footer border-0 justify-content-between">
+                    <div>
+                        <span class="badge bg-secondary me-2">@secilenIlan.ModelYili</span>
+                        <span class="badge bg-info me-2">@secilenIlan.Kilometre.ToString("N0") km</span>
+                        @if (!string.IsNullOrEmpty(secilenIlan.Kapasite))
+                        {
+                            <span class="badge bg-warning text-dark me-2">@secilenIlan.Kapasite</span>
+                        }
+                        <span class="badge bg-success">@FormatPara(secilenIlan.Fiyat)</span>
+                    </div>
+                    <a href="@secilenIlan.IlanUrl" target="_blank" class="btn btn-primary btn-sm">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Ilana Git
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
     .ai-analiz-content h2 { font-size: 1.25rem; color: #0d6efd; margin-top: 1rem; }
     .ai-analiz-content h3 { font-size: 1.1rem; color: #198754; margin-top: 0.8rem; }
+    .cursor-pointer { cursor: pointer; transition: transform 0.2s; }
+    .cursor-pointer:hover { transform: scale(1.05); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
 </style>
 
 @code {
@@ -527,8 +643,11 @@
     private bool isUpdatingMarkaModel;
     private bool showKayitliAramalar;
     private bool isLoadingKayitliAramalar;
+    private bool showResimModal;
 
     private string activeTab = "ilanlar";
+    private string resimBoyutu = "orta"; // kucuk, orta, buyuk, gizle
+    private PiyasaArastirmaIlan? secilenIlan;
 
     protected override void OnInitialized()
     {
@@ -771,7 +890,7 @@
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Piyasa");
 
-            var headers = new[] { "Yil", "Marka", "Model", "Versiyon", "KM", "Fiyat", "Yakit", "Vites", "Durum", "Sehir", "Kaynak", "URL" };
+            var headers = new[] { "Yil", "Marka", "Model", "Versiyon", "KM", "Kapasite", "Fiyat", "Yakit", "Vites", "Durum", "Sehir", "Kaynak", "URL" };
             for (int i = 0; i < headers.Length; i++)
             {
                 ws.Cell(1, i + 1).Value = headers[i];
@@ -783,22 +902,24 @@
             foreach (var ilan in sonuclar)
             {
                 var durum = ilan.HasarKayitli ? "Hasarli" : ((ilan.BoyaliParcaSayisi ?? 0) > 0 ? "Boyali" : "Temiz");
+                var kapasite = !string.IsNullOrEmpty(ilan.Kapasite) ? ilan.Kapasite : ilan.MotorHacmi ?? "";
                 ws.Cell(row, 1).Value = ilan.ModelYili;
                 ws.Cell(row, 2).Value = ilan.Marka;
                 ws.Cell(row, 3).Value = ilan.Model;
                 ws.Cell(row, 4).Value = ilan.Versiyon ?? "";
                 ws.Cell(row, 5).Value = ilan.Kilometre;
-                ws.Cell(row, 6).Value = (double)ilan.Fiyat;
-                ws.Cell(row, 7).Value = ilan.YakitTipi ?? "";
-                ws.Cell(row, 8).Value = ilan.VitesTipi ?? "";
-                ws.Cell(row, 9).Value = durum;
-                ws.Cell(row, 10).Value = ilan.Sehir ?? "";
-                ws.Cell(row, 11).Value = ilan.Kaynak;
+                ws.Cell(row, 6).Value = kapasite;
+                ws.Cell(row, 7).Value = (double)ilan.Fiyat;
+                ws.Cell(row, 8).Value = ilan.YakitTipi ?? "";
+                ws.Cell(row, 9).Value = ilan.VitesTipi ?? "";
+                ws.Cell(row, 10).Value = durum;
+                ws.Cell(row, 11).Value = ilan.Sehir ?? "";
+                ws.Cell(row, 12).Value = ilan.Kaynak;
                 if (!string.IsNullOrEmpty(ilan.IlanUrl))
                 {
-                    ws.Cell(row, 12).Value = "Git";
-                    ws.Cell(row, 12).SetHyperlink(new XLHyperlink(ilan.IlanUrl));
-                    ws.Cell(row, 12).Style.Font.FontColor = XLColor.Blue;
+                    ws.Cell(row, 13).Value = "Git";
+                    ws.Cell(row, 13).SetHyperlink(new XLHyperlink(ilan.IlanUrl));
+                    ws.Cell(row, 13).Style.Font.FontColor = XLColor.Blue;
                 }
                 row++;
             }
@@ -840,5 +961,33 @@
         analiz = System.Text.RegularExpressions.Regex.Replace(analiz, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
         analiz = analiz.Replace("\n\n", "</p><p>").Replace("\n", "<br>");
         return $"<p>{analiz}</p>";
+    }
+
+    private string GetResimGenislik() => resimBoyutu switch
+    {
+        "kucuk" => "60px",
+        "orta" => "100px",
+        "buyuk" => "150px",
+        _ => "0px"
+    };
+
+    private string GetResimBoyut() => resimBoyutu switch
+    {
+        "kucuk" => "50px",
+        "orta" => "80px",
+        "buyuk" => "120px",
+        _ => "0px"
+    };
+
+    private void ResimBuyut(PiyasaArastirmaIlan ilan)
+    {
+        secilenIlan = ilan;
+        showResimModal = true;
+    }
+
+    private void ResimModalKapat()
+    {
+        showResimModal = false;
+        secilenIlan = null;
     }
 }

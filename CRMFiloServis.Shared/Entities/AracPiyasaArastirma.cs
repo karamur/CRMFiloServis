@@ -46,6 +46,7 @@ public class PiyasaArastirmaIlan : BaseEntity
     public string? IlanNo { get; set; }
     public string IlanBasligi { get; set; } = string.Empty;
     public string? IlanUrl { get; set; }
+    public string? ResimUrl { get; set; } // Ilan fotografý
 
     public string Marka { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
@@ -61,6 +62,7 @@ public class PiyasaArastirmaIlan : BaseEntity
     public string? MotorHacmi { get; set; }
     public string? MotorGucu { get; set; }
     public string? Renk { get; set; }
+    public string? Kapasite { get; set; } // Motor kapasitesi (cc veya kW)
 
     public int? BoyaliParcaSayisi { get; set; }
     public int? DegisenParcaSayisi { get; set; }
