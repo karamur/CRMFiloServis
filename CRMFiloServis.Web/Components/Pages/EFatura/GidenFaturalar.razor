@@ -189,7 +189,15 @@
                                         </span>
                                     </td>
                                     <td>@fatura.FaturaTarihi.ToString("dd.MM.yyyy")</td>
-                                    <td>@fatura.Cari?.Unvan</td>
+                                    <td>
+                                        @if (fatura.Cari != null)
+                                        {
+                                            <a href="javascript:void(0)" class="text-decoration-none" 
+                                               @onclick="() => CariKartAc(fatura.Cari)" @onclick:stopPropagation>
+                                                <i class="bi bi-person-circle me-1"></i>@fatura.Cari.Unvan
+                                            </a>
+                                        }
+                                    </td>
                                     <td><small>@fatura.Cari?.VergiNo</small></td>
                                     <td>
                                         @if (fatura.VadeTarihi.HasValue)
@@ -627,6 +635,190 @@
     </div>
 }
 
+<!-- Cari Kart Modal -->
+@if (showCariKartModal && cariKartCari != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-person-circle me-2"></i>
+                        Cari Kart - @cariKartCari.CariKodu - @cariKartCari.Unvan
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => showCariKartModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Cari Bilgileri -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <small class="text-muted">Vergi No / TCKN</small>
+                                    <div class="fw-bold">@(cariKartCari.VergiNo ?? cariKartCari.TcKimlikNo ?? "-")</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <small class="text-muted">Telefon</small>
+                                    <div class="fw-bold">@(cariKartCari.Telefon ?? "-")</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <small class="text-muted">Email</small>
+                                    <div class="fw-bold">@(cariKartCari.Email ?? "-")</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarih Filtresi -->
+                    <div class="row g-2 mb-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small">Baslangic Tarihi</label>
+                            <input type="date" class="form-control form-control-sm" @bind="cariKartBaslangic" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Bitis Tarihi</label>
+                            <input type="date" class="form-control form-control-sm" @bind="cariKartBitis" />
+                        </div>
+                        <div class="col-md-6">
+                            <div class="btn-group">
+                                <button class="btn btn-primary btn-sm" @onclick="CariKartEkstreYukle" disabled="@cariKartYukleniyor">
+                                    @if (cariKartYukleniyor)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-search me-1"></i>
+                                    }
+                                    Ekstre Getir
+                                </button>
+                                <button class="btn btn-outline-success btn-sm" @onclick="CariKartExcelExport" 
+                                        disabled="@(!cariKartHareketler.Any())">
+                                    <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" @onclick="CariKartYazdir"
+                                        disabled="@(!cariKartHareketler.Any())">
+                                    <i class="bi bi-printer me-1"></i>Yazdir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ozet Kartlari -->
+                    @if (cariKartHareketler.Any())
+                    {
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <div class="card border-success">
+                                    <div class="card-body py-2 text-center">
+                                        <small class="text-muted">Toplam Alacak</small>
+                                        <h5 class="text-success mb-0">@FormatPara(cariKartToplamAlacak)</h5>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-danger">
+                                    <div class="card-body py-2 text-center">
+                                        <small class="text-muted">Toplam Borc</small>
+                                        <h5 class="text-danger mb-0">@FormatPara(cariKartToplamBorc)</h5>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card @(cariKartBakiye >= 0 ? "border-primary" : "border-warning")">
+                                    <div class="card-body py-2 text-center">
+                                        <small class="text-muted">Net Bakiye</small>
+                                        <h5 class="@(cariKartBakiye >= 0 ? "text-primary" : "text-warning") mb-0">
+                                            @FormatPara(cariKartBakiye)
+                                        </h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Hareket Tablosu -->
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Islem Turu</th>
+                                    <th>Belge No</th>
+                                    <th>Aciklama</th>
+                                    <th class="text-end">Borc</th>
+                                    <th class="text-end">Alacak</th>
+                                    <th class="text-end">Bakiye</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (cariKartYukleniyor)
+                                {
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="spinner-border text-primary"></div>
+                                            <div class="mt-2 text-muted">Yukleniyor...</div>
+                                        </td>
+                                    </tr>
+                                }
+                                else if (!cariKartHareketler.Any())
+                                {
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted">
+                                            <i class="bi bi-inbox display-6"></i>
+                                            <div class="mt-2">Hareket bulunamadi</div>
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    decimal calisanBakiye = 0;
+                                    @foreach (var hareket in cariKartHareketler)
+                                    {
+                                        calisanBakiye += hareket.Alacak - hareket.Borc;
+                                        <tr>
+                                            <td>@hareket.Tarih.ToString("dd.MM.yyyy")</td>
+                                            <td>
+                                                <span class="badge @GetIslemTipiBadge(hareket.IslemTipi)">
+                                                    @hareket.IslemTipi
+                                                </span>
+                                            </td>
+                                            <td><small>@hareket.BelgeNo</small></td>
+                                            <td><small>@hareket.Aciklama</small></td>
+                                            <td class="text-end @(hareket.Borc > 0 ? "text-danger" : "")">
+                                                @(hareket.Borc > 0 ? FormatPara(hareket.Borc) : "-")
+                                            </td>
+                                            <td class="text-end @(hareket.Alacak > 0 ? "text-success" : "")">
+                                                @(hareket.Alacak > 0 ? FormatPara(hareket.Alacak) : "-")
+                                            </td>
+                                            <td class="text-end fw-bold @(calisanBakiye >= 0 ? "text-success" : "text-danger")">
+                                                @FormatPara(calisanBakiye)
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showCariKartModal = false">
+                        <i class="bi bi-x me-1"></i>Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Fatura> faturalar = new();
     private List<Fatura> filtreliFaturalar = new();
@@ -656,6 +848,7 @@
     private bool showCariModal = false;
     private bool showHesapOnayModal = false;
     private bool showSilModal = false;
+    private bool showCariKartModal = false;
 
     // Fatura
     private Fatura editFatura = new();
@@ -675,6 +868,16 @@
     private bool isSavingCari = false;
     private string yeniHesapKodu = "";
     private bool hesapOlusturulacakMi = false;
+
+    // Cari Kart (Ekstre)
+    private Cari? cariKartCari;
+    private DateTime cariKartBaslangic = new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime cariKartBitis = DateTime.Today;
+    private List<CariEkstreHareket> cariKartHareketler = new();
+    private decimal cariKartToplamAlacak;
+    private decimal cariKartToplamBorc;
+    private decimal cariKartBakiye;
+    private bool cariKartYukleniyor = false;
 
     // Import
     private IBrowserFile? importFile;
@@ -1130,6 +1333,215 @@
         }
     }
 
+    // Cari Kart Fonksiyonlari
+    private async Task CariKartAc(Cari cari)
+    {
+        cariKartCari = cari;
+        cariKartBaslangic = new DateTime(DateTime.Today.Year, 1, 1);
+        cariKartBitis = DateTime.Today;
+        showCariKartModal = true;
+        await CariKartEkstreYukle();
+    }
+
+    private async Task CariKartEkstreYukle()
+    {
+        if (cariKartCari == null) return;
+
+        cariKartYukleniyor = true;
+        cariKartHareketler.Clear();
+        StateHasChanged();
+
+        try
+        {
+            // Faturalari getir
+            var faturalar = await FaturaService.GetByCariIdAsync(cariKartCari.Id);
+            var donemFaturalar = faturalar
+                .Where(f => f.FaturaTarihi >= cariKartBaslangic && f.FaturaTarihi <= cariKartBitis)
+                .ToList();
+
+            foreach (var fatura in donemFaturalar)
+            {
+                cariKartHareketler.Add(new CariEkstreHareket
+                {
+                    Tarih = fatura.FaturaTarihi,
+                    IslemTipi = fatura.FaturaTipi == FaturaTipi.SatisFaturasi ? "Satis Faturasi" : "Alis Faturasi",
+                    BelgeNo = fatura.FaturaNo,
+                    Aciklama = fatura.Aciklama ?? fatura.FaturaNo,
+                    Alacak = fatura.FaturaTipi == FaturaTipi.SatisFaturasi ? fatura.GenelToplam : 0,
+                    Borc = fatura.FaturaTipi == FaturaTipi.AlisFaturasi ? fatura.GenelToplam : 0
+                });
+            }
+
+            // Odemeleri getir
+            var odemeler = await BankaKasaService.GetByCariIdAsync(cariKartCari.Id);
+            var donemOdemeler = odemeler
+                .Where(o => o.IslemTarihi >= cariKartBaslangic && o.IslemTarihi <= cariKartBitis)
+                .ToList();
+
+            foreach (var odeme in donemOdemeler)
+            {
+                cariKartHareketler.Add(new CariEkstreHareket
+                {
+                    Tarih = odeme.IslemTarihi,
+                    IslemTipi = odeme.HareketTipi == HareketTipi.Giris ? "Tahsilat" : "Odeme",
+                    BelgeNo = odeme.IslemNo,
+                    Aciklama = odeme.Aciklama ?? odeme.IslemNo,
+                    Borc = odeme.HareketTipi == HareketTipi.Giris ? odeme.Tutar : 0,
+                    Alacak = odeme.HareketTipi == HareketTipi.Cikis ? odeme.Tutar : 0
+                });
+            }
+
+            // Sirala
+            cariKartHareketler = cariKartHareketler.OrderBy(h => h.Tarih).ThenBy(h => h.BelgeNo).ToList();
+
+            // Toplamlari hesapla
+            cariKartToplamAlacak = cariKartHareketler.Sum(h => h.Alacak);
+            cariKartToplamBorc = cariKartHareketler.Sum(h => h.Borc);
+            cariKartBakiye = cariKartToplamAlacak - cariKartToplamBorc;
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Ekstre yuklenemedi: {ex.Message}");
+        }
+        finally
+        {
+            cariKartYukleniyor = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CariKartExcelExport()
+    {
+        if (cariKartCari == null || !cariKartHareketler.Any())
+        {
+            ToastService.ShowWarning("Indirilecek hareket yok!");
+            return;
+        }
+
+        try
+        {
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var ws = workbook.Worksheets.Add("Cari Ekstre");
+
+            // Baslik
+            ws.Cell(1, 1).Value = $"CARi EKSTRE - {cariKartCari.Unvan}";
+            ws.Range(1, 1, 1, 6).Merge();
+            ws.Cell(1, 1).Style.Font.Bold = true;
+            ws.Cell(1, 1).Style.Font.FontSize = 14;
+
+            ws.Cell(2, 1).Value = $"Tarih: {cariKartBaslangic:dd.MM.yyyy} - {cariKartBitis:dd.MM.yyyy}";
+            ws.Range(2, 1, 2, 6).Merge();
+
+            // Basliklar
+            var row = 4;
+            var headers = new[] { "Tarih", "Islem Turu", "Belge No", "Aciklama", "Borc", "Alacak", "Bakiye" };
+            for (int i = 0; i < headers.Length; i++)
+            {
+                ws.Cell(row, i + 1).Value = headers[i];
+                ws.Cell(row, i + 1).Style.Font.Bold = true;
+                ws.Cell(row, i + 1).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightBlue;
+            }
+            row++;
+
+            // Veriler
+            decimal bakiye = 0;
+            foreach (var h in cariKartHareketler)
+            {
+                bakiye += h.Alacak - h.Borc;
+                ws.Cell(row, 1).Value = h.Tarih;
+                ws.Cell(row, 1).Style.DateFormat.Format = "dd.MM.yyyy";
+                ws.Cell(row, 2).Value = h.IslemTipi;
+                ws.Cell(row, 3).Value = h.BelgeNo;
+                ws.Cell(row, 4).Value = h.Aciklama;
+                ws.Cell(row, 5).Value = h.Borc > 0 ? (double)h.Borc : 0;
+                ws.Cell(row, 6).Value = h.Alacak > 0 ? (double)h.Alacak : 0;
+                ws.Cell(row, 7).Value = (double)bakiye;
+                ws.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00";
+                ws.Cell(row, 6).Style.NumberFormat.Format = "#,##0.00";
+                ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00";
+                row++;
+            }
+
+            // Toplam
+            ws.Cell(row, 1).Value = "TOPLAM";
+            ws.Range(row, 1, row, 4).Merge();
+            ws.Cell(row, 5).Value = (double)cariKartToplamBorc;
+            ws.Cell(row, 6).Value = (double)cariKartToplamAlacak;
+            ws.Cell(row, 7).Value = (double)cariKartBakiye;
+            ws.Row(row).Style.Font.Bold = true;
+            ws.Range(row, 1, row, 7).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightYellow;
+
+            ws.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            var base64 = Convert.ToBase64String(stream.ToArray());
+            var fileName = $"CariEkstre_{cariKartCari.CariKodu}_{DateTime.Now:yyyyMMdd}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, base64);
+            ToastService.ShowSuccess("Excel indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Excel hatasi: {ex.Message}");
+        }
+    }
+
+    private async Task CariKartYazdir()
+    {
+        if (cariKartCari == null) return;
+
+        var yazdirIcerik = $@"
+            <html><head><title>Cari Ekstre - {cariKartCari.Unvan}</title>
+            <style>body{{font-family:Arial;margin:20px;}} table{{width:100%;border-collapse:collapse;font-size:12px;}} 
+            th,td{{border:1px solid #000;padding:6px;}} th{{background:#f0f0f0;}} 
+            .text-end{{text-align:right;}} .fw-bold{{font-weight:bold;}}</style></head>
+            <body>
+            <h2 style='text-align:center;'>CARi EKSTRE</h2>
+            <p><strong>Cari:</strong> {cariKartCari.CariKodu} - {cariKartCari.Unvan}</p>
+            <p><strong>Tarih:</strong> {cariKartBaslangic:dd.MM.yyyy} - {cariKartBitis:dd.MM.yyyy}</p>
+            <table>
+            <tr><th>Tarih</th><th>Islem</th><th>Belge No</th><th>Aciklama</th><th>Borc</th><th>Alacak</th><th>Bakiye</th></tr>";
+
+        decimal bakiye = 0;
+        foreach (var h in cariKartHareketler)
+        {
+            bakiye += h.Alacak - h.Borc;
+            yazdirIcerik += $@"<tr>
+                <td>{h.Tarih:dd.MM.yyyy}</td>
+                <td>{h.IslemTipi}</td>
+                <td>{h.BelgeNo}</td>
+                <td>{h.Aciklama}</td>
+                <td class='text-end'>{(h.Borc > 0 ? FormatPara(h.Borc) : "-")}</td>
+                <td class='text-end'>{(h.Alacak > 0 ? FormatPara(h.Alacak) : "-")}</td>
+                <td class='text-end fw-bold'>{FormatPara(bakiye)}</td>
+            </tr>";
+        }
+
+        yazdirIcerik += $@"<tr style='background:#ffffa0;font-weight:bold;'>
+            <td colspan='4'>TOPLAM</td>
+            <td class='text-end'>{FormatPara(cariKartToplamBorc)}</td>
+            <td class='text-end'>{FormatPara(cariKartToplamAlacak)}</td>
+            <td class='text-end'>{FormatPara(cariKartBakiye)}</td>
+        </tr></table></body></html>";
+
+        var jsCode = $@"
+            var w = window.open('', '_blank', 'width=900,height=700');
+            w.document.write(`{yazdirIcerik.Replace("`", "\\`")}`);
+            w.document.close();
+            w.focus();
+            setTimeout(function(){{w.print();}},300);
+        ";
+        await JS.InvokeVoidAsync("eval", jsCode);
+    }
+
+    private async Task<string> DownloadFile(string fileName, byte[] content)
+    {
+        var base64 = Convert.ToBase64String(content);
+        await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, base64);
+        return fileName;
+    }
+
     private void ModalKapat()
     {
         showFaturaModal = false;
@@ -1139,6 +1551,7 @@
         showCariModal = false;
         showHesapOnayModal = false;
         showSilModal = false;
+        showCariKartModal = false;
     }
 
     private string GetAyAdi(int ay) => ay switch
@@ -1147,6 +1560,15 @@
         5 => "Mayis", 6 => "Haziran", 7 => "Temmuz", 8 => "Agustos",
         9 => "Eylul", 10 => "Ekim", 11 => "Kasim", 12 => "Aralik",
         _ => ""
+    };
+
+    private string GetIslemTipiBadge(string islemTipi) => islemTipi switch
+    {
+        "Satis Faturasi" => "bg-success",
+        "Alis Faturasi" => "bg-primary",
+        "Tahsilat" => "bg-info",
+        "Odeme" => "bg-warning text-dark",
+        _ => "bg-secondary"
     };
 
     private string GetDurumAdi(FaturaDurum d) => d switch
@@ -1168,4 +1590,15 @@
     };
 
     private string FormatPara(decimal t) => t.ToString("N2", new System.Globalization.CultureInfo("tr-TR")) + " TL";
+
+    // Cari Ekstre Hareket sinifi
+    private class CariEkstreHareket
+    {
+        public DateTime Tarih { get; set; }
+        public string IslemTipi { get; set; } = "";
+        public string? BelgeNo { get; set; }
+        public string? Aciklama { get; set; }
+        public decimal Borc { get; set; }
+        public decimal Alacak { get; set; }
+    }
 }
