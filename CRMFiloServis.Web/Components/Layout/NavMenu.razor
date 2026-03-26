@@ -38,6 +38,70 @@
             </div>
         }
 
+        <!-- CRM MODULU -->
+        @if (HasMenuYetki("menu.crm"))
+        {
+            <div class="nav-section">
+                <div class="nav-section-header" @onclick="() => ToggleSection(10)" style="cursor: pointer;">
+                    <span><i class="bi bi-headset me-2"></i>CRM</span>
+                    <i class="bi @(expandedSections.Length > 10 && expandedSections[10] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                </div>
+                @if (expandedSections.Length > 10 && expandedSections[10])
+                {
+                    <div class="nav-section-content">
+                        @if (HasYetki("bildirim.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="crm/bildirimler">
+                                    <i class="bi bi-bell-fill me-2 text-warning"></i> Bildirimler
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("mesaj.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="crm/mesajlar">
+                                    <i class="bi bi-chat-dots-fill me-2 text-primary"></i> Mesajlar
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("whatsapp.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="crm/whatsapp">
+                                    <i class="bi bi-whatsapp me-2 text-success"></i> WhatsApp
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("email.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="crm/email">
+                                    <i class="bi bi-envelope-fill me-2 text-info"></i> E-Posta
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("hatirlatici.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="crm/randevular">
+                                    <i class="bi bi-calendar-event-fill me-2 text-danger"></i> Randevu/Hatırlatıcı
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("kullanicicari.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="crm/cari-eslestirme">
+                                    <i class="bi bi-person-lines-fill me-2 text-secondary"></i> Cari Eşleştirme
+                                </NavLink>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
         <!-- CARI MODULU -->
         @if (HasMenuYetki("menu.cari"))
         {
@@ -89,7 +153,7 @@
                 @if (expandedSections[1])
                 {
                     <div class="nav-section-content">
-                        @if (HasYetki("araclar.oku"))
+                        @if (HasYetki("araclar.oka"))
                         {
                             <div class="nav-item px-3">
                                 <NavLink class="nav-link" href="araclar">
@@ -594,7 +658,7 @@
 </div>
 
 @code {
-    private bool[] expandedSections = new bool[10];
+    private bool[] expandedSections = new bool[12];
     private HashSet<string> kullaniciYetkileri = new();
     private bool yetkilerYuklendi = false;
     private bool isAdmin = false;
@@ -662,6 +726,7 @@
         // menu.filoservis -> araclar, guzergahlar, serviscalisma vs.
         return menuKodu switch
         {
+            "menu.crm" => "bildirim",
             "menu.cari" => "cari",
             "menu.filoservis" => "arac",
             "menu.muhasebe" => "muhasebe",

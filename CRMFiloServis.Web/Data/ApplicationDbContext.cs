@@ -80,7 +80,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<KiralamaArac> KiralamaAraclar { get; set; }
     public DbSet<ServisCalismaKiralama> ServisCalismaKiralamalar { get; set; }
 
-    // Müþteri Kiralama Modülü
+    // Musteri Kiralama Modulu
     public DbSet<MusteriKiralama> MusteriKiralamalar { get; set; }
 
     // Puantaj Modulu
@@ -92,6 +92,15 @@ public class ApplicationDbContext : DbContext
     public DbSet<PiyasaArastirmaIlan> PiyasaArastirmaIlanlar { get; set; }
     public DbSet<AracMarkaModel> AracMarkaModeller { get; set; }
     public DbSet<PiyasaKaynak> PiyasaKaynaklar { get; set; }
+
+    // CRM Modulu
+    public DbSet<Bildirim> Bildirimler { get; set; }
+    public DbSet<Mesaj> Mesajlar { get; set; }
+    public DbSet<EmailAyar> EmailAyarlari { get; set; }
+    public DbSet<WhatsAppAyar> WhatsAppAyarlari { get; set; }
+    public DbSet<Hatirlatici> Hatirlaticilar { get; set; }
+    public DbSet<KullaniciCari> KullaniciCariler { get; set; }
+    public DbSet<DashboardWidget> DashboardWidgetlar { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -671,6 +680,121 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.AracEvrak)
                 .WithMany(e => e.Dosyalar)
                 .HasForeignKey(e => e.AracEvrakId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // ===== CRM MODULU KONFIGURASYONLARI =====
+
+        // Bildirim
+        modelBuilder.Entity<Bildirim>(entity =>
+        {
+            entity.HasIndex(e => new { e.KullaniciId, e.Okundu });
+            entity.Property(e => e.Baslik).HasMaxLength(200);
+            entity.Property(e => e.Icerik).HasMaxLength(1000);
+            entity.Property(e => e.IliskiliTablo).HasMaxLength(50);
+            entity.Property(e => e.Link).HasMaxLength(200);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany(k => k.Bildirimler)
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Mesaj
+        modelBuilder.Entity<Mesaj>(entity =>
+        {
+            entity.HasIndex(e => new { e.AliciId, e.Okundu });
+            entity.HasIndex(e => e.GonderenId);
+            entity.Property(e => e.Konu).HasMaxLength(200);
+            entity.Property(e => e.DisAlici).HasMaxLength(100);
+            entity.Property(e => e.DisGonderimId).HasMaxLength(100);
+            entity.HasOne(e => e.Gonderen)
+                .WithMany(k => k.GonderilenMesajlar)
+                .HasForeignKey(e => e.GonderenId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Alici)
+                .WithMany(k => k.AlinanMesajlar)
+                .HasForeignKey(e => e.AliciId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.UstMesaj)
+                .WithMany(m => m.Yanitlar)
+                .HasForeignKey(e => e.UstMesajId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // EmailAyar
+        modelBuilder.Entity<EmailAyar>(entity =>
+        {
+            entity.Property(e => e.SmtpSunucu).HasMaxLength(100);
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.Sifre).HasMaxLength(100);
+            entity.Property(e => e.GonderenAdi).HasMaxLength(100);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // WhatsAppAyar
+        modelBuilder.Entity<WhatsAppAyar>(entity =>
+        {
+            entity.Property(e => e.Telefon).HasMaxLength(20);
+            entity.Property(e => e.ApiKey).HasMaxLength(500);
+            entity.Property(e => e.WebhookUrl).HasMaxLength(200);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Hatirlatici
+        modelBuilder.Entity<Hatirlatici>(entity =>
+        {
+            entity.HasIndex(e => new { e.KullaniciId, e.BaslangicTarihi });
+            entity.Property(e => e.Baslik).HasMaxLength(200);
+            entity.Property(e => e.Aciklama).HasMaxLength(1000);
+            entity.Property(e => e.IliskiliTablo).HasMaxLength(50);
+            entity.Property(e => e.Renk).HasMaxLength(20);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany(k => k.Hatirlaticilar)
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Cari)
+                .WithMany()
+                .HasForeignKey(e => e.CariId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // KullaniciCari
+        modelBuilder.Entity<KullaniciCari>(entity =>
+        {
+            entity.HasIndex(e => new { e.KullaniciId, e.CariId }).IsUnique();
+            entity.Property(e => e.Not).HasMaxLength(500);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany(k => k.BagliCariler)
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Cari)
+                .WithMany()
+                .HasForeignKey(e => e.CariId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DashboardWidget
+        modelBuilder.Entity<DashboardWidget>(entity =>
+        {
+            entity.HasIndex(e => new { e.KullaniciId, e.WidgetKodu }).IsUnique();
+            entity.Property(e => e.WidgetKodu).HasMaxLength(50);
+            entity.Property(e => e.Ayarlar).HasMaxLength(2000);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany(k => k.DashboardWidgetlari)
+                .HasForeignKey(e => e.KullaniciId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });

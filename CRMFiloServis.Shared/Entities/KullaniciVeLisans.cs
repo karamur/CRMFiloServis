@@ -97,6 +97,14 @@ public class Kullanici : BaseEntity
     // Tercihler
     public string Tema { get; set; } = "Default";
     public bool KompaktMod { get; set; } = false;
+    
+    // CRM Ýliþkileri
+    public virtual ICollection<Bildirim> Bildirimler { get; set; } = new List<Bildirim>();
+    public virtual ICollection<Mesaj> GonderilenMesajlar { get; set; } = new List<Mesaj>();
+    public virtual ICollection<Mesaj> AlinanMesajlar { get; set; } = new List<Mesaj>();
+    public virtual ICollection<Hatirlatici> Hatirlaticilar { get; set; } = new List<Hatirlatici>();
+    public virtual ICollection<KullaniciCari> BagliCariler { get; set; } = new List<KullaniciCari>();
+    public virtual ICollection<DashboardWidget> DashboardWidgetlari { get; set; } = new List<DashboardWidget>();
 }
 
 /// <summary>
@@ -297,15 +305,55 @@ public static class Yetkiler
 
     // === ANA MENU ERISIM YETKILERI ===
     public const string MenuAnaSayfa = "menu.anasayfa";
+    public const string MenuCRM = "menu.crm";
     public const string MenuCariModulu = "menu.cari";
     public const string MenuFiloServis = "menu.filoservis";
     public const string MenuMuhasebe = "menu.muhasebe";
     public const string MenuPersonel = "menu.personel";
     public const string MenuFaturaModulu = "menu.fatura";
     public const string MenuBankaKasa = "menu.bankakasa";
+    public const string MenuChecklist = "menu.checklist";
     public const string MenuRaporlar = "menu.raporlar";
     public const string MenuSatisModulu = "menu.satis";
     public const string MenuAyarlar = "menu.ayarlar";
+
+    // === CRM MODULU YETKILERI ===
+    
+    // -- Bildirimler/Uyarilar --
+    public const string BildirimlerOku = "bildirim.oku";
+    public const string BildirimlerYaz = "bildirim.yaz";
+    public const string BildirimlerSil = "bildirim.sil";
+    public const string BildirimlerAdmin = "bildirim.admin"; // Tum kullanicilarin bildirimlerini yonetme
+    
+    // -- Mesajlasma --
+    public const string MesajlarOku = "mesaj.oku";
+    public const string MesajlarYaz = "mesaj.yaz";
+    public const string MesajlarSil = "mesaj.sil";
+    public const string MesajlarAdmin = "mesaj.admin";
+    
+    // -- WhatsApp --
+    public const string WhatsAppOku = "whatsapp.oku";
+    public const string WhatsAppGonder = "whatsapp.gonder";
+    public const string WhatsAppAyar = "whatsapp.ayar";
+    
+    // -- Email --
+    public const string EmailOku = "email.oku";
+    public const string EmailGonder = "email.gonder";
+    public const string EmailAyar = "email.ayar";
+    
+    // -- Hatirlatici/Randevu --
+    public const string HatirlaticiOku = "hatirlatici.oku";
+    public const string HatirlaticiYaz = "hatirlatici.yaz";
+    public const string HatirlaticiDuzenle = "hatirlatici.duzenle";
+    public const string HatirlaticiSil = "hatirlatici.sil";
+    public const string HatirlaticiAdmin = "hatirlatici.admin"; // Tum kullanicilarin hatirlaticilarini yonetme
+    
+    // -- Kullanici-Cari Eslestirme --
+    public const string KullaniciCariOku = "kullanicicari.oku";
+    public const string KullaniciCariYaz = "kullanicicari.yaz";
+    public const string KullaniciCariDuzenle = "kullanicicari.duzenle";
+    public const string KullaniciCariSil = "kullanicicari.sil";
+    public const string KullaniciCariEkstreGor = "kullanicicari.ekstre";
 
     // === ALT MENU YETKILERI (Her biri icin Oku, Yaz, Duzenle, Sil) ===
     
@@ -547,6 +595,48 @@ public static class Yetkiler
                     new(BelgeUyarilariYaz, "Yazma", "bi-plus"),
                     new(BelgeUyarilariDuzenle, "Duzenleme", "bi-pencil"),
                     new(BelgeUyarilariSil, "Silme", "bi-trash"),
+                }),
+            }),
+
+            new("CRM Modulu", "bi-chat-dots", MenuCRM, new List<AltMenuYetki>
+            {
+                new("Bildirimler", "bi-bell", new List<YetkiTanim>
+                {
+                    new(BildirimlerOku, "Okuma", "bi-eye"),
+                    new(BildirimlerYaz, "Yazma", "bi-plus"),
+                    new(BildirimlerSil, "Silme", "bi-trash"),
+                }),
+                new("Mesajlasma", "bi-envelope", new List<YetkiTanim>
+                {
+                    new(MesajlarOku, "Okuma", "bi-eye"),
+                    new(MesajlarYaz, "Yazma", "bi-plus"),
+                    new(MesajlarSil, "Silme", "bi-trash"),
+                }),
+                new("WhatsApp Entegrasyonu", "bi-whatsapp", new List<YetkiTanim>
+                {
+                    new(WhatsAppOku, "Okuma", "bi-eye"),
+                    new(WhatsAppGonder, "Gonder", "bi-send"),
+                    new(WhatsAppAyar, "Ayarlar", "bi-gear"),
+                }),
+                new("Email Entegrasyonu", "bi-envelope-open", new List<YetkiTanim>
+                {
+                    new(EmailOku, "Okuma", "bi-eye"),
+                    new(EmailGonder, "Gonder", "bi-send"),
+                    new(EmailAyar, "Ayarlar", "bi-gear"),
+                }),
+                new("Hatýrlatýcýlar", "bi-alarm", new List<YetkiTanim>
+                {
+                    new(HatirlaticiOku, "Okuma", "bi-eye"),
+                    new(HatirlaticiYaz, "Yazma", "bi-plus"),
+                    new(HatirlaticiDuzenle, "Duzenleme", "bi-pencil"),
+                    new(HatirlaticiSil, "Silme", "bi-trash"),
+                }),
+                new("Kullanici-Cari Eslestirme", "bi-link", new List<YetkiTanim>
+                {
+                    new(KullaniciCariOku, "Okuma", "bi-eye"),
+                    new(KullaniciCariYaz, "Yazma", "bi-plus"),
+                    new(KullaniciCariDuzenle, "Duzenleme", "bi-pencil"),
+                    new(KullaniciCariSil, "Silme", "bi-trash"),
                 }),
             }),
 
