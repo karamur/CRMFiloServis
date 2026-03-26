@@ -51,7 +51,7 @@
                             @foreach (var arac in araclar)
                             {
                                 <tr>
-                                    <td><strong>@arac.Plaka</strong></td>
+                                    <td><strong>@arac.AktifPlaka</strong></td>
                                     <td>@arac.Marka @arac.Model</td>
                                     <td>
                                         <span class="badge bg-secondary">@GetTipText(arac.AracTipi)</span>
@@ -110,7 +110,7 @@
                     <button type="button" class="btn-close" @onclick="() => showDeleteModal = false"></button>
                 </div>
                 <div class="modal-body">
-                    <p><strong>@silinecekArac?.Plaka</strong> plakalý aracý silmek istediðinize emin misiniz?</p>
+                    <p><strong>@(silinecekArac?.AktifPlaka ?? silinecekArac?.SaseNo)</strong> plakalý aracý silmek istediðinize emin misiniz?</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">Ýptal</button>

@@ -108,6 +108,10 @@ namespace CRMFiloServis.Web.Migrations
                     b.Property<bool>("Aktif")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("AktifPlaka")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
                     b.Property<int>("AracTipi")
                         .HasColumnType("integer");
 
@@ -165,7 +169,8 @@ namespace CRMFiloServis.Web.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("MotorNo")
-                        .HasColumnType("text");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime?>("MuayeneBitisTarihi")
                         .HasColumnType("timestamp without time zone");
@@ -173,13 +178,9 @@ namespace CRMFiloServis.Web.Migrations
                     b.Property<string>("Notlar")
                         .HasColumnType("text");
 
-                    b.Property<string>("Plaka")
-                        .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("character varying(15)");
-
                     b.Property<string>("Renk")
-                        .HasColumnType("text");
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<decimal?>("SabitKomisyonTutari")
                         .HasPrecision(18, 2)
@@ -189,7 +190,22 @@ namespace CRMFiloServis.Web.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("SaseNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("SatisAciklamasi")
                         .HasColumnType("text");
+
+                    b.Property<decimal?>("SatisFiyati")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("SatisaAcik")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("SatisaAcilmaTarihi")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal?>("SeferBasinaKiraBedeli")
                         .HasPrecision(18, 2)
@@ -207,8 +223,9 @@ namespace CRMFiloServis.Web.Migrations
 
                     b.HasIndex("KomisyoncuCariId");
 
-                    b.HasIndex("Plaka")
-                        .IsUnique();
+                    b.HasIndex("SaseNo")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("Araclar");
                 });
@@ -763,6 +780,63 @@ namespace CRMFiloServis.Web.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PiyasaArastirmalar");
+                });
+
+            modelBuilder.Entity("CRMFiloServis.Shared.Entities.AracPlaka", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("AracId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CariId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CikisTarihi")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("GirisTarihi")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("IslemTipi")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("IslemTutari")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Plaka")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AracId");
+
+                    b.HasIndex("CariId");
+
+                    b.HasIndex("Plaka", "CikisTarihi")
+                        .HasFilter("\"CikisTarihi\" IS NULL AND \"IsDeleted\" = false");
+
+                    b.ToTable("AracPlakalar");
                 });
 
             modelBuilder.Entity("CRMFiloServis.Shared.Entities.AracSatis", b =>
@@ -3978,6 +4052,24 @@ namespace CRMFiloServis.Web.Migrations
                     b.Navigation("Marka");
                 });
 
+            modelBuilder.Entity("CRMFiloServis.Shared.Entities.AracPlaka", b =>
+                {
+                    b.HasOne("CRMFiloServis.Shared.Entities.Arac", "Arac")
+                        .WithMany("PlakaGecmisi")
+                        .HasForeignKey("AracId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CRMFiloServis.Shared.Entities.Cari", "Cari")
+                        .WithMany()
+                        .HasForeignKey("CariId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Arac");
+
+                    b.Navigation("Cari");
+                });
+
             modelBuilder.Entity("CRMFiloServis.Shared.Entities.AracSatis", b =>
                 {
                     b.HasOne("CRMFiloServis.Shared.Entities.Cari", "AliciCari")
@@ -4575,6 +4667,8 @@ namespace CRMFiloServis.Web.Migrations
             modelBuilder.Entity("CRMFiloServis.Shared.Entities.Arac", b =>
                 {
                     b.Navigation("Masraflar");
+
+                    b.Navigation("PlakaGecmisi");
 
                     b.Navigation("ServisCalismalari");
                 });

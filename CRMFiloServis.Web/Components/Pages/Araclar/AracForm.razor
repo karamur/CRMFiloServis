@@ -29,8 +29,21 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Plaka *</label>
-                            <InputText @bind-Value="arac.Plaka" class="form-control" style="text-transform: uppercase;" />
+                            <label class="form-label">Þase No * <small class="text-muted">(Tekil)</small></label>
+                            <InputText @bind-Value="arac.SaseNo" class="form-control" style="text-transform: uppercase;" disabled="@IsEdit" />
+                            <ValidationMessage For="@(() => arac.SaseNo)" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">@(IsEdit ? "Aktif Plaka" : "Plaka *")</label>
+                            <InputText @bind-Value="plaka" class="form-control" style="text-transform: uppercase;" disabled="@IsEdit" />
+                            @if (IsEdit)
+                            {
+                                <small class="text-info">
+                                    <i class="bi bi-info-circle"></i> Plaka deðiþikliði için "Plaka Geçmiþi" sekmesini kullanýn
+                                </small>
+                            }
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -44,31 +57,37 @@
                             </InputSelect>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">Koltuk Sayýsý</label>
-                            <InputNumber @bind-Value="arac.KoltukSayisi" class="form-control" />
-                        </div>
-                    </div>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Marka</label>
                             <InputText @bind-Value="arac.Marka" class="form-control" />
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Model</label>
                             <InputText @bind-Value="arac.Model" class="form-control" />
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <div class="mb-3">
                             <label class="form-label">Model Yýlý</label>
                             <InputNumber @bind-Value="arac.ModelYili" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label">Koltuk Sayýsý</label>
+                            <InputNumber @bind-Value="arac.KoltukSayisi" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label">Renk</label>
+                            <InputText @bind-Value="arac.Renk" class="form-control" />
                         </div>
                     </div>
                 </div>
@@ -76,20 +95,8 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Þase No</label>
-                            <InputText @bind-Value="arac.SaseNo" class="form-control" />
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
                             <label class="form-label">Motor No</label>
                             <InputText @bind-Value="arac.MotorNo" class="form-control" />
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label class="form-label">Renk</label>
-                            <InputText @bind-Value="arac.Renk" class="form-control" />
                         </div>
                     </div>
                 </div>
@@ -287,6 +294,7 @@
     private Arac arac = new();
     private List<Cari> tedarikciCariler = new();
     private bool IsEdit => Id.HasValue;
+    private string plaka = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -299,6 +307,7 @@
             if (existing != null)
             {
                 arac = existing;
+                plaka = arac.AktifPlaka;
             }
             else
             {
@@ -331,10 +340,23 @@
 
     private async Task Kaydet()
     {
-        if (string.IsNullOrWhiteSpace(arac.Plaka))
+        // Þase no zorunlu
+        if (string.IsNullOrWhiteSpace(arac.SaseNo))
+        {
+            ToastService.ShowError("Þase numarasý zorunludur!");
             return;
+        }
+        
+        // Yeni araç ekleme için plaka zorunlu
+        if (!IsEdit && string.IsNullOrWhiteSpace(plaka))
+        {
+            ToastService.ShowError("Plaka zorunludur!");
+            return;
+        }
 
-        arac.Plaka = arac.Plaka.ToUpper();
+        arac.SaseNo = arac.SaseNo.ToUpper().Trim();
+        if (!string.IsNullOrWhiteSpace(plaka))
+            plaka = plaka.ToUpper().Trim();
 
         // Özmal araçlarda kira bilgilerini temizle
         if (arac.SahiplikTipi == AracSahiplikTipi.Ozmal)
@@ -360,12 +382,12 @@
             if (IsEdit)
             {
                 await AracService.UpdateAsync(arac);
-                ToastService.ShowSuccess($"{arac.Plaka} baþarýyla güncellendi.");
+                ToastService.ShowSuccess($"{arac.AktifPlaka ?? arac.SaseNo} baþarýyla güncellendi.");
             }
             else
             {
-                await AracService.CreateAsync(arac);
-                ToastService.ShowSuccess($"{arac.Plaka} baþarýyla eklendi.");
+                await AracService.CreateAsync(arac, plaka!, PlakaIslemTipi.Alis);
+                ToastService.ShowSuccess($"{plaka} plakalý araç baþarýyla eklendi.");
             }
             Navigation.NavigateTo("/araclar");
         }

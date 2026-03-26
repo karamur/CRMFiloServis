@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -918,7 +918,7 @@ namespace CRMFiloServis.Web.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     FirmaId = table.Column<int>(type: "INTEGER", nullable: false),
-                    KiralayıcıCariId = table.Column<int>(type: "INTEGER", nullable: false),
+                    Kiralay�c�CariId = table.Column<int>(type: "INTEGER", nullable: false),
                     Plaka = table.Column<string>(type: "TEXT", maxLength: 15, nullable: false),
                     Marka = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
                     Model = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
@@ -943,8 +943,8 @@ namespace CRMFiloServis.Web.Migrations
                 {
                     table.PrimaryKey("PK_KiralamaAraclar", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_KiralamaAraclar_Cariler_KiralayıcıCariId",
-                        column: x => x.KiralayıcıCariId,
+                        name: "FK_KiralamaAraclar_Cariler_Kiralay�c�CariId",
+                        column: x => x.Kiralay�c�CariId,
                         principalTable: "Cariler",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -1840,9 +1840,9 @@ namespace CRMFiloServis.Web.Migrations
                 column: "FirmaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_KiralamaAraclar_KiralayıcıCariId",
+                name: "IX_KiralamaAraclar_Kiralay�c�CariId",
                 table: "KiralamaAraclar",
-                column: "KiralayıcıCariId");
+                column: "Kiralay�c�CariId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Kullanicilar_KullaniciAdi",

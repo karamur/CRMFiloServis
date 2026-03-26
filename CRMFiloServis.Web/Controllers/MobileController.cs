@@ -119,7 +119,7 @@ public class MobileController : ControllerBase
             {
                 GuzergahAdi = s.Guzergah.GuzergahAdi,
                 SoforAdi = s.Sofor.Ad + " " + s.Sofor.Soyad,
-                Plaka = s.Arac.Plaka,
+                Plaka = s.Arac != null ? s.Arac.AktifPlaka : "",
                 Durum = s.Durum
             })
             .ToListAsync();
@@ -135,7 +135,7 @@ public class MobileController : ControllerBase
             .Select(e => new
             {
                 EvrakTipi = e.EvrakKategorisi,
-                Plaka = e.Arac != null ? e.Arac.Plaka : "",
+                Plaka = e.Arac != null ? e.Arac.AktifPlaka : "",
                 BitisTarihi = e.BitisTarihi,
                 KalanGun = e.BitisTarihi.HasValue ? 
                     (e.BitisTarihi.Value.Date - now.Date).Days : 0
@@ -167,11 +167,11 @@ public class MobileController : ControllerBase
         using var context = await _contextFactory.CreateDbContextAsync();
         
         var araclar = await context.Araclar
-            .OrderBy(a => a.Plaka)
+            .OrderBy(a => a.AktifPlaka)
             .Select(a => new
             {
                 a.Id,
-                a.Plaka,
+                Plaka = a.AktifPlaka ?? a.SaseNo,
                 a.Marka,
                 a.Model,
                 a.ModelYili,

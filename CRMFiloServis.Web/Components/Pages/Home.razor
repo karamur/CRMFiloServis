@@ -1,4 +1,4 @@
-ï»¿@page "/"
+@page "/"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @using FaturaEntity = CRMFiloServis.Shared.Entities.Fatura
@@ -21,25 +21,25 @@
         <h3 class="mb-0">
             <i class="bi bi-speedometer2 me-2"></i>Dashboard
         </h3>
-        <small class="text-muted">Son gÃ¼ncelleme: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</small>
+        <small class="text-muted">Son güncelleme: @DateTime.Now.ToString("dd.MM.yyyy HH:mm")</small>
     </div>
 
-    <!-- Kritik UyarÄ±lar Banner -->
+    <!-- Kritik Uyarýlar Banner -->
     @if (belgeUyarilar != null && belgeUyarilar.ToplamKritikUyari > 0)
     {
         <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5rem;"></i>
             <div class="flex-grow-1">
-                <strong>@belgeUyarilar.ToplamKritikUyari kritik belge uyarÄ±sÄ± var!</strong>
-                SÃ¼resi geÃ§miÅŸ veya 7 gÃ¼n iÃ§inde dolacak belgeler bulunuyor.
+                <strong>@belgeUyarilar.ToplamKritikUyari kritik belge uyarýsý var!</strong>
+                Süresi geçmiþ veya 7 gün içinde dolacak belgeler bulunuyor.
             </div>
             <button class="btn btn-outline-danger btn-sm" @onclick="() => showBelgeModal = true">
-                <i class="bi bi-eye me-1"></i>GÃ¶rÃ¼ntÃ¼le
+                <i class="bi bi-eye me-1"></i>Görüntüle
             </button>
         </div>
     }
 
-    <!-- Ã–zet Kartlar -->
+    <!-- Özet Kartlar -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card bg-primary text-white h-100">
@@ -65,7 +65,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h6 class="card-title">Aktif AraÃ§</h6>
+                            <h6 class="card-title">Aktif Araç</h6>
                             <h2>@aracSayisi</h2>
                         </div>
                         <i class="bi bi-truck" style="font-size: 3rem; opacity: 0.5;"></i>
@@ -84,7 +84,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h6 class="card-title">Aktif ÅžofÃ¶r</h6>
+                            <h6 class="card-title">Aktif Þoför</h6>
                             <h2>@soforSayisi</h2>
                         </div>
                         <i class="bi bi-person-badge" style="font-size: 3rem, opacity: 0.5;"></i>
@@ -118,29 +118,29 @@
         </div>
     </div>
 
-    <!-- Finansal Ã–zet -->
+    <!-- Finansal Özet -->
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Bu Ay Ã–zet</h6>
+                    <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Bu Ay Özet</h6>
                 </div>
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-6 border-end">
                             <small class="text-muted d-block">Toplam Gelir</small>
-                            <h5 class="text-success mb-0">@buAyGelir.ToString("N0") â‚º</h5>
+                            <h5 class="text-success mb-0">@buAyGelir.ToString("N0") ?</h5>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block">Toplam Gider</small>
-                            <h5 class="text-danger mb-0">@buAyGider.ToString("N0") â‚º</h5>
+                            <h5 class="text-danger mb-0">@buAyGider.ToString("N0") ?</h5>
                         </div>
                     </div>
                     <hr />
                     <div class="text-center">
                         <small class="text-muted d-block">Net Kar/Zarar</small>
                         <h4 class="@(buAyGelir - buAyGider >= 0 ? "text-success" : "text-danger") mb-0">
-                            @((buAyGelir - buAyGider).ToString("N0")) â‚º
+                            @((buAyGelir - buAyGider).ToString("N0")) ?
                         </h4>
                     </div>
                 </div>
@@ -155,21 +155,21 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span>Toplam Kasa:</span>
-                        <strong class="text-primary">@toplamKasa.ToString("N2") â‚º</strong>
+                        <strong class="text-primary">@toplamKasa.ToString("N2") ?</strong>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span>Toplam Banka:</span>
-                        <strong class="text-primary">@toplamBanka.ToString("N2") â‚º</strong>
+                        <strong class="text-primary">@toplamBanka.ToString("N2") ?</strong>
                     </div>
                     <hr />
                     <div class="d-flex justify-content-between align-items-center">
                         <span><strong>Genel Toplam:</strong></span>
-                        <strong class="h5 text-success mb-0">@((toplamKasa + toplamBanka).ToString("N2")) â‚º</strong>
+                        <strong class="h5 text-success mb-0">@((toplamKasa + toplamBanka).ToString("N2")) ?</strong>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent">
                     <a href="/banka-kasa" class="btn btn-outline-primary btn-sm w-100">
-                        <i class="bi bi-arrow-right me-1"></i>Detay GÃ¶rÃ¼ntÃ¼le
+                        <i class="bi bi-arrow-right me-1"></i>Detay Görüntüle
                     </a>
                 </div>
             </div>
@@ -178,22 +178,22 @@
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Bu Ay BÃ¼tÃ§e</h6>
+                    <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Bu Ay Bütçe</h6>
                 </div>
                 <div class="card-body">
                     @if (butceOzet != null)
                     {
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>Planlanan Ã–deme:</span>
-                            <strong class="text-danger">@butceOzet.ToplamOdeme.ToString("N0") â‚º</strong>
+                            <span>Planlanan Ödeme:</span>
+                            <strong class="text-danger">@butceOzet.ToplamOdeme.ToString("N0") ?</strong>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>Ã–denen:</span>
-                            <strong class="text-success">@butceOzet.OdenenToplam.ToString("N0") â‚º</strong>
+                            <span>Ödenen:</span>
+                            <strong class="text-success">@butceOzet.OdenenToplam.ToString("N0") ?</strong>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span>Bekleyen:</span>
-                            <strong class="text-warning">@butceOzet.BekleyenToplam.ToString("N0") â‚º</strong>
+                            <strong class="text-warning">@butceOzet.BekleyenToplam.ToString("N0") ?</strong>
                         </div>
                         <hr />
                         <div class="progress" style="height: 20px;">
@@ -209,36 +209,36 @@
                     {
                         <div class="text-center text-muted py-3">
                             <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">BÃ¼tÃ§e verisi yok</p>
+                            <p class="mb-0 mt-2">Bütçe verisi yok</p>
                         </div>
                     }
                 </div>
                 <div class="card-footer bg-transparent">
                     <a href="/butce" class="btn btn-outline-primary btn-sm w-100">
-                        <i class="bi bi-arrow-right me-1"></i>BÃ¼tÃ§e Analiz
+                        <i class="bi bi-arrow-right me-1"></i>Bütçe Analiz
                     </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- HÄ±zlÄ± Ä°ÅŸlemler Row -->
+    <!-- Hýzlý Ýþlemler Row -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>HÄ±zlÄ± Ä°ÅŸlemler</h6>
+                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Hýzlý Ýþlemler</h6>
                 </div>
                 <div class="card-body">
                     <div class="row g-2">
                         <div class="col-md-3">
                             <button class="btn btn-outline-primary w-100" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/yeni"))'>
-                                <i class="bi bi-plus-circle me-2"></i>Yeni Servis Ã‡alÄ±ÅŸmasÄ±
+                                <i class="bi bi-plus-circle me-2"></i>Yeni Servis Çalýþmasý
                             </button>
                         </div>
                         <div class="col-md-3">
                             <button class="btn btn-outline-success w-100" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/toplu-ekle"))'>
-                                <i class="bi bi-list-check me-2"></i>Toplu Ã‡alÄ±ÅŸma GiriÅŸi
+                                <i class="bi bi-list-check me-2"></i>Toplu Çalýþma Giriþi
                             </button>
                         </div>
                         <div class="col-md-3">
@@ -248,7 +248,7 @@
                         </div>
                         <div class="col-md-3">
                             <button class="btn btn-outline-info w-100" @onclick='@(() => Navigation.NavigateTo("/butce"))'>
-                                <i class="bi bi-wallet2 me-2"></i>BÃ¼tÃ§e/Ã–deme GiriÅŸi
+                                <i class="bi bi-wallet2 me-2"></i>Bütçe/Ödeme Giriþi
                             </button>
                         </div>
                     </div>
@@ -263,12 +263,12 @@
         <CRMFiloServis.Web.Components.Shared.DashboardGrafik ParentLoaded="@(!isLoading)" />
     }
 
-    <!-- GecikmiÅŸ ve YaklaÅŸan -->
+    <!-- Gecikmiþ ve Yaklaþan -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card border-danger">
                 <div class="card-header bg-danger text-white">
-                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Vadesi GeÃ§miÅŸ Faturalar (@vadeGecmisFaturalar.Count)</h6>
+                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Vadesi Geçmiþ Faturalar (@vadeGecmisFaturalar.Count)</h6>
                 </div>
                 <div class="card-body">
                     @if (vadeGecmisFaturalar.Any())
@@ -292,23 +292,23 @@
                                             <td>@fatura.Cari?.Unvan</td>
                                             <td>
                                                 @fatura.VadeTarihi?.ToString("dd.MM")
-                                                <span class="badge bg-danger ms-1">@gecikmeGunu gÃ¼n</span>
+                                                <span class="badge bg-danger ms-1">@gecikmeGunu gün</span>
                                             </td>
-                                            <td class="text-end"><strong class="text-danger">@fatura.KalanTutar.ToString("N0") â‚º</strong></td>
+                                            <td class="text-end"><strong class="text-danger">@fatura.KalanTutar.ToString("N0") ?</strong></td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
                         <div class="text-center mt-2">
-                            <small class="text-muted">Toplam GecikmiÅŸ: <strong class="text-danger">@vadeGecmisFaturalar.Sum(f => f.KalanTutar).ToString("N0") â‚º</strong></small>
+                            <small class="text-muted">Toplam Gecikmiþ: <strong class="text-danger">@vadeGecmisFaturalar.Sum(f => f.KalanTutar).ToString("N0") ?</strong></small>
                         </div>
                     }
                     else
                     {
                         <div class="text-center text-success py-3">
                             <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">Vadesi geÃ§miÅŸ fatura bulunmuyor!</p>
+                            <p class="mb-0 mt-2">Vadesi geçmiþ fatura bulunmuyor!</p>
                         </div>
                     }
                 </div>
@@ -318,7 +318,7 @@
         <div class="col-md-6">
             <div class="card border-warning">
                 <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Vadesi YaklaÅŸan Faturalar (7 gÃ¼n iÃ§inde)</h6>
+                    <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Vadesi Yaklaþan Faturalar (7 gün içinde)</h6>
                 </div>
                 <div class="card-body">
                     @if (vadeYaklasanFaturalar.Any())
@@ -342,23 +342,23 @@
                                             <td>@fatura.Cari?.Unvan</td>
                                             <td>
                                                 @fatura.VadeTarihi?.ToString("dd.MM")
-                                                <span class="badge bg-warning text-dark ms-1">@kalanGun gÃ¼n</span>
+                                                <span class="badge bg-warning text-dark ms-1">@kalanGun gün</span>
                                             </td>
-                                            <td class="text-end"><strong>@fatura.KalanTutar.ToString("N0") â‚º</strong></td>
+                                            <td class="text-end"><strong>@fatura.KalanTutar.ToString("N0") ?</strong></td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
                         <div class="text-center mt-2">
-                            <small class="text-muted">Toplam: <strong>@vadeYaklasanFaturalar.Sum(f => f.KalanTutar).ToString("N0") â‚º</strong></small>
+                            <small class="text-muted">Toplam: <strong>@vadeYaklasanFaturalar.Sum(f => f.KalanTutar).ToString("N0") ?</strong></small>
                         </div>
                     }
                     else
                     {
                         <div class="text-center text-muted py-3">
                             <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">7 gÃ¼n iÃ§inde vadesi dolan fatura bulunmuyor.</p>
+                            <p class="mb-0 mt-2">7 gün içinde vadesi dolan fatura bulunmuyor.</p>
                         </div>
                     }
                 </div>
@@ -366,12 +366,12 @@
         </div>
     </div>
 
-    <!-- Son Ä°ÅŸlemler -->
+    <!-- Son Ýþlemler -->
     <div class="row">
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Son Servis Ã‡alÄ±ÅŸmalarÄ±</h6>
+                    <h6 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Son Servis Çalýþmalarý</h6>
                 </div>
                 <div class="card-body">
                     @if (sonCalismalar != null && sonCalismalar.Any())
@@ -382,7 +382,7 @@
                                     <tr>
                                         <th>Tarih</th>
                                         <th>Plaka</th>
-                                        <th>GÃ¼zergah</th>
+                                        <th>Güzergah</th>
                                         <th class="text-end">Tutar</th>
                                     </tr>
                                 </thead>
@@ -391,21 +391,21 @@
                                     {
                                         <tr>
                                             <td>@calisma.CalismaTarihi.ToString("dd.MM")</td>
-                                            <td>@calisma.Arac?.Plaka</td>
+                                            <td>@calisma.Arac?.AktifPlaka</td>
                                             <td>@calisma.Guzergah?.GuzergahAdi</td>
-                                            <td class="text-end"><strong>@calisma.HesaplananFiyat.ToString("N0") â‚º</strong></td>
+                                            <td class="text-end"><strong>@calisma.HesaplananFiyat.ToString("N0") ?</strong></td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
                         <div class="text-center mt-2">
-                            <a href="/servis-calismalari" class="btn btn-link btn-sm">TÃ¼mÃ¼nÃ¼ GÃ¶rÃ¼ntÃ¼le</a>
+                            <a href="/servis-calismalari" class="btn btn-link btn-sm">Tümünü Görüntüle</a>
                         </div>
                     }
                     else
                     {
-                        <p class="text-muted mb-0 text-center py-3">HenÃ¼z servis Ã§alÄ±ÅŸmasÄ± bulunmuyor.</p>
+                        <p class="text-muted mb-0 text-center py-3">Henüz servis çalýþmasý bulunmuyor.</p>
                     }
                 </div>
             </div>
@@ -414,7 +414,7 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Son Tahsilatlar/Ã–demeler</h6>
+                    <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Son Tahsilatlar/Ödemeler</h6>
                 </div>
                 <div class="card-body">
                     @if (sonHareketler != null && sonHareketler.Any())
@@ -424,7 +424,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Tarih</th>
-                                        <th>Ä°ÅŸlem</th>
+                                        <th>Ýþlem</th>
                                         <th>Cari</th>
                                         <th class="text-end">Tutar</th>
                                     </tr>
@@ -436,13 +436,13 @@
                                             <td>@hareket.IslemTarihi.ToString("dd.MM")</td>
                                             <td>
                                                 <span class="badge @(hareket.HareketTipi == HareketTipi.Giris ? "bg-success" : "bg-danger")">
-                                                    @(hareket.HareketTipi == HareketTipi.Giris ? "Tahsilat" : "Ã–deme")
+                                                    @(hareket.HareketTipi == HareketTipi.Giris ? "Tahsilat" : "Ödeme")
                                                 </span>
                                             </td>
                                             <td>@hareket.Cari?.Unvan</td>
                                             <td class="text-end">
                                                 <strong class="@(hareket.HareketTipi == HareketTipi.Giris ? "text-success" : "text-danger")">
-                                                    @hareket.Tutar.ToString("N0") â‚º
+                                                    @hareket.Tutar.ToString("N0") ?
                                                 </strong>
                                             </td>
                                         </tr>
@@ -451,12 +451,12 @@
                             </table>
                         </div>
                         <div class="text-center mt-2">
-                            <a href="/banka-kasa" class="btn btn-link btn-sm">TÃ¼mÃ¼nÃ¼ GÃ¶rÃ¼ntÃ¼le</a>
+                            <a href="/banka-kasa" class="btn btn-link btn-sm">Tümünü Görüntüle</a>
                         </div>
                     }
                     else
                     {
-                        <p class="text-muted mb-0 text-center py-3">HenÃ¼z hareket bulunmuyor.</p>
+                        <p class="text-muted mb-0 text-center py-3">Henüz hareket bulunmuyor.</p>
                     }
                 </div>
             </div>
@@ -464,7 +464,7 @@
     </div>
 </div>
 
-<!-- Belge UyarÄ±larÄ± Modal -->
+<!-- Belge Uyarýlarý Modal -->
 @if (showBelgeModal && belgeUyarilar != null)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
@@ -472,7 +472,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
                     <h5 class="modal-title">
-                        <i class="bi bi-file-earmark-medical me-2"></i>Belge SÃ¼re UyarÄ±larÄ±
+                        <i class="bi bi-file-earmark-medical me-2"></i>Belge Süre Uyarýlarý
                     </h5>
                     <button type="button" class="btn-close" @onclick="() => showBelgeModal = false"></button>
                 </div>
@@ -484,10 +484,10 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Durum</th>
-                                        <th>Belge TÃ¼rÃ¼</th>
+                                        <th>Belge Türü</th>
                                         <th>Ad / Plaka</th>
-                                        <th>BitiÅŸ Tarihi</th>
-                                        <th class="text-center">Kalan GÃ¼n</th>
+                                        <th>Bitiþ Tarihi</th>
+                                        <th class="text-center">Kalan Gün</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -504,11 +504,11 @@
                                                 <span class="badge @uyari.SeviyeClass">
                                                     @if (uyari.KalanGun < 0)
                                                     {
-                                                        <text>@Math.Abs(uyari.KalanGun) gÃ¼n geÃ§ti!</text>
+                                                        <text>@Math.Abs(uyari.KalanGun) gün geçti!</text>
                                                     }
                                                     else
                                                     {
-                                                        <text>@uyari.KalanGun gÃ¼n</text>
+                                                        <text>@uyari.KalanGun gün</text>
                                                     }
                                                 </span>
                                             </td>
@@ -522,7 +522,7 @@
                     {
                         <div class="text-center text-success py-4">
                             <i class="bi bi-check-circle" style="font-size: 3rem;"></i>
-                            <p class="mb-0 mt-2">TÃ¼m belgeler gÃ¼ncel!</p>
+                            <p class="mb-0 mt-2">Tüm belgeler güncel!</p>
                         </div>
                     }
                 </div>

@@ -81,7 +81,7 @@ public class MaliAnalizService : IMaliAnalizService
             var detay = new OzmalAracDetay
             {
                 AracId = arac.Id,
-                Plaka = arac.Plaka,
+                Plaka = arac.AktifPlaka,
                 Marka = arac.Marka,
                 Model = arac.Model
             };
@@ -198,7 +198,7 @@ public class MaliAnalizService : IMaliAnalizService
 
                 var aracDetay = new KiralikAracDetay
                 {
-                    Plaka = arac.Plaka,
+                    Plaka = arac.AktifPlaka,
                     SoforAdSoyad = $"{sofor.Ad} {sofor.Soyad}"
                 };
 
@@ -289,7 +289,7 @@ public class MaliAnalizService : IMaliAnalizService
 
                 komisyoncuDetay.IsDetaylari.Add(new KomisyonIsDetay
                 {
-                    AracPlaka = calisma.Arac.Plaka,
+                    AracPlaka = calisma.Arac?.AktifPlaka,
                     GuzergahAdi = calisma.Guzergah.GuzergahAdi,
                     MusteriUnvan = calisma.Guzergah.Cari.Unvan,
                     SeferSayisi = seferSayisi,
@@ -338,7 +338,7 @@ public class MaliAnalizService : IMaliAnalizService
             var aracChecklist = new AracChecklistOzet
             {
                 AracId = arac.Id,
-                Plaka = arac.Plaka,
+                Plaka = arac.AktifPlaka,
                 MarkaModel = $"{arac.Marka} {arac.Model}"
             };
 
@@ -618,7 +618,7 @@ public class MaliAnalizService : IMaliAnalizService
                 var gider = masraflar.FirstOrDefault(m => m.AracId == g.Key)?.Toplam ?? 0;
                 return new GrafikVeri
                 {
-                    Etiket = g.First().Arac.Plaka,
+                    Etiket = g.First().Arac?.AktifPlaka,
                     Deger = gelir - gider,
                     EkBilgi = $"Gelir: {gelir:N0}?"
                 };

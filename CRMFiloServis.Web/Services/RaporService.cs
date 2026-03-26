@@ -50,7 +50,7 @@ public class RaporService : IRaporService
             .Select(g => new ServisCalismaRaporItem
             {
                 Tarih = g.Min(x => x.CalismaTarihi),
-                Plaka = g.First().Arac.Plaka,
+                Plaka = g.First().Arac?.AktifPlaka,
                 SoforAdi = g.First().Sofor.TamAd,
                 GuzergahAdi = g.First().Guzergah.GuzergahAdi,
                 FirmaAdi = g.First().Guzergah.Cari.Unvan,
@@ -128,7 +128,7 @@ public class RaporService : IRaporService
         return data.Select(m => new AracMasrafRaporItem
         {
             MasrafTarihi = m.MasrafTarihi,
-            Plaka = m.Arac.Plaka,
+            Plaka = m.Arac?.AktifPlaka,
             MasrafKalemi = m.MasrafKalemi.MasrafAdi,
             Kategori = m.MasrafKalemi.Kategori.ToString(),
             GuzergahAdi = m.Guzergah?.GuzergahAdi,

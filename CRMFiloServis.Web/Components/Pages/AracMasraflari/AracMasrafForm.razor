@@ -39,7 +39,7 @@
                                 <option value="0">-- Araç Seçiniz --</option>
                                 @foreach (var arac in araclar)
                                 {
-                                    <option value="@arac.Id">@arac.Plaka - @arac.Marka @arac.Model</option>
+                                    <option value="@arac.Id">@arac.AktifPlaka - @arac.Marka @arac.Model</option>
                                 }
                             </InputSelect>
                         </div>
@@ -105,7 +105,7 @@
                                             <option value="">-- Servis Çalýþmasý Seçiniz --</option>
                                             @foreach (var calisma in servisCalismalar)
                                             {
-                                                <option value="@calisma.Id">@calisma.CalismaTarihi.ToString("dd.MM.yyyy") - @calisma.Arac?.Plaka - @calisma.Guzergah?.GuzergahAdi</option>
+                                                <option value="@calisma.Id">@calisma.CalismaTarihi.ToString("dd.MM.yyyy") - @calisma.Arac?.AktifPlaka - @calisma.Guzergah?.GuzergahAdi</option>
                                             }
                                         </InputSelect>
                                     </div>

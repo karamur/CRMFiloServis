@@ -283,7 +283,7 @@ public class PdfService : IPdfService
                 foreach (var c in calismalar.OrderBy(x => x.CalismaTarihi))
                 {
                     table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.CalismaTarihi.ToString("dd.MM.yyyy"));
-                    table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Arac?.Plaka ?? "-");
+                    table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Arac?.AktifPlaka ?? "-");
                     table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Guzergah?.GuzergahAdi ?? "-");
                     table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Guzergah?.Cari?.Unvan ?? "-");
                     table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(c.Sofor?.TamAd ?? "-");

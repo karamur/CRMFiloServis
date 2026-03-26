@@ -289,7 +289,7 @@ public class ServisKiralamaService : IServisKiralamaService
         {
             Tarih = s.CalismaTarihi,
             Plaka = s.AracSahiplikTuru == AracSahiplikTuru.KendiArac 
-                ? s.Arac?.Plaka 
+                ? s.Arac?.AktifPlaka 
                 : s.KiralamaArac?.Plaka,
             AracSahiplik = s.AracSahiplikTuru == AracSahiplikTuru.KendiArac ? "Kendi" : "Kiralýk",
             SoforAdi = $"{s.Sofor?.Ad} {s.Sofor?.Soyad}",
@@ -323,7 +323,7 @@ public class ServisKiralamaService : IServisKiralamaService
 
         return veriler
             .GroupBy(s => s.AracSahiplikTuru == AracSahiplikTuru.KendiArac 
-                ? s.Arac?.Plaka ?? "Bilinmeyen"
+                ? s.Arac?.AktifPlaka ?? "Bilinmeyen"
                 : s.KiralamaArac?.Plaka ?? "Bilinmeyen")
             .ToDictionary(
                 g => g.Key,

@@ -65,7 +65,7 @@ public class GlobalSearchService : IGlobalSearchService
     private async Task<List<SearchResultItem>> SearchAraclarAsync(string term, int max)
     {
         var araclar = await _context.Araclar
-            .Where(a => a.Plaka.ToLower().Contains(term) ||
+            .Where(a => a.AktifPlaka.ToLower().Contains(term) ||
                        (a.Marka != null && a.Marka.ToLower().Contains(term)) ||
                        (a.Model != null && a.Model.ToLower().Contains(term)))
             .Take(max)
@@ -74,13 +74,13 @@ public class GlobalSearchService : IGlobalSearchService
         return araclar.Select(a => new SearchResultItem
         {
             Id = a.Id,
-            Baslik = a.Plaka,
+            Baslik = a.AktifPlaka,
             AltBaslik = $"{a.Marka} {a.Model} - {a.AracTipi}",
             Kategori = "Araç",
             Icon = "bi-truck",
             Url = $"/araclar/{a.Id}",
             BadgeClass = "bg-success",
-            Skor = CalculateScore(term, a.Plaka, a.Marka ?? "")
+            Skor = CalculateScore(term, a.AktifPlaka, a.Marka ?? "")
         }).ToList();
     }
 

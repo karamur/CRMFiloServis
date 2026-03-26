@@ -19,6 +19,7 @@ public class ApplicationDbContext : DbContext
     // Filo Servis Modulu
     public DbSet<Sofor> Soforler { get; set; }
     public DbSet<Arac> Araclar { get; set; }
+    public DbSet<AracPlaka> AracPlakalar { get; set; }
     public DbSet<Guzergah> Guzergahlar { get; set; }
     public DbSet<MasrafKalemi> MasrafKalemleri { get; set; }
     public DbSet<AracMasraf> AracMasraflari { get; set; }
@@ -164,15 +165,30 @@ public class ApplicationDbContext : DbContext
         // Araç
         modelBuilder.Entity<Arac>(entity =>
         {
-            entity.HasIndex(e => e.Plaka).IsUnique();
-            entity.Property(e => e.Plaka).HasMaxLength(15);
+            // Þase numarasý unique
+            if (isSqlite)
+            {
+                entity.HasIndex(e => e.SaseNo).IsUnique();
+            }
+            else
+            {
+                entity.HasIndex(e => e.SaseNo)
+                    .IsUnique()
+                    .HasFilter("\"IsDeleted\" = false");
+            }
+            
+            entity.Property(e => e.SaseNo).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.AktifPlaka).HasMaxLength(15);
             entity.Property(e => e.Marka).HasMaxLength(50);
             entity.Property(e => e.Model).HasMaxLength(50);
+            entity.Property(e => e.MotorNo).HasMaxLength(50);
+            entity.Property(e => e.Renk).HasMaxLength(30);
             entity.Property(e => e.GunlukKiraBedeli).HasPrecision(18, 2);
             entity.Property(e => e.AylikKiraBedeli).HasPrecision(18, 2);
             entity.Property(e => e.SeferBasinaKiraBedeli).HasPrecision(18, 2);
             entity.Property(e => e.KomisyonOrani).HasPrecision(5, 2);
             entity.Property(e => e.SabitKomisyonTutari).HasPrecision(18, 2);
+            entity.Property(e => e.SatisFiyati).HasPrecision(18, 2);
             
             entity.HasOne(e => e.KiralikCari)
                 .WithMany()
@@ -183,6 +199,31 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.KomisyoncuCariId)
                 .OnDelete(DeleteBehavior.Restrict);
+                
+            // PlakaGecmisi navigation'ý AracPlaka entity'sinde tanýmlanýyor
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+        
+        // Araç Plaka Geçmiþi
+        modelBuilder.Entity<AracPlaka>(entity =>
+        {
+            entity.Property(e => e.Plaka).HasMaxLength(15).IsRequired();
+            entity.Property(e => e.Aciklama).HasMaxLength(500);
+            entity.Property(e => e.IslemTutari).HasPrecision(18, 2);
+            
+            entity.HasOne(e => e.Arac)
+                .WithMany(a => a.PlakaGecmisi)
+                .HasForeignKey(e => e.AracId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.Cari)
+                .WithMany()
+                .HasForeignKey(e => e.CariId)
+                .OnDelete(DeleteBehavior.SetNull);
+            
+            // Ayný anda ayný plaka farklý araçta aktif olamaz
+            entity.HasIndex(e => new { e.Plaka, e.CikisTarihi })
+                .HasFilter("\"CikisTarihi\" IS NULL AND \"IsDeleted\" = false");
                 
             entity.HasQueryFilter(e => !e.IsDeleted);
         });

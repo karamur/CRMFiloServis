@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -3365,7 +3365,7 @@ namespace CRMFiloServis.Web.Data.Migrations
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<int>(
-                name: "KiralayıcıCariId",
+                name: "Kiralay�c�CariId",
                 table: "KiralamaAraclar",
                 type: "integer",
                 nullable: false,
@@ -10510,7 +10510,7 @@ namespace CRMFiloServis.Web.Data.Migrations
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<int>(
-                name: "KiralayıcıCariId",
+                name: "Kiralay�c�CariId",
                 table: "KiralamaAraclar",
                 type: "INTEGER",
                 nullable: false,

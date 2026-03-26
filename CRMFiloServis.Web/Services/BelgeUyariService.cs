@@ -88,7 +88,7 @@ public class BelgeUyariService : IBelgeUyariService
                 ozet.MuayeneUyarilari.Add(new BelgeUyari
                 {
                     Id = arac.Id,
-                    Baslik = arac.Plaka,
+                    Baslik = arac.AktifPlaka,
                     BelgeTuru = "Araç Muayenesi",
                     BitisTarihi = arac.MuayeneBitisTarihi.Value
                 });
@@ -100,7 +100,7 @@ public class BelgeUyariService : IBelgeUyariService
                 ozet.KaskoUyarilari.Add(new BelgeUyari
                 {
                     Id = arac.Id,
-                    Baslik = arac.Plaka,
+                    Baslik = arac.AktifPlaka,
                     BelgeTuru = "Kasko",
                     BitisTarihi = arac.KaskoBitisTarihi.Value
                 });
@@ -112,7 +112,7 @@ public class BelgeUyariService : IBelgeUyariService
                 ozet.TrafikSigortasiUyarilari.Add(new BelgeUyari
                 {
                     Id = arac.Id,
-                    Baslik = arac.Plaka,
+                    Baslik = arac.AktifPlaka,
                     BelgeTuru = "Trafik Sigortasý",
                     BitisTarihi = arac.TrafikSigortaBitisTarihi.Value
                 });

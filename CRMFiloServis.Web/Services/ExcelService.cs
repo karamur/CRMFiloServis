@@ -236,7 +236,7 @@ public class ExcelService : IExcelService
         int row = 2;
         foreach (var item in data)
         {
-            worksheet.Cell(row, 1).Value = item.Plaka;
+            worksheet.Cell(row, 1).Value = item.AktifPlaka ?? item.SaseNo;
             worksheet.Cell(row, 2).Value = item.Marka ?? "-";
             worksheet.Cell(row, 3).Value = item.Model ?? "-";
             worksheet.Cell(row, 4).Value = item.ModelYili?.ToString() ?? "-";

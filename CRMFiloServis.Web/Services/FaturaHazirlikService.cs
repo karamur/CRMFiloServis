@@ -106,7 +106,7 @@ public class FaturaHazirlikService : IFaturaHazirlikService
                         ServisCalismaId = calisma.Id,
                         Tarih = calisma.CalismaTarihi,
                         ServisTuru = calisma.ServisTuru.ToString(),
-                        AracPlaka = calisma.Arac.Plaka,
+                        AracPlaka = calisma.Arac?.AktifPlaka,
                         SoforAdSoyad = $"{calisma.Sofor.Ad} {calisma.Sofor.Soyad}",
                         Fiyat = seferFiyat,
                         KiralikArac = calisma.Arac.SahiplikTipi == AracSahiplikTipi.Kiralik,
@@ -164,9 +164,9 @@ public class FaturaHazirlikService : IFaturaHazirlikService
 
                 var detay = new GelecekFaturaDetay
                 {
-                    AracPlaka = arac.Plaka,
+                    AracPlaka = arac.AktifPlaka,
                     SeferSayisi = aracGrup.Count(),
-                    Aciklama = $"{arac.Plaka} plakalý araç kirasý"
+                    Aciklama = $"{arac.AktifPlaka} plakalý araç kirasý"
                 };
 
                 foreach (var calisma in aracGrup)
@@ -224,9 +224,9 @@ public class FaturaHazirlikService : IFaturaHazirlikService
 
                 var detay = new GelecekFaturaDetay
                 {
-                    AracPlaka = arac.Plaka,
+                    AracPlaka = arac.AktifPlaka,
                     SeferSayisi = aracGrup.Count(),
-                    Aciklama = $"{arac.Plaka} plakalý araç komisyonu"
+                    Aciklama = $"{arac.AktifPlaka} plakalý araç komisyonu"
                 };
 
                 foreach (var calisma in aracGrup)
