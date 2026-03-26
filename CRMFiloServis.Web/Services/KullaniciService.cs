@@ -9,11 +9,14 @@ namespace CRMFiloServis.Web.Services;
 public class KullaniciService : IKullaniciService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
-    private static Kullanici? _aktifKullanici;
+    private readonly AppAuthenticationStateProvider _authProvider;
 
-    public KullaniciService(IDbContextFactory<ApplicationDbContext> contextFactory)
+    public KullaniciService(
+        IDbContextFactory<ApplicationDbContext> contextFactory,
+        AppAuthenticationStateProvider authProvider)
     {
         _contextFactory = contextFactory;
+        _authProvider = authProvider;
     }
 
     #region CRUD
@@ -75,6 +78,7 @@ public class KullaniciService : IKullaniciService
         existing.KompaktMod = kullanici.KompaktMod;
         existing.UpdatedAt = DateTime.UtcNow;
 
+        context.Kullanicilar.Update(existing);
         await context.SaveChangesAsync();
         return existing;
     }
@@ -87,6 +91,7 @@ public class KullaniciService : IKullaniciService
 
         kullanici.IsDeleted = true;
         kullanici.UpdatedAt = DateTime.UtcNow;
+        context.Kullanicilar.Update(kullanici);
         await context.SaveChangesAsync();
     }
 
@@ -115,6 +120,7 @@ public class KullaniciService : IKullaniciService
             kullanici.BasarisizGirisSayisi++;
             if (kullanici.BasarisizGirisSayisi >= 5)
                 kullanici.Kilitli = true;
+            context.Kullanicilar.Update(kullanici);
             await context.SaveChangesAsync();
 
             return new KullaniciGirisSonuc { Basarili = false, Mesaj = "Sifre hatali" };
@@ -123,21 +129,24 @@ public class KullaniciService : IKullaniciService
         // Basarili giris
         kullanici.SonGirisTarihi = DateTime.UtcNow;
         kullanici.BasarisizGirisSayisi = 0;
+        context.Kullanicilar.Update(kullanici);
         await context.SaveChangesAsync();
 
-        _aktifKullanici = kullanici;
+        // Authentication state guncelle
+        _authProvider.GirisYap(kullanici);
+
         return new KullaniciGirisSonuc { Basarili = true, Kullanici = kullanici };
     }
 
     public Task CikisYapAsync()
     {
-        _aktifKullanici = null;
+        _authProvider.CikisYap();
         return Task.CompletedTask;
     }
 
     public Task<Kullanici?> GetAktifKullaniciAsync()
     {
-        return Task.FromResult(_aktifKullanici);
+        return Task.FromResult(_authProvider.GetAktifKullanici());
     }
 
     #endregion
@@ -155,6 +164,7 @@ public class KullaniciService : IKullaniciService
 
         kullanici.SifreHash = HashPassword(yeniSifre);
         kullanici.UpdatedAt = DateTime.UtcNow;
+        context.Kullanicilar.Update(kullanici);
         await context.SaveChangesAsync();
     }
 
@@ -168,6 +178,7 @@ public class KullaniciService : IKullaniciService
         kullanici.Kilitli = false;
         kullanici.BasarisizGirisSayisi = 0;
         kullanici.UpdatedAt = DateTime.UtcNow;
+        context.Kullanicilar.Update(kullanici);
         await context.SaveChangesAsync();
     }
 
@@ -205,18 +216,7 @@ public class KullaniciService : IKullaniciService
 
     private List<string> GetTumYetkiler()
     {
-        return new List<string>
-        {
-            Yetkiler.Dashboard,
-            Yetkiler.CariOkuma, Yetkiler.CariYazma, Yetkiler.CariSilme,
-            Yetkiler.FaturaOkuma, Yetkiler.FaturaYazma, Yetkiler.FaturaSilme,
-            Yetkiler.BankaOkuma, Yetkiler.BankaYazma,
-            Yetkiler.MuhasebeOkuma, Yetkiler.MuhasebeYazma,
-            Yetkiler.RaporOkuma, Yetkiler.RaporExport,
-            Yetkiler.AyarlarOkuma, Yetkiler.AyarlarYazma,
-            Yetkiler.SatisOkuma, Yetkiler.SatisYazma,
-            Yetkiler.KullaniciYonetimi, Yetkiler.YedeklemeYonetimi, Yetkiler.LisansYonetimi
-        };
+        return Yetkiler.GetAll();
     }
 
     #endregion
@@ -250,8 +250,10 @@ public class KullaniciService : IKullaniciService
 
         existing.RolAdi = rol.RolAdi;
         existing.Aciklama = rol.Aciklama;
+        existing.Renk = rol.Renk;
         existing.UpdatedAt = DateTime.UtcNow;
 
+        context.Roller.Update(existing);
         await context.SaveChangesAsync();
         return existing;
     }
@@ -269,6 +271,7 @@ public class KullaniciService : IKullaniciService
 
         rol.IsDeleted = true;
         rol.UpdatedAt = DateTime.UtcNow;
+        context.Roller.Update(rol);
         await context.SaveChangesAsync();
     }
 
@@ -331,66 +334,117 @@ public class KullaniciService : IKullaniciService
     {
         using var context = await _contextFactory.CreateDbContextAsync();
 
-        // Admin rolu olustur
-        var adminRol = await context.Roller.FirstOrDefaultAsync(r => r.RolAdi == "Admin");
-        if (adminRol == null)
+        // Tum sistem rollerini olustur
+        foreach (var rolTanim in SistemRolleri.GetAllRoles())
         {
-            adminRol = new Rol
+            var mevcutRol = await context.Roller.FirstOrDefaultAsync(r => r.RolAdi == rolTanim.Name);
+            if (mevcutRol == null)
             {
-                RolAdi = "Admin",
-                Aciklama = "Sistem Yoneticisi",
-                SistemRolu = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            context.Roller.Add(adminRol);
-            await context.SaveChangesAsync();
+                var yeniRol = new Rol
+                {
+                    RolAdi = rolTanim.Name,
+                    Aciklama = rolTanim.Description,
+                    Renk = rolTanim.Color,
+                    SistemRolu = rolTanim.Name == SistemRolleri.Admin || rolTanim.Name == SistemRolleri.Kullanici,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Roller.Add(yeniRol);
+                await context.SaveChangesAsync();
+
+                // Varsayilan yetkileri ata
+                var varsayilanYetkiler = SistemRolleri.GetDefaultPermissions(rolTanim.Name);
+                foreach (var yetkiKodu in varsayilanYetkiler)
+                {
+                    context.RolYetkileri.Add(new RolYetki
+                    {
+                        RolId = yeniRol.Id,
+                        YetkiKodu = yetkiKodu,
+                        Izin = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                await context.SaveChangesAsync();
+            }
+            else if (string.IsNullOrEmpty(mevcutRol.Renk))
+            {
+                // Mevcut role renk ekle
+                mevcutRol.Renk = rolTanim.Color;
+                mevcutRol.Aciklama = rolTanim.Description;
+                await context.SaveChangesAsync();
+            }
         }
 
-        // Kullanici rolu olustur
-        var kullaniciRol = await context.Roller.FirstOrDefaultAsync(r => r.RolAdi == "Kullanici");
-        if (kullaniciRol == null)
+        // Admin kullanici olustur veya sifresini dogrula
+        var adminRol = await context.Roller.FirstOrDefaultAsync(r => r.RolAdi == SistemRolleri.Admin);
+        if (adminRol != null)
         {
-            kullaniciRol = new Rol
+            var adminUser = await context.Kullanicilar.FirstOrDefaultAsync(k => k.KullaniciAdi == "admin");
+            if (adminUser == null)
             {
-                RolAdi = "Kullanici",
-                Aciklama = "Standart Kullanici",
-                SistemRolu = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            context.Roller.Add(kullaniciRol);
-            await context.SaveChangesAsync();
-        }
-
-        // Admin kullanici olustur
-        if (!await context.Kullanicilar.AnyAsync(k => k.KullaniciAdi == "admin"))
-        {
-            var admin = new Kullanici
+                adminUser = new Kullanici
+                {
+                    KullaniciAdi = "admin",
+                    SifreHash = HashPassword("admin123"),
+                    AdSoyad = "Sistem Yoneticisi",
+                    RolId = adminRol.Id,
+                    Aktif = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Kullanicilar.Add(adminUser);
+                await context.SaveChangesAsync();
+            }
+            else
             {
-                KullaniciAdi = "admin",
-                SifreHash = HashPassword("admin123"),
-                AdSoyad = "Sistem Yoneticisi",
-                RolId = adminRol.Id,
-                Aktif = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            context.Kullanicilar.Add(admin);
-            await context.SaveChangesAsync();
+                // Admin varsa sifresinin dogru oldugundan emin ol
+                // ve kilitli/pasif ise duzelt
+                var dogruHash = HashPassword("admin123");
+                if (adminUser.SifreHash != dogruHash || !adminUser.Aktif || adminUser.Kilitli)
+                {
+                    adminUser.SifreHash = dogruHash;
+                    adminUser.Aktif = true;
+                    adminUser.Kilitli = false;
+                    adminUser.BasarisizGirisSayisi = 0;
+                    adminUser.RolId = adminRol.Id;
+                    adminUser.UpdatedAt = DateTime.UtcNow;
+                    context.Kullanicilar.Update(adminUser);
+                    await context.SaveChangesAsync();
+                }
+            }
         }
 
         // TEST kullanici olustur - hizli giris icin
-        if (!await context.Kullanicilar.AnyAsync(k => k.KullaniciAdi == "test"))
+        if (adminRol != null)
         {
-            var testUser = new Kullanici
+            var testUser = await context.Kullanicilar.FirstOrDefaultAsync(k => k.KullaniciAdi == "test");
+            if (testUser == null)
             {
-                KullaniciAdi = "test",
-                SifreHash = HashPassword("test123"),
-                AdSoyad = "Test Kullanici",
-                RolId = adminRol.Id, // Admin yetkisiyle test
-                Aktif = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            context.Kullanicilar.Add(testUser);
-            await context.SaveChangesAsync();
+                testUser = new Kullanici
+                {
+                    KullaniciAdi = "test",
+                    SifreHash = HashPassword("test123"),
+                    AdSoyad = "Test Kullanici",
+                    RolId = adminRol.Id,
+                    Aktif = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Kullanicilar.Add(testUser);
+                await context.SaveChangesAsync();
+            }
+            else
+            {
+                // Test kullanici sifresi/durumu duzelt
+                var dogruHash = HashPassword("test123");
+                if (testUser.SifreHash != dogruHash || !testUser.Aktif || testUser.Kilitli)
+                {
+                    testUser.SifreHash = dogruHash;
+                    testUser.Aktif = true;
+                    testUser.Kilitli = false;
+                    testUser.BasarisizGirisSayisi = 0;
+                    testUser.UpdatedAt = DateTime.UtcNow;
+                    context.Kullanicilar.Update(testUser);
+                    await context.SaveChangesAsync();
+                }
+            }
         }
     }
 

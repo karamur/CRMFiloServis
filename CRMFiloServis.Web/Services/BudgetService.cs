@@ -222,42 +222,75 @@ public class BudgetService : IBudgetService
     public async Task<List<BudgetOdeme>> CreateTaksitliOdemeAsync(TaksitliOdemeRequest request)
     {
         var taksitGrupId = Guid.NewGuid();
-        var taksitTutari = Math.Round(request.ToplamTutar / request.TaksitSayisi, 2);
         var taksitler = new List<BudgetOdeme>();
-
-        // Yuvarlama farkýný son taksitte düzelt
-        var toplamHesaplanan = taksitTutari * request.TaksitSayisi;
-        var fark = request.ToplamTutar - toplamHesaplanan;
 
         // Baslangic tarihini UTC olarak ayarla
         var baslangicUtc = DateTime.SpecifyKind(request.BaslangicTarihi, DateTimeKind.Utc);
 
-        for (int i = 0; i < request.TaksitSayisi; i++)
+        if (request.TaksitPlani != null && request.TaksitPlani.Any())
         {
-            var taksitTarihi = baslangicUtc.AddMonths(i);
-            var tutar = i == request.TaksitSayisi - 1 ? taksitTutari + fark : taksitTutari;
-
-            var odeme = new BudgetOdeme
+            // Kullanicinin ozel taksit plani varsa onu kullan
+            foreach (var plan in request.TaksitPlani.OrderBy(x => x.Sira))
             {
-                OdemeTarihi = taksitTarihi,
-                OdemeAy = taksitTarihi.Month,
-                OdemeYil = taksitTarihi.Year,
-                MasrafKalemi = request.MasrafKalemi,
-                Aciklama = request.Aciklama,
-                Miktar = tutar,
-                TaksitliMi = true,
-                ToplamTaksitSayisi = request.TaksitSayisi,
-                KacinciTaksit = i + 1,
-                TaksitGrupId = taksitGrupId,
-                TaksitBaslangicAy = baslangicUtc,
-                TaksitBitisAy = baslangicUtc.AddMonths(request.TaksitSayisi - 1),
-                Notlar = request.Notlar,
-                FirmaId = request.FirmaId,
-                Durum = OdemeDurum.Bekliyor,
-                CreatedAt = DateTime.UtcNow
-            };
+                var taksitTarihi = DateTime.SpecifyKind(plan.Tarih, DateTimeKind.Utc);
+                
+                var odeme = new BudgetOdeme
+                {
+                    OdemeTarihi = taksitTarihi,
+                    OdemeAy = taksitTarihi.Month,
+                    OdemeYil = taksitTarihi.Year,
+                    MasrafKalemi = request.MasrafKalemi,
+                    Aciklama = request.Aciklama,
+                    Miktar = plan.Tutar,
+                    TaksitliMi = true,
+                    ToplamTaksitSayisi = request.TaksitSayisi,
+                    KacinciTaksit = plan.Sira,
+                    TaksitGrupId = taksitGrupId,
+                    TaksitBaslangicAy = baslangicUtc,
+                    TaksitBitisAy = baslangicUtc.AddMonths(request.TaksitSayisi - 1), // Yaklasik bitis tarihi
+                    Notlar = request.Notlar,
+                    FirmaId = request.FirmaId,
+                    Durum = OdemeDurum.Bekliyor,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            taksitler.Add(odeme);
+                taksitler.Add(odeme);
+            }
+        }
+        else
+        {
+            // Otomatik hesaplama (Eski yontem - fallback olarak birakiyorum)
+            var taksitTutari = Math.Round(request.ToplamTutar / request.TaksitSayisi, 2);
+            var toplamHesaplanan = taksitTutari * request.TaksitSayisi;
+            var fark = request.ToplamTutar - toplamHesaplanan;
+
+            for (int i = 0; i < request.TaksitSayisi; i++)
+            {
+                var taksitTarihi = baslangicUtc.AddMonths(i);
+                var tutar = i == request.TaksitSayisi - 1 ? taksitTutari + fark : taksitTutari;
+
+                var odeme = new BudgetOdeme
+                {
+                    OdemeTarihi = taksitTarihi,
+                    OdemeAy = taksitTarihi.Month,
+                    OdemeYil = taksitTarihi.Year,
+                    MasrafKalemi = request.MasrafKalemi,
+                    Aciklama = request.Aciklama,
+                    Miktar = tutar,
+                    TaksitliMi = true,
+                    ToplamTaksitSayisi = request.TaksitSayisi,
+                    KacinciTaksit = i + 1,
+                    TaksitGrupId = taksitGrupId,
+                    TaksitBaslangicAy = baslangicUtc,
+                    TaksitBitisAy = baslangicUtc.AddMonths(request.TaksitSayisi - 1),
+                    Notlar = request.Notlar,
+                    FirmaId = request.FirmaId,
+                    Durum = OdemeDurum.Bekliyor,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                taksitler.Add(odeme);
+            }
         }
 
         _context.BudgetOdemeler.AddRange(taksitler);
@@ -563,6 +596,9 @@ public class BudgetService : IBudgetService
 
     public async Task<List<BudgetGunlukOzet>> GetTakvimDataAsync(int yil, int ay, int? firmaId = null)
     {
+        // Tekrarlayan odemelerden bu ay icin otomatik kayit olustur
+        await TekrarlayanOdemelerdenKayitOlusturAsync(yil, ay, firmaId);
+
         var query = _context.BudgetOdemeler
             .Where(o => o.OdemeYil == yil && o.OdemeAy == ay);
 
@@ -809,6 +845,194 @@ public class BudgetService : IBudgetService
         }
 
         return trendData;
+    }
+
+    #endregion
+
+    #region Tekrarlayan Odeme Islemleri
+
+    public async Task<List<TekrarlayanOdeme>> GetTekrarlayanOdemelerAsync(int? firmaId = null)
+    {
+        var query = _context.TekrarlayanOdemeler.AsQueryable();
+
+        if (firmaId.HasValue)
+            query = query.Where(t => t.FirmaId == firmaId.Value);
+
+        return await query
+            .Include(t => t.Firma)
+            .OrderBy(t => t.OdemeGunu)
+            .ThenBy(t => t.OdemeAdi)
+            .ToListAsync();
+    }
+
+    public async Task<List<TekrarlayanOdeme>> GetAktifTekrarlayanOdemelerAsync(int? firmaId = null)
+    {
+        var bugun = DateTime.Today;
+        var query = _context.TekrarlayanOdemeler
+            .Where(t => t.Aktif &&
+                        t.BaslangicTarihi <= bugun &&
+                        (!t.BitisTarihi.HasValue || t.BitisTarihi.Value >= bugun));
+
+        if (firmaId.HasValue)
+            query = query.Where(t => t.FirmaId == firmaId.Value);
+
+        return await query
+            .Include(t => t.Firma)
+            .OrderBy(t => t.OdemeGunu)
+            .ThenBy(t => t.OdemeAdi)
+            .ToListAsync();
+    }
+
+    public async Task<TekrarlayanOdeme?> GetTekrarlayanOdemeByIdAsync(int id)
+    {
+        return await _context.TekrarlayanOdemeler
+            .Include(t => t.Firma)
+            .FirstOrDefaultAsync(t => t.Id == id);
+    }
+
+    public async Task<TekrarlayanOdeme> CreateTekrarlayanOdemeAsync(TekrarlayanOdeme odeme)
+    {
+        odeme.BaslangicTarihi = DateTime.SpecifyKind(odeme.BaslangicTarihi, DateTimeKind.Utc);
+        if (odeme.BitisTarihi.HasValue)
+            odeme.BitisTarihi = DateTime.SpecifyKind(odeme.BitisTarihi.Value, DateTimeKind.Utc);
+        odeme.CreatedAt = DateTime.UtcNow;
+
+        _context.TekrarlayanOdemeler.Add(odeme);
+        await _context.SaveChangesAsync();
+        
+        // Tracking'den cikar - ayni context uzerinde tekrar islem yapilabilsin
+        _context.Entry(odeme).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+        
+        return odeme;
+    }
+
+    public async Task<TekrarlayanOdeme> UpdateTekrarlayanOdemeAsync(TekrarlayanOdeme odeme)
+    {
+        var existing = await _context.TekrarlayanOdemeler.FindAsync(odeme.Id);
+        if (existing == null)
+            throw new Exception("Tekrarlayan odeme bulunamadi");
+
+        existing.OdemeAdi = odeme.OdemeAdi;
+        existing.MasrafKalemi = odeme.MasrafKalemi;
+        existing.Aciklama = odeme.Aciklama;
+        existing.Tutar = odeme.Tutar;
+        existing.Periyod = odeme.Periyod;
+        existing.OdemeGunu = odeme.OdemeGunu;
+        existing.BaslangicTarihi = DateTime.SpecifyKind(odeme.BaslangicTarihi, DateTimeKind.Utc);
+        existing.BitisTarihi = odeme.BitisTarihi.HasValue
+            ? DateTime.SpecifyKind(odeme.BitisTarihi.Value, DateTimeKind.Utc)
+            : null;
+        existing.HatirlatmaGunSayisi = odeme.HatirlatmaGunSayisi;
+        existing.FirmaId = odeme.FirmaId;
+        existing.Aktif = odeme.Aktif;
+        existing.Renk = odeme.Renk;
+        existing.Icon = odeme.Icon;
+        existing.Notlar = odeme.Notlar;
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        
+        // Tracking'den cikar
+        _context.Entry(existing).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+        
+        return existing;
+    }
+
+    public async Task DeleteTekrarlayanOdemeAsync(int id)
+    {
+        var odeme = await _context.TekrarlayanOdemeler.FindAsync(id);
+        if (odeme != null)
+        {
+            odeme.IsDeleted = true;
+            odeme.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            
+            _context.Entry(odeme).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+        }
+    }
+
+    /// <summary>
+    /// Tekrarlayan odeme tanimlarindan, belirtilen ay icin BudgetOdeme kayitlari olusturur.
+    /// Ayni plan + ayni ay icin daha once kayit varsa tekrar olusturmaz.
+    /// </summary>
+    public async Task<int> TekrarlayanOdemelerdenKayitOlusturAsync(int yil, int ay, int? firmaId = null)
+    {
+        var aktifPlanlar = await GetAktifTekrarlayanOdemelerAsync(firmaId);
+        var olusturulanSayisi = 0;
+
+        foreach (var plan in aktifPlanlar)
+        {
+            // Periyod kontrolu - bu ay odeme gunu olup olmadigini kontrol et
+            if (!PeriyodaUygunMu(plan, yil, ay))
+                continue;
+
+            // Odeme gunu - ayin gun sayisindan buyukse son gunu al
+            var gunSayisi = DateTime.DaysInMonth(yil, ay);
+            var odemeGunu = Math.Min(plan.OdemeGunu, gunSayisi);
+
+            // Bu plan + bu ay icin kayit var mi kontrol et
+            var mevcutKayit = await _context.BudgetOdemeler
+                .AnyAsync(o => o.OdemeYil == yil &&
+                               o.OdemeAy == ay &&
+                               o.MasrafKalemi == plan.MasrafKalemi &&
+                               o.Aciklama != null && o.Aciklama.StartsWith("[Tekrarlayan]") &&
+                               o.Aciklama.Contains(plan.OdemeAdi));
+
+            if (!mevcutKayit)
+            {
+                var odemeTarihi = DateTime.SpecifyKind(new DateTime(yil, ay, odemeGunu), DateTimeKind.Utc);
+
+                var yeniOdeme = new BudgetOdeme
+                {
+                    OdemeTarihi = odemeTarihi,
+                    OdemeAy = ay,
+                    OdemeYil = yil,
+                    MasrafKalemi = plan.MasrafKalemi,
+                    Aciklama = $"[Tekrarlayan] {plan.OdemeAdi}",
+                    Miktar = plan.Tutar,
+                    FirmaId = plan.FirmaId,
+                    Durum = OdemeDurum.Bekliyor,
+                    TaksitliMi = false,
+                    ToplamTaksitSayisi = 1,
+                    KacinciTaksit = 1,
+                    Notlar = plan.Notlar,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.BudgetOdemeler.Add(yeniOdeme);
+                olusturulanSayisi++;
+            }
+        }
+
+        if (olusturulanSayisi > 0)
+            await _context.SaveChangesAsync();
+
+        return olusturulanSayisi;
+    }
+
+    /// <summary>
+    /// Belirtilen tekrarlayan odeme planinin, verilen yil/ay icin gecerli olup olmadigini kontrol eder.
+    /// </summary>
+    private bool PeriyodaUygunMu(TekrarlayanOdeme plan, int yil, int ay)
+    {
+        var kontrolTarihi = new DateTime(yil, ay, 1);
+        var baslangic = new DateTime(plan.BaslangicTarihi.Year, plan.BaslangicTarihi.Month, 1);
+
+        if (kontrolTarihi < baslangic)
+            return false;
+
+        if (plan.BitisTarihi.HasValue)
+        {
+            var bitis = new DateTime(plan.BitisTarihi.Value.Year, plan.BitisTarihi.Value.Month, 1);
+            if (kontrolTarihi > bitis)
+                return false;
+        }
+
+        // Periyod kontrolu
+        var ayFarki = ((yil - plan.BaslangicTarihi.Year) * 12) + (ay - plan.BaslangicTarihi.Month);
+        var periyodAySayisi = (int)plan.Periyod;
+
+        return ayFarki % periyodAySayisi == 0;
     }
 
     #endregion

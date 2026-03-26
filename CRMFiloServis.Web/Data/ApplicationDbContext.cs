@@ -47,6 +47,7 @@ public class ApplicationDbContext : DbContext
     // Butce Modulu
     public DbSet<BudgetOdeme> BudgetOdemeler { get; set; }
     public DbSet<BudgetMasrafKalemi> BudgetMasrafKalemleri { get; set; }
+    public DbSet<TekrarlayanOdeme> TekrarlayanOdemeler { get; set; }
 
     // Muhasebe Modulu
     public DbSet<MuhasebeHesap> MuhasebeHesaplari { get; set; }
@@ -90,6 +91,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AracPiyasaArastirma> PiyasaArastirmalar { get; set; }
     public DbSet<PiyasaArastirmaIlan> PiyasaArastirmaIlanlar { get; set; }
     public DbSet<AracMarkaModel> AracMarkaModeller { get; set; }
+    public DbSet<PiyasaKaynak> PiyasaKaynaklar { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -422,6 +424,25 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Kategori).HasMaxLength(100);
             entity.Property(e => e.Renk).HasMaxLength(20);
             entity.Property(e => e.Icon).HasMaxLength(50);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Tekrarlayan Odeme
+        modelBuilder.Entity<TekrarlayanOdeme>(entity =>
+        {
+            entity.HasIndex(e => e.MasrafKalemi);
+            entity.Property(e => e.OdemeAdi).HasMaxLength(200);
+            entity.Property(e => e.MasrafKalemi).HasMaxLength(200);
+            entity.Property(e => e.Aciklama).HasMaxLength(500);
+            entity.Property(e => e.Notlar).HasMaxLength(1000);
+            entity.Property(e => e.Tutar).HasPrecision(18, 2);
+            entity.Property(e => e.Renk).HasMaxLength(20);
+            entity.Property(e => e.Icon).HasMaxLength(50);
+            entity.Property(e => e.Periyod).HasConversion<int>();
+            entity.HasOne(e => e.Firma)
+                .WithMany()
+                .HasForeignKey(e => e.FirmaId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 

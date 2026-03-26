@@ -45,6 +45,15 @@ public interface IBudgetService
     // Kredi/Taksit Raporlari
     Task<List<KrediOzet>> GetAktifKredilerAsync(int? firmaId = null);
     Task<List<AylikKrediTaksitRapor>> GetAylikKrediTaksitRaporuAsync(int yil);
+
+    // Tekrarlayan Odeme Islemleri
+    Task<List<TekrarlayanOdeme>> GetTekrarlayanOdemelerAsync(int? firmaId = null);
+    Task<List<TekrarlayanOdeme>> GetAktifTekrarlayanOdemelerAsync(int? firmaId = null);
+    Task<TekrarlayanOdeme?> GetTekrarlayanOdemeByIdAsync(int id);
+    Task<TekrarlayanOdeme> CreateTekrarlayanOdemeAsync(TekrarlayanOdeme odeme);
+    Task<TekrarlayanOdeme> UpdateTekrarlayanOdemeAsync(TekrarlayanOdeme odeme);
+    Task DeleteTekrarlayanOdemeAsync(int id);
+    Task<int> TekrarlayanOdemelerdenKayitOlusturAsync(int yil, int ay, int? firmaId = null);
 }
 
 public class TaksitliOdemeRequest
@@ -56,6 +65,14 @@ public class TaksitliOdemeRequest
     public int TaksitSayisi { get; set; }
     public string? Notlar { get; set; }
     public int? FirmaId { get; set; }
+    public List<TaksitDetayRequest> TaksitPlani { get; set; } = new();
+}
+
+public class TaksitDetayRequest
+{
+    public int Sira { get; set; }
+    public DateTime Tarih { get; set; }
+    public decimal Tutar { get; set; }
 }
 
 public class OdemeYapRequest

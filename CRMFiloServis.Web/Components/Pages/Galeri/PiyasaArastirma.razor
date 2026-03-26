@@ -168,20 +168,54 @@
                         </select>
                     </div>
 
+                    <!-- Ilan Tarihi Filtresi -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-calendar-event me-1"></i>Ilan Tarihi (Son)
+                        </label>
+                        <select class="form-select" @bind="ilanTarihGun">
+                            <option value="1">Son 1 Gun (Bugun)</option>
+                            <option value="2">Son 2 Gun</option>
+                            <option value="3">Son 3 Gun</option>
+                            <option value="7">Son 1 Hafta</option>
+                            <option value="14">Son 2 Hafta</option>
+                            <option value="30">Son 1 Ay</option>
+                            <option value="0">Tum Ilanlar</option>
+                        </select>
+                        <small class="text-muted">Sadece secilen gun icinde girilen satistaki ilanlar</small>
+                    </div>
+
                     <!-- Arama Butonu -->
-                    <button class="btn btn-primary w-100" @onclick="ArastirmaBaslat"
-                            disabled="@(isSearching || string.IsNullOrEmpty(selectedMarka) || string.IsNullOrEmpty(selectedModel))">
-                        @if (isSearching)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                            <span>AI Arastiriyor...</span>
-                        }
-                        else
-                        {
-                            <i class="bi bi-robot me-2"></i>
+                    @if (isSearching)
+                    {
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-danger" @onclick="TaramayiDurdur">
+                                <i class="bi bi-stop-circle me-2"></i>Taramayi Durdur
+                            </button>
+                            <div class="text-center mt-2">
+                                <small class="text-muted">@progressMessage</small>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary w-100" @onclick="ArastirmaBaslat"
+                                disabled="@(string.IsNullOrEmpty(selectedMarka) || string.IsNullOrEmpty(selectedModel))">
+                            <i class="bi bi-search me-2"></i>
                             <span>Piyasa Arastir</span>
-                        }
-                    </button>
+                        </button>
+                    }
+                    
+                    <!-- Desteklenen Kaynaklar -->
+                    <div class="mt-3">
+                        <small class="text-muted d-block mb-2">
+                            <i class="bi bi-info-circle me-1"></i>Taranan Kaynaklar:
+                        </small>
+                        <div class="d-flex flex-wrap gap-1">
+                            <span class="badge bg-danger">Sahibinden</span>
+                            <span class="badge bg-primary">Arabam</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -193,8 +227,25 @@
                 <div class="card shadow-sm">
                     <div class="card-body text-center py-5">
                         <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
-                        <h5 class="mb-2">Yapay Zeka Piyasayi Tariyor...</h5>
-                        <p class="text-muted mb-0">@selectedMarka @selectedModel icin Sahibinden ve Arabam taraniyor</p>
+                        <h5 class="mb-2">Piyasa Taraniyor...</h5>
+                        <p class="text-muted mb-2">@selectedMarka @selectedModel icin son @ilanTarihGun gun icindeki ilanlar taraniyor</p>
+                        @if (!string.IsNullOrEmpty(progressMessage))
+                        {
+                            <div class="alert alert-info py-2 px-3 d-inline-block">
+                                @progressMessage
+                            </div>
+                        }
+                        @if (sonuclar.Any())
+                        {
+                            <div class="mt-3">
+                                <span class="badge bg-success fs-6">@sonuclar.Count ilan cekildi</span>
+                            </div>
+                        }
+                        <div class="mt-3">
+                            <button class="btn btn-outline-danger btn-sm" @onclick="TaramayiDurdur">
+                                <i class="bi bi-stop-circle me-1"></i>Durdur ve Sonuclari Goster
+                            </button>
+                        </div>
                     </div>
                 </div>
             }
@@ -240,7 +291,7 @@
                 <ul class="nav nav-tabs mb-3">
                     <li class="nav-item">
                         <button class="nav-link @(activeTab == "ilanlar" ? "active" : "")" @onclick='() => activeTab = "ilanlar"'>
-                            <i class="bi bi-table me-1"></i>Ilanlar (@sonuclar.Count)
+                            <i class="bi bi-table me-1"></i>Ilanlar (@filtrelenmisIlanlar.Count / @sonuclar.Count)
                         </button>
                     </li>
                     <li class="nav-item">
@@ -253,60 +304,42 @@
                 @if (activeTab == "ilanlar")
                 {
                     <div class="card shadow-sm">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-list-ul me-2"></i>Ilan Listesi</span>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn @(resimBoyutu == "kucuk" ? "btn-primary" : "btn-outline-primary")" 
-                                        @onclick='() => resimBoyutu = "kucuk"' title="Kucuk Resim">
-                                    <i class="bi bi-grid-3x3"></i>
-                                </button>
-                                <button class="btn @(resimBoyutu == "orta" ? "btn-primary" : "btn-outline-primary")" 
-                                        @onclick='() => resimBoyutu = "orta"' title="Orta Resim">
-                                    <i class="bi bi-grid"></i>
-                                </button>
-                                <button class="btn @(resimBoyutu == "buyuk" ? "btn-primary" : "btn-outline-primary")" 
-                                        @onclick='() => resimBoyutu = "buyuk"' title="Buyuk Resim">
-                                    <i class="bi bi-square"></i>
-                                </button>
-                                <button class="btn @(resimBoyutu == "gizle" ? "btn-primary" : "btn-outline-primary")" 
-                                        @onclick='() => resimBoyutu = "gizle"' title="Resimsiz">
-                                    <i class="bi bi-eye-slash"></i>
-                                </button>
+                        <div class="card-header bg-light">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <span><i class="bi bi-list-ul me-2"></i>Ilan Listesi</span>
+                                <!-- Kaynak Filtresi -->
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-muted">Kaynak:</small>
+                                    <select class="form-select form-select-sm" style="width: auto;" @bind="seciliKaynak">
+                                        <option value="">Tumu</option>
+                                        @foreach (var kaynak in sonuclar.Select(x => x.Kaynak).Distinct().OrderBy(x => x))
+                                        {
+                                            <option value="@kaynak">@kaynak (@sonuclar.Count(x => x.Kaynak == kaynak))</option>
+                                        }
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-                            <table class="table table-hover table-sm mb-0">
+                            <table class="table table-hover table-sm mb-0" style="font-size: 11px;">
                                 <thead class="table-light sticky-top">
                                     <tr>
-                                        <th style="width: 40px;"></th>
-                                        @if (resimBoyutu != "gizle")
-                                        {
-                                            <th style="width: @GetResimGenislik();">Foto</th>
-                                        }
-                                        <th>Arac</th>
-                                        <th class="text-center">Yil</th>
-                                        <th class="text-end">KM</th>
-                                        <th class="text-center">
-                                            @if (selectedVasitaTuru == "ticari-arac" || selectedVasitaTuru == "minivan-panelvan")
-                                            {
-                                                <span>Koltuk</span>
-                                            }
-                                            else
-                                            {
-                                                <span>Kapasite</span>
-                                            }
-                                        </th>
-                                        <th class="text-end">Fiyat</th>
-                                        <th class="text-center">Durum</th>
-                                        <th>Konum</th>
-                                        <th>Kaynak</th>
-                                        <th class="text-center">Islem</th>
+                                        <th style="width: 25px;"></th>
+                                        <th style="min-width: 140px;">Arac</th>
+                                        <th class="text-center" style="width: 45px;">Yil</th>
+                                        <th class="text-end" style="width: 70px;">KM</th>
+                                        <th class="text-end" style="width: 90px;">Fiyat</th>
+                                        <th class="text-center" style="width: 40px;">Koltuk</th>
+                                        <th class="text-center" style="width: 60px;">Durum</th>
+                                        <th style="width: 70px;">Konum</th>
+                                        <th style="width: 80px;">Kaynak</th>
+                                        <th style="width: 100px;">Islem</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var ilan in sonuclar)
+                                    @foreach (var ilan in filtrelenmisIlanlar)
                                     {
-                                        var firsatMi = ilan.Fiyat < arastirma.OrtalamaFiyat * 0.9m && !ilan.HasarKayitli;
+                                        var firsatMi = arastirma != null && ilan.Fiyat < arastirma.OrtalamaFiyat * 0.9m && !ilan.HasarKayitli;
                                         <tr class="@(firsatMi ? "table-success" : "")">
                                             <td class="text-center">
                                                 @if (firsatMi)
@@ -314,75 +347,53 @@
                                                     <i class="bi bi-star-fill text-warning" title="Firsat!"></i>
                                                 }
                                             </td>
-                                            @if (resimBoyutu != "gizle")
-                                            {
-                                                <td class="align-middle">
-                                                    @if (!string.IsNullOrEmpty(ilan.ResimUrl))
-                                                    {
-                                                        <img src="@ilan.ResimUrl" 
-                                                             alt="@ilan.IlanBasligi"
-                                                             class="rounded cursor-pointer"
-                                                             style="width: @GetResimBoyut(); height: auto; object-fit: cover;"
-                                                             @onclick="() => ResimBuyut(ilan)" 
-                                                             onerror="this.style.display='none'" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
-                                                             style="width: @GetResimBoyut(); height: @GetResimBoyut();">
-                                                            <i class="bi bi-image text-muted"></i>
-                                                        </div>
-                                                    }
-                                                </td>
-                                            }
                                             <td>
-                                                <div class="fw-semibold">@ilan.IlanBasligi</div>
-                                                <small class="text-muted">@ilan.Versiyon | @ilan.YakitTipi / @ilan.VitesTipi</small>
+                                                <div class="fw-semibold text-truncate" style="max-width: 140px;" title="@ilan.IlanBasligi">@ilan.IlanBasligi
+                                                </div>
+                                                <small class="text-muted">@ilan.YakitTipi / @ilan.VitesTipi</small>
                                             </td>
                                             <td class="text-center">@ilan.ModelYili</td>
-                                            <td class="text-end">@ilan.Kilometre.ToString("N0") km</td>
+                                            <td class="text-end">@ilan.Kilometre.ToString("N0")</td>
+                                            <td class="text-end fw-bold text-success">@FormatPara(ilan.Fiyat)</td>
                                             <td class="text-center">
                                                 @if (!string.IsNullOrEmpty(ilan.TasimaKapasitesi))
                                                 {
-                                                    <span class="badge bg-info">
-                                                        <i class="bi bi-people-fill me-1"></i>@ilan.TasimaKapasitesi
-                                                    </span>
-                                                }
-                                                else if (!string.IsNullOrEmpty(ilan.Kapasite))
-                                                {
-                                                    <span class="badge bg-secondary">@ilan.Kapasite</span>
+                                                    <span class="badge bg-secondary">@ilan.TasimaKapasitesi</span>
                                                 }
                                                 else
                                                 {
                                                     <span class="text-muted">-</span>
                                                 }
                                             </td>
-                                            <td class="text-end fw-bold">@FormatPara(ilan.Fiyat)</td>
                                             <td class="text-center">
                                                 @if (ilan.HasarKayitli)
                                                 {
-                                                    <span class="badge bg-danger">Hasarli</span>
+                                                    <span class="badge bg-danger" style="font-size: 9px;">Hasarli</span>
                                                 }
                                                 else if ((ilan.BoyaliParcaSayisi ?? 0) > 0)
                                                 {
-                                                    <span class="badge bg-warning text-dark">@ilan.BoyaliParcaSayisi Boyali</span>
+                                                    <span class="badge bg-warning text-dark" style="font-size: 9px;">Boyali</span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="badge bg-success">Temiz</span>
+                                                    <span class="badge bg-success" style="font-size: 9px;">Temiz</span>
                                                 }
                                             </td>
                                             <td>
-                                                <small>@ilan.Sehir</small><br />
-                                                <small class="text-muted">@ilan.SaticiTipi</small>
+                                                <small class="text-truncate d-block" style="max-width: 70px;" title="@ilan.Sehir">@ilan.Sehir
+                                                </small>
                                             </td>
                                             <td>
-                                                <span class="badge @GetKaynakClass(ilan.Kaynak)">@ilan.Kaynak</span>
+                                                <span class="badge @GetKaynakClass(ilan.Kaynak)" style="font-size: 9px;">@ilan.Kaynak</span>
                                             </td>
-                                            <td class="text-center">
-                                                <a href="@ilan.IlanUrl" target="_blank" class="btn btn-sm btn-primary" title="Ilana Git">
-                                                    <i class="bi bi-box-arrow-up-right"></i>
-                                                </a>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(ilan.IlanUrl))
+                                                {
+                                                    <a href="@ilan.IlanUrl" target="_blank" class="btn btn-sm btn-outline-primary" 
+                                                       title="@ilan.IlanUrl">
+                                                        <i class="bi bi-box-arrow-up-right me-1"></i>Ilana Git
+                                                    </a>
+                                                }
                                             </td>
                                         </tr>
                                     }
@@ -680,11 +691,35 @@
     private string activeTab = "ilanlar";
     private string resimBoyutu = "orta"; // kucuk, orta, buyuk, gizle
     private PiyasaArastirmaIlan? secilenIlan;
+    
+    // Kaynak filtresi
+    private string seciliKaynak = "";
+    
+    // Ilan tarihi filtresi (gun cinsinden) - Default 2 gun
+    private int ilanTarihGun = 2;
+    
+    // Progress mesaji
+    private string progressMessage = "";
+    
+    // Tarama iptal icin
+    private CancellationTokenSource? _cancellationTokenSource;
+
+    // Filtrelenmis ilanlar
+    private List<PiyasaArastirmaIlan> filtrelenmisIlanlar => 
+        string.IsNullOrEmpty(seciliKaynak) 
+            ? sonuclar 
+            : sonuclar.Where(x => x.Kaynak == seciliKaynak).ToList();
 
     protected override void OnInitialized()
     {
         vasitaTurleri = PiyasaService.VasitaTurleriniGetir();
         MarkalariYukle();
+    }
+    
+    public void Dispose()
+    {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
     }
 
     private void VasitaTuruSecildi()
@@ -743,8 +778,15 @@
         }
 
         isSearching = true;
+        progressMessage = "Baslatiliyor...";
         sonuclar.Clear();
         arastirma = null;
+        
+        // Yeni CancellationTokenSource olustur
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = new CancellationTokenSource();
+        
         StateHasChanged();
 
         try
@@ -752,19 +794,72 @@
             request.VasitaTuru = selectedVasitaTuru;
             request.Marka = selectedMarka;
             request.Model = selectedModel;
+            request.IlanTarihGun = ilanTarihGun; // Ilan tarihi filtresi
 
-            arastirma = await PiyasaService.ArastirmaBaslatAsync(request);
+            // Progress callback olustur
+            var progress = new Progress<string>(message =>
+            {
+                progressMessage = message;
+                InvokeAsync(StateHasChanged);
+            });
+
+            arastirma = await PiyasaService.ArastirmaBaslatAsync(request, progress, _cancellationTokenSource.Token);
             sonuclar = arastirma.Ilanlar.ToList();
-            ToastService.ShowSuccess($"{sonuclar.Count} ilan bulundu!");
+            
+            if (sonuclar.Any())
+            {
+                var kaynakGruplari = sonuclar.GroupBy(x => x.Kaynak).Select(g => $"g.Key: {g.Count()}").ToList();
+                ToastService.ShowSuccess($"{sonuclar.Count} ilan bulundu! ({string.Join(", ", kaynakGruplari)})");
+            }
+            else if (!_cancellationTokenSource.IsCancellationRequested)
+            {
+                ToastService.ShowWarning("Ilan bulunamadi.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Durdurulsa bile cekilen verileri goster
+            if (arastirma != null && arastirma.Ilanlar.Any())
+            {
+                sonuclar = arastirma.Ilanlar.ToList();
+                ToastService.ShowInfo($"Tarama durduruldu. {sonuclar.Count} ilan cekildi.");
+            }
+            else if (sonuclar.Any())
+            {
+                ToastService.ShowInfo($"Tarama durduruldu. {sonuclar.Count} ilan cekildi.");
+            }
+            else
+            {
+                ToastService.ShowInfo("Tarama durduruldu.");
+            }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Hata: {ex.Message}");
+            // Hata olsa bile cekilen verileri goster
+            if (sonuclar.Any())
+            {
+                ToastService.ShowWarning($"Hata olustu ama {sonuclar.Count} ilan cekildi.");
+            }
+            else
+            {
+                ToastService.ShowError($"Hata: {ex.Message}");
+            }
         }
         finally
         {
             isSearching = false;
+            progressMessage = "";
+            StateHasChanged();
         }
+    }
+    
+    private void TaramayiDurdur()
+    {
+        progressMessage = "Tarama durduruluyor...";
+        StateHasChanged();
+        
+        _cancellationTokenSource?.Cancel();
+        PiyasaService.TaramayiDurdur();
     }
 
     private async Task AnalizTabAc()

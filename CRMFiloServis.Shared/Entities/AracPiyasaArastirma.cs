@@ -46,7 +46,7 @@ public class PiyasaArastirmaIlan : BaseEntity
     public string? IlanNo { get; set; }
     public string IlanBasligi { get; set; } = string.Empty;
     public string? IlanUrl { get; set; }
-    public string? ResimUrl { get; set; } // Ilan fotografý
+    public string? ResimUrl { get; set; } // Ana ilan fotografi (thumbnail)
 
     public string Marka { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
@@ -79,6 +79,9 @@ public class PiyasaArastirmaIlan : BaseEntity
     public DateTime ToplanmaTarihi { get; set; } = DateTime.Now;
     public bool AktifMi { get; set; } = true;
     public string? Notlar { get; set; }
+
+    // Birden fazla fotograf icin JSON array - AI tarafindan cekilir
+    public string? Fotograflar { get; set; } // JSON array: ["url1", "url2", ...]
 
     // Navigation
     public virtual AracPiyasaArastirma? Arastirma { get; set; }

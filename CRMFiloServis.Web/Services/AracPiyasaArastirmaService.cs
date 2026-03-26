@@ -10,7 +10,7 @@ namespace CRMFiloServis.Web.Services;
 public interface IAracPiyasaArastirmaService
 {
     // Arastirma islemleri
-    Task<AracPiyasaArastirma> ArastirmaBaslatAsync(AracPiyasaArastirmaRequest request);
+    Task<AracPiyasaArastirma> ArastirmaBaslatAsync(AracPiyasaArastirmaRequest request, IProgress<string>? progress = null, CancellationToken cancellationToken = default);
     Task<AracPiyasaArastirma> ArastirmaKaydetAsync(AracPiyasaArastirma arastirma);
     Task<List<AracPiyasaArastirma>> KayitliArastirmalariGetirAsync();
     Task<AracPiyasaArastirma?> ArastirmaGetirAsync(int id);
@@ -22,9 +22,12 @@ public interface IAracPiyasaArastirmaService
     List<string> ModelleriGetir(string vasitaTuru, string marka);
     Task MarkaModelGuncelleAsync();
 
-    // AI islemleri
-    Task<List<PiyasaArastirmaIlan>> IlanlariGetirAsync(AracPiyasaArastirmaRequest request);
+    // AI/Scraper islemleri
+    Task<List<PiyasaArastirmaIlan>> IlanlariGetirAsync(AracPiyasaArastirmaRequest request, IProgress<string>? progress = null, CancellationToken cancellationToken = default);
+    Task<List<string>> IlanFotograflariniCekAsync(string ilanUrl, string kaynak);
     Task<PiyasaAnalizSonuc> PiyasaAnaliziYapAsync(List<PiyasaArastirmaIlan> ilanlar, string marka, string model);
+    void TaramayiDurdur();
+    List<PiyasaKaynakBilgi> GetDesteklenenKaynaklar();
 }
 
 public class AracPiyasaArastirmaService : IAracPiyasaArastirmaService
@@ -33,6 +36,8 @@ public class AracPiyasaArastirmaService : IAracPiyasaArastirmaService
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
     private readonly ILogger<AracPiyasaArastirmaService> _logger;
+    private readonly IHttpScraperService _httpScraper;
+    private readonly IPlaywrightScraperService _playwrightScraper;
 
     // Vasita turleri
     private static readonly List<VasitaTuru> VasitaTurleri = new()
@@ -154,12 +159,16 @@ public class AracPiyasaArastirmaService : IAracPiyasaArastirmaService
         ApplicationDbContext context,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        ILogger<AracPiyasaArastirmaService> logger)
+        ILogger<AracPiyasaArastirmaService> logger,
+        IHttpScraperService httpScraper,
+        IPlaywrightScraperService playwrightScraper)
     {
         _context = context;
         _configuration = configuration;
         _httpClient = httpClientFactory.CreateClient("OpenAI");
         _logger = logger;
+        _httpScraper = httpScraper;
+        _playwrightScraper = playwrightScraper;
     }
 
     #region Vasita Turu / Marka / Model Islemleri
@@ -204,7 +213,7 @@ public class AracPiyasaArastirmaService : IAracPiyasaArastirmaService
 
     #region Arastirma Islemleri
 
-    public async Task<AracPiyasaArastirma> ArastirmaBaslatAsync(AracPiyasaArastirmaRequest request)
+    public async Task<AracPiyasaArastirma> ArastirmaBaslatAsync(AracPiyasaArastirmaRequest request, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
         var arastirma = new AracPiyasaArastirma
         {
@@ -226,8 +235,13 @@ public class AracPiyasaArastirmaService : IAracPiyasaArastirmaService
 
         try
         {
-            var ilanlar = await IlanlariGetirAsync(request);
-            arastirma.Ilanlar = ilanlar;
+            progress?.Report("Piyasa taramasi baslatiliyor...");
+            var ilanlar = await IlanlariGetirAsync(request, progress, cancellationToken);
+            
+            foreach (var ilan in ilanlar)
+            {
+                arastirma.Ilanlar.Add(ilan);
+            }
 
             if (ilanlar.Any())
             {
@@ -239,17 +253,25 @@ public class AracPiyasaArastirmaService : IAracPiyasaArastirmaService
                 arastirma.MedianFiyat = fiyatlar[fiyatlar.Count / 2];
                 arastirma.OrtalamaKilometre = (int)ilanlar.Average(i => i.Kilometre);
 
+                progress?.Report("Piyasa analizi yapiliyor...");
                 var analiz = await PiyasaAnaliziYapAsync(ilanlar, request.Marka, request.Model);
                 arastirma.AIAnalizi = analiz.AnalizMetni;
             }
 
-            arastirma.Durum = ArastirmaDurum.Tamamlandi;
+            arastirma.Durum = cancellationToken.IsCancellationRequested ? ArastirmaDurum.Iptal : ArastirmaDurum.Tamamlandi;
+            progress?.Report(cancellationToken.IsCancellationRequested ? "Tarama durduruldu!" : "Tamamlandi!");
+        }
+        catch (OperationCanceledException)
+        {
+            arastirma.Durum = ArastirmaDurum.Iptal;
+            progress?.Report("Tarama iptal edildi!");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Piyasa arastirmasi basarisiz");
             arastirma.Durum = ArastirmaDurum.Hata;
             arastirma.HataMesaji = ex.Message;
+            progress?.Report($"Hata: {ex.Message}");
         }
 
         return arastirma;
@@ -300,10 +322,62 @@ public class AracPiyasaArastirmaService : IAracPiyasaArastirmaService
 
     #region AI Islemleri
 
-    public async Task<List<PiyasaArastirmaIlan>> IlanlariGetirAsync(AracPiyasaArastirmaRequest request)
+    public async Task<List<PiyasaArastirmaIlan>> IlanlariGetirAsync(AracPiyasaArastirmaRequest request, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
-        // Simule edilmis ilanlar olustur
-        return GenerateSimulatedIlanlar(request);
+        var tumIlanlar = new List<PiyasaArastirmaIlan>();
+
+        try
+        {
+            // Oncelikle HTTP Scraper dene (en hizli ve guvenilir)
+            progress?.Report("Piyasa taraniyor...");
+            tumIlanlar = await _httpScraper.TaraAsync(request, progress, cancellationToken);
+            
+            if (tumIlanlar.Any())
+            {
+                _logger.LogInformation("HTTP Scraper ile {Count} ilan cekildi", tumIlanlar.Count);
+                return tumIlanlar;
+            }
+            
+            // HTTP calismadiysa Playwright dene
+            progress?.Report("Alternatif yontem deneniyor...");
+            tumIlanlar = await _playwrightScraper.TumKaynaklardanTaraAsync(request, progress, cancellationToken);
+            _logger.LogInformation("Playwright ile {Count} ilan cekildi", tumIlanlar.Count);
+        }
+        catch (OperationCanceledException)
+        {
+            progress?.Report("Tarama iptal edildi!");
+            _logger.LogInformation("Piyasa taramasi kullanici tarafindan iptal edildi");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ilan cekme hatasi");
+            progress?.Report("Veriler cekilemedi, ornek veriler yukleniyor...");
+            return GenerateSimulatedIlanlar(request);
+        }
+
+        // Eger hic ilan bulunamadiysa simule edilmis ilanlar dondur
+        if (!tumIlanlar.Any())
+        {
+            progress?.Report("Ilan bulunamadi, ornek veriler yukleniyor...");
+            return GenerateSimulatedIlanlar(request);
+        }
+
+        return tumIlanlar;
+    }
+    
+    public void TaramayiDurdur()
+    {
+        _playwrightScraper.DurdurTarama();
+    }
+    
+    public List<PiyasaKaynakBilgi> GetDesteklenenKaynaklar()
+    {
+        return _playwrightScraper.GetDesteklenenKaynaklar();
+    }
+
+    public async Task<List<string>> IlanFotograflariniCekAsync(string ilanUrl, string kaynak)
+    {
+        return await _playwrightScraper.IlanFotograflariniCekAsync(ilanUrl, kaynak);
     }
 
     public async Task<PiyasaAnalizSonuc> PiyasaAnaliziYapAsync(List<PiyasaArastirmaIlan> ilanlar, string marka, string model)
@@ -520,6 +594,7 @@ public class AracPiyasaArastirmaRequest
     public decimal? MinFiyat { get; set; }
     public decimal? MaxFiyat { get; set; }
     public string? Sehir { get; set; }
+    public int IlanTarihGun { get; set; } = 2; // Varsayilan: Son 2 gun icindeki ilanlar
 }
 
 public class VasitaTuru

@@ -31,7 +31,7 @@
         <div class="card-body py-2">
             <div class="row g-2 align-items-center">
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" @bind="filtreYil" @bind:after="FiltreUygula">
+                    <select class="form-select form-select-sm" @bind="filtreYil">
                         @for (int y = DateTime.Today.Year + 1; y >= DateTime.Today.Year - 3; y--)
                         {
                             <option value="@y">@y</option>
@@ -39,7 +39,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" @bind="filtreAy" @bind:after="FiltreUygula">
+                    <select class="form-select form-select-sm" @bind="filtreAy">
                         <option value="0">Tum Yil</option>
                         @for (int m = 1; m <= 12; m++)
                         {
@@ -48,7 +48,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" @bind="filtreDurum" @bind:after="FiltreUygula">
+                    <select class="form-select form-select-sm" @bind="filtreDurum">
                         <option value="">Tum Durumlar</option>
                         <option value="Bekliyor">Bekliyor</option>
                         <option value="Odendi">Odendi</option>
@@ -57,7 +57,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" @bind="filtreTip" @bind:after="FiltreUygula">
+                    <select class="form-select form-select-sm" @bind="filtreTip">
                         <option value="">Tum Tipler</option>
                         <option value="kredi">Kredi/Taksit</option>
                         <option value="normal">Normal</option>
@@ -65,10 +65,16 @@
                 </div>
                 <div class="col-md-2">
                     <input type="text" class="form-control form-control-sm" placeholder="Ara..." 
-                           @bind="aramaMetni" @bind:event="oninput" @bind:after="FiltreUygula" />
+                           @bind="aramaMetni" @onkeypress="@(async (e) => await AramaKeyPress(e))" />
                 </div>
-                <div class="col-md-2 text-end">
-                    <span class="badge bg-secondary">@filtrelenmisOdemeler.Count kayit</span>
+                <div class="col-md-2 d-flex gap-2 justify-content-end">
+                    <button class="btn btn-primary btn-sm" @onclick="@(async () => await LoadDataAsync())">
+                        <i class="bi bi-search me-1"></i>Ara
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="@(async () => await FiltreTemizle())" title="Filtreleri Temizle">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                    <span class="badge bg-secondary align-self-center">@filtrelenmisOdemeler.Count</span>
                 </div>
             </div>
         </div>
@@ -310,7 +316,7 @@
 @if (showTaksitModal)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Taksitli Odeme</h5>
@@ -318,61 +324,135 @@
                 </div>
                 <div class="modal-body">
                     <div class="row">
-                        <div class="col-6">
-                            <div class="mb-3">
-                                <label class="form-label">Baslangic *</label>
-                                <input type="date" class="form-control" @bind="taksitRequest.BaslangicTarihi" />
+                        <div class="col-md-6">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Baslangic *</label>
+                                        <input type="date" class="form-control" @bind="taksitRequest.BaslangicTarihi" @bind:after="TaksitListesiHesapla" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Taksit Sayisi *</label>
+                                        <input type="number" class="form-control" @bind="taksitRequest.TaksitSayisi" min="2" max="60" @bind:after="TaksitListesiHesapla" />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-6">
                             <div class="mb-3">
-                                <label class="form-label">Taksit Sayisi *</label>
-                                <input type="number" class="form-control" @bind="taksitRequest.TaksitSayisi" min="2" max="60" />
+                                <label class="form-label">Masraf Kalemi *</label>
+                                <input type="text" class="form-control" @bind="taksitRequest.MasrafKalemi" list="masrafList2" />
+                                <datalist id="masrafList2">
+                                    @if (masrafKalemleri != null)
+                                    {
+                                        @foreach (var k in masrafKalemleri)
+                                        {
+                                            <option value="@k.KalemAdi" />
+                                        }
+                                    }
+                                </datalist>
                             </div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Masraf Kalemi *</label>
-                        <input type="text" class="form-control" @bind="taksitRequest.MasrafKalemi" list="masrafList2" />
-                        <datalist id="masrafList2">
-                            @if (masrafKalemleri != null)
-                            {
-                                @foreach (var k in masrafKalemleri)
-                                {
-                                    <option value="@k.KalemAdi" />
-                                }
-                            }
-                        </datalist>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Aciklama</label>
-                        <input type="text" class="form-control" @bind="taksitRequest.Aciklama" />
-                    </div>
-                    <div class="row">
-                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">Aciklama</label>
+                                <input type="text" class="form-control" @bind="taksitRequest.Aciklama" />
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label">Toplam Tutar *</label>
                                 <div class="input-group">
-                                    <input type="number" class="form-control" @bind="taksitRequest.ToplamTutar" step="0.01" />
+                                    <input type="number" class="form-control" @bind="taksitRequest.ToplamTutar" step="0.01" @bind:after="TaksitListesiHesapla" />
                                     <span class="input-group-text">TL</span>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="mb-3">
-                                <label class="form-label">Taksit Tutari</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" value="@(taksitRequest.TaksitSayisi > 0 ? (taksitRequest.ToplamTutar / taksitRequest.TaksitSayisi).ToString("N2") : "0")" readonly />
-                                    <span class="input-group-text">TL</span>
+                        <div class="col-md-6">
+                            @if (taksitRequest.TaksitSayisi > 1 && taksitListesi.Any())
+                            {
+                                var taksitToplam = taksitListesi.Sum(t => t.Tutar);
+                                var fark = taksitRequest.ToplamTutar - taksitToplam;
+                                var farkSifir = Math.Abs(fark) < 0.01m;
+                                
+                                <div class="card">
+                                    <div class="card-header py-2 bg-info text-white d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0"><i class="bi bi-list-ol me-2"></i>Taksit Plani (@taksitListesi.Count Taksit)</h6>
+                                        <button type="button" class="btn btn-sm btn-light" @onclick="TaksitListesiSifirla" title="Taksitleri Sifirla">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    </div>
+                                    <div class="card-body p-0" style="max-height: 280px; overflow-y: auto;">
+                                        <table class="table table-sm table-striped mb-0">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th width="40">#</th>
+                                                    <th>Tarih</th>
+                                                    <th class="text-end">Tutar (TL)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var taksit in taksitListesi)
+                                                {
+                                                    <tr>
+                                                        <td><span class="badge bg-secondary">@taksit.Sira</span></td>
+                                                        <td>
+                                                            <input type="date" class="form-control form-control-sm" 
+                                                                   value="@taksit.Tarih.ToString("yyyy-MM-dd")" 
+                                                                   @onchange="@(e => TaksitTarihDegistir(taksit, e))" />
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" class="form-control form-control-sm text-end" 
+                                                                   value="@taksit.Tutar.ToString("N2", new System.Globalization.CultureInfo("tr-TR"))"
+                                                                   @onchange="@(e => TaksitTutarDegistir(taksit, e))" 
+                                                                   style="width: 120px;" />
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="card-footer p-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <small class="text-muted">Taksit Toplami:</small>
+                                                <strong class="ms-1">@taksitToplam.ToString("N2", new System.Globalization.CultureInfo("tr-TR")) TL</strong>
+                                            </div>
+                                            <div>
+                                                <small class="text-muted">Fark:</small>
+                                                <strong class="ms-1 @(farkSifir ? "text-success" : "text-danger")">
+                                                    @fark.ToString("N2", new System.Globalization.CultureInfo("tr-TR")) TL
+                                                    @if (farkSifir)
+                                                    {
+                                                        <i class="bi bi-check-circle-fill ms-1"></i>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-exclamation-triangle-fill ms-1"></i>
+                                                    }
+                                                </strong>
+                                            </div>
+                                        </div>
+                                        @if (!farkSifir)
+                                        {
+                                            <div class="alert alert-warning py-1 px-2 mt-2 mb-0" style="font-size: 11px;">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                Taksit toplamý ile toplam tutar eþit olmalý!
+                                            </div>
+                                        }
+                                    </div>
                                 </div>
-                            </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info text-center mt-5">
+                                    <i class="bi bi-info-circle" style="font-size: 2rem;"></i>
+                                    <p class="mb-0 mt-2">Taksit sayisi 2 veya daha fazla olduðunda taksit plani burada gorunecek</p>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
-                    <button type="button" class="btn btn-primary" @onclick="TaksitliOdemeKaydetAsync">
-                        @taksitRequest.TaksitSayisi Taksit Olustur
+                    <button type="button" class="btn btn-primary" @onclick="TaksitliOdemeKaydetAsync" disabled="@(!TaksitKaydetmeGecerliMi())">
+                        <i class="bi bi-check-lg me-1"></i>@(taksitRequest.TaksitSayisi > 1 ? $"{taksitRequest.TaksitSayisi} Taksit Olustur" : "Kaydet")
                     </button>
                 </div>
             </div>
@@ -458,6 +538,24 @@
 
         filtrelenmisOdemeler = query.OrderBy(o => o.OdemeTarihi).ToList();
         StateHasChanged();
+    }
+
+    private async Task FiltreTemizle()
+    {
+        filtreYil = DateTime.Today.Year;
+        filtreAy = 0;
+        filtreDurum = "";
+        filtreTip = "";
+        aramaMetni = "";
+        await LoadDataAsync();
+    }
+
+    private async Task AramaKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoadDataAsync();
+        }
     }
 
     private void YeniOdemeAc()
@@ -594,14 +692,22 @@
 
     private async Task TaksitliOdemeKaydetAsync()
     {
-        if (string.IsNullOrWhiteSpace(taksitRequest.MasrafKalemi) || taksitRequest.ToplamTutar <= 0 || taksitRequest.TaksitSayisi < 2)
+        if (!TaksitKaydetmeGecerliMi())
         {
-            ToastService.ShowWarning("Alanlari doldurun!");
+            ToastService.ShowWarning("Lütfen taksit planýný kontrol edin!");
             return;
         }
 
         try
         {
+            // Kullanicinin duzenledigi taksit planini request'e ekle
+            taksitRequest.TaksitPlani = taksitListesi.Select(t => new TaksitDetayRequest
+            {
+                Sira = t.Sira,
+                Tarih = t.Tarih,
+                Tutar = t.Tutar
+            }).ToList();
+
             await BudgetService.CreateTaksitliOdemeAsync(taksitRequest);
             ToastService.ShowSuccess(taksitRequest.TaksitSayisi + " taksit olusturuldu.");
             ModalKapat();
@@ -618,10 +724,94 @@
         showOdemeModal = false;
         showOdemeYapModal = false;
         showTaksitModal = false;
+        taksitListesi.Clear();
     }
 
     private string GetAyAdi(int ay) => AyAdlari[ay];
     private string GetDurumAdi(OdemeDurum d) => d switch { OdemeDurum.Bekliyor => "Bekliyor", OdemeDurum.Odendi => "Odendi", OdemeDurum.Ertelendi => "Ertelendi", OdemeDurum.Iptal => "Iptal", _ => d.ToString() };
     private string GetDurumClass(OdemeDurum d) => d switch { OdemeDurum.Bekliyor => "bg-warning text-dark", OdemeDurum.Odendi => "bg-success", OdemeDurum.Ertelendi => "bg-secondary", OdemeDurum.Iptal => "bg-danger", _ => "bg-secondary" };
-    private string FormatPara(decimal t) => t.ToString("N0") + " TL";
+    private string FormatPara(decimal t) => t.ToString("N2", new System.Globalization.CultureInfo("tr-TR")) + " TL";
+
+    // Taksit Planlama Islemleri
+    private List<TaksitBilgisi> taksitListesi = new();
+
+    private void TaksitListesiHesapla()
+    {
+        taksitListesi.Clear();
+
+        if (taksitRequest.TaksitSayisi <= 1 || taksitRequest.ToplamTutar <= 0)
+            return;
+
+        var ilkOdemeTarihi = taksitRequest.BaslangicTarihi;
+        var taksitTutari = Math.Round(taksitRequest.ToplamTutar / taksitRequest.TaksitSayisi, 2);
+
+        for (int i = 0; i < taksitRequest.TaksitSayisi; i++)
+        {
+            taksitListesi.Add(new TaksitBilgisi
+            {
+                Sira = i + 1,
+                Tarih = ilkOdemeTarihi.AddMonths(i),
+                Tutar = taksitTutari
+            });
+        }
+
+        // Son taksitte yuvarlama farkini duzelt (toplam tam tutsun)
+        var fark = taksitRequest.ToplamTutar - taksitListesi.Sum(t => t.Tutar);
+        if (fark != 0 && taksitListesi.Any())
+        {
+            taksitListesi.Last().Tutar += fark;
+        }
+    }
+
+    private void TaksitListesiSifirla()
+    {
+        taksitListesi.Clear();
+        TaksitListesiHesapla();
+        StateHasChanged();
+    }
+
+    private void TaksitTarihDegistir(TaksitBilgisi taksit, ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var yeniTarih))
+        {
+            taksit.Tarih = yeniTarih;
+            StateHasChanged();
+        }
+    }
+
+    private void TaksitTutarDegistir(TaksitBilgisi taksit, ChangeEventArgs e)
+    {
+        var valueStr = e.Value?.ToString() ?? "0";
+        if (decimal.TryParse(valueStr, System.Globalization.NumberStyles.Any, 
+            new System.Globalization.CultureInfo("tr-TR"), out var yeniTutar) && yeniTutar >= 0)
+        {
+            taksit.Tutar = yeniTutar;
+            StateHasChanged();
+        }
+    }
+
+    private bool TaksitKaydetmeGecerliMi()
+    {
+        if (taksitRequest.TaksitSayisi < 1 || taksitRequest.ToplamTutar <= 0)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(taksitRequest.MasrafKalemi))
+            return false;
+
+        if (!taksitListesi.Any())
+            return false;
+
+        // Fark kontrolu - 0.01 TL tolerans
+        var taksitToplam = taksitListesi.Sum(t => t.Tutar);
+        var fark = Math.Abs(taksitRequest.ToplamTutar - taksitToplam);
+        
+        return fark < 0.01m;
+    }
+
+    private class TaksitBilgisi
+    {
+        public int Sira { get; set; }
+        public DateTime Tarih { get; set; }
+        public decimal Tutar { get; set; }
+    }
 }

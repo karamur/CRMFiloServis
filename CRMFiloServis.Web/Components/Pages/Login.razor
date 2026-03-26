@@ -1,10 +1,12 @@
 @page "/login"
 @layout EmptyLayout
+@attribute [AllowAnonymous]
 @using CRMFiloServis.Web.Services
+@using Microsoft.AspNetCore.Authorization
 @inject IKullaniciService KullaniciService
 @inject ILisansService LisansService
 @inject NavigationManager Navigation
-@inject IJSRuntime JS
+@inject AppAuthenticationStateProvider AuthProvider
 @rendermode InteractiveServer
 
 <PageTitle>Giris - CRM Filo Servis</PageTitle>
@@ -33,16 +35,24 @@
             </div>
         }
 
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle me-2"></i>@successMessage
+                <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+            </div>
+        }
+
         <div class="login-form">
             <div class="form-floating mb-3">
                 <input type="text" class="form-control" id="kullaniciAdi" placeholder="Kullanici Adi"
-                       @bind="kullaniciAdi" @onkeypress="HandleKeyPress" />
+                       @bind="kullaniciAdi" @bind:event="oninput" @onkeypress="HandleKeyPress" autocomplete="username" />
                 <label for="kullaniciAdi"><i class="bi bi-person me-2"></i>Kullanici Adi</label>
             </div>
 
             <div class="form-floating mb-3">
                 <input type="@(showPassword ? "text" : "password")" class="form-control" id="sifre" placeholder="Sifre"
-                       @bind="sifre" @onkeypress="HandleKeyPress" />
+                       @bind="sifre" @bind:event="oninput" @onkeypress="HandleKeyPress" autocomplete="current-password" />
                 <label for="sifre"><i class="bi bi-lock me-2"></i>Sifre</label>
                 <button type="button" class="password-toggle" @onclick="() => showPassword = !showPassword">
                     <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
@@ -70,7 +80,6 @@
                 }
             </button>
 
-            <!-- TEST/DEV: Hizli Giris Butonu -->
             <button class="btn btn-outline-warning w-100" @onclick="HizliGirisYap" disabled="@isLoading">
                 <i class="bi bi-lightning-fill me-2"></i>Hizli Giris (Test)
             </button>
@@ -93,7 +102,7 @@
                     <i class="bi bi-github"></i> AYDAAnaliz
                 </a>
             </div>
-            <p class="version mb-1">v1.0.0 &copy; @DateTime.Now.Year Allbatros Global Teknoloji</p>
+            <p class="version mb-1">v1.0.0 © @DateTime.Now.Year Allbatros Global Teknoloji</p>
             <p class="version small">Tum Haklari Saklidir</p>
         </div>
     </div>
@@ -108,6 +117,7 @@
         background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
         position: relative;
         overflow: hidden;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
     .login-background {
@@ -165,6 +175,7 @@
         position: relative;
         z-index: 10;
         animation: slideUp 0.5s ease-out;
+        margin: 20px;
     }
 
     @@keyframes slideUp {
@@ -308,6 +319,35 @@
         border-radius: 12px;
         margin-bottom: 20px;
     }
+
+    @@media (max-width: 480px) {
+        .login-card {
+            padding: 25px;
+            margin: 10px;
+        }
+
+        .logo-container {
+            width: 60px;
+            height: 60px;
+        }
+
+        .logo-container i {
+            font-size: 1.8rem;
+        }
+
+        .login-header h1 {
+            font-size: 1.4rem;
+        }
+
+        .form-floating .form-control {
+            height: 50px;
+        }
+
+        .btn-login {
+            height: 50px;
+            font-size: 1rem;
+        }
+    }
 </style>
 
 @code {
@@ -317,10 +357,17 @@
     private bool showPassword = false;
     private bool isLoading = false;
     private string? errorMessage;
+    private string? successMessage;
     private CRMFiloServis.Shared.Entities.Lisans? lisans;
 
     protected override async Task OnInitializedAsync()
     {
+        // Login sayfasina gelindiginde oturumu temizle (cikis yapilmis demektir)
+        if (AuthProvider.IsAuthenticated)
+        {
+            AuthProvider.CikisYap();
+        }
+
         lisans = await LisansService.GetAktifLisansAsync();
     }
 
@@ -334,6 +381,7 @@
 
         isLoading = true;
         errorMessage = null;
+        successMessage = null;
         StateHasChanged();
 
         try
@@ -342,8 +390,11 @@
 
             if (sonuc.Basarili)
             {
-                // Basarili giris - Ana sayfaya yonlendir
-                Navigation.NavigateTo("/", true);
+                successMessage = "Giris basarili! Yonlendiriliyorsunuz...";
+                StateHasChanged();
+
+                await Task.Delay(300);
+                Navigation.NavigateTo("/", false);
             }
             else
             {
@@ -361,17 +412,18 @@
         }
     }
 
-    private void HandleKeyPress(KeyboardEventArgs e)
+    private async Task HandleKeyPress(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {
-            _ = GirisYapAsync();
+            await GirisYapAsync();
         }
     }
 
     private void SifremiUnuttum()
     {
-        errorMessage = "Sifre sifirlama icin sistem yoneticisi ile iletisime gecin.";
+        errorMessage = null;
+        successMessage = "Sifre sifirlama icin sistem yoneticisi ile iletisime gecin.";
     }
 
     private async Task HizliGirisYap()
@@ -379,6 +431,8 @@
         kullaniciAdi = "test";
         sifre = "test123";
         beniHatirla = true;
+        StateHasChanged();
+        await Task.Delay(100);
         await GirisYapAsync();
     }
 }

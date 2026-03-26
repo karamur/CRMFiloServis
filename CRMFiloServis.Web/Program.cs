@@ -1,6 +1,7 @@
 using CRMFiloServis.Web.Components;
 using CRMFiloServis.Web.Data;
 using CRMFiloServis.Web.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 
@@ -13,7 +14,12 @@ var builder = WebApplication.CreateBuilder(args);
 var dbProvider = builder.Configuration.GetValue<string>("DatabaseProvider") ?? "SQLite";
 
 // Diger PC'lerden erisim icin tum IP'lerden dinle
-builder.WebHost.UseUrls("http://0.0.0.0:5190", "https://0.0.0.0:7113");
+// Eger HTTPS_PORT ortam degiskeni veya --urls parametresi verilmisse onu kullan
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")) &&
+    !args.Any(a => a.StartsWith("--urls")))
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5190", "https://0.0.0.0:7113");
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -51,10 +57,17 @@ builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
 builder.Services.AddScoped<ApplicationDbContext>(sp =>
     sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
 
+// Authentication - Tum platformlarda (Web, Desktop, Linux, Android, iOS) guvenli calisir
+builder.Services.AddSingleton<AppAuthenticationStateProvider>();
+builder.Services.AddSingleton<AuthenticationStateProvider>(sp => 
+    sp.GetRequiredService<AppAuthenticationStateProvider>());
+builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
+
 // Application Services
 builder.Services.AddSingleton<IFirmaService, FirmaService>(); // Singleton - aktif firma state tutmak icin
 builder.Services.AddSingleton<ILisansService, LisansService>(); // Singleton - lisans cache
-builder.Services.AddSingleton<IKullaniciService, KullaniciService>(); // Singleton - aktif kullanici
+builder.Services.AddScoped<IKullaniciService, KullaniciService>(); // Scoped - her circuit kendi oturumunu yonetir
 builder.Services.AddScoped<ICariService, CariService>();
 builder.Services.AddScoped<ISoforService, SoforService>();
 builder.Services.AddScoped<IAracService, AracService>();
@@ -82,12 +95,19 @@ builder.Services.AddScoped<IAktiviteLogService, AktiviteLogService>();
 builder.Services.AddScoped<IDatabaseSettingsService, DatabaseSettingsService>();
 builder.Services.AddScoped<IMuhasebeService, MuhasebeService>();
 builder.Services.AddScoped<ISatisService, SatisService>();
-builder.Services.AddScoped<IAracDegerlemeAIService, AracDegerlemeAIService>(); // AI Araç Deðerleme
-builder.Services.AddScoped<IAracPiyasaArastirmaService, AracPiyasaArastirmaService>(); // AI Piyasa Araþtýrma
-builder.Services.AddScoped<IMusteriKiralamaService, MusteriKiralamaService>(); // Müþteri Kiralama Servisi
-builder.Services.AddHttpClient("OpenAI"); // OpenAI için HttpClient
+builder.Services.AddScoped<IAracDegerlemeAIService, AracDegerlemeAIService>(); // AI Arac Degerleme
+builder.Services.AddScoped<IPiyasaKaynakService, PiyasaKaynakService>(); // Piyasa Kaynak Yonetimi (once kaydet)
+builder.Services.AddScoped<IHttpScraperService, HttpScraperService>(); // HTTP Scraper (en hizli)
+builder.Services.AddScoped<IPlaywrightScraperService, PlaywrightScraperService>(); // Playwright Web Scraper (yedek)
+builder.Services.AddScoped<IAracPiyasaArastirmaService, AracPiyasaArastirmaService>(); // AI Piyasa Arastirma
+builder.Services.AddScoped<IMusteriKiralamaService, MusteriKiralamaService>(); // Musteri Kiralama Servisi
+builder.Services.AddHttpClient("OpenAI"); // OpenAI icin HttpClient
+builder.Services.AddHttpClient("Scraper"); // Scraper icin HttpClient
 builder.Services.AddHostedService<AutoBackupService>();
 builder.Services.AddHttpContextAccessor();
+
+// API Controller destegi - Mobil uygulama icin
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -114,22 +134,33 @@ using (var scope = app.Services.CreateScope())
     // Muhasebe hesap plani seed
     var muhasebeService = scope.ServiceProvider.GetRequiredService<IMuhasebeService>();
     await muhasebeService.SeedVarsayilanHesapPlaniAsync();
+    
+    // Piyasa kaynaklarý seed
+    var piyasaKaynakService = scope.ServiceProvider.GetRequiredService<IPiyasaKaynakService>();
+    await piyasaKaynakService.SeedDefaultKaynaklarAsync();
 }
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+
+// HTTPS yonlendirme - sadece HTTPS portu aktifse calistir
+// Ag uzerinden HTTP ile erisme sorun cikarmasin diye kontrol eklendi
+var httpsPort = app.Configuration.GetValue<int?>("HTTPS_PORT") ?? 
+                (app.Urls.Any(u => u.StartsWith("https")) ? 7113 : (int?)null);
+if (httpsPort.HasValue)
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapControllers(); // API Controller'larini haritalandir
 
 app.Run();
