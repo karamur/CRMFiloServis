@@ -175,60 +175,88 @@ public static class SistemRolleri
             Muhasebeci => new List<string>
             {
                 Yetkiler.Dashboard,
+                // Ana Menu Erisim
+                Yetkiler.MenuCariModulu, Yetkiler.MenuMuhasebe, Yetkiler.MenuFaturaModulu, 
+                Yetkiler.MenuBankaKasa, Yetkiler.MenuRaporlar,
                 // Cari
-                Yetkiler.CariGoruntule, Yetkiler.CariEkle, Yetkiler.CariDuzenle,
+                Yetkiler.CarilerOku, Yetkiler.CarilerYaz, Yetkiler.CarilerDuzenle,
                 // Fatura
-                Yetkiler.FaturaGoruntule, Yetkiler.FaturaEkle, Yetkiler.FaturaDuzenle, Yetkiler.FaturaSil,
+                Yetkiler.FaturalarOku, Yetkiler.FaturalarYaz, Yetkiler.FaturalarDuzenle, Yetkiler.FaturalarSil,
+                Yetkiler.KesilenFaturalarOku, Yetkiler.KesilenFaturalarYaz, Yetkiler.KesilenFaturalarDuzenle,
+                Yetkiler.GelenFaturalarOku, Yetkiler.GelenFaturalarYaz, Yetkiler.GelenFaturalarDuzenle,
                 // Banka
-                Yetkiler.BankaGoruntule, Yetkiler.BankaEkle, Yetkiler.BankaDuzenle,
+                Yetkiler.BankaHesaplariOku, Yetkiler.BankaHesaplariYaz, Yetkiler.BankaHesaplariDuzenle,
+                Yetkiler.BankaHareketleriOku, Yetkiler.BankaHareketleriYaz, Yetkiler.BankaHareketleriDuzenle,
                 // Butce
-                Yetkiler.ButceGoruntule, Yetkiler.ButceEkle, Yetkiler.ButceDuzenle, Yetkiler.ButceSil,
+                Yetkiler.ButceAnalizOku, Yetkiler.ButceAnalizYaz, Yetkiler.ButceAnalizDuzenle, Yetkiler.ButceAnalizSil,
+                Yetkiler.OdemeYonetimiOku, Yetkiler.OdemeYonetimiYaz, Yetkiler.OdemeYonetimiDuzenle,
                 // Muhasebe
-                Yetkiler.MuhasebeGoruntule, Yetkiler.MuhasebeEkle, Yetkiler.MuhasebeDuzenle,
+                Yetkiler.MuhasebeDashboardOku, 
+                Yetkiler.HesapPlaniOku, Yetkiler.HesapPlaniYaz, Yetkiler.HesapPlaniDuzenle,
+                Yetkiler.MuhasebeFisleriOku, Yetkiler.MuhasebeFisleriYaz, Yetkiler.MuhasebeFisleriDuzenle,
+                Yetkiler.MuhasebeRaporlariOku, Yetkiler.MuhasebeRaporlariExport,
+                Yetkiler.MaliAnalizOku, Yetkiler.MaliAnalizExport,
                 // Rapor
-                Yetkiler.RaporGoruntule, Yetkiler.RaporExport,
+                Yetkiler.RaporlarOku, Yetkiler.RaporlarExport,
                 // Yedek
-                Yetkiler.YedeklemeGoruntule, Yetkiler.YedeklemeOlustur,
+                Yetkiler.YedeklemeOku, Yetkiler.YedeklemeOlustur,
             },
 
             Operasyon => new List<string>
             {
                 Yetkiler.Dashboard,
+                // Ana Menu Erisim
+                Yetkiler.MenuFiloServis, Yetkiler.MenuPersonel, Yetkiler.MenuRaporlar,
                 // Arac
-                Yetkiler.AracGoruntule, Yetkiler.AracEkle, Yetkiler.AracDuzenle,
-                // Sofor
-                Yetkiler.SoforGoruntule, Yetkiler.SoforEkle, Yetkiler.SoforDuzenle,
+                Yetkiler.AraclarOku, Yetkiler.AraclarYaz, Yetkiler.AraclarDuzenle,
                 // Guzergah
-                Yetkiler.GuzergahGoruntule, Yetkiler.GuzergahEkle, Yetkiler.GuzergahDuzenle,
-                // Servis
-                Yetkiler.ServisGoruntule, Yetkiler.ServisEkle, Yetkiler.ServisDuzenle,
+                Yetkiler.GuzergahlarOku, Yetkiler.GuzergahlarYaz, Yetkiler.GuzergahlarDuzenle,
+                // Servis Calismalari
+                Yetkiler.ServisCalismalariOku, Yetkiler.ServisCalismalariYaz, Yetkiler.ServisCalismalariDuzenle,
+                Yetkiler.TopluCalismaOku, Yetkiler.TopluCalismaYaz, Yetkiler.TopluCalismaDuzenle,
                 // Masraf
-                Yetkiler.MasrafGoruntule, Yetkiler.MasrafEkle,
+                Yetkiler.MasrafKalemleriOku, Yetkiler.MasrafKalemleriYaz,
+                Yetkiler.AracMasraflariOku, Yetkiler.AracMasraflariYaz,
+                // Personel
+                Yetkiler.PersonelOku, Yetkiler.PersonelYaz, Yetkiler.PersonelDuzenle,
                 // Rapor
-                Yetkiler.RaporGoruntule,
+                Yetkiler.RaporlarOku,
             },
 
             SatisTemsilcisi => new List<string>
             {
                 Yetkiler.Dashboard,
-                Yetkiler.SatisGoruntule, Yetkiler.SatisEkle, Yetkiler.SatisDuzenle,
-                Yetkiler.CariGoruntule,
-                Yetkiler.RaporGoruntule,
+                // Ana Menu Erisim
+                Yetkiler.MenuSatisModulu, Yetkiler.MenuCariModulu,
+                // Satis
+                Yetkiler.SatisDashboardOku,
+                Yetkiler.PiyasaArastirmaOku, Yetkiler.PiyasaArastirmaYaz, Yetkiler.PiyasaArastirmaDuzenle,
+                Yetkiler.SatisIlanlariOku, Yetkiler.SatisIlanlariYaz, Yetkiler.SatisIlanlariDuzenle,
+                // Cari
+                Yetkiler.CarilerOku,
+                // Rapor
+                Yetkiler.RaporlarOku,
             },
 
             Sofor => new List<string>
             {
                 Yetkiler.Dashboard,
-                Yetkiler.AracGoruntule,
-                Yetkiler.GuzergahGoruntule,
-                Yetkiler.ServisGoruntule,
+                // Ana Menu Erisim
+                Yetkiler.MenuFiloServis,
+                // Sadece okuma yetkileri
+                Yetkiler.AraclarOku,
+                Yetkiler.GuzergahlarOku,
+                Yetkiler.ServisCalismalariOku,
             },
 
             Kullanici => new List<string>
             {
                 Yetkiler.Dashboard,
-                Yetkiler.CariGoruntule,
-                Yetkiler.RaporGoruntule,
+                // Ana Menu Erisim
+                Yetkiler.MenuCariModulu, Yetkiler.MenuRaporlar,
+                // Sadece okuma yetkileri
+                Yetkiler.CarilerOku,
+                Yetkiler.RaporlarOku,
             },
 
             _ => new List<string> { Yetkiler.Dashboard }
@@ -260,434 +288,615 @@ public class RolTanim
 
 /// <summary>
 /// Yetki Tanimlari - modullere ve menulere gore gruplanmis
-/// Ana menu ve alt menu bazinda yetkilendirme destegi
+/// Her alt menu icin Okuma, Yazma, Duzenleme, Silme yetkileri
 /// </summary>
 public static class Yetkiler
 {
     // Genel
     public const string Dashboard = "dashboard";
 
-    // === MENU YETKILERI ===
-    
-    // Ana Sayfa
+    // === ANA MENU ERISIM YETKILERI ===
     public const string MenuAnaSayfa = "menu.anasayfa";
-    public const string MenuBelgeUyarilari = "menu.belgeuyarilari";
-    
-    // Cari Modulu
     public const string MenuCariModulu = "menu.cari";
-    public const string MenuCariler = "menu.cari.cariler";
-    public const string MenuKesilenFaturalar = "menu.cari.kesilenFaturalar";
-    public const string MenuGelenFaturalar = "menu.cari.gelenFaturalar";
-    
-    // Filo Servis
     public const string MenuFiloServis = "menu.filoservis";
-    public const string MenuAraclar = "menu.filoservis.araclar";
-    public const string MenuGuzergahlar = "menu.filoservis.guzergahlar";
-    public const string MenuServisCalismalari = "menu.filoservis.serviscalismalari";
-    public const string MenuTopluCalisma = "menu.filoservis.toplucalisma";
-    public const string MenuMasrafKalemleri = "menu.filoservis.masrafkalemleri";
-    public const string MenuAracMasraflari = "menu.filoservis.aracmasraflari";
-    
-    // Muhasebe
     public const string MenuMuhasebe = "menu.muhasebe";
-    public const string MenuMuhasebeDashboard = "menu.muhasebe.dashboard";
-    public const string MenuHesapPlani = "menu.muhasebe.hesapplani";
-    public const string MenuMuhasebeFisleri = "menu.muhasebe.fisler";
-    public const string MenuMuhasebeRaporlari = "menu.muhasebe.raporlar";
-    public const string MenuMaliAnaliz = "menu.muhasebe.malianaliz";
-    
-    // Personel
     public const string MenuPersonel = "menu.personel";
-    public const string MenuPersonelListesi = "menu.personel.liste";
-    public const string MenuMaasYonetimi = "menu.personel.maas";
-    public const string MenuIzinYonetimi = "menu.personel.izin";
-    
-    // Fatura Modulu
     public const string MenuFaturaModulu = "menu.fatura";
-    public const string MenuFaturalar = "menu.fatura.faturalar";
-    public const string MenuFaturaHazirlik = "menu.fatura.hazirlik";
-    
-    // Banka/Kasa
     public const string MenuBankaKasa = "menu.bankakasa";
-    public const string MenuBankaHesaplari = "menu.bankakasa.hesaplar";
-    public const string MenuBankaHareketleri = "menu.bankakasa.hareketler";
-    public const string MenuOdemeEslestirme = "menu.bankakasa.eslestirme";
-    
-    // Raporlar
     public const string MenuRaporlar = "menu.raporlar";
-    public const string MenuButceAnaliz = "menu.raporlar.butce";
-    public const string MenuOdemeYonetimi = "menu.raporlar.odemeyonetimi";
-    public const string MenuMaliAnalizRapor = "menu.raporlar.malianaliz";
-    public const string MenuAylikChecklist = "menu.raporlar.checklist";
-    public const string MenuOzmalAracRaporu = "menu.raporlar.ozmalarac";
-    public const string MenuKiralikAracRaporu = "menu.raporlar.kiraliakarac";
-    public const string MenuKomisyonRaporu = "menu.raporlar.komisyon";
-    public const string MenuServisRaporu = "menu.raporlar.servis";
-    public const string MenuFaturaOdemeRaporu = "menu.raporlar.faturaodeme";
-    public const string MenuAracMasrafRaporu = "menu.raporlar.aracmasraf";
-    public const string MenuCariEkstre = "menu.raporlar.cariekstre";
-    
-    // Satis Modulu
     public const string MenuSatisModulu = "menu.satis";
-    public const string MenuSatisDashboard = "menu.satis.dashboard";
-    public const string MenuPiyasaArastirma = "menu.satis.arastirma";
-    public const string MenuYeniIlan = "menu.satis.yeniilan";
-    public const string MenuSatisPersoneli = "menu.satis.personel";
-    
-    // Ayarlar
     public const string MenuAyarlar = "menu.ayarlar";
-    public const string MenuFirmaYonetimi = "menu.ayarlar.firma";
-    public const string MenuVeritabaniAyarlari = "menu.ayarlar.veritabani";
-    public const string MenuServisRaporlari = "menu.ayarlar.servisraporlari";
-    public const string MenuLisansBilgileri = "menu.ayarlar.lisans";
-    public const string MenuKullaniciYonetimi = "menu.ayarlar.kullanicilar";
-    public const string MenuRolYonetimi = "menu.ayarlar.roller";
-    public const string MenuPiyasaKaynaklari = "menu.ayarlar.piyasakaynaklari";
-    public const string MenuSistemDurumu = "menu.ayarlar.sistemdurumu";
-    public const string MenuAktiviteLog = "menu.ayarlar.aktivitelog";
-    public const string MenuYedekleme = "menu.ayarlar.yedekleme";
-    public const string MenuGuncelleme = "menu.ayarlar.guncelleme";
 
-    // === ISLEM YETKILERI ===
+    // === ALT MENU YETKILERI (Her biri icin Oku, Yaz, Duzenle, Sil) ===
     
-    // Cari
-    public const string CariGoruntule = "cari.goruntule";
-    public const string CariEkle = "cari.ekle";
-    public const string CariDuzenle = "cari.duzenle";
-    public const string CariSil = "cari.sil";
+    // -- Belge Uyarilari --
+    public const string BelgeUyarilariOku = "belgeuyari.oku";
+    public const string BelgeUyarilariYaz = "belgeuyari.yaz";
+    public const string BelgeUyarilariDuzenle = "belgeuyari.duzenle";
+    public const string BelgeUyarilariSil = "belgeuyari.sil";
 
-    // Fatura
-    public const string FaturaGoruntule = "fatura.goruntule";
-    public const string FaturaEkle = "fatura.ekle";
-    public const string FaturaDuzenle = "fatura.duzenle";
-    public const string FaturaSil = "fatura.sil";
+    // -- Cariler --
+    public const string CarilerOku = "cariler.oku";
+    public const string CarilerYaz = "cariler.yaz";
+    public const string CarilerDuzenle = "cariler.duzenle";
+    public const string CarilerSil = "cariler.sil";
 
-    // Banka/Kasa
-    public const string BankaGoruntule = "banka.goruntule";
-    public const string BankaEkle = "banka.ekle";
-    public const string BankaDuzenle = "banka.duzenle";
-    public const string BankaSil = "banka.sil";
+    // -- Kesilen Faturalar --
+    public const string KesilenFaturalarOku = "kesilenfatura.oku";
+    public const string KesilenFaturalarYaz = "kesilenfatura.yaz";
+    public const string KesilenFaturalarDuzenle = "kesilenfatura.duzenle";
+    public const string KesilenFaturalarSil = "kesilenfatura.sil";
 
-    // Butce
-    public const string ButceGoruntule = "butce.goruntule";
-    public const string ButceEkle = "butce.ekle";
-    public const string ButceDuzenle = "butce.duzenle";
-    public const string ButceSil = "butce.sil";
+    // -- Gelen Faturalar --
+    public const string GelenFaturalarOku = "gelenfatura.oku";
+    public const string GelenFaturalarYaz = "gelenfatura.yaz";
+    public const string GelenFaturalarDuzenle = "gelenfatura.duzenle";
+    public const string GelenFaturalarSil = "gelenfatura.sil";
 
-    // Muhasebe
-    public const string MuhasebeGoruntule = "muhasebe.goruntule";
-    public const string MuhasebeEkle = "muhasebe.ekle";
-    public const string MuhasebeDuzenle = "muhasebe.duzenle";
+    // -- Araclar --
+    public const string AraclarOku = "araclar.oku";
+    public const string AraclarYaz = "araclar.yaz";
+    public const string AraclarDuzenle = "araclar.duzenle";
+    public const string AraclarSil = "araclar.sil";
 
-    // Arac
-    public const string AracGoruntule = "arac.goruntule";
-    public const string AracEkle = "arac.ekle";
-    public const string AracDuzenle = "arac.duzenle";
-    public const string AracSil = "arac.sil";
+    // -- Guzergahlar --
+    public const string GuzergahlarOku = "guzergahlar.oku";
+    public const string GuzergahlarYaz = "guzergahlar.yaz";
+    public const string GuzergahlarDuzenle = "guzergahlar.duzenle";
+    public const string GuzergahlarSil = "guzergahlar.sil";
 
-    // Sofor
-    public const string SoforGoruntule = "sofor.goruntule";
-    public const string SoforEkle = "sofor.ekle";
-    public const string SoforDuzenle = "sofor.duzenle";
-    public const string SoforSil = "sofor.sil";
+    // -- Servis Calismalari --
+    public const string ServisCalismalariOku = "serviscalisma.oku";
+    public const string ServisCalismalariYaz = "serviscalisma.yaz";
+    public const string ServisCalismalariDuzenle = "serviscalisma.duzenle";
+    public const string ServisCalismalariSil = "serviscalisma.sil";
 
-    // Guzergah
-    public const string GuzergahGoruntule = "guzergah.goruntule";
-    public const string GuzergahEkle = "guzergah.ekle";
-    public const string GuzergahDuzenle = "guzergah.duzenle";
+    // -- Toplu Calisma --
+    public const string TopluCalismaOku = "toplucalisma.oku";
+    public const string TopluCalismaYaz = "toplucalisma.yaz";
+    public const string TopluCalismaDuzenle = "toplucalisma.duzenle";
+    public const string TopluCalismaSil = "toplucalisma.sil";
 
-    // Servis Calisma
-    public const string ServisGoruntule = "servis.goruntule";
-    public const string ServisEkle = "servis.ekle";
-    public const string ServisDuzenle = "servis.duzenle";
+    // -- Masraf Kalemleri --
+    public const string MasrafKalemleriOku = "masrafkalem.oku";
+    public const string MasrafKalemleriYaz = "masrafkalem.yaz";
+    public const string MasrafKalemleriDuzenle = "masrafkalem.duzenle";
+    public const string MasrafKalemleriSil = "masrafkalem.sil";
 
-    // Masraf
-    public const string MasrafGoruntule = "masraf.goruntule";
-    public const string MasrafEkle = "masraf.ekle";
-    public const string MasrafDuzenle = "masraf.duzenle";
+    // -- Arac Masraflari --
+    public const string AracMasraflariOku = "aracmasraf.oku";
+    public const string AracMasraflariYaz = "aracmasraf.yaz";
+    public const string AracMasraflariDuzenle = "aracmasraf.duzenle";
+    public const string AracMasraflariSil = "aracmasraf.sil";
 
-    // Satis
-    public const string SatisGoruntule = "satis.goruntule";
-    public const string SatisEkle = "satis.ekle";
-    public const string SatisDuzenle = "satis.duzenle";
-    public const string SatisSil = "satis.sil";
+    // -- Muhasebe Dashboard --
+    public const string MuhasebeDashboardOku = "muhasebedash.oku";
 
-    // Raporlar
-    public const string RaporGoruntule = "rapor.goruntule";
-    public const string RaporExport = "rapor.export";
+    // -- Hesap Plani --
+    public const string HesapPlaniOku = "hesapplani.oku";
+    public const string HesapPlaniYaz = "hesapplani.yaz";
+    public const string HesapPlaniDuzenle = "hesapplani.duzenle";
+    public const string HesapPlaniSil = "hesapplani.sil";
 
-    // Ayarlar
-    public const string AyarlarGoruntule = "ayarlar.goruntule";
-    public const string AyarlarDuzenle = "ayarlar.duzenle";
+    // -- Muhasebe Fisleri --
+    public const string MuhasebeFisleriOku = "muhasebefis.oku";
+    public const string MuhasebeFisleriYaz = "muhasebefis.yaz";
+    public const string MuhasebeFisleriDuzenle = "muhasebefis.duzenle";
+    public const string MuhasebeFisleriSil = "muhasebefis.sil";
 
-    // Yonetim
-    public const string KullaniciYonetimi = "kullanici.yonetim";
-    public const string RolYonetimi = "rol.yonetim";
-    public const string YedeklemeGoruntule = "yedekleme.goruntule";
+    // -- Muhasebe Raporlari --
+    public const string MuhasebeRaporlariOku = "muhaseberapor.oku";
+    public const string MuhasebeRaporlariExport = "muhaseberapor.export";
+
+    // -- Mali Analiz --
+    public const string MaliAnalizOku = "malianaliz.oku";
+    public const string MaliAnalizExport = "malianaliz.export";
+
+    // -- Personel Listesi --
+    public const string PersonelOku = "personel.oku";
+    public const string PersonelYaz = "personel.yaz";
+    public const string PersonelDuzenle = "personel.duzenle";
+    public const string PersonelSil = "personel.sil";
+
+    // -- Maas Yonetimi --
+    public const string MaasOku = "maas.oku";
+    public const string MaasYaz = "maas.yaz";
+    public const string MaasDuzenle = "maas.duzenle";
+    public const string MaasSil = "maas.sil";
+
+    // -- Izin Yonetimi --
+    public const string IzinOku = "izin.oku";
+    public const string IzinYaz = "izin.yaz";
+    public const string IzinDuzenle = "izin.duzenle";
+    public const string IzinSil = "izin.sil";
+
+    // -- Faturalar --
+    public const string FaturalarOku = "faturalar.oku";
+    public const string FaturalarYaz = "faturalar.yaz";
+    public const string FaturalarDuzenle = "faturalar.duzenle";
+    public const string FaturalarSil = "faturalar.sil";
+
+    // -- Fatura Hazirlik --
+    public const string FaturaHazirlikOku = "faturahazirlik.oku";
+    public const string FaturaHazirlikYaz = "faturahazirlik.yaz";
+    public const string FaturaHazirlikDuzenle = "faturahazirlik.duzenle";
+
+    // -- Banka Hesaplari --
+    public const string BankaHesaplariOku = "bankahesap.oku";
+    public const string BankaHesaplariYaz = "bankahesap.yaz";
+    public const string BankaHesaplariDuzenle = "bankahesap.duzenle";
+    public const string BankaHesaplariSil = "bankahesap.sil";
+
+    // -- Banka Hareketleri --
+    public const string BankaHareketleriOku = "bankahareket.oku";
+    public const string BankaHareketleriYaz = "bankahareket.yaz";
+    public const string BankaHareketleriDuzenle = "bankahareket.duzenle";
+    public const string BankaHareketleriSil = "bankahareket.sil";
+
+    // -- Odeme Eslestirme --
+    public const string OdemeEslestirmeOku = "odemeeslestir.oku";
+    public const string OdemeEslestirmeYaz = "odemeeslestir.yaz";
+    public const string OdemeEslestirmeDuzenle = "odemeeslestir.duzenle";
+
+    // -- Butce Analiz --
+    public const string ButceAnalizOku = "butceanaliz.oku";
+    public const string ButceAnalizYaz = "butceanaliz.yaz";
+    public const string ButceAnalizDuzenle = "butceanaliz.duzenle";
+    public const string ButceAnalizSil = "butceanaliz.sil";
+
+    // -- Odeme Yonetimi --
+    public const string OdemeYonetimiOku = "odemeyonetim.oku";
+    public const string OdemeYonetimiYaz = "odemeyonetim.yaz";
+    public const string OdemeYonetimiDuzenle = "odemeyonetim.duzenle";
+    public const string OdemeYonetimiSil = "odemeyonetim.sil";
+
+    // -- Raporlar (Genel) --
+    public const string RaporlarOku = "raporlar.oku";
+    public const string RaporlarExport = "raporlar.export";
+
+    // -- Satis Dashboard --
+    public const string SatisDashboardOku = "satisdash.oku";
+
+    // -- Piyasa Arastirma --
+    public const string PiyasaArastirmaOku = "piyasaarastir.oku";
+    public const string PiyasaArastirmaYaz = "piyasaarastir.yaz";
+    public const string PiyasaArastirmaDuzenle = "piyasaarastir.duzenle";
+    public const string PiyasaArastirmaSil = "piyasaarastir.sil";
+
+    // -- Satis Ilanlari --
+    public const string SatisIlanlariOku = "satisilan.oku";
+    public const string SatisIlanlariYaz = "satisilan.yaz";
+    public const string SatisIlanlariDuzenle = "satisilan.duzenle";
+    public const string SatisIlanlariSil = "satisilan.sil";
+
+    // -- Satis Personeli --
+    public const string SatisPersoneliOku = "satispersonel.oku";
+    public const string SatisPersoneliYaz = "satispersonel.yaz";
+    public const string SatisPersoneliDuzenle = "satispersonel.duzenle";
+    public const string SatisPersoneliSil = "satispersonel.sil";
+
+    // -- Firma Yonetimi --
+    public const string FirmaYonetimiOku = "firmayonetim.oku";
+    public const string FirmaYonetimiYaz = "firmayonetim.yaz";
+    public const string FirmaYonetimiDuzenle = "firmayonetim.duzenle";
+    public const string FirmaYonetimiSil = "firmayonetim.sil";
+
+    // -- Veritabani Ayarlari --
+    public const string VeritabaniAyarlariOku = "veritabani.oku";
+    public const string VeritabaniAyarlariDuzenle = "veritabani.duzenle";
+
+    // -- Lisans Bilgileri --
+    public const string LisansBilgileriOku = "lisans.oku";
+    public const string LisansBilgileriDuzenle = "lisans.duzenle";
+
+    // -- Kullanici Yonetimi --
+    public const string KullaniciYonetimiOku = "kullanici.oku";
+    public const string KullaniciYonetimiYaz = "kullanici.yaz";
+    public const string KullaniciYonetimiDuzenle = "kullanici.duzenle";
+    public const string KullaniciYonetimiSil = "kullanici.sil";
+
+    // -- Rol Yonetimi --
+    public const string RolYonetimiOku = "rol.oku";
+    public const string RolYonetimiYaz = "rol.yaz";
+    public const string RolYonetimiDuzenle = "rol.duzenle";
+    public const string RolYonetimiSil = "rol.sil";
+
+    // -- Piyasa Kaynaklari --
+    public const string PiyasaKaynaklariOku = "piyasakaynak.oku";
+    public const string PiyasaKaynaklariYaz = "piyasakaynak.yaz";
+    public const string PiyasaKaynaklariDuzenle = "piyasakaynak.duzenle";
+    public const string PiyasaKaynaklariSil = "piyasakaynak.sil";
+
+    // -- Sistem Durumu --
+    public const string SistemDurumuOku = "sistemdurumu.oku";
+
+    // -- Aktivite Logu --
+    public const string AktiviteLogOku = "aktivitelog.oku";
+    public const string AktiviteLogSil = "aktivitelog.sil";
+
+    // -- Yedekleme --
+    public const string YedeklemeOku = "yedekleme.oku";
     public const string YedeklemeOlustur = "yedekleme.olustur";
-    public const string LisansYonetimi = "lisans.yonetim";
-    public const string GuncellemeYonetimi = "guncelleme.yonetim";
+    public const string YedeklemeGeriYukle = "yedekleme.geriyukle";
+    public const string YedeklemeSil = "yedekleme.sil";
+
+    // -- Uygulama Guncelleme --
+    public const string GuncellemeOku = "guncelleme.oku";
+    public const string GuncellemeUygula = "guncelleme.uygula";
 
     /// <summary>
     /// Tum yetki kodlarini dondurur
     /// </summary>
     public static List<string> GetAll()
     {
-        var yetkiler = new List<string>
-        {
-            Dashboard,
-            // Menu yetkileri
-            MenuAnaSayfa, MenuBelgeUyarilari,
-            MenuCariModulu, MenuCariler, MenuKesilenFaturalar, MenuGelenFaturalar,
-            MenuFiloServis, MenuAraclar, MenuGuzergahlar, MenuServisCalismalari, MenuTopluCalisma, MenuMasrafKalemleri, MenuAracMasraflari,
-            MenuMuhasebe, MenuMuhasebeDashboard, MenuHesapPlani, MenuMuhasebeFisleri, MenuMuhasebeRaporlari, MenuMaliAnaliz,
-            MenuPersonel, MenuPersonelListesi, MenuMaasYonetimi, MenuIzinYonetimi,
-            MenuFaturaModulu, MenuFaturalar, MenuFaturaHazirlik,
-            MenuBankaKasa, MenuBankaHesaplari, MenuBankaHareketleri, MenuOdemeEslestirme,
-            MenuRaporlar, MenuButceAnaliz, MenuOdemeYonetimi, MenuMaliAnalizRapor, MenuAylikChecklist, 
-            MenuOzmalAracRaporu, MenuKiralikAracRaporu, MenuKomisyonRaporu, MenuServisRaporu, MenuFaturaOdemeRaporu, MenuAracMasrafRaporu, MenuCariEkstre,
-            MenuSatisModulu, MenuSatisDashboard, MenuPiyasaArastirma, MenuYeniIlan, MenuSatisPersoneli,
-            MenuAyarlar, MenuFirmaYonetimi, MenuVeritabaniAyarlari, MenuServisRaporlari, MenuLisansBilgileri, 
-            MenuKullaniciYonetimi, MenuRolYonetimi, MenuPiyasaKaynaklari, MenuSistemDurumu, MenuAktiviteLog, MenuYedekleme, MenuGuncelleme,
-            // Islem yetkileri
-            CariGoruntule, CariEkle, CariDuzenle, CariSil,
-            FaturaGoruntule, FaturaEkle, FaturaDuzenle, FaturaSil,
-            BankaGoruntule, BankaEkle, BankaDuzenle, BankaSil,
-            ButceGoruntule, ButceEkle, ButceDuzenle, ButceSil,
-            MuhasebeGoruntule, MuhasebeEkle, MuhasebeDuzenle,
-            AracGoruntule, AracEkle, AracDuzenle, AracSil,
-            SoforGoruntule, SoforEkle, SoforDuzenle, SoforSil,
-            GuzergahGoruntule, GuzergahEkle, GuzergahDuzenle,
-            ServisGoruntule, ServisEkle, ServisDuzenle,
-            MasrafGoruntule, MasrafEkle, MasrafDuzenle,
-            SatisGoruntule, SatisEkle, SatisDuzenle, SatisSil,
-            RaporGoruntule, RaporExport,
-            AyarlarGoruntule, AyarlarDuzenle,
-            KullaniciYonetimi, RolYonetimi,
-            YedeklemeGoruntule, YedeklemeOlustur,
-            LisansYonetimi, GuncellemeYonetimi
-        };
-        return yetkiler;
+        return GetMenuYetkiGruplari().SelectMany(g => g.AltMenuler.SelectMany(m => m.Yetkiler.Select(y => y.Kod))).ToList();
     }
 
     /// <summary>
-    /// Menu bazli yetkileri gruplar - Rol yonetimi icin
+    /// Menu ve alt menuleri CRUD yetkileriyle birlikte gruplar
+    /// </summary>
+    public static List<AnaMenuYetkiGrup> GetMenuYetkiGruplari()
+    {
+        return new List<AnaMenuYetkiGrup>
+        {
+            new("Ana Sayfa", "bi-house-door", MenuAnaSayfa, new List<AltMenuYetki>
+            {
+                new("Belge Uyarilari", "bi-exclamation-triangle", new List<YetkiTanim>
+                {
+                    new(BelgeUyarilariOku, "Okuma", "bi-eye"),
+                    new(BelgeUyarilariYaz, "Yazma", "bi-plus"),
+                    new(BelgeUyarilariDuzenle, "Duzenleme", "bi-pencil"),
+                    new(BelgeUyarilariSil, "Silme", "bi-trash"),
+                }),
+            }),
+
+            new("Cari Modulu", "bi-people", MenuCariModulu, new List<AltMenuYetki>
+            {
+                new("Cariler", "bi-person-lines-fill", new List<YetkiTanim>
+                {
+                    new(CarilerOku, "Okuma", "bi-eye"),
+                    new(CarilerYaz, "Yazma", "bi-plus"),
+                    new(CarilerDuzenle, "Duzenleme", "bi-pencil"),
+                    new(CarilerSil, "Silme", "bi-trash"),
+                }),
+                new("Kesilen Faturalar", "bi-file-earmark-arrow-up", new List<YetkiTanim>
+                {
+                    new(KesilenFaturalarOku, "Okuma", "bi-eye"),
+                    new(KesilenFaturalarYaz, "Yazma", "bi-plus"),
+                    new(KesilenFaturalarDuzenle, "Duzenleme", "bi-pencil"),
+                    new(KesilenFaturalarSil, "Silme", "bi-trash"),
+                }),
+                new("Gelen Faturalar", "bi-file-earmark-arrow-down", new List<YetkiTanim>
+                {
+                    new(GelenFaturalarOku, "Okuma", "bi-eye"),
+                    new(GelenFaturalarYaz, "Yazma", "bi-plus"),
+                    new(GelenFaturalarDuzenle, "Duzenleme", "bi-pencil"),
+                    new(GelenFaturalarSil, "Silme", "bi-trash"),
+                }),
+            }),
+
+            new("Filo Servis", "bi-truck", MenuFiloServis, new List<AltMenuYetki>
+            {
+                new("Araclar", "bi-car-front-fill", new List<YetkiTanim>
+                {
+                    new(AraclarOku, "Okuma", "bi-eye"),
+                    new(AraclarYaz, "Yazma", "bi-plus"),
+                    new(AraclarDuzenle, "Duzenleme", "bi-pencil"),
+                    new(AraclarSil, "Silme", "bi-trash"),
+                }),
+                new("Guzergahlar", "bi-signpost-split-fill", new List<YetkiTanim>
+                {
+                    new(GuzergahlarOku, "Okuma", "bi-eye"),
+                    new(GuzergahlarYaz, "Yazma", "bi-plus"),
+                    new(GuzergahlarDuzenle, "Duzenleme", "bi-pencil"),
+                    new(GuzergahlarSil, "Silme", "bi-trash"),
+                }),
+                new("Servis Calismalari", "bi-calendar-check-fill", new List<YetkiTanim>
+                {
+                    new(ServisCalismalariOku, "Okuma", "bi-eye"),
+                    new(ServisCalismalariYaz, "Yazma", "bi-plus"),
+                    new(ServisCalismalariDuzenle, "Duzenleme", "bi-pencil"),
+                    new(ServisCalismalariSil, "Silme", "bi-trash"),
+                }),
+                new("Toplu Calisma Girisi", "bi-list-check", new List<YetkiTanim>
+                {
+                    new(TopluCalismaOku, "Okuma", "bi-eye"),
+                    new(TopluCalismaYaz, "Yazma", "bi-plus"),
+                    new(TopluCalismaDuzenle, "Duzenleme", "bi-pencil"),
+                    new(TopluCalismaSil, "Silme", "bi-trash"),
+                }),
+                new("Masraf Kalemleri", "bi-list-task", new List<YetkiTanim>
+                {
+                    new(MasrafKalemleriOku, "Okuma", "bi-eye"),
+                    new(MasrafKalemleriYaz, "Yazma", "bi-plus"),
+                    new(MasrafKalemleriDuzenle, "Duzenleme", "bi-pencil"),
+                    new(MasrafKalemleriSil, "Silme", "bi-trash"),
+                }),
+                new("Arac Masraflari", "bi-receipt", new List<YetkiTanim>
+                {
+                    new(AracMasraflariOku, "Okuma", "bi-eye"),
+                    new(AracMasraflariYaz, "Yazma", "bi-plus"),
+                    new(AracMasraflariDuzenle, "Duzenleme", "bi-pencil"),
+                    new(AracMasraflariSil, "Silme", "bi-trash"),
+                }),
+            }),
+
+            new("Muhasebe", "bi-journal-text", MenuMuhasebe, new List<AltMenuYetki>
+            {
+                new("Muhasebe Dashboard", "bi-speedometer2", new List<YetkiTanim>
+                {
+                    new(MuhasebeDashboardOku, "Goruntuleme", "bi-eye"),
+                }),
+                new("Hesap Plani", "bi-list-nested", new List<YetkiTanim>
+                {
+                    new(HesapPlaniOku, "Okuma", "bi-eye"),
+                    new(HesapPlaniYaz, "Yazma", "bi-plus"),
+                    new(HesapPlaniDuzenle, "Duzenleme", "bi-pencil"),
+                    new(HesapPlaniSil, "Silme", "bi-trash"),
+                }),
+                new("Muhasebe Fisleri", "bi-receipt", new List<YetkiTanim>
+                {
+                    new(MuhasebeFisleriOku, "Okuma", "bi-eye"),
+                    new(MuhasebeFisleriYaz, "Yazma", "bi-plus"),
+                    new(MuhasebeFisleriDuzenle, "Duzenleme", "bi-pencil"),
+                    new(MuhasebeFisleriSil, "Silme", "bi-trash"),
+                }),
+                new("Muhasebe Raporlari", "bi-file-earmark-bar-graph", new List<YetkiTanim>
+                {
+                    new(MuhasebeRaporlariOku, "Goruntuleme", "bi-eye"),
+                    new(MuhasebeRaporlariExport, "Export", "bi-download"),
+                }),
+                new("Mali Analiz", "bi-graph-up", new List<YetkiTanim>
+                {
+                    new(MaliAnalizOku, "Goruntuleme", "bi-eye"),
+                    new(MaliAnalizExport, "Export", "bi-download"),
+                }),
+            }),
+
+            new("Personel", "bi-people", MenuPersonel, new List<AltMenuYetki>
+            {
+                new("Personel Listesi", "bi-people", new List<YetkiTanim>
+                {
+                    new(PersonelOku, "Okuma", "bi-eye"),
+                    new(PersonelYaz, "Yazma", "bi-plus"),
+                    new(PersonelDuzenle, "Duzenleme", "bi-pencil"),
+                    new(PersonelSil, "Silme", "bi-trash"),
+                }),
+                new("Maas Yonetimi", "bi-cash-stack", new List<YetkiTanim>
+                {
+                    new(MaasOku, "Okuma", "bi-eye"),
+                    new(MaasYaz, "Yazma", "bi-plus"),
+                    new(MaasDuzenle, "Duzenleme", "bi-pencil"),
+                    new(MaasSil, "Silme", "bi-trash"),
+                }),
+                new("Izin Yonetimi", "bi-calendar-check", new List<YetkiTanim>
+                {
+                    new(IzinOku, "Okuma", "bi-eye"),
+                    new(IzinYaz, "Yazma", "bi-plus"),
+                    new(IzinDuzenle, "Duzenleme", "bi-pencil"),
+                    new(IzinSil, "Silme", "bi-trash"),
+                }),
+            }),
+
+            new("Fatura Modulu", "bi-receipt", MenuFaturaModulu, new List<AltMenuYetki>
+            {
+                new("Faturalar", "bi-file-earmark-text-fill", new List<YetkiTanim>
+                {
+                    new(FaturalarOku, "Okuma", "bi-eye"),
+                    new(FaturalarYaz, "Yazma", "bi-plus"),
+                    new(FaturalarDuzenle, "Duzenleme", "bi-pencil"),
+                    new(FaturalarSil, "Silme", "bi-trash"),
+                }),
+                new("Fatura Hazirlik", "bi-clipboard-check", new List<YetkiTanim>
+                {
+                    new(FaturaHazirlikOku, "Okuma", "bi-eye"),
+                    new(FaturaHazirlikYaz, "Yazma", "bi-plus"),
+                    new(FaturaHazirlikDuzenle, "Duzenleme", "bi-pencil"),
+                }),
+            }),
+
+            new("Banka / Kasa", "bi-bank", MenuBankaKasa, new List<AltMenuYetki>
+            {
+                new("Banka Hesaplari", "bi-bank2", new List<YetkiTanim>
+                {
+                    new(BankaHesaplariOku, "Okuma", "bi-eye"),
+                    new(BankaHesaplariYaz, "Yazma", "bi-plus"),
+                    new(BankaHesaplariDuzenle, "Duzenleme", "bi-pencil"),
+                    new(BankaHesaplariSil, "Silme", "bi-trash"),
+                }),
+                new("Banka Hareketleri", "bi-arrow-left-right", new List<YetkiTanim>
+                {
+                    new(BankaHareketleriOku, "Okuma", "bi-eye"),
+                    new(BankaHareketleriYaz, "Yazma", "bi-plus"),
+                    new(BankaHareketleriDuzenle, "Duzenleme", "bi-pencil"),
+                    new(BankaHareketleriSil, "Silme", "bi-trash"),
+                }),
+                new("Odeme Eslestirme", "bi-link-45deg", new List<YetkiTanim>
+                {
+                    new(OdemeEslestirmeOku, "Okuma", "bi-eye"),
+                    new(OdemeEslestirmeYaz, "Yazma", "bi-plus"),
+                    new(OdemeEslestirmeDuzenle, "Duzenleme", "bi-pencil"),
+                }),
+            }),
+
+            new("Raporlar", "bi-bar-chart", MenuRaporlar, new List<AltMenuYetki>
+            {
+                new("Butce Analiz", "bi-wallet2", new List<YetkiTanim>
+                {
+                    new(ButceAnalizOku, "Okuma", "bi-eye"),
+                    new(ButceAnalizYaz, "Yazma", "bi-plus"),
+                    new(ButceAnalizDuzenle, "Duzenleme", "bi-pencil"),
+                    new(ButceAnalizSil, "Silme", "bi-trash"),
+                }),
+                new("Odeme Yonetimi", "bi-credit-card", new List<YetkiTanim>
+                {
+                    new(OdemeYonetimiOku, "Okuma", "bi-eye"),
+                    new(OdemeYonetimiYaz, "Yazma", "bi-plus"),
+                    new(OdemeYonetimiDuzenle, "Duzenleme", "bi-pencil"),
+                    new(OdemeYonetimiSil, "Silme", "bi-trash"),
+                }),
+                new("Tum Raporlar", "bi-file-earmark-bar-graph", new List<YetkiTanim>
+                {
+                    new(RaporlarOku, "Goruntuleme", "bi-eye"),
+                    new(RaporlarExport, "Export", "bi-download"),
+                }),
+            }),
+
+            new("Satis Modulu", "bi-car-front", MenuSatisModulu, new List<AltMenuYetki>
+            {
+                new("Satis Dashboard", "bi-speedometer2", new List<YetkiTanim>
+                {
+                    new(SatisDashboardOku, "Goruntuleme", "bi-eye"),
+                }),
+                new("Piyasa Arastirma", "bi-search", new List<YetkiTanim>
+                {
+                    new(PiyasaArastirmaOku, "Okuma", "bi-eye"),
+                    new(PiyasaArastirmaYaz, "Yazma", "bi-plus"),
+                    new(PiyasaArastirmaDuzenle, "Duzenleme", "bi-pencil"),
+                    new(PiyasaArastirmaSil, "Silme", "bi-trash"),
+                }),
+                new("Satis Ilanlari", "bi-megaphone", new List<YetkiTanim>
+                {
+                    new(SatisIlanlariOku, "Okuma", "bi-eye"),
+                    new(SatisIlanlariYaz, "Yazma", "bi-plus"),
+                    new(SatisIlanlariDuzenle, "Duzenleme", "bi-pencil"),
+                    new(SatisIlanlariSil, "Silme", "bi-trash"),
+                }),
+                new("Satis Personeli", "bi-people", new List<YetkiTanim>
+                {
+                    new(SatisPersoneliOku, "Okuma", "bi-eye"),
+                    new(SatisPersoneliYaz, "Yazma", "bi-plus"),
+                    new(SatisPersoneliDuzenle, "Duzenleme", "bi-pencil"),
+                    new(SatisPersoneliSil, "Silme", "bi-trash"),
+                }),
+            }),
+
+            new("Ayarlar", "bi-gear", MenuAyarlar, new List<AltMenuYetki>
+            {
+                new("Firma Yonetimi", "bi-building", new List<YetkiTanim>
+                {
+                    new(FirmaYonetimiOku, "Okuma", "bi-eye"),
+                    new(FirmaYonetimiYaz, "Yazma", "bi-plus"),
+                    new(FirmaYonetimiDuzenle, "Duzenleme", "bi-pencil"),
+                    new(FirmaYonetimiSil, "Silme", "bi-trash"),
+                }),
+                new("Veritabani Ayarlari", "bi-database-gear", new List<YetkiTanim>
+                {
+                    new(VeritabaniAyarlariOku, "Goruntuleme", "bi-eye"),
+                    new(VeritabaniAyarlariDuzenle, "Duzenleme", "bi-pencil"),
+                }),
+                new("Lisans Bilgileri", "bi-key", new List<YetkiTanim>
+                {
+                    new(LisansBilgileriOku, "Goruntuleme", "bi-eye"),
+                    new(LisansBilgileriDuzenle, "Duzenleme", "bi-pencil"),
+                }),
+                new("Kullanici Yonetimi", "bi-person-badge", new List<YetkiTanim>
+                {
+                    new(KullaniciYonetimiOku, "Okuma", "bi-eye"),
+                    new(KullaniciYonetimiYaz, "Yazma", "bi-plus"),
+                    new(KullaniciYonetimiDuzenle, "Duzenleme", "bi-pencil"),
+                    new(KullaniciYonetimiSil, "Silme", "bi-trash"),
+                }),
+                new("Rol Yonetimi", "bi-shield-check", new List<YetkiTanim>
+                {
+                    new(RolYonetimiOku, "Okuma", "bi-eye"),
+                    new(RolYonetimiYaz, "Yazma", "bi-plus"),
+                    new(RolYonetimiDuzenle, "Duzenleme", "bi-pencil"),
+                    new(RolYonetimiSil, "Silme", "bi-trash"),
+                }),
+                new("Piyasa Kaynaklari", "bi-globe", new List<YetkiTanim>
+                {
+                    new(PiyasaKaynaklariOku, "Okuma", "bi-eye"),
+                    new(PiyasaKaynaklariYaz, "Yazma", "bi-plus"),
+                    new(PiyasaKaynaklariDuzenle, "Duzenleme", "bi-pencil"),
+                    new(PiyasaKaynaklariSil, "Silme", "bi-trash"),
+                }),
+                new("Sistem Durumu", "bi-heart-pulse", new List<YetkiTanim>
+                {
+                    new(SistemDurumuOku, "Goruntuleme", "bi-eye"),
+                }),
+                new("Aktivite Logu", "bi-clock-history", new List<YetkiTanim>
+                {
+                    new(AktiviteLogOku, "Goruntuleme", "bi-eye"),
+                    new(AktiviteLogSil, "Silme", "bi-trash"),
+                }),
+                new("Yedekleme", "bi-database-fill-gear", new List<YetkiTanim>
+                {
+                    new(YedeklemeOku, "Goruntuleme", "bi-eye"),
+                    new(YedeklemeOlustur, "Olusturma", "bi-plus"),
+                    new(YedeklemeGeriYukle, "Geri Yukleme", "bi-arrow-counterclockwise"),
+                    new(YedeklemeSil, "Silme", "bi-trash"),
+                }),
+                new("Uygulama Guncelleme", "bi-cloud-arrow-down", new List<YetkiTanim>
+                {
+                    new(GuncellemeOku, "Kontrol", "bi-eye"),
+                    new(GuncellemeUygula, "Uygulama", "bi-download"),
+                }),
+            }),
+        };
+    }
+
+    /// <summary>
+    /// Geriye uyumluluk icin eski metodlar
     /// </summary>
     public static List<MenuYetkiGrup> GetMenuYetkileri()
     {
-        return new List<MenuYetkiGrup>
-        {
-            new("Ana Sayfa", "bi-house-door", new List<YetkiTanim>
-            {
-                new(MenuAnaSayfa, "Ana Sayfa", "bi-house-door-fill"),
-                new(MenuBelgeUyarilari, "Belge Uyarilari", "bi-exclamation-triangle"),
-            }),
-            
-            new("Cari Modulu", "bi-people", new List<YetkiTanim>
-            {
-                new(MenuCariModulu, "Cari Modulu (Ana Menu)", "bi-people-fill"),
-                new(MenuCariler, "Cariler", "bi-person-lines-fill"),
-                new(MenuKesilenFaturalar, "Kesilen Faturalar", "bi-file-earmark-arrow-up"),
-                new(MenuGelenFaturalar, "Gelen Faturalar", "bi-file-earmark-arrow-down"),
-            }),
-            
-            new("Filo Servis", "bi-truck", new List<YetkiTanim>
-            {
-                new(MenuFiloServis, "Filo Servis (Ana Menu)", "bi-truck"),
-                new(MenuAraclar, "Araclar", "bi-car-front-fill"),
-                new(MenuGuzergahlar, "Guzergahlar", "bi-signpost-split-fill"),
-                new(MenuServisCalismalari, "Servis Calismalari", "bi-calendar-check-fill"),
-                new(MenuTopluCalisma, "Toplu Calisma Girisi", "bi-list-check"),
-                new(MenuMasrafKalemleri, "Masraf Kalemleri", "bi-list-task"),
-                new(MenuAracMasraflari, "Arac Masraflari", "bi-receipt"),
-            }),
-            
-            new("Muhasebe", "bi-journal-text", new List<YetkiTanim>
-            {
-                new(MenuMuhasebe, "Muhasebe (Ana Menu)", "bi-journal-text"),
-                new(MenuMuhasebeDashboard, "Muhasebe Dashboard", "bi-speedometer2"),
-                new(MenuHesapPlani, "Hesap Plani", "bi-list-nested"),
-                new(MenuMuhasebeFisleri, "Muhasebe Fisleri", "bi-receipt"),
-                new(MenuMuhasebeRaporlari, "Muhasebe Raporlari", "bi-file-earmark-bar-graph"),
-                new(MenuMaliAnaliz, "Mali Analiz", "bi-graph-up"),
-            }),
-            
-            new("Personel", "bi-people", new List<YetkiTanim>
-            {
-                new(MenuPersonel, "Personel (Ana Menu)", "bi-people-fill"),
-                new(MenuPersonelListesi, "Personel Listesi", "bi-people"),
-                new(MenuMaasYonetimi, "Maas Yonetimi", "bi-cash-stack"),
-                new(MenuIzinYonetimi, "Izin Yonetimi", "bi-calendar-check"),
-            }),
-            
-            new("Fatura Modulu", "bi-receipt", new List<YetkiTanim>
-            {
-                new(MenuFaturaModulu, "Fatura Modulu (Ana Menu)", "bi-receipt"),
-                new(MenuFaturalar, "Faturalar", "bi-file-earmark-text-fill"),
-                new(MenuFaturaHazirlik, "Fatura Hazirlik", "bi-clipboard-check"),
-            }),
-            
-            new("Banka / Kasa", "bi-bank", new List<YetkiTanim>
-            {
-                new(MenuBankaKasa, "Banka/Kasa (Ana Menu)", "bi-bank"),
-                new(MenuBankaHesaplari, "Banka Hesaplari", "bi-bank2"),
-                new(MenuBankaHareketleri, "Hareketler", "bi-arrow-left-right"),
-                new(MenuOdemeEslestirme, "Odeme Eslestirme", "bi-link-45deg"),
-            }),
-            
-            new("Raporlar", "bi-bar-chart", new List<YetkiTanim>
-            {
-                new(MenuRaporlar, "Raporlar (Ana Menu)", "bi-bar-chart-fill"),
-                new(MenuButceAnaliz, "Butce Analiz", "bi-wallet2"),
-                new(MenuOdemeYonetimi, "Odeme Yonetimi", "bi-credit-card"),
-                new(MenuMaliAnalizRapor, "Mali Analiz", "bi-graph-up-arrow"),
-                new(MenuAylikChecklist, "Aylik Checklist", "bi-clipboard-check"),
-                new(MenuOzmalAracRaporu, "Ozmal Arac Raporu", "bi-truck"),
-                new(MenuKiralikAracRaporu, "Kiralik Arac Raporu", "bi-building"),
-                new(MenuKomisyonRaporu, "Komisyon Raporu", "bi-percent"),
-                new(MenuServisRaporu, "Servis Raporu", "bi-file-earmark-bar-graph"),
-                new(MenuFaturaOdemeRaporu, "Fatura Odeme", "bi-file-earmark-text"),
-                new(MenuAracMasrafRaporu, "Arac Masraf", "bi-file-earmark-spreadsheet"),
-                new(MenuCariEkstre, "Cari Ekstre", "bi-file-earmark-ruled"),
-            }),
-            
-            new("Satis Modulu", "bi-car-front", new List<YetkiTanim>
-            {
-                new(MenuSatisModulu, "Satis Modulu (Ana Menu)", "bi-car-front-fill"),
-                new(MenuSatisDashboard, "Satis Dashboard", "bi-speedometer2"),
-                new(MenuPiyasaArastirma, "Piyasa Arastirma", "bi-search"),
-                new(MenuYeniIlan, "Yeni Ilan", "bi-plus-circle"),
-                new(MenuSatisPersoneli, "Satis Personeli", "bi-people"),
-            }),
-            
-            new("Ayarlar", "bi-gear", new List<YetkiTanim>
-            {
-                new(MenuAyarlar, "Ayarlar (Ana Menu)", "bi-gear-fill"),
-                new(MenuFirmaYonetimi, "Firma Yonetimi", "bi-building"),
-                new(MenuVeritabaniAyarlari, "Veritabani Ayarlari", "bi-database-gear"),
-                new(MenuServisRaporlari, "Servis Raporlari", "bi-file-earmark-bar-graph"),
-                new(MenuLisansBilgileri, "Lisans Bilgileri", "bi-key"),
-                new(MenuKullaniciYonetimi, "Kullanici Yonetimi", "bi-person-badge"),
-                new(MenuRolYonetimi, "Rol Yonetimi", "bi-shield-check"),
-                new(MenuPiyasaKaynaklari, "Piyasa Kaynaklari", "bi-globe"),
-                new(MenuSistemDurumu, "Sistem Durumu", "bi-heart-pulse"),
-                new(MenuAktiviteLog, "Aktivite Logu", "bi-clock-history"),
-                new(MenuYedekleme, "Yedekleme", "bi-database-fill-gear"),
-                new(MenuGuncelleme, "Uygulama Guncelleme", "bi-cloud-arrow-down"),
-            }),
-        };
+        return GetMenuYetkiGruplari().Select(g => new MenuYetkiGrup(
+            g.GrupAdi, 
+            g.Icon, 
+            g.AltMenuler.SelectMany(m => m.Yetkiler).ToList()
+        )).ToList();
     }
 
-    /// <summary>
-    /// Islem bazli yetkileri gruplar
-    /// </summary>
     public static Dictionary<string, List<YetkiTanim>> GetIslemYetkileri()
     {
-        return new Dictionary<string, List<YetkiTanim>>
-        {
-            ["Cari Islemleri"] = new()
-            {
-                new(CariGoruntule, "Goruntule", "bi-eye"),
-                new(CariEkle, "Ekle", "bi-plus"),
-                new(CariDuzenle, "Duzenle", "bi-pencil"),
-                new(CariSil, "Sil", "bi-trash"),
-            },
-            ["Fatura Islemleri"] = new()
-            {
-                new(FaturaGoruntule, "Goruntule", "bi-eye"),
-                new(FaturaEkle, "Ekle", "bi-plus"),
-                new(FaturaDuzenle, "Duzenle", "bi-pencil"),
-                new(FaturaSil, "Sil", "bi-trash"),
-            },
-            ["Banka/Kasa Islemleri"] = new()
-            {
-                new(BankaGoruntule, "Goruntule", "bi-eye"),
-                new(BankaEkle, "Ekle", "bi-plus"),
-                new(BankaDuzenle, "Duzenle", "bi-pencil"),
-                new(BankaSil, "Sil", "bi-trash"),
-            },
-            ["Butce Islemleri"] = new()
-            {
-                new(ButceGoruntule, "Goruntule", "bi-eye"),
-                new(ButceEkle, "Ekle", "bi-plus"),
-                new(ButceDuzenle, "Duzenle", "bi-pencil"),
-                new(ButceSil, "Sil", "bi-trash"),
-            },
-            ["Muhasebe Islemleri"] = new()
-            {
-                new(MuhasebeGoruntule, "Goruntule", "bi-eye"),
-                new(MuhasebeEkle, "Ekle", "bi-plus"),
-                new(MuhasebeDuzenle, "Duzenle", "bi-pencil"),
-            },
-            ["Arac Islemleri"] = new()
-            {
-                new(AracGoruntule, "Goruntule", "bi-eye"),
-                new(AracEkle, "Ekle", "bi-plus"),
-                new(AracDuzenle, "Duzenle", "bi-pencil"),
-                new(AracSil, "Sil", "bi-trash"),
-            },
-            ["Sofor Islemleri"] = new()
-            {
-                new(SoforGoruntule, "Goruntule", "bi-eye"),
-                new(SoforEkle, "Ekle", "bi-plus"),
-                new(SoforDuzenle, "Duzenle", "bi-pencil"),
-                new(SoforSil, "Sil", "bi-trash"),
-            },
-            ["Guzergah Islemleri"] = new()
-            {
-                new(GuzergahGoruntule, "Goruntule", "bi-eye"),
-                new(GuzergahEkle, "Ekle", "bi-plus"),
-                new(GuzergahDuzenle, "Duzenle", "bi-pencil"),
-            },
-            ["Servis Islemleri"] = new()
-            {
-                new(ServisGoruntule, "Goruntule", "bi-eye"),
-                new(ServisEkle, "Ekle", "bi-plus"),
-                new(ServisDuzenle, "Duzenle", "bi-pencil"),
-            },
-            ["Masraf Islemleri"] = new()
-            {
-                new(MasrafGoruntule, "Goruntule", "bi-eye"),
-                new(MasrafEkle, "Ekle", "bi-plus"),
-                new(MasrafDuzenle, "Duzenle", "bi-pencil"),
-            },
-            ["Satis Islemleri"] = new()
-            {
-                new(SatisGoruntule, "Goruntule", "bi-eye"),
-                new(SatisEkle, "Ekle", "bi-plus"),
-                new(SatisDuzenle, "Duzenle", "bi-pencil"),
-                new(SatisSil, "Sil", "bi-trash"),
-            },
-            ["Rapor Islemleri"] = new()
-            {
-                new(RaporGoruntule, "Goruntule", "bi-eye"),
-                new(RaporExport, "Export", "bi-download"),
-            },
-            ["Sistem Yonetimi"] = new()
-            {
-                new(AyarlarGoruntule, "Ayarlar Goruntule", "bi-gear"),
-                new(AyarlarDuzenle, "Ayarlar Duzenle", "bi-gear-fill"),
-                new(KullaniciYonetimi, "Kullanici Yonetimi", "bi-people"),
-                new(RolYonetimi, "Rol Yonetimi", "bi-shield-check"),
-                new(YedeklemeGoruntule, "Yedekleme Goruntule", "bi-database"),
-                new(YedeklemeOlustur, "Yedekleme Olustur", "bi-database-add"),
-                new(LisansYonetimi, "Lisans Yonetimi", "bi-key"),
-                new(GuncellemeYonetimi, "Guncelleme Yonetimi", "bi-cloud-arrow-down"),
-            },
-        };
+        return GetMenuYetkiGruplari().ToDictionary(
+            g => g.GrupAdi,
+            g => g.AltMenuler.SelectMany(m => m.Yetkiler).ToList()
+        );
     }
 
-    /// <summary>
-    /// Eski GetGrouped metodu - geriye uyumluluk icin
-    /// </summary>
-    public static Dictionary<string, List<YetkiTanim>> GetGrouped()
+    public static Dictionary<string, List<YetkiTanim>> GetGrouped() => GetIslemYetkileri();
+}
+
+/// <summary>
+/// Ana menu yetki grubu
+/// </summary>
+public class AnaMenuYetkiGrup
+{
+    public string GrupAdi { get; set; }
+    public string Icon { get; set; }
+    public string AnaMenuYetkiKodu { get; set; }
+    public List<AltMenuYetki> AltMenuler { get; set; }
+
+    public AnaMenuYetkiGrup(string grupAdi, string icon, string anaMenuYetkiKodu, List<AltMenuYetki> altMenuler)
     {
-        return GetIslemYetkileri();
+        GrupAdi = grupAdi;
+        Icon = icon;
+        AnaMenuYetkiKodu = anaMenuYetkiKodu;
+        AltMenuler = altMenuler;
     }
 }
 
 /// <summary>
-/// Menu bazli yetki grubu
+/// Alt menu yetkileri
+/// </summary>
+public class AltMenuYetki
+{
+    public string MenuAdi { get; set; }
+    public string Icon { get; set; }
+    public List<YetkiTanim> Yetkiler { get; set; }
+
+    public AltMenuYetki(string menuAdi, string icon, List<YetkiTanim> yetkiler)
+    {
+        MenuAdi = menuAdi;
+        Icon = icon;
+        Yetkiler = yetkiler;
+    }
+}
+
+/// <summary>
+/// Menu bazli yetki grubu (geriye uyumluluk)
 /// </summary>
 public class MenuYetkiGrup
 {
