@@ -11,7 +11,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="mb-0"><i class="bi bi-shield-check me-2"></i>Rol Yonetimi</h3>
-            <small class="text-muted">Sistem rollerini ve yetkilerini yonetin</small>
+            <small class="text-muted">Sistem rollerini ve menu yetkilerini yonetin</small>
         </div>
         <button class="btn btn-primary" @onclick="YeniRolEkle">
             <i class="bi bi-plus-lg me-1"></i>Yeni Rol
@@ -66,7 +66,7 @@
                             <div>
                                 <h5 class="mb-0">
                                     <i class="bi bi-shield-fill me-2" style="color: @(seciliRol.Renk ?? "#6c757d")"></i>
-                                    @seciliRol.RolAdi
+                                    @seciliRol.RolAdi - Menu Yetkileri
                                 </h5>
                                 <small class="text-muted">@seciliRol.Aciklama</small>
                             </div>
@@ -89,92 +89,182 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="card-body p-0" style="max-height: 650px; overflow-y: auto;">
+                        <div class="card-body p-2" style="max-height: 650px; overflow-y: auto;">
                             @if (seciliRol.RolAdi == "Admin")
                             {
-                                <div class="alert alert-info m-3">
+                                <div class="alert alert-info m-2">
                                     <i class="bi bi-info-circle me-2"></i>
                                     Admin rolu tum yetkilere sahiptir ve degistirilemez.
                                 </div>
                             }
                             else
                             {
-                                <!-- Ana Menu Bazli Yetkiler -->
-                                <div class="accordion accordion-flush" id="yetkiAccordion">
-                                    @foreach (var anaMenu in menuYetkileri)
-                                    {
-                                        var menuId = anaMenu.GrupAdi.Replace(" ", "").Replace("/", "");
-                                        var anaMenuSecili = seciliYetkiler.Contains(anaMenu.AnaMenuYetkiKodu);
-                                        var toplamYetki = anaMenu.AltMenuler.Sum(m => m.Yetkiler.Count);
-                                        var seciliYetkiSayisi = anaMenu.AltMenuler.Sum(m => m.Yetkiler.Count(y => seciliYetkiler.Contains(y.Kod)));
-                                        
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header">
-                                                <button class="accordion-button @(IsGrupAcik(menuId) ? "" : "collapsed")" type="button"
-                                                        @onclick="() => ToggleGrup(menuId)">
-                                                    <div class="d-flex align-items-center w-100">
-                                                        <div class="form-check me-3" @onclick:stopPropagation="true">
-                                                            <input class="form-check-input" type="checkbox" 
-                                                                   checked="@anaMenuSecili"
-                                                                   @onchange="(e) => AnaMenuYetkiDegistir(anaMenu, (bool)e.Value!)" />
-                                                        </div>
-                                                        <i class="bi @anaMenu.Icon me-2 text-primary"></i>
-                                                        <strong>@anaMenu.GrupAdi</strong>
-                                                        <span class="badge @(seciliYetkiSayisi == toplamYetki ? "bg-success" : seciliYetkiSayisi > 0 ? "bg-warning" : "bg-secondary") ms-auto me-3">
-                                                            @seciliYetkiSayisi / @toplamYetki
-                                                        </span>
-                                                    </div>
-                                                </button>
-                                            </h2>
-                                            <div class="accordion-collapse collapse @(IsGrupAcik(menuId) ? "show" : "")">
-                                                <div class="accordion-body p-2">
-                                                    @foreach (var altMenu in anaMenu.AltMenuler)
-                                                    {
-                                                        var altMenuSeciliSayisi = altMenu.Yetkiler.Count(y => seciliYetkiler.Contains(y.Kod));
-                                                        <div class="card mb-2 border-0 bg-light">
-                                                            <div class="card-body p-2">
-                                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                    <div class="d-flex align-items-center">
-                                                                        <i class="bi @altMenu.Icon me-2 text-secondary"></i>
-                                                                        <strong class="small">@altMenu.MenuAdi</strong>
-                                                                    </div>
-                                                                    <div>
-                                                                        <button class="btn btn-outline-success btn-sm py-0 px-1 me-1" 
-                                                                                title="Tumu Sec"
-                                                                                @onclick="() => AltMenuTumunuSec(altMenu)">
-                                                                            <i class="bi bi-check-all"></i>
-                                                                        </button>
-                                                                        <button class="btn btn-outline-secondary btn-sm py-0 px-1" 
-                                                                                title="Tumu Kaldir"
-                                                                                @onclick="() => AltMenuTumunuKaldir(altMenu)">
-                                                                            <i class="bi bi-x"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="d-flex flex-wrap gap-2">
-                                                                    @foreach (var yetki in altMenu.Yetkiler)
-                                                                    {
-                                                                        var yetkiSecili = seciliYetkiler.Contains(yetki.Kod);
-                                                                        <div class="form-check form-check-inline m-0">
-                                                                            <input class="form-check-input" type="checkbox" 
-                                                                                   id="@yetki.Kod" 
-                                                                                   checked="@yetkiSecili"
-                                                                                   @onchange="(e) => YetkiDegistir(yetki.Kod, (bool)e.Value!)" />
-                                                                            <label class="form-check-label small @(yetkiSecili ? "text-success fw-bold" : "")" for="@yetki.Kod">
-                                                                                <i class="bi @yetki.Icon me-1 @GetYetkiRenk(yetki.Adi)"></i>
-                                                                                @yetki.Adi
-                                                                            </label>
-                                                                        </div>
-                                                                    }
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    }
+                                @foreach (var menuGrup in menuYapisi)
+                                {
+                                    var anaMenuSecili = seciliYetkiler.Contains(menuGrup.YetkiKodu);
+                                    var altMenuSayisi = menuGrup.AltMenuler.Count;
+                                    var seciliAltMenuSayisi = menuGrup.AltMenuler.Count(m => 
+                                        m.Yetkiler.Any(y => seciliYetkiler.Contains(y.Kod)));
+                                    
+                                    <div class="card mb-2 @(anaMenuSecili ? "border-primary" : "")">
+                                        <div class="card-header py-2 @(anaMenuSecili ? "bg-primary text-white" : "bg-light")">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" 
+                                                           id="menu_@menuGrup.YetkiKodu"
+                                                           checked="@anaMenuSecili"
+                                                           @onchange="(e) => AnaMenuDegistir(menuGrup, (bool)e.Value!)" />
+                                                    <label class="form-check-label fw-bold" for="menu_@menuGrup.YetkiKodu">
+                                                        <i class="bi @menuGrup.Icon me-2"></i>@menuGrup.MenuAdi
+                                                    </label>
+                                                </div>
+                                                <div>
+                                                    <span class="badge @(anaMenuSecili ? "bg-light text-primary" : "bg-secondary")">
+                                                        @seciliAltMenuSayisi / @altMenuSayisi alt menu
+                                                    </span>
+                                                    <button class="btn btn-sm @(anaMenuSecili ? "btn-light" : "btn-outline-secondary") ms-2 py-0"
+                                                            @onclick="() => ToggleMenu(menuGrup.YetkiKodu)">
+                                                        <i class="bi @(acikMenuler.Contains(menuGrup.YetkiKodu) ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-                                    }
-                                </div>
+                                        
+                                        @if (acikMenuler.Contains(menuGrup.YetkiKodu))
+                                        {
+                                            <div class="card-body p-2">
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-hover mb-0">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th style="width: 30%;">Alt Menu</th>
+                                                                <th class="text-center" style="width: 14%;">
+                                                                    <i class="bi bi-eye text-info"></i> Okuma
+                                                                </th>
+                                                                <th class="text-center" style="width: 14%;">
+                                                                    <i class="bi bi-plus text-success"></i> Yazma
+                                                                </th>
+                                                                <th class="text-center" style="width: 14%;">
+                                                                    <i class="bi bi-pencil text-warning"></i> Duzenleme
+                                                                </th>
+                                                                <th class="text-center" style="width: 14%;">
+                                                                    <i class="bi bi-trash text-danger"></i> Silme
+                                                                </th>
+                                                                <th class="text-center" style="width: 14%;">Islemler</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var altMenu in menuGrup.AltMenuler)
+                                                            {
+                                                                var okumaYetki = altMenu.Yetkiler.FirstOrDefault(y => y.Adi.Contains("Okuma") || y.Adi.Contains("Goruntuleme"));
+                                                                var yazmaYetki = altMenu.Yetkiler.FirstOrDefault(y => y.Adi.Contains("Yazma") || y.Adi.Contains("Olusturma"));
+                                                                var duzenleYetki = altMenu.Yetkiler.FirstOrDefault(y => y.Adi.Contains("Duzenleme") || y.Adi.Contains("Uygulama"));
+                                                                var silmeYetki = altMenu.Yetkiler.FirstOrDefault(y => y.Adi.Contains("Silme"));
+                                                                var digerYetkiler = altMenu.Yetkiler.Where(y => 
+                                                                    !y.Adi.Contains("Okuma") && !y.Adi.Contains("Goruntuleme") &&
+                                                                    !y.Adi.Contains("Yazma") && !y.Adi.Contains("Olusturma") &&
+                                                                    !y.Adi.Contains("Duzenleme") && !y.Adi.Contains("Uygulama") &&
+                                                                    !y.Adi.Contains("Silme")).ToList();
+                                                                
+                                                                <tr>
+                                                                    <td>
+                                                                        <i class="bi @altMenu.Icon me-2 text-secondary"></i>
+                                                                        <span class="small">@altMenu.MenuAdi</span>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        @if (okumaYetki != null)
+                                                                        {
+                                                                            <input type="checkbox" class="form-check-input"
+                                                                                   checked="@seciliYetkiler.Contains(okumaYetki.Kod)"
+                                                                                   @onchange="(e) => YetkiDegistir(okumaYetki.Kod, (bool)e.Value!)" />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted">-</span>
+                                                                        }
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        @if (yazmaYetki != null)
+                                                                        {
+                                                                            <input type="checkbox" class="form-check-input"
+                                                                                   checked="@seciliYetkiler.Contains(yazmaYetki.Kod)"
+                                                                                   @onchange="(e) => YetkiDegistir(yazmaYetki.Kod, (bool)e.Value!)" />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted">-</span>
+                                                                        }
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        @if (duzenleYetki != null)
+                                                                        {
+                                                                            <input type="checkbox" class="form-check-input"
+                                                                                   checked="@seciliYetkiler.Contains(duzenleYetki.Kod)"
+                                                                                   @onchange="(e) => YetkiDegistir(duzenleYetki.Kod, (bool)e.Value!)" />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted">-</span>
+                                                                        }
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        @if (silmeYetki != null)
+                                                                        {
+                                                                            <input type="checkbox" class="form-check-input"
+                                                                                   checked="@seciliYetkiler.Contains(silmeYetki.Kod)"
+                                                                                   @onchange="(e) => YetkiDegistir(silmeYetki.Kod, (bool)e.Value!)" />
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted">-</span>
+                                                                        }
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <button class="btn btn-outline-success btn-sm py-0 px-1" 
+                                                                                title="Tum Yetkileri Ver"
+                                                                                @onclick="() => AltMenuTumYetki(altMenu, true)">
+                                                                            <i class="bi bi-check-all"></i>
+                                                                        </button>
+                                                                        <button class="btn btn-outline-danger btn-sm py-0 px-1 ms-1" 
+                                                                                title="Tum Yetkileri Kaldir"
+                                                                                @onclick="() => AltMenuTumYetki(altMenu, false)">
+                                                                            <i class="bi bi-x"></i>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                                @if (digerYetkiler.Any())
+                                                                {
+                                                                    <tr class="table-light">
+                                                                        <td colspan="6" class="py-1 ps-4">
+                                                                            <small class="text-muted">Diger yetkiler: </small>
+                                                                            @foreach (var diger in digerYetkiler)
+                                                                            {
+                                                                                <span class="badge bg-secondary me-1">
+                                                                                    <input type="checkbox" class="form-check-input me-1" style="margin-top: 0;"
+                                                                                           checked="@seciliYetkiler.Contains(diger.Kod)"
+                                                                                           @onchange="(e) => YetkiDegistir(diger.Kod, (bool)e.Value!)" />
+                                                                                    @diger.Adi
+                                                                                </span>
+                                                                            }
+                                                                        </td>
+                                                                    </tr>
+                                                                }
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div class="mt-2 text-end">
+                                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => AnaMenuTumAltMenuYetki(menuGrup, true)">
+                                                        <i class="bi bi-check-all me-1"></i>Tum Alt Menulere Yetki Ver
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => AnaMenuTumAltMenuYetki(menuGrup, false)">
+                                                        <i class="bi bi-x me-1"></i>Tum Yetkileri Kaldir
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
                             }
                         </div>
                     </div>
@@ -247,9 +337,9 @@
     private List<Rol> roller = new();
     private Rol? seciliRol;
     private HashSet<string> seciliYetkiler = new();
-    private HashSet<string> acikGruplar = new();
+    private HashSet<string> acikMenuler = new();
     
-    private List<AnaMenuYetkiGrup> menuYetkileri = new();
+    private List<MenuYapiGrup> menuYapisi = new();
     
     // Modal
     private bool showRolModal = false;
@@ -263,20 +353,353 @@
 
     protected override async Task OnInitializedAsync()
     {
-        menuYetkileri = Yetkiler.GetMenuYetkiGruplari();
+        MenuYapisiOlustur();
         await LoadRoller();
     }
 
-    private string GetYetkiRenk(string yetkiAdi)
+    private void MenuYapisiOlustur()
     {
-        return yetkiAdi switch
+        // NavMenu'daki yapiyla birebir eslesecek sekilde menu yapisi
+        menuYapisi = new List<MenuYapiGrup>
         {
-            "Okuma" or "Goruntuleme" or "Kontrol" => "text-info",
-            "Yazma" or "Olusturma" => "text-success",
-            "Duzenleme" or "Uygulama" => "text-warning",
-            "Silme" => "text-danger",
-            "Export" or "Geri Yukleme" => "text-primary",
-            _ => "text-secondary"
+            new("Ana Sayfa", "bi-house-door-fill", "menu.anasayfa", new List<AltMenuYapisi>
+            {
+                new("Belge Uyarilari", "bi-exclamation-triangle", new List<YetkiItem>
+                {
+                    new("belgeuyari.oku", "Okuma"),
+                    new("belgeuyari.yaz", "Yazma"),
+                    new("belgeuyari.duzenle", "Duzenleme"),
+                    new("belgeuyari.sil", "Silme"),
+                }),
+            }),
+            
+            new("Cari Modulu", "bi-people-fill", "menu.cari", new List<AltMenuYapisi>
+            {
+                new("Cariler", "bi-person-lines-fill", new List<YetkiItem>
+                {
+                    new("cariler.oku", "Okuma"),
+                    new("cariler.yaz", "Yazma"),
+                    new("cariler.duzenle", "Duzenleme"),
+                    new("cariler.sil", "Silme"),
+                }),
+                new("Kesilen Faturalar", "bi-file-earmark-arrow-up", new List<YetkiItem>
+                {
+                    new("kesilenfatura.oku", "Okuma"),
+                    new("kesilenfatura.yaz", "Yazma"),
+                    new("kesilenfatura.duzenle", "Duzenleme"),
+                    new("kesilenfatura.sil", "Silme"),
+                }),
+                new("Gelen Faturalar", "bi-file-earmark-arrow-down", new List<YetkiItem>
+                {
+                    new("gelenfatura.oku", "Okuma"),
+                    new("gelenfatura.yaz", "Yazma"),
+                    new("gelenfatura.duzenle", "Duzenleme"),
+                    new("gelenfatura.sil", "Silme"),
+                }),
+            }),
+            
+            new("Filo Servis", "bi-truck", "menu.filoservis", new List<AltMenuYapisi>
+            {
+                new("Araclar", "bi-car-front-fill", new List<YetkiItem>
+                {
+                    new("araclar.oku", "Okuma"),
+                    new("araclar.yaz", "Yazma"),
+                    new("araclar.duzenle", "Duzenleme"),
+                    new("araclar.sil", "Silme"),
+                }),
+                new("Guzergahlar", "bi-signpost-split-fill", new List<YetkiItem>
+                {
+                    new("guzergahlar.oku", "Okuma"),
+                    new("guzergahlar.yaz", "Yazma"),
+                    new("guzergahlar.duzenle", "Duzenleme"),
+                    new("guzergahlar.sil", "Silme"),
+                }),
+                new("Servis Calismalari", "bi-calendar-check-fill", new List<YetkiItem>
+                {
+                    new("serviscalisma.oku", "Okuma"),
+                    new("serviscalisma.yaz", "Yazma"),
+                    new("serviscalisma.duzenle", "Duzenleme"),
+                    new("serviscalisma.sil", "Silme"),
+                }),
+                new("Toplu Calisma Girisi", "bi-list-check", new List<YetkiItem>
+                {
+                    new("toplucalisma.oku", "Okuma"),
+                    new("toplucalisma.yaz", "Yazma"),
+                    new("toplucalisma.duzenle", "Duzenleme"),
+                }),
+                new("Masraf Kalemleri", "bi-list-task", new List<YetkiItem>
+                {
+                    new("masrafkalem.oku", "Okuma"),
+                    new("masrafkalem.yaz", "Yazma"),
+                    new("masrafkalem.duzenle", "Duzenleme"),
+                    new("masrafkalem.sil", "Silme"),
+                }),
+                new("Arac Masraflari", "bi-receipt", new List<YetkiItem>
+                {
+                    new("aracmasraf.oku", "Okuma"),
+                    new("aracmasraf.yaz", "Yazma"),
+                    new("aracmasraf.duzenle", "Duzenleme"),
+                    new("aracmasraf.sil", "Silme"),
+                }),
+            }),
+            
+            new("Muhasebe", "bi-journal-text", "menu.muhasebe", new List<AltMenuYapisi>
+            {
+                new("Muhasebe Dashboard", "bi-speedometer2", new List<YetkiItem>
+                {
+                    new("muhasebedash.oku", "Goruntuleme"),
+                }),
+                new("Hesap Plani", "bi-list-nested", new List<YetkiItem>
+                {
+                    new("hesapplani.oku", "Okuma"),
+                    new("hesapplani.yaz", "Yazma"),
+                    new("hesapplani.duzenle", "Duzenleme"),
+                    new("hesapplani.sil", "Silme"),
+                }),
+                new("Muhasebe Fisleri", "bi-receipt", new List<YetkiItem>
+                {
+                    new("muhasebefis.oku", "Okuma"),
+                    new("muhasebefis.yaz", "Yazma"),
+                    new("muhasebefis.duzenle", "Duzenleme"),
+                    new("muhasebefis.sil", "Silme"),
+                }),
+                new("Muhasebe Raporlari", "bi-file-earmark-bar-graph", new List<YetkiItem>
+                {
+                    new("muhaseberapor.oku", "Goruntuleme"),
+                    new("muhaseberapor.export", "Export"),
+                }),
+                new("Mali Analiz", "bi-graph-up", new List<YetkiItem>
+                {
+                    new("malianaliz.oku", "Goruntuleme"),
+                    new("malianaliz.export", "Export"),
+                }),
+            }),
+            
+            new("Personel", "bi-people-fill", "menu.personel", new List<AltMenuYapisi>
+            {
+                new("Personel Listesi", "bi-people", new List<YetkiItem>
+                {
+                    new("personel.oku", "Okuma"),
+                    new("personel.yaz", "Yazma"),
+                    new("personel.duzenle", "Duzenleme"),
+                    new("personel.sil", "Silme"),
+                }),
+                new("Maas Yonetimi", "bi-cash-stack", new List<YetkiItem>
+                {
+                    new("maas.oku", "Okuma"),
+                    new("maas.yaz", "Yazma"),
+                    new("maas.duzenle", "Duzenleme"),
+                    new("maas.sil", "Silme"),
+                }),
+                new("Izin Yonetimi", "bi-calendar-check", new List<YetkiItem>
+                {
+                    new("izin.oku", "Okuma"),
+                    new("izin.yaz", "Yazma"),
+                    new("izin.duzenle", "Duzenleme"),
+                    new("izin.sil", "Silme"),
+                }),
+            }),
+            
+            new("Fatura Modulu", "bi-receipt", "menu.fatura", new List<AltMenuYapisi>
+            {
+                new("Faturalar", "bi-file-earmark-text-fill", new List<YetkiItem>
+                {
+                    new("faturalar.oku", "Okuma"),
+                    new("faturalar.yaz", "Yazma"),
+                    new("faturalar.duzenle", "Duzenleme"),
+                    new("faturalar.sil", "Silme"),
+                }),
+                new("Fatura Hazirlik", "bi-clipboard-check", new List<YetkiItem>
+                {
+                    new("faturahazirlik.oku", "Okuma"),
+                    new("faturahazirlik.yaz", "Yazma"),
+                    new("faturahazirlik.duzenle", "Duzenleme"),
+                }),
+            }),
+            
+            new("Banka / Kasa", "bi-bank", "menu.bankakasa", new List<AltMenuYapisi>
+            {
+                new("Banka Hesaplari", "bi-bank2", new List<YetkiItem>
+                {
+                    new("bankahesap.oku", "Okuma"),
+                    new("bankahesap.yaz", "Yazma"),
+                    new("bankahesap.duzenle", "Duzenleme"),
+                    new("bankahesap.sil", "Silme"),
+                }),
+                new("Banka Hareketleri", "bi-arrow-left-right", new List<YetkiItem>
+                {
+                    new("bankahareket.oku", "Okuma"),
+                    new("bankahareket.yaz", "Yazma"),
+                    new("bankahareket.duzenle", "Duzenleme"),
+                    new("bankahareket.sil", "Silme"),
+                }),
+                new("Odeme Eslestirme", "bi-link-45deg", new List<YetkiItem>
+                {
+                    new("odemeeslestir.oku", "Okuma"),
+                    new("odemeeslestir.yaz", "Yazma"),
+                    new("odemeeslestir.duzenle", "Duzenleme"),
+                }),
+            }),
+            
+            new("Checklist", "bi-clipboard-check", "menu.checklist", new List<AltMenuYapisi>
+            {
+                new("Aylik Checklist", "bi-calendar-check", new List<YetkiItem>
+                {
+                    new("checklist.oku", "Okuma"),
+                    new("checklist.yaz", "Yazma"),
+                    new("checklist.duzenle", "Duzenleme"),
+                }),
+                new("Butce Analiz", "bi-wallet2", new List<YetkiItem>
+                {
+                    new("butceanaliz.oku", "Okuma"),
+                    new("butceanaliz.yaz", "Yazma"),
+                    new("butceanaliz.duzenle", "Duzenleme"),
+                    new("butceanaliz.sil", "Silme"),
+                }),
+                new("Odeme Yonetimi", "bi-credit-card", new List<YetkiItem>
+                {
+                    new("odemeyonetim.oku", "Okuma"),
+                    new("odemeyonetim.yaz", "Yazma"),
+                    new("odemeyonetim.duzenle", "Duzenleme"),
+                    new("odemeyonetim.sil", "Silme"),
+                }),
+                new("Mali Analiz", "bi-graph-up-arrow", new List<YetkiItem>
+                {
+                    new("checklistmali.oku", "Goruntuleme"),
+                    new("checklistmali.export", "Export"),
+                }),
+            }),
+            
+            new("Raporlar", "bi-bar-chart-fill", "menu.raporlar", new List<AltMenuYapisi>
+            {
+                new("Ozmal Arac Raporu", "bi-truck", new List<YetkiItem>
+                {
+                    new("raporozmal.oku", "Goruntuleme"),
+                    new("raporozmal.export", "Export"),
+                }),
+                new("Kiralik Arac Raporu", "bi-building", new List<YetkiItem>
+                {
+                    new("raporkirali.oku", "Goruntuleme"),
+                    new("raporkirali.export", "Export"),
+                }),
+                new("Komisyon Raporu", "bi-percent", new List<YetkiItem>
+                {
+                    new("raporkomisyon.oku", "Goruntuleme"),
+                    new("raporkomisyon.export", "Export"),
+                }),
+                new("Servis Raporu", "bi-file-earmark-bar-graph", new List<YetkiItem>
+                {
+                    new("raporservis.oku", "Goruntuleme"),
+                    new("raporservis.export", "Export"),
+                }),
+                new("Fatura Odeme Raporu", "bi-file-earmark-text", new List<YetkiItem>
+                {
+                    new("raporfatura.oku", "Goruntuleme"),
+                    new("raporfatura.export", "Export"),
+                }),
+                new("Arac Masraf Raporu", "bi-file-earmark-spreadsheet", new List<YetkiItem>
+                {
+                    new("rapormasraf.oku", "Goruntuleme"),
+                    new("rapormasraf.export", "Export"),
+                }),
+                new("Cari Ekstre", "bi-file-earmark-ruled", new List<YetkiItem>
+                {
+                    new("raporekstre.oku", "Goruntuleme"),
+                    new("raporekstre.export", "Export"),
+                }),
+            }),
+            
+            new("Satis Modulu", "bi-car-front-fill", "menu.satis", new List<AltMenuYapisi>
+            {
+                new("Satis Dashboard", "bi-speedometer2", new List<YetkiItem>
+                {
+                    new("satisdash.oku", "Goruntuleme"),
+                }),
+                new("Piyasa Arastirma", "bi-search", new List<YetkiItem>
+                {
+                    new("piyasaarastir.oku", "Okuma"),
+                    new("piyasaarastir.yaz", "Yazma"),
+                    new("piyasaarastir.duzenle", "Duzenleme"),
+                    new("piyasaarastir.sil", "Silme"),
+                }),
+                new("Satis Ilanlari", "bi-megaphone", new List<YetkiItem>
+                {
+                    new("satisilan.oku", "Okuma"),
+                    new("satisilan.yaz", "Yazma"),
+                    new("satisilan.duzenle", "Duzenleme"),
+                    new("satisilan.sil", "Silme"),
+                }),
+                new("Satis Personeli", "bi-people", new List<YetkiItem>
+                {
+                    new("satispersonel.oku", "Okuma"),
+                    new("satispersonel.yaz", "Yazma"),
+                    new("satispersonel.duzenle", "Duzenleme"),
+                    new("satispersonel.sil", "Silme"),
+                }),
+            }),
+            
+            new("Ayarlar", "bi-gear-fill", "menu.ayarlar", new List<AltMenuYapisi>
+            {
+                new("Firma Yonetimi", "bi-building", new List<YetkiItem>
+                {
+                    new("firmayonetim.oku", "Okuma"),
+                    new("firmayonetim.yaz", "Yazma"),
+                    new("firmayonetim.duzenle", "Duzenleme"),
+                    new("firmayonetim.sil", "Silme"),
+                }),
+                new("Veritabani Ayarlari", "bi-database-gear", new List<YetkiItem>
+                {
+                    new("veritabani.oku", "Goruntuleme"),
+                    new("veritabani.duzenle", "Duzenleme"),
+                }),
+                new("Lisans Bilgileri", "bi-key", new List<YetkiItem>
+                {
+                    new("lisans.oku", "Goruntuleme"),
+                    new("lisans.duzenle", "Duzenleme"),
+                }),
+                new("Kullanici Yonetimi", "bi-person-badge", new List<YetkiItem>
+                {
+                    new("kullanici.oku", "Okuma"),
+                    new("kullanici.yaz", "Yazma"),
+                    new("kullanici.duzenle", "Duzenleme"),
+                    new("kullanici.sil", "Silme"),
+                }),
+                new("Rol Yonetimi", "bi-shield-check", new List<YetkiItem>
+                {
+                    new("rol.oku", "Okuma"),
+                    new("rol.yaz", "Yazma"),
+                    new("rol.duzenle", "Duzenleme"),
+                    new("rol.sil", "Silme"),
+                }),
+                new("Piyasa Kaynaklari", "bi-globe", new List<YetkiItem>
+                {
+                    new("piyasakaynak.oku", "Okuma"),
+                    new("piyasakaynak.yaz", "Yazma"),
+                    new("piyasakaynak.duzenle", "Duzenleme"),
+                    new("piyasakaynak.sil", "Silme"),
+                }),
+                new("Sistem Durumu", "bi-heart-pulse", new List<YetkiItem>
+                {
+                    new("sistemdurumu.oku", "Goruntuleme"),
+                }),
+                new("Aktivite Logu", "bi-clock-history", new List<YetkiItem>
+                {
+                    new("aktivitelog.oku", "Goruntuleme"),
+                    new("aktivitelog.sil", "Silme"),
+                }),
+                new("Yedekleme", "bi-database-fill-gear", new List<YetkiItem>
+                {
+                    new("yedekleme.oku", "Goruntuleme"),
+                    new("yedekleme.olustur", "Olusturma"),
+                    new("yedekleme.geriyukle", "Geri Yukleme"),
+                    new("yedekleme.sil", "Silme"),
+                }),
+                new("Uygulama Guncelleme", "bi-cloud-arrow-down", new List<YetkiItem>
+                {
+                    new("guncelleme.oku", "Goruntuleme"),
+                    new("guncelleme.uygula", "Uygulama"),
+                }),
+            }),
         };
     }
 
@@ -301,16 +724,21 @@
     {
         seciliRol = rol;
         seciliYetkiler.Clear();
-        acikGruplar.Clear();
+        acikMenuler.Clear();
         
         if (rol.RolAdi == "Admin")
         {
             // Admin tum yetkilere sahip
-            seciliYetkiler = Yetkiler.GetAll().ToHashSet();
-            // Ana menu yetkilerini de ekle
-            foreach (var menu in menuYetkileri)
+            foreach (var menu in menuYapisi)
             {
-                seciliYetkiler.Add(menu.AnaMenuYetkiKodu);
+                seciliYetkiler.Add(menu.YetkiKodu);
+                foreach (var altMenu in menu.AltMenuler)
+                {
+                    foreach (var yetki in altMenu.Yetkiler)
+                    {
+                        seciliYetkiler.Add(yetki.Kod);
+                    }
+                }
             }
         }
         else if (rol.Yetkiler != null)
@@ -322,6 +750,14 @@
         }
     }
 
+    private void ToggleMenu(string menuKodu)
+    {
+        if (acikMenuler.Contains(menuKodu))
+            acikMenuler.Remove(menuKodu);
+        else
+            acikMenuler.Add(menuKodu);
+    }
+
     private void YetkiDegistir(string yetkiKodu, bool secili)
     {
         if (secili)
@@ -330,24 +766,26 @@
             seciliYetkiler.Remove(yetkiKodu);
     }
 
-    private void AnaMenuYetkiDegistir(AnaMenuYetkiGrup anaMenu, bool secili)
+    private void AnaMenuDegistir(MenuYapiGrup menu, bool secili)
     {
         if (secili)
         {
-            seciliYetkiler.Add(anaMenu.AnaMenuYetkiKodu);
-            // Tum alt menu okuma yetkilerini de ac
-            foreach (var altMenu in anaMenu.AltMenuler)
+            seciliYetkiler.Add(menu.YetkiKodu);
+            // Tum alt menulerin okuma yetkisini ac
+            foreach (var altMenu in menu.AltMenuler)
             {
-                var okumaYetki = altMenu.Yetkiler.FirstOrDefault(y => y.Adi == "Okuma" || y.Adi == "Goruntuleme");
+                var okumaYetki = altMenu.Yetkiler.FirstOrDefault(y => y.Adi.Contains("Okuma") || y.Adi.Contains("Goruntuleme"));
                 if (okumaYetki != null)
                     seciliYetkiler.Add(okumaYetki.Kod);
             }
+            // Menuyu ac
+            acikMenuler.Add(menu.YetkiKodu);
         }
         else
         {
-            seciliYetkiler.Remove(anaMenu.AnaMenuYetkiKodu);
+            seciliYetkiler.Remove(menu.YetkiKodu);
             // Tum alt menu yetkilerini kapat
-            foreach (var altMenu in anaMenu.AltMenuler)
+            foreach (var altMenu in menu.AltMenuler)
             {
                 foreach (var yetki in altMenu.Yetkiler)
                 {
@@ -357,37 +795,41 @@
         }
     }
 
-    private void AltMenuTumunuSec(AltMenuYetki altMenu)
+    private void AltMenuTumYetki(AltMenuYapisi altMenu, bool ver)
     {
         foreach (var yetki in altMenu.Yetkiler)
         {
-            seciliYetkiler.Add(yetki.Kod);
+            if (ver)
+                seciliYetkiler.Add(yetki.Kod);
+            else
+                seciliYetkiler.Remove(yetki.Kod);
         }
     }
 
-    private void AltMenuTumunuKaldir(AltMenuYetki altMenu)
+    private void AnaMenuTumAltMenuYetki(MenuYapiGrup menu, bool ver)
     {
-        foreach (var yetki in altMenu.Yetkiler)
-        {
-            seciliYetkiler.Remove(yetki.Kod);
-        }
-    }
-
-    private void ToggleGrup(string grupId)
-    {
-        if (acikGruplar.Contains(grupId))
-            acikGruplar.Remove(grupId);
+        if (ver)
+            seciliYetkiler.Add(menu.YetkiKodu);
         else
-            acikGruplar.Add(grupId);
+            seciliYetkiler.Remove(menu.YetkiKodu);
+            
+        foreach (var altMenu in menu.AltMenuler)
+        {
+            foreach (var yetki in altMenu.Yetkiler)
+            {
+                if (ver)
+                    seciliYetkiler.Add(yetki.Kod);
+                else
+                    seciliYetkiler.Remove(yetki.Kod);
+            }
+        }
     }
-
-    private bool IsGrupAcik(string grupId) => acikGruplar.Contains(grupId);
 
     private void TumYetkileriSec()
     {
-        foreach (var menu in menuYetkileri)
+        foreach (var menu in menuYapisi)
         {
-            seciliYetkiler.Add(menu.AnaMenuYetkiKodu);
+            seciliYetkiler.Add(menu.YetkiKodu);
             foreach (var altMenu in menu.AltMenuler)
             {
                 foreach (var yetki in altMenu.Yetkiler)
@@ -471,6 +913,49 @@
         catch (Exception ex)
         {
             ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    // Yardimci siniflar
+    private class MenuYapiGrup
+    {
+        public string MenuAdi { get; set; }
+        public string Icon { get; set; }
+        public string YetkiKodu { get; set; }
+        public List<AltMenuYapisi> AltMenuler { get; set; }
+
+        public MenuYapiGrup(string menuAdi, string icon, string yetkiKodu, List<AltMenuYapisi> altMenuler)
+        {
+            MenuAdi = menuAdi;
+            Icon = icon;
+            YetkiKodu = yetkiKodu;
+            AltMenuler = altMenuler;
+        }
+    }
+
+    private class AltMenuYapisi
+    {
+        public string MenuAdi { get; set; }
+        public string Icon { get; set; }
+        public List<YetkiItem> Yetkiler { get; set; }
+
+        public AltMenuYapisi(string menuAdi, string icon, List<YetkiItem> yetkiler)
+        {
+            MenuAdi = menuAdi;
+            Icon = icon;
+            Yetkiler = yetkiler;
+        }
+    }
+
+    private class YetkiItem
+    {
+        public string Kod { get; set; }
+        public string Adi { get; set; }
+
+        public YetkiItem(string kod, string adi)
+        {
+            Kod = kod;
+            Adi = adi;
         }
     }
 }
