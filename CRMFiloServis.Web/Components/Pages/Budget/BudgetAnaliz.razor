@@ -1011,10 +1011,31 @@
                                 <tbody>
                                     @foreach (var odeme in bekleyenOdemeler)
                                     {
+                                        int kGun2 = (odeme.OdemeTarihi.Date - DateTime.Today).Days;
+                                        string trColorClass = "";
+                                        string timeText2 = "";
+                                        
+                                        if (kGun2 < 0) { 
+                                            trColorClass = "text-danger fw-bold"; 
+                                            timeText2 = $"{Math.Abs(kGun2)}g Gecikti";
+                                        } 
+                                        else if (kGun2 == 0) { 
+                                            trColorClass = "text-warning fw-bold"; 
+                                            timeText2 = "Bugün";
+                                        } 
+                                        else { 
+                                            trColorClass = "text-success fw-bold"; 
+                                            timeText2 = $"{kGun2}g Kaldı";
+                                        }
+
                                         <tr>
-                                            <td>@odeme.OdemeTarihi.ToString("dd.MM.yyyy")</td>
+                                            <td>
+                                                @odeme.OdemeTarihi.ToString("dd.MM.yyyy")
+                                                <br />
+                                                <small class="@trColorClass">@timeText2</small>
+                                            </td>
                                             <td><strong>@odeme.MasrafKalemi</strong></td>
-                                            <td>@odeme.Aciklama</td>
+                                            <td>@(odeme.Aciklama?.Replace("[Tekrarlayan]", "")?.Replace("[tekrarlayan]", "")?.Trim())</td>
                                             <td class="text-center">
                                                 @if (odeme.TaksitliMi)
                                                 {
@@ -1025,7 +1046,7 @@
                                                     <span>-</span>
                                                 }
                                             </td>
-                                            <td class="text-end">@odeme.Miktar.ToString("N2") TL</td>
+                                            <td class="text-end fw-bold">@odeme.Miktar.ToString("N2") TL</td>
                                         </tr>
                                     }
                                 </tbody>
