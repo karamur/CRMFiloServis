@@ -853,7 +853,9 @@ public class BudgetService : IBudgetService
 
     public async Task<List<TekrarlayanOdeme>> GetTekrarlayanOdemelerAsync(int? firmaId = null)
     {
-        var query = _context.TekrarlayanOdemeler.AsQueryable();
+        var query = _context.TekrarlayanOdemeler
+            .Where(t => !t.IsDeleted && t.Aktif)
+            .AsQueryable();
 
         if (firmaId.HasValue)
             query = query.Where(t => t.FirmaId == firmaId.Value);
@@ -869,7 +871,8 @@ public class BudgetService : IBudgetService
     {
         var bugun = DateTime.Today;
         var query = _context.TekrarlayanOdemeler
-            .Where(t => t.Aktif &&
+            .Where(t => !t.IsDeleted &&
+                        t.Aktif &&
                         t.BaslangicTarihi <= bugun &&
                         (!t.BitisTarihi.HasValue || t.BitisTarihi.Value >= bugun));
 
@@ -887,7 +890,7 @@ public class BudgetService : IBudgetService
     {
         return await _context.TekrarlayanOdemeler
             .Include(t => t.Firma)
-            .FirstOrDefaultAsync(t => t.Id == id);
+            .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
     }
 
     public async Task<TekrarlayanOdeme> CreateTekrarlayanOdemeAsync(TekrarlayanOdeme odeme)
