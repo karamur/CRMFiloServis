@@ -94,7 +94,7 @@ else
                             <h6 class="card-title">Aktif Araç</h6>
                             <h2>@aracSayisi</h2>
                         </div>
-                        <i class="bi bi-truck" style="font-size: 3rem; opacity: 0.5;"></i>
+                        <i class="bi bi-truck" style="font-size: 3rem, opacity: 0.5;"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
@@ -138,7 +138,7 @@ else
                             <h6 class="card-title">Bekleyen Fatura</h6>
                             <h2>@bekleyenFaturaSayisi</h2>
                         </div>
-                        <i class="bi bi-receipt" style="font-size: 3rem; opacity: 0.5;"></i>
+                        <i class="bi bi-receipt" style="font-size: 3rem, opacity: 0.5;"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
@@ -546,16 +546,16 @@ else
     private bool isLoading = true;
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
     
-    // Yetki kontrolleri
+    // Yetki kontrolleri - Shared.Entities.Yetkiler sabitlerini kullanýyoruz
     private HashSet<string> kullaniciYetkileri = new();
-    private bool HasDashboardPermission => kullaniciYetkileri.Contains("Dashboard.Goruntule") || kullaniciYetkileri.Contains("*");
-    private bool CanViewCariler => kullaniciYetkileri.Contains("Cari.Goruntule") || kullaniciYetkileri.Contains("*");
-    private bool CanViewAraclar => kullaniciYetkileri.Contains("Arac.Goruntule") || kullaniciYetkileri.Contains("*");
-    private bool CanViewSoforler => kullaniciYetkileri.Contains("Sofor.Goruntule") || kullaniciYetkileri.Contains("*");
-    private bool CanViewFaturalar => kullaniciYetkileri.Contains("Fatura.Goruntule") || kullaniciYetkileri.Contains("*");
-    private bool CanViewFinans => kullaniciYetkileri.Contains("Finans.Goruntule") || kullaniciYetkileri.Contains("*");
-    private bool CanViewServisler => kullaniciYetkileri.Contains("ServisCalisma.Goruntule") || kullaniciYetkileri.Contains("*");
-    private bool CanViewBelgeUyarilari => kullaniciYetkileri.Contains("BelgeUyari.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool HasDashboardPermission => kullaniciYetkileri.Contains(Yetkiler.Dashboard) || kullaniciYetkileri.Contains("*");
+    private bool CanViewCariler => kullaniciYetkileri.Contains(Yetkiler.CarilerOku) || kullaniciYetkileri.Contains("*");
+    private bool CanViewAraclar => kullaniciYetkileri.Contains(Yetkiler.AraclarOku) || kullaniciYetkileri.Contains("*");
+    private bool CanViewSoforler => kullaniciYetkileri.Contains(Yetkiler.PersonelOku) || kullaniciYetkileri.Contains("*");
+    private bool CanViewFaturalar => kullaniciYetkileri.Contains(Yetkiler.KesilenFaturalarOku) || kullaniciYetkileri.Contains("*");
+    private bool CanViewFinans => kullaniciYetkileri.Contains(Yetkiler.BankaHesaplariOku) || kullaniciYetkileri.Contains("*");
+    private bool CanViewServisler => kullaniciYetkileri.Contains(Yetkiler.ServisCalismalariOku) || kullaniciYetkileri.Contains("*");
+    private bool CanViewBelgeUyarilari => kullaniciYetkileri.Contains(Yetkiler.BelgeUyarilariOku) || kullaniciYetkileri.Contains("*");
 
     protected override async Task OnInitializedAsync()
     {
