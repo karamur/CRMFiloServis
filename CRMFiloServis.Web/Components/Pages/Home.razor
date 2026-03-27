@@ -10,12 +10,33 @@
 @inject IBankaKasaHareketService BankaKasaService
 @inject IBelgeUyariService BelgeUyariService
 @inject IBudgetService BudgetService
+@inject IKullaniciService KullaniciService
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 @rendermode InteractiveServer
 
 <PageTitle>CRM Filo Servis - Ana Sayfa</PageTitle>
 
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center align-items-center" style="height: 50vh;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Yükleniyor...</span>
+        </div>
+    </div>
+}
+else if (!HasDashboardPermission)
+{
+    <div class="container-fluid">
+        <div class="alert alert-warning">
+            <i class="bi bi-shield-lock me-2"></i>
+            <strong>Dashboard görüntüleme yetkiniz bulunmuyor.</strong>
+            <p class="mb-0 mt-2">Lütfen sistem yöneticinizle iletiþime geçin.</p>
+        </div>
+    </div>
+}
+else
+{
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="mb-0">
@@ -25,7 +46,7 @@
     </div>
 
     <!-- Kritik Uyarýlar Banner -->
-    @if (belgeUyarilar != null && belgeUyarilar.ToplamKritikUyari > 0)
+    @if (CanViewBelgeUyarilari && belgeUyarilar != null && belgeUyarilar.ToplamKritikUyari > 0)
     {
         <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5rem;"></i>
@@ -41,6 +62,8 @@
 
     <!-- Özet Kartlar -->
     <div class="row mb-4">
+        @if (CanViewCariler)
+        {
         <div class="col-md-3">
             <div class="card bg-primary text-white h-100">
                 <div class="card-body">
@@ -59,7 +82,10 @@
                 </div>
             </div>
         </div>
+        }
 
+        @if (CanViewAraclar)
+        {
         <div class="col-md-3">
             <div class="card bg-success text-white h-100">
                 <div class="card-body">
@@ -78,7 +104,10 @@
                 </div>
             </div>
         </div>
+        }
 
+        @if (CanViewSoforler)
+        {
         <div class="col-md-3">
             <div class="card bg-warning text-dark h-100">
                 <div class="card-body">
@@ -97,7 +126,10 @@
                 </div>
             </div>
         </div>
+        }
 
+        @if (CanViewFaturalar)
+        {
         <div class="col-md-3">
             <div class="card bg-danger text-white h-100">
                 <div class="card-body">
@@ -106,7 +138,7 @@
                             <h6 class="card-title">Bekleyen Fatura</h6>
                             <h2>@bekleyenFaturaSayisi</h2>
                         </div>
-                        <i class="bi bi-receipt" style="font-size: 3rem, opacity: 0.5;"></i>
+                        <i class="bi bi-receipt" style="font-size: 3rem; opacity: 0.5;"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-0">
@@ -116,9 +148,12 @@
                 </div>
             </div>
         </div>
+        }
     </div>
 
     <!-- Finansal Özet -->
+    @if (CanViewFinans)
+    {
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card h-100">
@@ -129,18 +164,18 @@
                     <div class="row text-center">
                         <div class="col-6 border-end">
                             <small class="text-muted d-block">Toplam Gelir</small>
-                            <h5 class="text-success mb-0">@buAyGelir.ToString("N0") ?</h5>
+                            <h5 class="text-success mb-0">@FormatKisa(buAyGelir)</h5>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block">Toplam Gider</small>
-                            <h5 class="text-danger mb-0">@buAyGider.ToString("N0") ?</h5>
+                            <h5 class="text-danger mb-0">@FormatKisa(buAyGider)</h5>
                         </div>
                     </div>
                     <hr />
                     <div class="text-center">
                         <small class="text-muted d-block">Net Kar/Zarar</small>
                         <h4 class="@(buAyGelir - buAyGider >= 0 ? "text-success" : "text-danger") mb-0">
-                            @((buAyGelir - buAyGider).ToString("N0")) ?
+                            @FormatKisa(buAyGelir - buAyGider)
                         </h4>
                     </div>
                 </div>
@@ -155,16 +190,16 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span>Toplam Kasa:</span>
-                        <strong class="text-primary">@toplamKasa.ToString("N2") ?</strong>
+                        <strong class="text-primary">@Format(toplamKasa)</strong>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span>Toplam Banka:</span>
-                        <strong class="text-primary">@toplamBanka.ToString("N2") ?</strong>
+                        <strong class="text-primary">@Format(toplamBanka)</strong>
                     </div>
                     <hr />
                     <div class="d-flex justify-content-between align-items-center">
                         <span><strong>Genel Toplam:</strong></span>
-                        <strong class="h5 text-success mb-0">@((toplamKasa + toplamBanka).ToString("N2")) ?</strong>
+                        <strong class="h5 text-success mb-0">@Format(toplamKasa + toplamBanka)</strong>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent">
@@ -185,195 +220,157 @@
                     {
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span>Planlanan Ödeme:</span>
-                            <strong class="text-danger">@butceOzet.ToplamOdeme.ToString("N0") ?</strong>
+                            <strong class="text-danger">@FormatKisa(butceOzet.ToplamOdeme)</strong>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span>Ödenen:</span>
-                            <strong class="text-success">@butceOzet.OdenenToplam.ToString("N0") ?</strong>
+                            <strong class="text-success">@FormatKisa(butceOzet.OdenenToplam)</strong>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span>Bekleyen:</span>
-                            <strong class="text-warning">@butceOzet.BekleyenToplam.ToString("N0") ?</strong>
+                            <strong class="text-warning">@FormatKisa(butceOzet.BekleyenToplam)</strong>
                         </div>
                         <hr />
                         <div class="progress" style="height: 20px;">
                             @{
-                                var yuzde = butceOzet.ToplamOdeme > 0 ? (butceOzet.OdenenToplam / butceOzet.ToplamOdeme * 100) : 0;
+                                var odemeYuzdesi = butceOzet.ToplamOdeme > 0 
+                                    ? (int)((butceOzet.OdenenToplam / butceOzet.ToplamOdeme) * 100) 
+                                    : 0;
                             }
-                            <div class="progress-bar bg-success" style="width: @yuzde.ToString("F0")%">
-                                %@yuzde.ToString("F0")
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: @odemeYuzdesi%" 
+                                 aria-valuenow="@odemeYuzdesi" aria-valuemin="0" aria-valuemax="100">
+                                @odemeYuzdesi%
                             </div>
                         </div>
                     }
                     else
                     {
-                        <div class="text-center text-muted py-3">
-                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">Bütçe verisi yok</p>
-                        </div>
+                        <p class="text-muted mb-0 text-center py-3">Bütçe verisi yok</p>
                     }
                 </div>
                 <div class="card-footer bg-transparent">
                     <a href="/butce" class="btn btn-outline-primary btn-sm w-100">
-                        <i class="bi bi-arrow-right me-1"></i>Bütçe Analiz
+                        <i class="bi bi-arrow-right me-1"></i>Detay Görüntüle
                     </a>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Hýzlý Ýþlemler Row -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Hýzlý Ýþlemler</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <button class="btn btn-outline-primary w-100" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/yeni"))'>
-                                <i class="bi bi-plus-circle me-2"></i>Yeni Servis Çalýþmasý
-                            </button>
-                        </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-outline-success w-100" @onclick='@(() => Navigation.NavigateTo("/servis-calismalari/toplu-ekle"))'>
-                                <i class="bi bi-list-check me-2"></i>Toplu Çalýþma Giriþi
-                            </button>
-                        </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-outline-warning w-100" @onclick='@(() => Navigation.NavigateTo("/faturalar/yeni"))'>
-                                <i class="bi bi-receipt me-2"></i>Yeni Fatura
-                            </button>
-                        </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-outline-info w-100" @onclick='@(() => Navigation.NavigateTo("/butce"))'>
-                                <i class="bi bi-wallet2 me-2"></i>Bütçe/Ödeme Giriþi
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Grafikler -->
-    @if (!isLoading)
-    {
-        <CRMFiloServis.Web.Components.Shared.DashboardGrafik ParentLoaded="@(!isLoading)" />
     }
 
-    <!-- Gecikmiþ ve Yaklaþan -->
+    <!-- Detay Kartlarý -->
     <div class="row mb-4">
+        <!-- Vade Geçmiþ Faturalar -->
+        @if (CanViewFaturalar)
+        {
         <div class="col-md-6">
-            <div class="card border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Vadesi Geçmiþ Faturalar (@vadeGecmisFaturalar.Count)</h6>
+            <div class="card h-100">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-exclamation-circle me-2"></i>Vade Geçmiþ Faturalar</h6>
+                    <span class="badge bg-white text-danger">@vadeGecmisFaturalar.Count</span>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
                     @if (vadeGecmisFaturalar.Any())
                     {
-                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                        <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0">
-                                <thead class="table-light sticky-top">
+                                <thead class="table-light">
                                     <tr>
                                         <th>Fatura No</th>
                                         <th>Cari</th>
                                         <th>Vade</th>
-                                        <th class="text-end">Kalan</th>
+                                        <th class="text-end">Tutar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var fatura in vadeGecmisFaturalar.Take(5))
                                     {
-                                        var gecikmeGunu = fatura.VadeTarihi.HasValue ? (DateTime.Today - fatura.VadeTarihi.Value).Days : 0;
                                         <tr>
                                             <td>@fatura.FaturaNo</td>
                                             <td>@fatura.Cari?.Unvan</td>
-                                            <td>
-                                                @fatura.VadeTarihi?.ToString("dd.MM")
-                                                <span class="badge bg-danger ms-1">@gecikmeGunu gün</span>
-                                            </td>
-                                            <td class="text-end"><strong class="text-danger">@fatura.KalanTutar.ToString("N0") ?</strong></td>
+                                            <td class="text-danger">@fatura.VadeTarihi?.ToString("dd.MM.yyyy")</td>
+                                            <td class="text-end"><strong>@FormatKisa(fatura.GenelToplam)</strong></td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
-                        <div class="text-center mt-2">
-                            <small class="text-muted">Toplam Gecikmiþ: <strong class="text-danger">@vadeGecmisFaturalar.Sum(f => f.KalanTutar).ToString("N0") ?</strong></small>
-                        </div>
+                        @if (vadeGecmisFaturalar.Count > 5)
+                        {
+                            <div class="text-center mt-2">
+                                <a href="/faturalar" class="btn btn-link btn-sm">+@(vadeGecmisFaturalar.Count - 5) fatura daha</a>
+                            </div>
+                        }
                     }
                     else
                     {
-                        <div class="text-center text-success py-3">
-                            <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">Vadesi geçmiþ fatura bulunmuyor!</p>
-                        </div>
+                        <p class="text-success mb-0 text-center py-3">
+                            <i class="bi bi-check-circle me-1"></i>Vade geçmiþ fatura yok
+                        </p>
                     }
                 </div>
             </div>
         </div>
+        }
 
+        <!-- Vade Yaklaþan Faturalar -->
+        @if (CanViewFaturalar)
+        {
         <div class="col-md-6">
-            <div class="card border-warning">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Vadesi Yaklaþan Faturalar (7 gün içinde)</h6>
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-clock me-2"></i>Vade Yaklaþan Faturalar (7 gün)</h6>
+                    <span class="badge bg-dark">@vadeYaklasanFaturalar.Count</span>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
                     @if (vadeYaklasanFaturalar.Any())
                     {
-                        <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                        <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0">
-                                <thead class="table-light sticky-top">
+                                <thead class="table-light">
                                     <tr>
                                         <th>Fatura No</th>
                                         <th>Cari</th>
                                         <th>Vade</th>
-                                        <th class="text-end">Kalan</th>
+                                        <th class="text-end">Tutar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var fatura in vadeYaklasanFaturalar.Take(5))
                                     {
-                                        var kalanGun = fatura.VadeTarihi.HasValue ? (fatura.VadeTarihi.Value - DateTime.Today).Days : 0;
                                         <tr>
                                             <td>@fatura.FaturaNo</td>
                                             <td>@fatura.Cari?.Unvan</td>
-                                            <td>
-                                                @fatura.VadeTarihi?.ToString("dd.MM")
-                                                <span class="badge bg-warning text-dark ms-1">@kalanGun gün</span>
-                                            </td>
-                                            <td class="text-end"><strong>@fatura.KalanTutar.ToString("N0") ?</strong></td>
+                                            <td class="text-warning">@fatura.VadeTarihi?.ToString("dd.MM.yyyy")</td>
+                                            <td class="text-end"><strong>@FormatKisa(fatura.GenelToplam)</strong></td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
-                        <div class="text-center mt-2">
-                            <small class="text-muted">Toplam: <strong>@vadeYaklasanFaturalar.Sum(f => f.KalanTutar).ToString("N0") ?</strong></small>
-                        </div>
                     }
                     else
                     {
-                        <div class="text-center text-muted py-3">
-                            <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">7 gün içinde vadesi dolan fatura bulunmuyor.</p>
-                        </div>
+                        <p class="text-muted mb-0 text-center py-3">Yaklaþan vade yok</p>
                     }
                 </div>
             </div>
         </div>
+        }
     </div>
 
     <!-- Son Ýþlemler -->
     <div class="row">
+        @if (CanViewServisler)
+        {
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card h-100">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Son Servis Çalýþmalarý</h6>
+                    <a href="/servis-calismalari" class="btn btn-sm btn-outline-primary">Tümü</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
                     @if (sonCalismalar != null && sonCalismalar.Any())
                     {
                         <div class="table-responsive">
@@ -381,7 +378,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Tarih</th>
-                                        <th>Plaka</th>
+                                        <th>Araç</th>
                                         <th>Güzergah</th>
                                         <th class="text-end">Tutar</th>
                                     </tr>
@@ -393,30 +390,31 @@
                                             <td>@calisma.CalismaTarihi.ToString("dd.MM")</td>
                                             <td>@calisma.Arac?.AktifPlaka</td>
                                             <td>@calisma.Guzergah?.GuzergahAdi</td>
-                                            <td class="text-end"><strong>@calisma.HesaplananFiyat.ToString("N0") ?</strong></td>
+                                            <td class="text-end text-success"><strong>@FormatKisa(calisma.HesaplananFiyat)</strong></td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
-                        <div class="text-center mt-2">
-                            <a href="/servis-calismalari" class="btn btn-link btn-sm">Tümünü Görüntüle</a>
-                        </div>
                     }
                     else
                     {
-                        <p class="text-muted mb-0 text-center py-3">Henüz servis çalýþmasý bulunmuyor.</p>
+                        <p class="text-muted mb-0 text-center py-3">Henüz çalýþma bulunmuyor.</p>
                     }
                 </div>
             </div>
         </div>
+        }
 
+        @if (CanViewFinans)
+        {
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Son Tahsilatlar/Ödemeler</h6>
+            <div class="card h-100">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Son Kasa/Banka Hareketleri</h6>
+                    <a href="/banka-kasa" class="btn btn-sm btn-outline-primary">Tümü</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
                     @if (sonHareketler != null && sonHareketler.Any())
                     {
                         <div class="table-responsive">
@@ -442,16 +440,13 @@
                                             <td>@hareket.Cari?.Unvan</td>
                                             <td class="text-end">
                                                 <strong class="@(hareket.HareketTipi == HareketTipi.Giris ? "text-success" : "text-danger")">
-                                                    @hareket.Tutar.ToString("N0") ?
+                                                    @FormatKisa(hareket.Tutar)
                                                 </strong>
                                             </td>
                                         </tr>
                                     }
                                 </tbody>
                             </table>
-                        </div>
-                        <div class="text-center mt-2">
-                            <a href="/banka-kasa" class="btn btn-link btn-sm">Tümünü Görüntüle</a>
                         </div>
                     }
                     else
@@ -461,6 +456,7 @@
                 </div>
             </div>
         </div>
+        }
     </div>
 </div>
 
@@ -501,15 +497,8 @@
                                             <td><strong>@uyari.Baslik</strong></td>
                                             <td>@uyari.BitisTarihi.ToString("dd.MM.yyyy")</td>
                                             <td class="text-center">
-                                                <span class="badge @uyari.SeviyeClass">
-                                                    @if (uyari.KalanGun < 0)
-                                                    {
-                                                        <text>@Math.Abs(uyari.KalanGun) gün geçti!</text>
-                                                    }
-                                                    else
-                                                    {
-                                                        <text>@uyari.KalanGun gün</text>
-                                                    }
+                                                <span class="badge @(uyari.KalanGun < 0 ? "bg-danger" : uyari.KalanGun <= 7 ? "bg-warning text-dark" : "bg-info")">
+                                                    @(uyari.KalanGun < 0 ? $"{Math.Abs(uyari.KalanGun)} gün geçti" : $"{uyari.KalanGun} gün")
                                                 </span>
                                             </td>
                                         </tr>
@@ -533,6 +522,7 @@
         </div>
     </div>
 }
+}
 
 @code {
     private int cariSayisi = 0;
@@ -555,15 +545,47 @@
     private bool showBelgeModal = false;
     private bool isLoading = true;
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
+    
+    // Yetki kontrolleri
+    private HashSet<string> kullaniciYetkileri = new();
+    private bool HasDashboardPermission => kullaniciYetkileri.Contains("Dashboard.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool CanViewCariler => kullaniciYetkileri.Contains("Cari.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool CanViewAraclar => kullaniciYetkileri.Contains("Arac.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool CanViewSoforler => kullaniciYetkileri.Contains("Sofor.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool CanViewFaturalar => kullaniciYetkileri.Contains("Fatura.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool CanViewFinans => kullaniciYetkileri.Contains("Finans.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool CanViewServisler => kullaniciYetkileri.Contains("ServisCalisma.Goruntule") || kullaniciYetkileri.Contains("*");
+    private bool CanViewBelgeUyarilari => kullaniciYetkileri.Contains("BelgeUyari.Goruntule") || kullaniciYetkileri.Contains("*");
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDashboardDataAsync();
+        await LoadYetkilerAsync();
+        
+        if (HasDashboardPermission)
+        {
+            await LoadDashboardDataAsync();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task LoadYetkilerAsync()
+    {
+        try
+        {
+            kullaniciYetkileri = await KullaniciService.GetCurrentUserYetkilerAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Yetki yükleme hatasý");
+            kullaniciYetkileri = new HashSet<string>();
+        }
     }
 
     private async Task LoadDashboardDataAsync()
     {
-        // Semaphore ile ayni anda tek islem
         if (!await _semaphore.WaitAsync(0))
             return;
 
@@ -572,43 +594,63 @@
             isLoading = true;
             StateHasChanged();
 
-            // Her cagri arasinda kucuk bir bekleme ekle
-            cariSayisi = await CariService.GetCountAsync();
-            await Task.Delay(10);
+            if (CanViewCariler)
+            {
+                cariSayisi = await CariService.GetCountAsync();
+                await Task.Delay(10);
+            }
             
-            aracSayisi = await AracService.GetActiveCountAsync();
-            await Task.Delay(10);
+            if (CanViewAraclar)
+            {
+                aracSayisi = await AracService.GetActiveCountAsync();
+                await Task.Delay(10);
+            }
             
-            soforSayisi = await SoforService.GetActiveCountAsync();
-            await Task.Delay(10);
+            if (CanViewSoforler)
+            {
+                soforSayisi = await SoforService.GetActiveCountAsync();
+                await Task.Delay(10);
+            }
             
-            var faturaStats = await FaturaService.GetDashboardStatsAsync();
-            bekleyenFaturaSayisi = faturaStats.BekleyenFaturaSayisi;
-            buAyGelir = faturaStats.BuAyGelir;
-            buAyGider = faturaStats.BuAyGider;
-            vadeGecmisFaturalar = faturaStats.VadeGecmisFaturalar;
-            vadeYaklasanFaturalar = faturaStats.VadeYaklasanFaturalar;
-            await Task.Delay(10);
+            if (CanViewFaturalar)
+            {
+                var faturaStats = await FaturaService.GetDashboardStatsAsync();
+                bekleyenFaturaSayisi = faturaStats.BekleyenFaturaSayisi;
+                buAyGelir = faturaStats.BuAyGelir;
+                buAyGider = faturaStats.BuAyGider;
+                vadeGecmisFaturalar = faturaStats.VadeGecmisFaturalar;
+                vadeYaklasanFaturalar = faturaStats.VadeYaklasanFaturalar;
+                await Task.Delay(10);
+            }
 
-            var bankaStats = await BankaKasaService.GetDashboardStatsAsync();
-            toplamKasa = bankaStats.ToplamKasa;
-            toplamBanka = bankaStats.ToplamBanka;
-            await Task.Delay(10);
+            if (CanViewFinans)
+            {
+                var bankaStats = await BankaKasaService.GetDashboardStatsAsync();
+                toplamKasa = bankaStats.ToplamKasa;
+                toplamBanka = bankaStats.ToplamBanka;
+                await Task.Delay(10);
+                
+                sonHareketler = await BankaKasaService.GetRecentAsync(5);
+                await Task.Delay(10);
+                
+                butceOzet = await BudgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
+                await Task.Delay(10);
+            }
 
-            sonCalismalar = await ServisCalismaService.GetRecentAsync(5);
-            await Task.Delay(10);
+            if (CanViewServisler)
+            {
+                sonCalismalar = await ServisCalismaService.GetRecentAsync(5);
+                await Task.Delay(10);
+            }
             
-            sonHareketler = await BankaKasaService.GetRecentAsync(5);
-            await Task.Delay(10);
-            
-            belgeUyarilar = await BelgeUyariService.GetBelgeUyarilarAsync(30);
-            await Task.Delay(10);
-            
-            butceOzet = await BudgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
+            if (CanViewBelgeUyarilari)
+            {
+                belgeUyarilar = await BelgeUyariService.GetBelgeUyarilarAsync(30);
+            }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Dashboard yukleme hatasi");
+            Logger.LogError(ex, "Dashboard yükleme hatasý");
         }
         finally
         {

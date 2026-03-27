@@ -24,6 +24,7 @@ public interface IKullaniciService
     // Yetki
     Task<bool> YetkiVarMiAsync(int kullaniciId, string yetkiKodu);
     Task<List<string>> GetKullaniciYetkileriAsync(int kullaniciId);
+    Task<HashSet<string>> GetCurrentUserYetkilerAsync();
     
     // Roller
     Task<List<Rol>> GetRollerAsync();

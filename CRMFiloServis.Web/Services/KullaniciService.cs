@@ -237,6 +237,27 @@ public class KullaniciService : IKullaniciService
 
         return kullanici.Rol.Yetkiler.Where(y => y.Izin).Select(y => y.YetkiKodu).ToList();
     }
+    
+    public async Task<HashSet<string>> GetCurrentUserYetkilerAsync()
+    {
+        try
+        {
+            var kullanici = await GetAktifKullaniciAsync();
+            if (kullanici == null)
+                return new HashSet<string>();
+                
+            // Admin ise tüm yetkiler
+            if (kullanici.Rol?.RolAdi == "Admin")
+                return new HashSet<string> { "*" };
+                
+            var yetkiler = await GetKullaniciYetkileriAsync(kullanici.Id);
+            return yetkiler.ToHashSet();
+        }
+        catch
+        {
+            return new HashSet<string>();
+        }
+    }
 
     private List<string> GetTumYetkiler()
     {
