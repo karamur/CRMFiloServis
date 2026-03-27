@@ -374,6 +374,46 @@
             </div>
         }
 
+        <!-- BÜTÇE MODÜLÜ -->
+        @if (HasMenuYetki("menu.butce"))
+        {
+            <div class="nav-section">
+                <div class="nav-section-header" @onclick="() => ToggleSection(11)" style="cursor: pointer;">
+                    <span><i class="bi bi-wallet2 me-2"></i>BÜTÇE MODÜLÜ</span>
+                    <i class="bi @(expandedSections.Length > 11 && expandedSections[11] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                </div>
+                @if (expandedSections.Length > 11 && expandedSections[11])
+                {
+                    <div class="nav-section-content">
+                        @if (HasYetki("butceanaliz.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="butce">
+                                    <i class="bi bi-graph-up me-2 text-primary"></i> Bütçe Analiz
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("odemeyonetim.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="butce/odemeler">
+                                    <i class="bi bi-credit-card me-2 text-warning"></i> Ödeme Yönetimi
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("tekrarlayanodem.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="butce/kredi-taksitler">
+                                    <i class="bi bi-calendar-plus me-2 text-danger"></i> Kredi/Taksitler
+                                </NavLink>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
         <!-- CHECKLIST -->
         @if (HasMenuYetki("menu.checklist"))
         {
@@ -389,15 +429,15 @@
                         {
                             <div class="nav-item px-3">
                                 <NavLink class="nav-link" href="rapor/checklist">
-                                    <i class="bi bi-calendar-check me-2 text-success"></i> Aylik Checklist
+                                    <i class="bi bi-calendar-check me-2 text-success"></i> Aylýk Checklist
                                 </NavLink>
                             </div>
                         }
-                        @if (HasYetki("tekrarlayanodem.oku"))
+                        @if (HasYetki("checklistmali.oku"))
                         {
                             <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="tekrarlayan-odemeler">
-                                    <i class="bi bi-arrow-repeat me-2 text-info"></i> Kredi/Taksitler
+                                <NavLink class="nav-link" href="mali-analiz">
+                                    <i class="bi bi-graph-up-arrow me-2 text-info"></i> Mali Analiz
                                 </NavLink>
                             </div>
                         }
@@ -417,31 +457,6 @@
                 @if (expandedSections[4])
                 {
                     <div class="nav-section-content">
-                        @if (HasYetki("butceanaliz.oku"))
-                        {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="butce">
-                                    <i class="bi bi-wallet2 me-2 text-primary"></i> Bütçe Analiz
-                                </NavLink>
-                            </div>
-                        }
-                        @if (HasYetki("odemeyonetim.oku"))
-                        {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="butce/odemeler">
-                                    <i class="bi bi-credit-card me-2 text-warning"></i> Ödeme Yönetimi
-                                </NavLink>
-                            </div>
-                        }
-                        @if (HasYetki("checklistmali.oku"))
-                        {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="mali-analiz">
-                                    <i class="bi bi-graph-up-arrow me-2 text-info"></i> Mali Analiz
-                                </NavLink>
-                            </div>
-                        }
-                        <hr class="my-2 mx-3 border-secondary" />
                         @if (HasYetki("raporozmal.oku"))
                         {
                             <div class="nav-item px-3">
@@ -694,6 +709,7 @@
             "menu.personel" => "personel",
             "menu.fatura" => "fatura",
             "menu.bankakasa" => "banka",
+            "menu.butce" => "butce",
             "menu.checklist" => "checklist",
             "menu.raporlar" => "rapor",
             "menu.satis" => "satis",
