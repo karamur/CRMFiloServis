@@ -967,27 +967,27 @@
                                                                foreach(var o in gunData.Odemeler.Where(x => x.Durum == OdemeDurum.Bekliyor || x.Durum == OdemeDurum.Ertelendi).OrderBy(x => x.Durum))
                                                                {
                                                                    int kalanGun = (o.OdemeTarihi.Date - DateTime.Today).Days;
-                                                                   string textColorClass = "text-dark";
+                                                                   string blockClass = "";
                                                                    string timeText = "";
 
                                                                    if (kalanGun < 0) {
-                                                                       textColorClass = "text-danger"; 
+                                                                       blockClass = "bg-danger text-white"; 
                                                                        timeText = $"{Math.Abs(kalanGun)}g Gecikti";
                                                                    } else if (kalanGun == 0) {
-                                                                       textColorClass = "text-warning fw-bold"; 
+                                                                       blockClass = "bg-warning text-dark fw-bold"; 
                                                                        timeText = "Bugün";
                                                                    } else {
-                                                                       textColorClass = "text-success"; 
+                                                                       blockClass = "bg-success text-white"; 
                                                                        timeText = $"{kalanGun}g Kaldı";
                                                                    }
 
                                                                    string stringAciklama = string.IsNullOrWhiteSpace(o.Aciklama) ? o.MasrafKalemi : o.Aciklama;
                                                                    stringAciklama = stringAciklama.Replace("[Tekrarlayan]", "").Replace("[tekrarlayan]", "").Trim();
 
-                                                                   <div class="mb-1 py-0 border-bottom border-light" style="line-height: 1.1; font-size: 0.65rem;">
-                                                                       <div class="text-truncate @textColorClass" style="max-width: 100%;" title="@stringAciklama">@stringAciklama</div>
-                                                                       <div class="d-flex justify-content-between @textColorClass">
-                                                                           <span>@o.Miktar.ToString("N0") TL</span>
+                                                                   <div class="mb-1 px-1 py-1 rounded border-bottom border-light @blockClass" style="line-height: 1.1; font-size: 0.65rem;">
+                                                                       <div class="text-truncate" style="max-width: 100%;" title="@stringAciklama">@stringAciklama</div>
+                                                                       <div class="d-flex justify-content-between">
+                                                                           <span class="fw-bold">@o.Miktar.ToString("N0") TL</span>
                                                                            <span style="font-size: 0.55rem; opacity: 0.9;">@timeText</span>
                                                                        </div>
                                                                    </div>
@@ -1034,15 +1034,15 @@
                                         string timeText2 = "";
                                         
                                         if (kGun2 < 0) { 
-                                            trColorClass = "text-danger"; 
+                                            trColorClass = "table-danger text-danger"; 
                                             timeText2 = $"{Math.Abs(kGun2)}g Gecikti";
                                         } 
                                         else if (kGun2 == 0) { 
-                                            trColorClass = "text-warning fw-bold"; 
+                                            trColorClass = "table-warning text-dark fw-bold"; 
                                             timeText2 = "Bugün";
                                         } 
                                         else { 
-                                            trColorClass = "text-success"; 
+                                            trColorClass = "table-success text-success"; 
                                             timeText2 = $"{kGun2}g Kaldı";
                                         }
 
@@ -1485,7 +1485,7 @@
                 var printWindow = window.open('', '_blank');
                 if (printWindow) {
                     printWindow.document.write('<html><head><title>Bütçe Raporu</title>');
-                    printWindow.document.write('<style>@page { size: A4 portrait; margin: 0.5cm; } body{font-family:Arial,sans-serif;margin:0;} table{width:100%;border-collapse:collapse;table-layout:fixed;} th,td{border:1px solid #000;padding:0 !important;overflow:hidden;} .page-break{page-break-before:always;} .print-calendar{height:100vh;max-height:100vh;overflow:hidden;page-break-inside:avoid;} .print-table{height:93%;} td{height:14vh; max-height:14vh;} .d-print-none{display:none !important;} .d-none.d-print-block{display:block !important;} .text-center{text-align:center;} .text-end{text-align:right;} .text-danger{color:#dc3545 !important;} .text-warning{color:#d39e00 !important;} .text-success{color:#198754 !important;} .text-dark{color:#212529 !important;} .text-white{color:#fff !important;} .bg-light{background-color:#f8f9fa !important;} .border-bottom{border-bottom:1px dashed #eee !important;} .border-light{border-color:#f8f9fa !important;} .text-muted{color:#6c757d !important;} .mb-4{margin-bottom:1.5rem;} .mb-1{margin-bottom:0.25rem;} .p-0{padding:0 !important;} .px-1{padding-left:0.25rem !important; padding-right:0.25rem !important;} .py-0{padding-top:0 !important; padding-bottom:0 !important;} .fw-bold{font-weight:bold;} small{font-size:0.75rem;} h4{margin-bottom:5px;} .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; } .d-flex { display: flex; } .justify-content-between { justify-content: space-between; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>');
+                    printWindow.document.write('<style>@page { size: A4 portrait; margin: 0.5cm; } body{font-family:Arial,sans-serif;margin:0;} table{width:100%;border-collapse:collapse;table-layout:fixed;} th,td{border:1px solid #000;padding:0 !important;overflow:hidden;} .page-break{page-break-before:always;} .print-calendar{height:100vh;max-height:100vh;overflow:hidden;page-break-inside:avoid;} .print-table{height:93%;} td{height:14vh; max-height:14vh;} .d-print-none{display:none !important;} .d-none.d-print-block{display:block !important;} .text-center{text-align:center;} .text-end{text-align:right;} .text-danger{color:#dc3545 !important;} .text-warning{color:#d39e00 !important;} .text-success{color:#198754 !important;} .text-dark{color:#212529 !important;} .text-white{color:#fff !important;} .bg-danger{background-color:#dc3545 !important;color:#fff !important;} .bg-warning{background-color:#ffc107 !important;color:#000 !important;} .bg-success{background-color:#198754 !important;color:#fff !important;} .table-danger td{background-color:#f8d7da !important;color:#842029 !important;} .table-warning td{background-color:#fff3cd !important;color:#664d03 !important;} .table-success td{background-color:#d1e7dd !important;color:#0f5132 !important;} .bg-light{background-color:#f8f9fa !important;} .border-bottom{border-bottom:1px dashed #eee !important;} .border-light{border-color:#f8f9fa !important;} .text-muted{color:#6c757d !important;} .mb-4{margin-bottom:1.5rem;} .mb-1{margin-bottom:0.25rem;} .p-0{padding:0 !important;} .p-1{padding:0.25rem !important;} .px-1{padding-left:0.25rem !important; padding-right:0.25rem !important;} .py-0{padding-top:0 !important; padding-bottom:0 !important;} .py-1{padding-top:0.25rem !important; padding-bottom:0.25rem !important;} .rounded{border-radius:0.25rem !important;} .fw-bold{font-weight:bold;} small{font-size:0.75rem;} h4{margin-bottom:5px;} .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; } .d-flex { display: flex; } .justify-content-between { justify-content: space-between; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>');
                     printWindow.document.write('</head><body>');
                     printWindow.document.write(printElement.innerHTML);
                     printWindow.document.write('</body></html>');
