@@ -1016,7 +1016,7 @@
                                         string timeText2 = "";
                                         
                                         if (kGun2 < 0) { 
-                                            trColorClass = "text-danger fw-bold"; 
+                                            trColorClass = "text-danger"; 
                                             timeText2 = $"{Math.Abs(kGun2)}g Gecikti";
                                         } 
                                         else if (kGun2 == 0) { 
@@ -1024,22 +1024,22 @@
                                             timeText2 = "Bugün";
                                         } 
                                         else { 
-                                            trColorClass = "text-success fw-bold"; 
+                                            trColorClass = "text-success"; 
                                             timeText2 = $"{kGun2}g Kaldı";
                                         }
 
-                                        <tr>
+                                        <tr class="@trColorClass">
                                             <td>
                                                 @odeme.OdemeTarihi.ToString("dd.MM.yyyy")
                                                 <br />
-                                                <small class="@trColorClass">@timeText2</small>
+                                                <small class="fw-bold">@timeText2</small>
                                             </td>
                                             <td><strong>@odeme.MasrafKalemi</strong></td>
                                             <td>@(odeme.Aciklama?.Replace("[Tekrarlayan]", "")?.Replace("[tekrarlayan]", "")?.Trim())</td>
                                             <td class="text-center">
                                                 @if (odeme.TaksitliMi)
                                                 {
-                                                    <span>@odeme.KacinciTaksit/@odeme.ToplamTaksitSayisi</span>
+                                                    <span class="badge bg-info">@odeme.KacinciTaksit/@odeme.ToplamTaksitSayisi</span>
                                                 }
                                                 else
                                                 {
