@@ -22,7 +22,7 @@
             <button class="btn btn-outline-info" @onclick="SablonIndir" title="Excel Sablon Indir">
                 <i class="bi bi-download"></i>
             </button>
-            <button class="btn btn-outline-success" @onclick="ExcelImportAc" title="Excel Yukle">
+            <button class="btn btn-outline-success" @onclick="ExcelImportAc" title="Fatura Yükle (Excel/XML)">
                 <i class="bi bi-upload"></i>
             </button>
             <button class="btn btn-success" @onclick="ExcelExport" disabled="@(!filtreliFaturalar.Any())" title="Excel Indir">
@@ -416,29 +416,47 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel me-2"></i>Excel'den Fatura Yukle</h5>
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2"></i>Fatura Yükle</h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info py-2">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Sablon dosyasini indirip doldurduktan sonra yukleyin.
-                    </div>
-                    
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label">Aktarým Tipi *</label>
+                            <select class="form-select mb-2" @bind="importTipi">
+                                <option value="excel">Excel'den Yükle</option>
+                                <option value="xml">XML (UBL) Yükle</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">E-Fatura Tipi *</label>
                             <select class="form-select" @bind="importEFaturaTipi">
                                 <option value="1">E-Fatura</option>
                                 <option value="2">E-Arsiv Fatura</option>
                             </select>
-                            <small class="text-muted">Tum aktarilan faturalara uygulanacak</small>
+                            <small class="text-muted">Tüm aktarilan faturalara uygulanacak</small>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Excel Dosyasi *</label>
-                            <InputFile class="form-control" OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+                        <div class="col-md-4">
+                            <label class="form-label">Dosya Seç *</label>
+                            @if (importTipi == "excel")
+                            {
+                                <InputFile class="form-control" OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+                            }
+                            else
+                            {
+                                <InputFile class="form-control" OnChange="XmlDosyalariSecildi" accept=".xml" multiple />
+                                <small class="text-muted">Birden fazla XML dosyasý seçebilirsiniz.</small>
+                            }
                         </div>
                     </div>
+                    
+                    @if(importTipi == "excel")
+                    {
+                        <div class="alert alert-info py-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Þablon dosyasýný indirip doldurduktan sonra yükleyin.
+                        </div>
+                    }
                     
                     @if (importResult != null)
                     {
@@ -508,16 +526,18 @@
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-info" @onclick="SablonIndir">
-                        <i class="bi bi-download me-1"></i>Sablon Indir
-                    </button>
+                    @if(importTipi == "excel") {
+                        <button type="button" class="btn btn-outline-info" @onclick="SablonIndir">
+                            <i class="bi bi-download me-1"></i>Sablon Indir
+                        </button>
+                    }
                     <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
-                    <button type="button" class="btn btn-primary" @onclick="ImportYap" disabled="@(importFile == null || isImporting)">
+                    <button type="button" class="btn btn-primary" @onclick="ImportYap" disabled="@(isImporting)">
                         @if (isImporting)
                         {
                             <span class="spinner-border spinner-border-sm me-1"></span>
                         }
-                        Yukle
+                        Yükle
                     </button>
                 </div>
             </div>
@@ -802,7 +822,9 @@
     private bool cariKartYukleniyor = false;
 
     // Import
+    private string importTipi = "excel";
     private IBrowserFile? importFile;
+    private IReadOnlyList<IBrowserFile>? importXmlFiles;
     private EFaturaImportResult? importResult;
     private bool isImporting = false;
     private int importEFaturaTipi = 1; // Default to E-Fatura (1)
@@ -1022,6 +1044,7 @@
     private void ExcelImportAc()
     {
         importFile = null;
+        importXmlFiles = null;
         importResult = null;
         showImportModal = true;
     }
@@ -1046,9 +1069,16 @@
         importResult = null;
     }
 
+    private void XmlDosyalariSecildi(InputFileChangeEventArgs e)
+    {
+        importXmlFiles = e.GetMultipleFiles(500); // En fazla 500 dosya ayni anda
+        importResult = null;
+    }
+
     private async Task ImportYap()
     {
-        if (importFile == null) return;
+        if (importTipi == "excel" && importFile == null) return;
+        if (importTipi == "xml" && (importXmlFiles == null || !importXmlFiles.Any())) return;
 
         isImporting = true;
         importResult = null;
@@ -1056,21 +1086,34 @@
 
         try
         {
-            using var stream = new MemoryStream();
-            await importFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
-            var fileContent = stream.ToArray();
-
-            // Secili firmaya ve E-Fatura tipine gore import
             var firmaId = filtreFirmaId > 0 ? filtreFirmaId : (int?)null;
             var eFaturaTip = (EFaturaTipi)importEFaturaTipi;
-            importResult = await FaturaService.ImportFromExcelAsync(fileContent, FaturaYonu.Gelen, firmaId, eFaturaTip);
 
-            if (importResult.Success)
+            if (importTipi == "excel")
+            {
+                using var stream = new MemoryStream();
+                await importFile!.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
+                var fileContent = stream.ToArray();
+                importResult = await FaturaService.ImportFromExcelAsync(fileContent, FaturaYonu.Gelen, firmaId, eFaturaTip);
+            }
+            else if(importTipi == "xml")
+            {
+                var xmlContents = new List<CRMFiloServis.Web.Services.XmlFileContent>();
+                foreach (var f in importXmlFiles!)
+                {
+                    using var ms = new MemoryStream();
+                    await f.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(ms); // 5mb max per file
+                    xmlContents.Add(new CRMFiloServis.Web.Services.XmlFileContent { FileName = f.Name, Content = ms.ToArray() });
+                }
+                importResult = await FaturaService.ImportFromXmlAsync(xmlContents, FaturaYonu.Gelen, firmaId, eFaturaTip);
+            }
+
+            if (importResult != null && importResult.Success)
             {
                 ToastService.ShowSuccess($"{importResult.ImportedCount} fatura aktarildi.");
                 await YenileAsync();
             }
-            else if (importResult.ImportedCount == 0 && importResult.SkippedCount > 0)
+            else if (importResult != null && importResult.ImportedCount == 0 && importResult.SkippedCount > 0)
             {
                 ToastService.ShowWarning($"{importResult.SkippedCount} fatura zaten mevcut.");
             }
@@ -1349,5 +1392,11 @@
         public string? Aciklama { get; set; }
         public decimal Borc { get; set; }
         public decimal Alacak { get; set; }
+    }
+
+    private class XmlFileContent
+    {
+        public string FileName { get; set; } = "";
+        public byte[] Content { get; set; } = Array.Empty<byte>();
     }
 }

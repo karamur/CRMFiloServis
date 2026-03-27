@@ -572,27 +572,48 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel me-2"></i>Excel'den Fatura Yukle</h5>
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2"></i>Fatura Yükle</h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info py-2">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Sablon dosyasini indirip doldurduktan sonra yukleyin.
-                    </div>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label">Aktarým Tipi *</label>
+                            <select class="form-select mb-2" @bind="importTipi">
+                                <option value="excel">Excel'den Yükle</option>
+                                <option value="xml">XML (UBL) Yükle</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">E-Fatura Tipi *</label>
                             <select class="form-select" @bind="importEFaturaTipi">
                                 <option value="1">E-Fatura</option>
                                 <option value="2">E-Arsiv Fatura</option>
                             </select>
+                            <small class="text-muted">Tüm aktarilan faturalara uygulanacak</small>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Excel Dosyasi *</label>
-                            <InputFile class="form-control" OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+                        <div class="col-md-4">
+                            <label class="form-label">Dosya Seç *</label>
+                            @if (importTipi == "excel")
+                            {
+                                <InputFile class="form-control" OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+                            }
+                            else
+                            {
+                                <InputFile class="form-control" OnChange="XmlDosyalariSecildi" accept=".xml" multiple />
+                                <small class="text-muted">Birden fazla XML dosyasý seçebilirsiniz.</small>
+                            }
                         </div>
                     </div>
+                    
+                    @if(importTipi == "excel")
+                    {
+                        <div class="alert alert-info py-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Þablon dosyasýný indirip doldurduktan sonra yükleyin.
+                        </div>
+                    }
+                    
                     @if (importResult != null)
                     {
                         <div class="row g-2 mb-3">
@@ -615,14 +636,52 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Hatalar Listesi -->
+                        @if (importResult.Errors.Any())
+                        {
+                            <div class="card">
+                                <div class="card-header bg-danger text-white py-2">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    Kaydedilemeyenler (@importResult.Errors.Count)
+                                </div>
+                                <div class="card-body p-0" style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-sm table-striped mb-0">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th width="80">Kayýt</th>
+                                                <th>Hata Detayý</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var err in importResult.Errors)
+                                            {
+                                                <tr>
+                                                    @{ 
+                                                        var parts = err.Split(':', 2);
+                                                        var satir = parts.Length > 0 ? parts[0].Trim() : "";
+                                                        var mesaj = parts.Length > 1 ? parts[1].Trim() : err;
+                                                    }
+                                                    <td><span class="badge bg-secondary">@satir</span></td>
+                                                    <td><small class="text-danger">@mesaj</small></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
                     }
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-info" @onclick="SablonIndir">
-                        <i class="bi bi-download me-1"></i>Sablon Indir
-                    </button>
+                    @if(importTipi == "excel") 
+                    {
+                        <button type="button" class="btn btn-outline-info" @onclick="SablonIndir">
+                            <i class="bi bi-download me-1"></i>Sablon Indir
+                        </button>
+                    }
                     <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
-                    <button type="button" class="btn btn-primary" @onclick="ImportYap" disabled="@(importFile == null || isImporting)">
+                    <button type="button" class="btn btn-primary" @onclick="ImportYap" disabled="@(isImporting)">
                         @if (isImporting)
                         {
                             <span class="spinner-border spinner-border-sm me-1"></span>
@@ -882,10 +941,12 @@
     private bool cariKartYukleniyor = false;
 
     // Import
+    private string importTipi = "excel";
     private IBrowserFile? importFile;
+    private IReadOnlyList<IBrowserFile>? importXmlFiles;
     private EFaturaImportResult? importResult;
     private bool isImporting = false;
-    private int importEFaturaTipi = 1;
+    private int importEFaturaTipi = 1; // Default to E-Fatura (1)
 
     protected override async Task OnInitializedAsync()
     {
@@ -1255,6 +1316,7 @@
     private void ExcelImportAc()
     {
         importFile = null;
+        importXmlFiles = null;
         importResult = null;
         showImportModal = true;
     }
@@ -1265,9 +1327,16 @@
         importResult = null;
     }
 
+    private void XmlDosyalariSecildi(InputFileChangeEventArgs e)
+    {
+        importXmlFiles = e.GetMultipleFiles(500); // multiple support limit
+        importResult = null;
+    }
+
     private async Task ImportYap()
     {
-        if (importFile == null) return;
+        if (importTipi == "excel" && importFile == null) return;
+        if (importTipi == "xml" && (importXmlFiles == null || !importXmlFiles.Any())) return;
 
         isImporting = true;
         importResult = null;
@@ -1275,18 +1344,36 @@
 
         try
         {
-            using var stream = new MemoryStream();
-            await importFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
-            var fileContent = stream.ToArray();
-
             var firmaId = filtreFirmaId > 0 ? filtreFirmaId : (int?)null;
             var eFaturaTip = (EFaturaTipi)importEFaturaTipi;
-            importResult = await FaturaService.ImportFromExcelAsync(fileContent, FaturaYonu.Giden, firmaId, eFaturaTip);
 
-            if (importResult.Success)
+            if (importTipi == "excel")
             {
-                ToastService.ShowSuccess($"{importResult.ImportedCount} fatura aktarildi.");
+                using var stream = new MemoryStream();
+                await importFile!.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
+                var fileContent = stream.ToArray();
+                importResult = await FaturaService.ImportFromExcelAsync(fileContent, FaturaYonu.Giden, firmaId, eFaturaTip);
+            }
+            else if(importTipi == "xml")
+            {
+                var xmlContents = new List<CRMFiloServis.Web.Services.XmlFileContent>();
+                foreach (var f in importXmlFiles!)
+                {
+                    using var ms = new MemoryStream();
+                    await f.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(ms); // 5mb max
+                    xmlContents.Add(new CRMFiloServis.Web.Services.XmlFileContent { FileName = f.Name, Content = ms.ToArray() });
+                }
+                importResult = await FaturaService.ImportFromXmlAsync(xmlContents, FaturaYonu.Giden, firmaId, eFaturaTip);
+            }
+
+            if (importResult != null && importResult.Success)
+            {
+                ToastService.ShowSuccess($"{importResult.ImportedCount} fatura aktarýldý.");
                 await YenileAsync();
+            }
+            else if (importResult != null && importResult.ImportedCount == 0 && importResult.SkippedCount > 0)
+            {
+                ToastService.ShowWarning($"{importResult.SkippedCount} fatura zaten mevcut.");
             }
         }
         catch (Exception ex)
@@ -1531,7 +1618,6 @@
             var w = window.open('', '_blank', 'width=900,height=700');
             w.document.write(`{yazdirIcerik.Replace("`", "\\`")}`);
             w.document.close();
-            w.focus();
             setTimeout(function(){{w.print();}},300);
         ";
         await JS.InvokeVoidAsync("eval", jsCode);

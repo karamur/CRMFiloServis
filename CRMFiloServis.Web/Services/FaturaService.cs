@@ -587,6 +587,217 @@ public class FaturaService : IFaturaService
         return result;
     }
 
+    public async Task<EFaturaImportResult> ImportFromXmlAsync(List<XmlFileContent> xmlFiles, FaturaYonu yon, int? firmaId = null, EFaturaTipi? eFaturaTipi = null)
+    {
+        var result = new EFaturaImportResult();
+        var defaultEFaturaTipi = eFaturaTipi ?? EFaturaTipi.EFatura;
+        
+        var maxCariNum = await _context.Cariler
+            .IgnoreQueryFilters()
+            .Where(c => c.CariKodu.StartsWith("C") && c.CariKodu.Length == 6)
+            .Select(c => c.CariKodu.Substring(1))
+            .ToListAsync();
+            
+        int nextCariNum = 1;
+        if (maxCariNum.Any())
+        {
+            var maxNum = maxCariNum
+                .Where(s => int.TryParse(s, out _))
+                .Select(s => int.Parse(s))
+                .DefaultIfEmpty(0)
+                .Max();
+            nextCariNum = maxNum + 1;
+        }
+
+        var importCarileri = new Dictionary<string, Cari>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in xmlFiles)
+        {
+            try
+            {
+                using var ms = new MemoryStream(file.Content);
+                var xdoc = System.Xml.Linq.XDocument.Load(ms);
+                
+                // Helper to find elemens safely ignoring namespaces
+                string GetValue(System.Xml.Linq.XElement? parent, string localName) => 
+                    parent?.Descendants().FirstOrDefault(x => x.Name.LocalName == localName)?.Value ?? string.Empty;
+
+                var invoice = xdoc.Descendants().FirstOrDefault(x => x.Name.LocalName == "Invoice");
+                if (invoice == null)
+                {
+                    result.Errors.Add($"{file.FileName}: Geçerli bir UBL Fatura formatý deðil.");
+                    result.ErrorCount++;
+                    continue;
+                }
+
+                var faturaNo = GetValue(invoice, "ID");
+                var issueDateStr = GetValue(invoice, "IssueDate");
+                
+                if (string.IsNullOrWhiteSpace(faturaNo))
+                {
+                    result.Errors.Add($"{file.FileName}: Fatura No (ID) bulunamadý.");
+                    result.ErrorCount++;
+                    continue;
+                }
+
+                // ETTN
+                var ettn = GetValue(invoice, "UUID");
+                
+                // Profil ID eArsiv / eFatura tip tespiti
+                var profileId = GetValue(invoice, "ProfileID");
+                var fatTip = defaultEFaturaTipi;
+                if (!string.IsNullOrEmpty(profileId) && profileId.ToUpper().Contains("EARSIV"))
+                    fatTip = EFaturaTipi.EArsiv;
+                
+                // Already exists?
+                var existingFatura = await _context.Faturalar
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(f => f.FaturaNo == faturaNo && f.FaturaYonu == yon);
+                    
+                if (existingFatura != null)
+                {
+                    result.Errors.Add($"{file.FileName}: {faturaNo} no'lu fatura sistemde zaten var.");
+                    result.SkippedCount++;
+                    continue;
+                }
+
+                if (!DateTime.TryParse(issueDateStr, out var faturaTarihi))
+                {
+                    faturaTarihi = DateTime.Today;
+                }
+
+                // Cari bilgileri (Gönderen veya Alan - Yönümüze göre deðiþir)
+                string cariUnvan = "";
+                string cariVkn = "";
+                
+                System.Xml.Linq.XElement? supplierNode = invoice.Descendants().FirstOrDefault(x => x.Name.LocalName == "AccountingSupplierParty");
+                System.Xml.Linq.XElement? customerNode = invoice.Descendants().FirstOrDefault(x => x.Name.LocalName == "AccountingCustomerParty");
+                
+                var targetNode = yon == FaturaYonu.Giden ? customerNode : supplierNode;
+                var partyNode = targetNode?.Descendants().FirstOrDefault(x => x.Name.LocalName == "Party");
+
+                if (partyNode != null)
+                {
+                    cariUnvan = GetValue(partyNode, "Name");
+                    cariVkn = GetValue(partyNode, "CompanyID"); // VKN/TCKN is under PartyTaxScheme > CompanyID or Person ID
+                    
+                    if (string.IsNullOrWhiteSpace(cariVkn))
+                    {
+                         var initNode = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "Person");
+                         // Eðer Name yoksa Person altýndaki FirstName FamilyName e bak
+                         if(string.IsNullOrWhiteSpace(cariUnvan) && initNode != null){
+                             var fn = GetValue(initNode, "FirstName");
+                             var ln = GetValue(initNode, "FamilyName");
+                             cariUnvan = $"{fn} {ln}".Trim();
+                         }
+                    }
+                }
+                
+                // Find or create Cari
+                Cari? cari = null;
+                var cariKey = !string.IsNullOrEmpty(cariVkn) ? cariVkn : cariUnvan;
+                
+                if (!string.IsNullOrEmpty(cariKey))
+                {
+                    if (importCarileri.TryGetValue(cariKey, out var existingCari))
+                    {
+                        cari = existingCari;
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(cariVkn))
+                        {
+                            cari = await _context.Cariler.FirstOrDefaultAsync(c => c.VergiNo == cariVkn);
+                        }
+                        
+                        if (cari == null && !string.IsNullOrEmpty(cariUnvan))
+                        {
+                            cari = await _context.Cariler.FirstOrDefaultAsync(c => c.Unvan.ToLower() == cariUnvan.ToLower());
+                        }
+
+                        if (cari == null)
+                        {
+                            var uniqueCode = $"C{nextCariNum:D5}";
+                            var codeExists = await _context.Cariler.IgnoreQueryFilters().AnyAsync(c => c.CariKodu == uniqueCode);
+                            if (codeExists) uniqueCode = $"C{DateTime.Now:HHmmssfff}";
+
+                            cari = new Cari
+                            {
+                                CariKodu = uniqueCode,
+                                Unvan = string.IsNullOrWhiteSpace(cariUnvan) ? "Bilinmeyen Cari" : cariUnvan,
+                                VergiNo = cariVkn ?? "",
+                                CariTipi = yon == FaturaYonu.Giden ? CariTipi.Musteri : CariTipi.Tedarikci,
+                                Aktif = true,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            
+                            _context.Cariler.Add(cari);
+                            await _context.SaveChangesAsync();
+                            
+                            importCarileri[cariKey] = cari;
+                            nextCariNum++;
+                        }
+                    }
+                }
+
+                if (cari == null)
+                {
+                    result.Errors.Add($"{file.FileName}: Cari bilgisi XML içinden çýkartýlamadý.");
+                    result.ErrorCount++;
+                    continue;
+                }
+
+                // Tutarlar
+                var legalMonetaryTotal = invoice.Descendants().FirstOrDefault(x => x.Name.LocalName == "LegalMonetaryTotal");
+                var dAraToplam = ParseDecimal(GetValue(legalMonetaryTotal, "TaxExclusiveAmount"));
+                var dGenelToplam = ParseDecimal(GetValue(legalMonetaryTotal, "PayableAmount"));
+                if (dGenelToplam == 0) dGenelToplam = ParseDecimal(GetValue(legalMonetaryTotal, "TaxInclusiveAmount"));
+                var dKdvTutar = dGenelToplam - dAraToplam;
+
+                var fatura = new Fatura
+                {
+                    FaturaNo = faturaNo,
+                    FaturaTarihi = faturaTarihi,
+                    CariId = cari.Id,
+                    FirmaId = firmaId,
+                    FaturaYonu = yon,
+                    FaturaTipi = yon == FaturaYonu.Giden ? FaturaTipi.SatisFaturasi : FaturaTipi.AlisFaturasi,
+                    EFaturaTipi = fatTip,
+                    EttnNo = ettn,
+                    AraToplam = dAraToplam > 0 ? dAraToplam : dGenelToplam,
+                    IskontoTutar = 0, // Kompleks UBL XML iskontosu þimdilik 0
+                    KdvTutar = dKdvTutar,
+                    GenelToplam = dGenelToplam,
+                    Durum = FaturaDurum.Beklemede,
+                    ImportKaynak = "XML",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Faturalar.Add(fatura);
+                await _context.SaveChangesAsync();
+                
+                result.ImportedItems.Add(fatura);
+                result.ImportedCount++;
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add($"{file.FileName} parse hatasý: {ex.InnerException?.Message ?? ex.Message}");
+                result.ErrorCount++;
+                
+                foreach (var entry in _context.ChangeTracker.Entries().ToList())
+                {
+                    if (entry.State == EntityState.Added)
+                    {
+                        entry.State = EntityState.Detached;
+                    }
+                }
+            }
+        }
+        
+        result.Success = result.ImportedCount > 0;
+        return result;
+    }
+
     private static decimal ParseDecimal(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return 0;

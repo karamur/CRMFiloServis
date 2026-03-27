@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+﻿using CRMFiloServis.Shared.Entities;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -24,6 +24,7 @@ public interface IFaturaService
     Task<List<Fatura>> GetByYonAndDateRangeAsync(FaturaYonu yon, DateTime? baslangic, DateTime? bitis, int? firmaId = null);
     Task<List<Fatura>> GetByEFaturaTipiAsync(EFaturaTipi tip);
     Task<EFaturaImportResult> ImportFromExcelAsync(byte[] fileContent, FaturaYonu yon, int? firmaId = null, EFaturaTipi? eFaturaTipi = null);
+    Task<EFaturaImportResult> ImportFromXmlAsync(List<XmlFileContent> xmlFiles, FaturaYonu yon, int? firmaId = null, EFaturaTipi? eFaturaTipi = null);
     
     // Excel Sablon ve Export - Yeni format (ornek dosya ile uyumlu)
     Task<byte[]> GetExcelSablonAsync(FaturaYonu yon);
@@ -50,4 +51,10 @@ public class EFaturaImportResult
     public int ErrorCount { get; set; }
     public List<string> Errors { get; set; } = new();
     public List<Fatura> ImportedItems { get; set; } = new();
+}
+
+public class XmlFileContent
+{
+    public string FileName { get; set; } = string.Empty;
+    public byte[] Content { get; set; } = Array.Empty<byte>();
 }
