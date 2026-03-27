@@ -1,4 +1,4 @@
-@page "/araclar/yeni"
+ï»¿@page "/araclar/yeni"
 @page "/araclar/{Id:int}"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
@@ -8,11 +8,11 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEdit ? "Araç Düzenle" : "Yeni Araç")</PageTitle>
+<PageTitle>@(IsEdit ? "AraÃ§ DÃ¼zenle" : "Yeni AraÃ§")</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-truck me-2"></i>@(IsEdit ? "Araç Düzenle" : "Yeni Araç")</h3>
+        <h3><i class="bi bi-truck me-2"></i>@(IsEdit ? "AraÃ§ DÃ¼zenle" : "Yeni AraÃ§")</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -29,7 +29,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Þase No * <small class="text-muted">(Tekil)</small></label>
+                            <label class="form-label">Åžase No * <small class="text-muted">(Tekil)</small></label>
                             <InputText @bind-Value="arac.SaseNo" class="form-control" style="text-transform: uppercase;" disabled="@IsEdit" />
                             <ValidationMessage For="@(() => arac.SaseNo)" />
                         </div>
@@ -41,14 +41,14 @@
                             @if (IsEdit)
                             {
                                 <small class="text-info">
-                                    <i class="bi bi-info-circle"></i> Plaka deðiþikliði için "Plaka Geçmiþi" sekmesini kullanýn
+                                    <i class="bi bi-info-circle"></i> Plaka deÄŸiÅŸikliÄŸi iÃ§in "Plaka GeÃ§miÅŸi" sekmesini kullanÄ±n
                                 </small>
                             }
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Araç Tipi *</label>
+                            <label class="form-label">AraÃ§ Tipi *</label>
                             <InputSelect @bind-Value="arac.AracTipi" class="form-select">
                                 @foreach (AracTipi tip in Enum.GetValues(typeof(AracTipi)))
                                 {
@@ -74,13 +74,13 @@
                     </div>
                     <div class="col-md-2">
                         <div class="mb-3">
-                            <label class="form-label">Model Yýlý</label>
+                            <label class="form-label">Model YÄ±lÄ±</label>
                             <InputNumber @bind-Value="arac.ModelYili" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-2">
                         <div class="mb-3">
-                            <label class="form-label">Koltuk Sayýsý</label>
+                            <label class="form-label">Koltuk SayÄ±sÄ±</label>
                             <InputNumber @bind-Value="arac.KoltukSayisi" class="form-control" />
                         </div>
                     </div>
@@ -120,9 +120,9 @@
                     {
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label">Araç Sahibi (Kiralayan) *</label>
+                                <label class="form-label">AraÃ§ Sahibi (Kiralayan) *</label>
                                 <InputSelect @bind-Value="arac.KiralikCariId" class="form-select">
-                                    <option value="">-- Seçiniz --</option>
+                                    <option value="">-- SeÃ§iniz --</option>
                                     @foreach (var cari in tedarikciCariler)
                                     {
                                         <option value="@cari.Id">@cari.Unvan</option>
@@ -134,7 +134,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Kira Hesaplama Tipi</label>
                                 <InputSelect @bind-Value="arac.KiraHesaplamaTipi" class="form-select">
-                                    <option value="">-- Seçiniz --</option>
+                                    <option value="">-- SeÃ§iniz --</option>
                                     @foreach (KiraHesaplamaTipi tip in Enum.GetValues(typeof(KiraHesaplamaTipi)))
                                     {
                                         <option value="@tip">@GetKiraHesaplamaText(tip)</option>
@@ -150,19 +150,19 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label">Günlük Kira Bedeli (?)</label>
+                                <label class="form-label">GÃ¼nlÃ¼k Kira Bedeli (?)</label>
                                 <InputNumber @bind-Value="arac.GunlukKiraBedeli" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label">Aylýk Kira Bedeli (?)</label>
+                                <label class="form-label">AylÄ±k Kira Bedeli (?)</label>
                                 <InputNumber @bind-Value="arac.AylikKiraBedeli" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label">Sefer Baþýna Kira Bedeli (?)</label>
+                                <label class="form-label">Sefer BaÅŸÄ±na Kira Bedeli (?)</label>
                                 <InputNumber @bind-Value="arac.SeferBasinaKiraBedeli" class="form-control" />
                             </div>
                         </div>
@@ -187,7 +187,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Komisyoncu *</label>
                                 <InputSelect @bind-Value="arac.KomisyoncuCariId" class="form-select">
-                                    <option value="">-- Seçiniz --</option>
+                                    <option value="">-- SeÃ§iniz --</option>
                                     @foreach (var cari in tedarikciCariler)
                                     {
                                         <option value="@cari.Id">@cari.Unvan</option>
@@ -199,7 +199,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Komisyon Hesaplama Tipi</label>
                                 <InputSelect @bind-Value="arac.KomisyonHesaplamaTipi" class="form-select">
-                                    <option value="">-- Seçiniz --</option>
+                                    <option value="">-- SeÃ§iniz --</option>
                                     @foreach (KomisyonHesaplamaTipi tip in Enum.GetValues(typeof(KomisyonHesaplamaTipi)))
                                     {
                                         <option value="@tip">@GetKomisyonHesaplamaText(tip)</option>
@@ -215,13 +215,13 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label">Komisyon Oraný (%)</label>
+                                <label class="form-label">Komisyon OranÄ± (%)</label>
                                 <InputNumber @bind-Value="arac.KomisyonOrani" class="form-control" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label">Sabit Komisyon Tutarý (?)</label>
+                                <label class="form-label">Sabit Komisyon TutarÄ± (?)</label>
                                 <InputNumber @bind-Value="arac.SabitKomisyonTutari" class="form-control" />
                             </div>
                         </div>
@@ -234,19 +234,19 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Trafik Sigortasý Bitiþ</label>
+                            <label class="form-label">Trafik SigortasÄ± BitiÅŸ</label>
                             <InputDate @bind-Value="arac.TrafikSigortaBitisTarihi" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Kasko Bitiþ</label>
+                            <label class="form-label">Kasko BitiÅŸ</label>
                             <InputDate @bind-Value="arac.KaskoBitisTarihi" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Muayene Bitiþ</label>
+                            <label class="form-label">Muayene BitiÅŸ</label>
                             <InputDate @bind-Value="arac.MuayeneBitisTarihi" class="form-control" />
                         </div>
                     </div>
@@ -259,7 +259,7 @@
                             <InputNumber @bind-Value="arac.KmDurumu" class="form-control" />
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <div class="mb-3 pt-4">
                             <div class="form-check">
                                 <InputCheckbox @bind-Value="arac.Aktif" class="form-check-input" id="aktif" />
@@ -267,6 +267,23 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-3">
+                        <div class="mb-3 pt-4">
+                            <div class="form-check">
+                                <InputCheckbox @bind-Value="arac.SatisaAcik" class="form-check-input" id="satisaAcik" />
+                                <label class="form-check-label text-danger fw-bold" for="satisaAcik">SatÄ±ÅŸa Aktar</label>
+                            </div>
+                        </div>
+                    </div>
+                    @if (arac.SatisaAcik)
+                    {
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">SatÄ±ÅŸ FiyatÄ±</label>
+                                <InputNumber @bind-Value="arac.SatisFiyati" class="form-control text-end text-danger fw-bold" />
+                            </div>
+                        </div>
+                    }
                 </div>
 
                 <div class="mb-3">
@@ -279,7 +296,7 @@
                         <i class="bi bi-check-lg me-1"></i>Kaydet
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Geri">
-                        <i class="bi bi-x-lg me-1"></i>Ýptal
+                        <i class="bi bi-x-lg me-1"></i>Ä°ptal
                     </button>
                 </div>
             </EditForm>
@@ -298,7 +315,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Tedarikçi carilerini yükle
+        // TedarikÃ§i carilerini yÃ¼kle
         tedarikciCariler = await CariService.GetByTipAsync(CariTipi.Tedarikci);
 
         if (IsEdit)
@@ -340,14 +357,14 @@
 
     private async Task Kaydet()
     {
-        // Þase no zorunlu
+        // Åžase no zorunlu
         if (string.IsNullOrWhiteSpace(arac.SaseNo))
         {
-            ToastService.ShowError("Þase numarasý zorunludur!");
+            ToastService.ShowError("Åžase numarasÄ± zorunludur!");
             return;
         }
         
-        // Yeni araç ekleme için plaka zorunlu
+        // Yeni araÃ§ ekleme iÃ§in plaka zorunlu
         if (!IsEdit && string.IsNullOrWhiteSpace(plaka))
         {
             ToastService.ShowError("Plaka zorunludur!");
@@ -358,7 +375,7 @@
         if (!string.IsNullOrWhiteSpace(plaka))
             plaka = plaka.ToUpper().Trim();
 
-        // Özmal araçlarda kira bilgilerini temizle
+        // Ã–zmal araÃ§larda kira bilgilerini temizle
         if (arac.SahiplikTipi == AracSahiplikTipi.Ozmal)
         {
             arac.KiralikCariId = null;
@@ -377,23 +394,38 @@
             arac.KomisyonHesaplamaTipi = null;
         }
 
+        // SatÄ±ÅŸa aktarÄ±lÄ±rsa aracÄ± pasif yap ve tarihini kaydet
+        if (arac.SatisaAcik)
+        {
+            arac.Aktif = false;
+            if (arac.SatisaAcilmaTarihi == null)
+            {
+                arac.SatisaAcilmaTarihi = DateTime.Now;
+            }
+        }
+        else
+        {
+            arac.SatisaAcilmaTarihi = null;
+            arac.SatisFiyati = null;
+        }
+
         try
         {
             if (IsEdit)
             {
                 await AracService.UpdateAsync(arac);
-                ToastService.ShowSuccess($"{arac.AktifPlaka ?? arac.SaseNo} baþarýyla güncellendi.");
+                ToastService.ShowSuccess($"{arac.AktifPlaka ?? arac.SaseNo} baÅŸarÄ±yla gÃ¼ncellendi.");
             }
             else
             {
                 await AracService.CreateAsync(arac, plaka!, PlakaIslemTipi.Alis);
-                ToastService.ShowSuccess($"{plaka} plakalý araç baþarýyla eklendi.");
+                ToastService.ShowSuccess($"{plaka} plakalÄ± araÃ§ baÅŸarÄ±yla eklendi.");
             }
             Navigation.NavigateTo("/araclar");
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Kayýt sýrasýnda hata oluþtu: {ex.Message}");
+            ToastService.ShowError($"KayÄ±t sÄ±rasÄ±nda hata oluÅŸtu: {ex.Message}");
         }
     }
 
@@ -404,9 +436,9 @@
 
     private string GetTipText(AracTipi tip) => tip switch
     {
-        AracTipi.Minibus => "Minibüs",
-        AracTipi.Midibus => "Midibüs",
-        AracTipi.Otobus => "Otobüs",
+        AracTipi.Minibus => "MinibÃ¼s",
+        AracTipi.Midibus => "MidibÃ¼s",
+        AracTipi.Otobus => "OtobÃ¼s",
         AracTipi.Otomobil => "Otomobil",
         AracTipi.Panelvan => "Panelvan",
         _ => tip.ToString()
@@ -414,22 +446,22 @@
 
     private string GetSahiplikText(AracSahiplikTipi tip) => tip switch
     {
-        AracSahiplikTipi.Ozmal => "Özmal",
-        AracSahiplikTipi.Kiralik => "Kiralýk",
+        AracSahiplikTipi.Ozmal => "Ã–zmal",
+        AracSahiplikTipi.Kiralik => "KiralÄ±k",
         _ => tip.ToString()
     };
 
     private string GetKiraHesaplamaText(KiraHesaplamaTipi tip) => tip switch
     {
-        KiraHesaplamaTipi.Gunluk => "Günlük",
-        KiraHesaplamaTipi.Aylik => "Aylýk",
-        KiraHesaplamaTipi.SeferBasina => "Sefer Baþýna",
+        KiraHesaplamaTipi.Gunluk => "GÃ¼nlÃ¼k",
+        KiraHesaplamaTipi.Aylik => "AylÄ±k",
+        KiraHesaplamaTipi.SeferBasina => "Sefer BaÅŸÄ±na",
         _ => tip.ToString()
     };
 
     private string GetKomisyonHesaplamaText(KomisyonHesaplamaTipi tip) => tip switch
     {
-        KomisyonHesaplamaTipi.YuzdeOrani => "Yüzde Oraný",
+        KomisyonHesaplamaTipi.YuzdeOrani => "YÃ¼zde OranÄ±",
         KomisyonHesaplamaTipi.SabitTutar => "Sabit Tutar",
         _ => tip.ToString()
     };
