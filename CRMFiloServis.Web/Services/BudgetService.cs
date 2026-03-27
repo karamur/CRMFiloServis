@@ -1036,4 +1036,124 @@ public class BudgetService : IBudgetService
     }
 
     #endregion
+
+    #region Kredi/Taksit Detay Metodlarý
+
+    public async Task<List<KrediOzet>> GetKrediOzetleriAsync(int? yil = null, int? firmaId = null)
+    {
+        var query = _context.BudgetOdemeler
+            .Where(o => o.TaksitliMi && o.TaksitGrupId.HasValue && !o.IsDeleted);
+
+        if (firmaId.HasValue)
+            query = query.Where(o => o.FirmaId == firmaId.Value);
+
+        var taksitliOdemeler = await query.ToListAsync();
+
+        var krediler = taksitliOdemeler
+            .GroupBy(o => o.TaksitGrupId!.Value)
+            .Select(g =>
+            {
+                var taksitler = g.OrderBy(t => t.KacinciTaksit).ToList();
+                var ilkTaksit = taksitler.First();
+                var sonTaksit = taksitler.Last();
+                var odenenTaksitler = taksitler.Where(t => t.Durum == OdemeDurum.Odendi).ToList();
+                var bekleyenTaksitler = taksitler.Where(t => t.Durum == OdemeDurum.Bekliyor).ToList();
+                var sonrakiTaksit = bekleyenTaksitler.OrderBy(t => t.OdemeTarihi).FirstOrDefault();
+
+                return new KrediOzet
+                {
+                    TaksitGrupId = g.Key,
+                    MasrafKalemi = ilkTaksit.MasrafKalemi,
+                    Aciklama = ilkTaksit.Aciklama,
+                    BaslangicTarihi = ilkTaksit.OdemeTarihi,
+                    BitisTarihi = sonTaksit.OdemeTarihi,
+                    ToplamTaksitSayisi = taksitler.Count,
+                    OdenenTaksitSayisi = odenenTaksitler.Count,
+                    KalanTaksitSayisi = bekleyenTaksitler.Count,
+                    TaksitTutari = taksitler.First().Miktar,
+                    ToplamTutar = taksitler.Sum(t => t.Miktar),
+                    OdenenTutar = odenenTaksitler.Sum(t => t.Miktar),
+                    KalanTutar = bekleyenTaksitler.Sum(t => t.Miktar),
+                    TamamlanmaYuzdesi = taksitler.Count > 0 
+                        ? Math.Round((decimal)odenenTaksitler.Count / taksitler.Count * 100, 1) 
+                        : 0,
+                    SonrakiTaksitTarihi = sonrakiTaksit?.OdemeTarihi
+                };
+            })
+            .ToList();
+
+        // Yýl filtresi
+        if (yil.HasValue && yil > 0)
+        {
+            krediler = krediler
+                .Where(k => k.BaslangicTarihi.Year <= yil && k.BitisTarihi.Year >= yil)
+                .ToList();
+        }
+
+        return krediler.OrderBy(k => k.MasrafKalemi).ToList();
+    }
+
+    public async Task<List<KrediTaksitDetay>> GetKrediTaksitDetaylariAsync(Guid taksitGrupId)
+    {
+        var taksitler = await _context.BudgetOdemeler
+            .Where(o => o.TaksitGrupId == taksitGrupId && !o.IsDeleted)
+            .OrderBy(o => o.KacinciTaksit)
+            .ToListAsync();
+
+        return taksitler.Select(t => new KrediTaksitDetay
+        {
+            MasrafKalemi = t.MasrafKalemi,
+            Aciklama = t.Aciklama,
+            KacinciTaksit = t.KacinciTaksit,
+            ToplamTaksitSayisi = t.ToplamTaksitSayisi,
+            Tutar = t.Miktar,
+            Durum = t.Durum,
+            OdemeTarihi = t.OdemeTarihi
+        }).ToList();
+    }
+
+    public async Task<BudgetOdeme?> GetTaksitOdemeAsync(Guid taksitGrupId, int taksitNo)
+    {
+        return await _context.BudgetOdemeler
+            .FirstOrDefaultAsync(o => o.TaksitGrupId == taksitGrupId && 
+                                      o.KacinciTaksit == taksitNo && 
+                                      !o.IsDeleted);
+    }
+
+    public async Task OdemeYapAsync(int odemeId, int bankaHesapId, DateTime odemeTarihi)
+    {
+        var odeme = await _context.BudgetOdemeler.FindAsync(odemeId);
+        if (odeme == null)
+            throw new Exception("Ödeme bulunamadý");
+
+        odeme.Durum = OdemeDurum.Odendi;
+        odeme.OdemeTarihi = DateTime.SpecifyKind(odemeTarihi, DateTimeKind.Utc);
+        odeme.UpdatedAt = DateTime.UtcNow;
+        
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task TaksitliOdemeOlusturAsync(object request)
+    {
+        // Request'i dynamic olarak iþle
+        var requestType = request.GetType();
+        var masrafKalemi = requestType.GetProperty("MasrafKalemi")?.GetValue(request)?.ToString() ?? "";
+        var aciklama = requestType.GetProperty("Aciklama")?.GetValue(request)?.ToString();
+        var baslangicTarihi = (DateTime)(requestType.GetProperty("BaslangicTarihi")?.GetValue(request) ?? DateTime.Today);
+        var taksitSayisi = (int)(requestType.GetProperty("TaksitSayisi")?.GetValue(request) ?? 1);
+        var toplamTutar = (decimal)(requestType.GetProperty("ToplamTutar")?.GetValue(request) ?? 0);
+
+        var taksitliRequest = new TaksitliOdemeRequest
+        {
+            MasrafKalemi = masrafKalemi,
+            Aciklama = aciklama,
+            BaslangicTarihi = baslangicTarihi,
+            TaksitSayisi = taksitSayisi,
+            ToplamTutar = toplamTutar
+        };
+
+        await CreateTaksitliOdemeAsync(taksitliRequest);
+    }
+
+    #endregion
 }

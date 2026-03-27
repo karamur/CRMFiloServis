@@ -44,7 +44,11 @@ public interface IBudgetService
     
     // Kredi/Taksit Raporlari
     Task<List<KrediOzet>> GetAktifKredilerAsync(int? firmaId = null);
+    Task<List<KrediOzet>> GetKrediOzetleriAsync(int? yil = null, int? firmaId = null);
+    Task<List<KrediTaksitDetay>> GetKrediTaksitDetaylariAsync(Guid taksitGrupId);
+    Task<BudgetOdeme?> GetTaksitOdemeAsync(Guid taksitGrupId, int taksitNo);
     Task<List<AylikKrediTaksitRapor>> GetAylikKrediTaksitRaporuAsync(int yil);
+    Task OdemeYapAsync(int odemeId, int bankaHesapId, DateTime odemeTarihi);
 
     // Tekrarlayan Odeme Islemleri
     Task<List<TekrarlayanOdeme>> GetTekrarlayanOdemelerAsync(int? firmaId = null);
