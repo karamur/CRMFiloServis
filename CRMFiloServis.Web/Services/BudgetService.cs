@@ -854,7 +854,7 @@ public class BudgetService : IBudgetService
     public async Task<List<TekrarlayanOdeme>> GetTekrarlayanOdemelerAsync(int? firmaId = null)
     {
         var query = _context.TekrarlayanOdemeler
-            .Where(t => !t.IsDeleted && t.Aktif)
+            .Where(t => !t.IsDeleted)
             .AsQueryable();
 
         if (firmaId.HasValue)
@@ -862,7 +862,8 @@ public class BudgetService : IBudgetService
 
         return await query
             .Include(t => t.Firma)
-            .OrderBy(t => t.OdemeGunu)
+            .OrderBy(t => t.Aktif ? 0 : 1) // Aktifler önce
+            .ThenBy(t => t.OdemeGunu)
             .ThenBy(t => t.OdemeAdi)
             .ToListAsync();
     }
