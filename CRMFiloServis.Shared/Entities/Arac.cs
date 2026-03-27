@@ -1,14 +1,14 @@
-namespace CRMFiloServis.Shared.Entities;
+ï»¿namespace CRMFiloServis.Shared.Entities;
 
 /// <summary>
-/// Araç bilgileri - Şase numarasına göre tekil
+/// AraÃ§ bilgileri - Åase numarasÄ±na gÃ¶re tekil
 /// </summary>
 public class Arac : BaseEntity
 {
-    // Şase numarası - Tekil (Unique)
+    // Åase numarasÄ± - Tekil (Unique)
     public string SaseNo { get; set; } = string.Empty;
     
-    // Aktif plaka - Otomatik hesaplanır
+    // Aktif plaka - Otomatik hesaplanÄ±r
     public string? AktifPlaka { get; set; }
     
     public string? Marka { get; set; }
@@ -20,8 +20,8 @@ public class Arac : BaseEntity
     public AracTipi AracTipi { get; set; }
     public AracSahiplikTipi SahiplikTipi { get; set; } = AracSahiplikTipi.Ozmal;
     
-    // Kiralık araç bilgileri
-    public int? KiralikCariId { get; set; } // Araç sahibi (kiralık ise)
+    // KiralÄ±k araÃ§ bilgileri
+    public int? KiralikCariId { get; set; } // AraÃ§ sahibi (kiralÄ±k ise)
     public decimal? GunlukKiraBedeli { get; set; }
     public decimal? AylikKiraBedeli { get; set; }
     public decimal? SeferBasinaKiraBedeli { get; set; }
@@ -30,8 +30,8 @@ public class Arac : BaseEntity
     // Komisyon bilgileri
     public bool KomisyonVar { get; set; } = false;
     public int? KomisyoncuCariId { get; set; } // Komisyoncu
-    public decimal? KomisyonOrani { get; set; } // Yüzde
-    public decimal? SabitKomisyonTutari { get; set; } // Sefer başına sabit tutar
+    public decimal? KomisyonOrani { get; set; } // YÃ¼zde
+    public decimal? SabitKomisyonTutari { get; set; } // Sefer baÅŸÄ±na sabit tutar
     public KomisyonHesaplamaTipi? KomisyonHesaplamaTipi { get; set; }
     
     // Belge tarihleri
@@ -42,7 +42,7 @@ public class Arac : BaseEntity
     public bool Aktif { get; set; } = true;
     public string? Notlar { get; set; }
     
-    // Satış durumu
+    // SatÄ±ÅŸ durumu
     public bool SatisaAcik { get; set; } = false;
     public decimal? SatisFiyati { get; set; }
     public DateTime? SatisaAcilmaTarihi { get; set; }
@@ -55,7 +55,7 @@ public class Arac : BaseEntity
     public virtual ICollection<AracMasraf> Masraflar { get; set; } = new List<AracMasraf>();
     public virtual ICollection<ServisCalisma> ServisCalismalari { get; set; } = new List<ServisCalisma>();
     
-    // Hesaplanan Özellik - Aktif plakayı döner (CikisTarihi null veya bugünden sonra)
+    // Hesaplanan Ã–zellik - Aktif plakayÄ± dÃ¶ner (CikisTarihi null veya bugÃ¼nden sonra)
     public AracPlaka? AktifPlakaKaydi => PlakaGecmisi?
         .Where(p => !p.IsDeleted && (p.CikisTarihi == null || p.CikisTarihi > DateTime.Today))
         .OrderByDescending(p => p.GirisTarihi)
@@ -63,7 +63,7 @@ public class Arac : BaseEntity
 }
 
 /// <summary>
-/// Araç plaka geçmişi - Her şase için birden fazla plaka olabilir
+/// AraÃ§ plaka geÃ§miÅŸi - Her ÅŸase iÃ§in birden fazla plaka olabilir
 /// </summary>
 public class AracPlaka : BaseEntity
 {
@@ -72,19 +72,19 @@ public class AracPlaka : BaseEntity
     
     public string Plaka { get; set; } = string.Empty;
     
-    // Plaka dönemi
+    // Plaka dÃ¶nemi
     public DateTime GirisTarihi { get; set; }
     public DateTime? CikisTarihi { get; set; }
     
-    // İşlem tipi
+    // Ä°ÅŸlem tipi
     public PlakaIslemTipi IslemTipi { get; set; }
     
     // Ek bilgiler
     public string? Aciklama { get; set; }
-    public decimal? IslemTutari { get; set; } // Alış/Satış fiyatı
+    public decimal? IslemTutari { get; set; } // AlÄ±ÅŸ/SatÄ±ÅŸ fiyatÄ±
     
-    // İlişkili kayıtlar
-    public int? CariId { get; set; } // Kimden alındı / Kime satıldı
+    // Ä°liÅŸkili kayÄ±tlar
+    public int? CariId { get; set; } // Kimden alÄ±ndÄ± / Kime satÄ±ldÄ±
     public virtual Cari? Cari { get; set; }
     
     // Aktif mi? (CikisTarihi null veya gelecek tarihli ise aktif)
@@ -93,13 +93,13 @@ public class AracPlaka : BaseEntity
 
 public enum PlakaIslemTipi
 {
-    Alis = 1,           // Araç alışı
-    Satis = 2,          // Araç satışı
-    PlakaDevir = 3,     // Plaka devri (aynı şase, farklı plaka)
-    Servis = 4,         // Servis girişi
+    Alis = 1,           // AraÃ§ alÄ±ÅŸÄ±
+    Satis = 2,          // AraÃ§ satÄ±ÅŸÄ±
+    PlakaDevir = 3,     // Plaka devri (aynÄ± ÅŸase, farklÄ± plaka)
+    Servis = 4,         // Servis giriÅŸi
     Kiralama = 5,       // Kiralamaya verildi
-    KiralamaBitis = 6,  // Kiralamadan döndü
-    TramerKaydi = 7,    // Tramer kaydı
+    KiralamaBitis = 6,  // Kiralamadan dÃ¶ndÃ¼
+    TramerKaydi = 7,    // Tramer kaydÄ±
     Diger = 99
 }
 
@@ -115,7 +115,9 @@ public enum AracTipi
 public enum AracSahiplikTipi
 {
     Ozmal = 1,
-    Kiralik = 2
+    Kiralik = 2,
+    Komisyon = 3,
+    Diger = 4
 }
 
 public enum KiraHesaplamaTipi
