@@ -14,6 +14,8 @@
 @inject NavigationManager Navigation
 @inject ILogger<Home> Logger
 @rendermode InteractiveServer
+@using CRMFiloServis.Web.Data
+@inject IServiceScopeFactory ScopeFactory
 
 <PageTitle>CRM Filo Servis - Ana Sayfa</PageTitle>
 
@@ -610,11 +612,12 @@ else
         }
     }
 
-    private async Task TryLoadDashboardSectionAsync(Func<Task> action, string sectionName)
+    private async Task TryLoadDashboardSectionAsync(Func<IServiceProvider, Task> action, string sectionName)
     {
         try
         {
-            await action();
+            using var scope = ScopeFactory.CreateScope();
+            await action(scope.ServiceProvider);
         }
         catch (Exception ex)
         {
@@ -655,36 +658,40 @@ else
 
             if (CanViewCariler)
             {
-                await TryLoadDashboardSectionAsync(async () =>
+                await TryLoadDashboardSectionAsync(async sp =>
                 {
-                    cariSayisi = await CariService.GetCountAsync();
+                    var cariService = sp.GetRequiredService<ICariService>();
+                    cariSayisi = await cariService.GetCountAsync();
                     await Task.Delay(10);
                 }, "Cari verileri");
             }
             
             if (CanViewAraclar)
             {
-                await TryLoadDashboardSectionAsync(async () =>
+                await TryLoadDashboardSectionAsync(async sp =>
                 {
-                    aracSayisi = await AracService.GetActiveCountAsync();
+                    var aracService = sp.GetRequiredService<IAracService>();
+                    aracSayisi = await aracService.GetActiveCountAsync();
                     await Task.Delay(10);
                 }, "Araç verileri");
             }
             
             if (CanViewSoforler)
             {
-                await TryLoadDashboardSectionAsync(async () =>
+                await TryLoadDashboardSectionAsync(async sp =>
                 {
-                    soforSayisi = await SoforService.GetActiveCountAsync();
+                    var soforService = sp.GetRequiredService<ISoforService>();
+                    soforSayisi = await soforService.GetActiveCountAsync();
                     await Task.Delay(10);
                 }, "Şoför verileri");
             }
             
             if (CanViewFaturalar)
             {
-                await TryLoadDashboardSectionAsync(async () =>
+                await TryLoadDashboardSectionAsync(async sp =>
                 {
-                    var faturaStats = await FaturaService.GetDashboardStatsAsync();
+                    var faturaService = sp.GetRequiredService<IFaturaService>();
+                    var faturaStats = await faturaService.GetDashboardStatsAsync();
                     bekleyenFaturaSayisi = faturaStats.BekleyenFaturaSayisi;
                     buAyGelir = faturaStats.BuAyGelir;
                     buAyGider = faturaStats.BuAyGider;
@@ -696,35 +703,39 @@ else
 
             if (CanViewFinans)
             {
-                await TryLoadDashboardSectionAsync(async () =>
+                await TryLoadDashboardSectionAsync(async sp =>
                 {
-                    var bankaStats = await BankaKasaService.GetDashboardStatsAsync();
+                    var bankaKasaService = sp.GetRequiredService<IBankaKasaHareketService>();
+                    var budgetService = sp.GetRequiredService<IBudgetService>();
+                    var bankaStats = await bankaKasaService.GetDashboardStatsAsync();
                     toplamKasa = bankaStats.ToplamKasa;
                     toplamBanka = bankaStats.ToplamBanka;
                     await Task.Delay(10);
                     
-                    sonHareketler = await BankaKasaService.GetRecentAsync(5);
+                    sonHareketler = await bankaKasaService.GetRecentAsync(5);
                     await Task.Delay(10);
                     
-                    butceOzet = await BudgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
+                    butceOzet = await budgetService.GetAylikOzetAsync(DateTime.Today.Year, DateTime.Today.Month);
                     await Task.Delay(10);
                 }, "Finans verileri");
             }
 
             if (CanViewServisler)
             {
-                await TryLoadDashboardSectionAsync(async () =>
+                await TryLoadDashboardSectionAsync(async sp =>
                 {
-                    sonCalismalar = await ServisCalismaService.GetRecentAsync(5);
+                    var servisCalismaService = sp.GetRequiredService<IServisCalismaService>();
+                    sonCalismalar = await servisCalismaService.GetRecentAsync(5);
                     await Task.Delay(10);
                 }, "Servis verileri");
             }
             
             if (CanViewBelgeUyarilari)
             {
-                await TryLoadDashboardSectionAsync(async () =>
+                await TryLoadDashboardSectionAsync(async sp =>
                 {
-                    belgeUyarilar = await BelgeUyariService.GetBelgeUyarilarAsync(30);
+                    var belgeUyariService = sp.GetRequiredService<IBelgeUyariService>();
+                    belgeUyarilar = await belgeUyariService.GetBelgeUyarilarAsync(30);
                 }, "Belge uyarıları");
             }
         }
