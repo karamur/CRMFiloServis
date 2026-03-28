@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+﻿using CRMFiloServis.Shared.Entities;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -13,6 +13,9 @@ public interface ILisansService
 
     // Trial
     Task<Lisans> OlusturTrialLisansAsync();
+
+    // Uretici
+    string UretLisansAnahtari(string firmaAdi, string yetkiliKisi, string email, string telefon, string lisansTipi, int maxKullanici, string makineKodu, DateTime bitisTarihi);
 
     // Kontroller
     Task<bool> KullanicLimitiKontrolAsync();

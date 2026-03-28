@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+ï»¿using System.Security.Cryptography;
 using System.Text;
 using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
@@ -45,7 +45,7 @@ public class LisansService : ILisansService
     {
         using var context = await _contextFactory.CreateDbContextAsync();
 
-        // Boþluklarý ve satýr sonlarýný temizle
+        // BoÅŸluklarÄ± ve satÄ±r sonlarÄ±nÄ± temizle
         lisansAnahtari = lisansAnahtari.Trim().Replace("\r", "").Replace("\n", "").Replace(" ", "");
 
         // Mevcut lisansi pasif yap
@@ -96,13 +96,13 @@ public class LisansService : ILisansService
     {
         try
         {
-            // Windows için System.Management ile donaným bilgilerini al
+            // Windows iÃ§in System.Management ile donanÄ±m bilgilerini al
             if (OperatingSystem.IsWindows())
             {
                 return Task.FromResult(CRMFiloServis.Shared.LisansHelper.GetMachineCode());
             }
             
-            // Diðer platformlar için basit kod
+            // DiÄŸer platformlar iÃ§in basit kod
             var machineName = Environment.MachineName;
             var userName = Environment.UserName;
             var osVersion = Environment.OSVersion.ToString();
@@ -184,32 +184,32 @@ public class LisansService : ILisansService
     {
         try
         {
-            // Boþluklarý ve satýr sonlarýný temizle
+            // BoÅŸluklarÄ± ve satÄ±r sonlarÄ±nÄ± temizle
             anahtar = anahtar.Trim().Replace("\r", "").Replace("\n", "").Replace(" ", "");
             
-            // Þifrelenmiþ lisans anahtarýný çöz
+            // ÅžifrelenmiÅŸ lisans anahtarÄ±nÄ± Ã§Ã¶z
             var lisansJson = DecryptString(anahtar);
             
             // JSON'dan LisansBilgi deserialize et
             var lisansBilgi = System.Text.Json.JsonSerializer.Deserialize<DesktopLisansBilgi>(lisansJson);
             
             if (lisansBilgi == null)
-                throw new Exception("Geçersiz lisans formatý - JSON parse edilemedi");
+                throw new Exception("GeÃ§ersiz lisans formatÄ± - JSON parse edilemedi");
             
-            // Makine kodu kontrolü
+            // Makine kodu kontrolÃ¼
             var currentMakineKodu = GetMakineKoduAsync().Result;
             if (!string.Equals(lisansBilgi.MakineKodu, currentMakineKodu, StringComparison.OrdinalIgnoreCase))
             {
-                throw new Exception($"Bu lisans baþka bir bilgisayar için oluþturulmuþ!\n\nLisans Makine Kodu: {lisansBilgi.MakineKodu}\nBu PC Makine Kodu: {currentMakineKodu}");
+                throw new Exception($"Bu lisans baÅŸka bir bilgisayar iÃ§in oluÅŸturulmuÅŸ!\n\nLisans Makine Kodu: {lisansBilgi.MakineKodu}\nBu PC Makine Kodu: {currentMakineKodu}");
             }
             
-            // Tarih kontrolü
+            // Tarih kontrolÃ¼
             if (DateTime.UtcNow > lisansBilgi.BitisTarihi)
             {
-                throw new Exception($"Lisans süresi dolmuþ! Bitiþ Tarihi: {lisansBilgi.BitisTarihi:dd.MM.yyyy}");
+                throw new Exception($"Lisans sÃ¼resi dolmuÅŸ! BitiÅŸ Tarihi: {lisansBilgi.BitisTarihi:dd.MM.yyyy}");
             }
             
-            // Lisans tipine göre enum deðeri
+            // Lisans tipine gÃ¶re enum deÄŸeri
             var tur = lisansBilgi.LisansTipi.ToLower() switch
             {
                 "trial" => LisansTuru.Trial,
@@ -219,30 +219,30 @@ public class LisansService : ILisansService
                 _ => LisansTuru.Trial
             };
             
-            // Kalan gün hesapla
+            // Kalan gÃ¼n hesapla
             var kalanGun = (int)(lisansBilgi.BitisTarihi - DateTime.UtcNow).TotalDays;
             
             return (tur, lisansBilgi.BaslangicTarihi, lisansBilgi.BitisTarihi, lisansBilgi.MaxKullaniciSayisi, lisansBilgi.FirmaAdi, lisansBilgi.YetkiliKisi, lisansBilgi.Email, lisansBilgi.Telefon);
         }
         catch (FormatException)
         {
-            throw new Exception("Geçersiz lisans formatý - Base64 decode hatasý. Lisans anahtarýný doðru kopyaladýðýnýzdan emin olun.");
+            throw new Exception("GeÃ§ersiz lisans formatÄ± - Base64 decode hatasÄ±. Lisans anahtarÄ±nÄ± doÄŸru kopyaladÄ±ÄŸÄ±nÄ±zdan emin olun.");
         }
         catch (System.Security.Cryptography.CryptographicException)
         {
-            throw new Exception("Lisans anahtarý þifresi çözülemedi. Geçersiz veya bozuk lisans anahtarý.");
+            throw new Exception("Lisans anahtarÄ± ÅŸifresi Ã§Ã¶zÃ¼lemedi. GeÃ§ersiz veya bozuk lisans anahtarÄ±.");
         }
         catch (System.Text.Json.JsonException)
         {
-            throw new Exception("Lisans verisi okunamadý. Geçersiz lisans formatý.");
+            throw new Exception("Lisans verisi okunamadÄ±. GeÃ§ersiz lisans formatÄ±.");
         }
-        catch (Exception ex) when (!ex.Message.Contains("Makine Kodu") && !ex.Message.Contains("süresi dolmuþ"))
+        catch (Exception ex) when (!ex.Message.Contains("Makine Kodu") && !ex.Message.Contains("sÃ¼resi dolmuÅŸ"))
         {
             throw new Exception($"Lisans aktive edilemedi: {ex.Message}");
         }
     }
 
-    private const string LisansAnahtar = "CRMFiloServis2026SecretKey!@#";
+    private const string LisansAnahtar = "CRMFiloServis2026SecretKey!@";
 
     private string DecryptString(string cipherText)
     {
@@ -268,7 +268,57 @@ public class LisansService : ILisansService
         return srDecrypt.ReadToEnd();
     }
 
-    // Desktop lisans bilgisi için model
+    private string EncryptString(string plainText)
+    {
+        using var aes = Aes.Create();
+        var key = SHA256.HashData(Encoding.UTF8.GetBytes(LisansAnahtar));
+        aes.Key = key;
+        aes.GenerateIV();
+
+        using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+        using var msEncrypt = new MemoryStream();
+        using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+        using (var swEncrypt = new StreamWriter(csEncrypt))
+        {
+            swEncrypt.Write(plainText);
+        }
+
+        var iv = aes.IV;
+        var encrypted = msEncrypt.ToArray();
+
+        var result = new byte[iv.Length + encrypted.Length];
+        Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
+        Buffer.BlockCopy(encrypted, 0, result, iv.Length, encrypted.Length);
+
+        return Convert.ToBase64String(result);
+    }
+
+    public string UretLisansAnahtari(string firmaAdi, string yetkiliKisi, string email, string telefon, string lisansTipi, int maxKullanici, string makineKodu, DateTime bitisTarihi)
+    {
+        var random = new Random();
+        var lisansKodu = $"CRM-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}";
+
+        var lisans = new DesktopLisansBilgi
+        {
+            LisansKodu = lisansKodu,
+            FirmaAdi = firmaAdi ?? "",
+            YetkiliKisi = yetkiliKisi ?? "",
+            Email = email ?? "",
+            Telefon = telefon ?? "",
+            LisansTipi = lisansTipi ?? "Standard",
+            BaslangicTarihi = DateTime.UtcNow,
+            BitisTarihi = bitisTarihi,
+            MaxKullaniciSayisi = maxKullanici,
+            MaxAracSayisi = maxKullanici * 10,
+            MakineKodu = makineKodu ?? "",
+            Aktif = true
+        };
+
+        var lisansJson = System.Text.Json.JsonSerializer.Serialize(lisans);
+        return EncryptString(lisansJson);
+    }
+
+    // Desktop lisans bilgisi iÃ§in model
     private class DesktopLisansBilgi
     {
         public string LisansKodu { get; set; } = "";
