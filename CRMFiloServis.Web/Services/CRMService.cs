@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+ï»¿using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using MailKit.Net.Imap;
 using MailKit.Net.Smtp;
@@ -39,7 +39,7 @@ public interface ICRMService
     Task<WhatsAppAyar> SaveWhatsAppAyarAsync(WhatsAppAyar ayar);
     Task<bool> SendWhatsAppAsync(int gonderenId, string telefon, string mesaj);
 
-    // Hatýrlatýcýlar
+    // HatÄ±rlatÄ±cÄ±lar
     Task<List<Hatirlatici>> GetHatirlaticilarAsync(int kullaniciId, DateTime? baslangic = null, DateTime? bitis = null);
     Task<List<Hatirlatici>> GetBugunkuHatirlaticilarAsync(int kullaniciId);
     Task<Hatirlatici> CreateHatirlaticiAsync(Hatirlatici hatirlatici);
@@ -47,7 +47,7 @@ public interface ICRMService
     Task DeleteHatirlaticiAsync(int hatirlaticiId);
     Task HatirlaticiTamamlaAsync(int hatirlaticiId);
 
-    // Kullanýcý-Cari Eþleþtirme
+    // KullanÄ±cÄ±-Cari EÅŸleÅŸtirme
     Task<List<KullaniciCari>> GetKullaniciBagliCarilerAsync(int kullaniciId);
     Task<KullaniciCari> AddKullaniciCariAsync(KullaniciCari kullaniciCari);
     Task<KullaniciCari> UpdateKullaniciCariAsync(KullaniciCari kullaniciCari);
@@ -177,7 +177,7 @@ public class CRMService : ICRMService
         _context.Mesajlar.Add(mesaj);
         await _context.SaveChangesAsync();
 
-        // Alýcýya bildirim oluþtur
+        // AlÄ±cÄ±ya bildirim oluÅŸtur
         if (mesaj.AliciId.HasValue)
         {
             var gonderen = await _context.Kullanicilar.FindAsync(mesaj.GonderenId);
@@ -185,7 +185,7 @@ public class CRMService : ICRMService
             {
                 KullaniciId = mesaj.AliciId.Value,
                 Baslik = $"Yeni mesaj: {mesaj.Konu}",
-                Icerik = $"{gonderen?.AdSoyad ?? "Bilinmeyen"} size bir mesaj gönderdi.",
+                Icerik = $"{gonderen?.AdSoyad ?? "Bilinmeyen"} size bir mesaj gÃ¶nderdi.",
                 Tip = BildirimTipi.Mesaj,
                 Link = "/crm/mesajlar"
             });
@@ -436,13 +436,13 @@ public class CRMService : ICRMService
             }
 
             // TODO: WhatsApp API implementasyonu
-            // Twilio veya WhatsApp Business API ile mesaj gönder
+            // Twilio veya WhatsApp Business API ile mesaj gÃ¶nder
 
-            // Mesaj kaydý oluþtur
+            // Mesaj kaydÄ± oluÅŸtur
             await SendMesajAsync(new Mesaj
             {
                 GonderenId = gonderenId,
-                Konu = "WhatsApp Mesajý",
+                Konu = "WhatsApp MesajÄ±",
                 Icerik = mesaj,
                 Tip = MesajTipi.WhatsApp,
                 DisAlici = telefon,
@@ -453,14 +453,14 @@ public class CRMService : ICRMService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "WhatsApp mesajý gönderilirken hata");
+            _logger.LogError(ex, "WhatsApp mesajÄ± gÃ¶nderilirken hata");
             return false;
         }
     }
 
     #endregion
 
-    #region Hatýrlatýcýlar
+    #region HatÄ±rlatÄ±cÄ±lar
 
     public async Task<List<Hatirlatici>> GetHatirlaticilarAsync(int kullaniciId, DateTime? baslangic = null, DateTime? bitis = null)
     {
@@ -481,7 +481,7 @@ public class CRMService : ICRMService
 
     public async Task<List<Hatirlatici>> GetBugunkuHatirlaticilarAsync(int kullaniciId)
     {
-        var bugun = DateTime.UtcNow.Date;
+        var bugun = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
         var yarin = bugun.AddDays(1);
 
         return await _context.Hatirlaticilar
@@ -530,7 +530,7 @@ public class CRMService : ICRMService
 
     #endregion
 
-    #region Kullanýcý-Cari Eþleþtirme
+    #region KullanÄ±cÄ±-Cari EÅŸleÅŸtirme
 
     public async Task<List<KullaniciCari>> GetKullaniciBagliCarilerAsync(int kullaniciId)
     {
@@ -569,7 +569,7 @@ public class CRMService : ICRMService
 
     public async Task<bool> KullaniciBuCariyeErisebilirMi(int kullaniciId, int cariId)
     {
-        // Admin her cariye eriþebilir
+        // Admin her cariye eriÅŸebilir
         var kullanici = await _context.Kullanicilar
             .Include(k => k.Rol)
             .FirstOrDefaultAsync(k => k.Id == kullaniciId);
@@ -577,7 +577,7 @@ public class CRMService : ICRMService
         if (kullanici?.Rol?.RolAdi == "Admin")
             return true;
 
-        // Kullanýcýnýn baðlý carileri kontrol et
+        // KullanÄ±cÄ±nÄ±n baÄŸlÄ± carileri kontrol et
         return await _context.KullaniciCariler
             .AnyAsync(kc => kc.KullaniciId == kullaniciId && kc.CariId == cariId);
     }
@@ -593,7 +593,7 @@ public class CRMService : ICRMService
             .OrderBy(w => w.Sira)
             .ToListAsync();
 
-        // Varsayýlan widget'larý yoksa oluþtur
+        // VarsayÄ±lan widget'larÄ± yoksa oluÅŸtur
         if (!widgets.Any())
         {
             widgets = GetVarsayilanWidgetlar(kullaniciId);

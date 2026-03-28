@@ -1,4 +1,4 @@
-@page "/crm/randevular"
+ï»¿@page "/crm/randevular"
 @using CRMFiloServis.Web.Services
 @using CRMFiloServis.Shared.Entities
 @inject ICRMService CRMService
@@ -7,13 +7,13 @@
 @inject IToastService ToastService
 @rendermode InteractiveServer
 
-<PageTitle>Randevu ve Hatýrlatýcýlar - CRM</PageTitle>
+<PageTitle>Randevu ve HatÄ±rlatÄ±cÄ±lar - CRM</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h3 class="mb-0"><i class="bi bi-calendar-event-fill me-2 text-danger"></i>Randevu ve Hatýrlatýcýlar</h3>
-            <small class="text-muted">Takvim, görevler ve hatýrlatýcýlar</small>
+            <h3 class="mb-0"><i class="bi bi-calendar-event-fill me-2 text-danger"></i>Randevu ve HatÄ±rlatÄ±cÄ±lar</h3>
+            <small class="text-muted">Takvim, gÃ¶revler ve hatÄ±rlatÄ±cÄ±lar</small>
         </div>
         <button class="btn btn-primary" @onclick="YeniHatirlaticiBaslat">
             <i class="bi bi-plus-lg me-1"></i>Yeni Ekle
@@ -21,18 +21,18 @@
     </div>
 
     <div class="row">
-        <!-- Sol Panel - Bugünkü Hatýrlatýcýlar -->
+        <!-- Sol Panel - BugÃ¼nkÃ¼ HatÄ±rlatÄ±cÄ±lar -->
         <div class="col-md-4">
             <div class="card shadow-sm mb-3">
                 <div class="card-header bg-danger text-white">
-                    <h6 class="mb-0"><i class="bi bi-alarm me-2"></i>Bugün (@DateTime.Now.ToString("dd MMMM"))</h6>
+                    <h6 class="mb-0"><i class="bi bi-alarm me-2"></i>BugÃ¼n (@DateTime.Now.ToString("dd MMMM"))</h6>
                 </div>
                 <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
                     @if (!bugunkuHatirlaticilar.Any())
                     {
                         <div class="text-center p-3 text-muted">
                             <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
-                            <p class="mt-2 mb-0">Bugün için hatýrlatýcý yok</p>
+                            <p class="mt-2 mb-0">BugÃ¼n iÃ§in hatÄ±rlatÄ±cÄ± yok</p>
                         </div>
                     }
                     else
@@ -73,7 +73,7 @@
                             <tr>
                                 <th>Pzt</th>
                                 <th>Sal</th>
-                                <th>Çar</th>
+                                <th>Ã‡ar</th>
                                 <th>Per</th>
                                 <th>Cum</th>
                                 <th>Cmt</th>
@@ -93,7 +93,7 @@
                                             @gun.Day
                                             @if (hatirlaticiVar)
                                             {
-                                                <span class="position-absolute top-0 end-0 badge bg-danger rounded-circle" style="font-size: 0.5rem; padding: 2px 4px;">•</span>
+                                                <span class="position-absolute top-0 end-0 badge bg-danger rounded-circle" style="font-size: 0.5rem; padding: 2px 4px;">â€¢</span>
                                             }
                                         </td>
                                     }
@@ -105,13 +105,13 @@
             </div>
         </div>
 
-        <!-- Sað Panel - Hatýrlatýcý Listesi -->
+        <!-- SaÄŸ Panel - HatÄ±rlatÄ±cÄ± Listesi -->
         <div class="col-md-8">
             <div class="card shadow-sm">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h6 class="mb-0">
                         <i class="bi bi-list-task me-2"></i>
-                        @secilenTarih.ToString("dd MMMM yyyy") Hatýrlatýcýlarý
+                        @secilenTarih.ToString("dd MMMM yyyy") HatÄ±rlatÄ±cÄ±larÄ±
                     </h6>
                     <div class="btn-group btn-group-sm">
                         @foreach (var tip in Enum.GetValues<HatirlaticiTip>())
@@ -123,7 +123,7 @@
                         }
                         <button class="btn @(filtreliTip == null ? "btn-primary" : "btn-outline-primary")" 
                                 @onclick="() => filtreliTip = null">
-                            Tümü
+                            TÃ¼mÃ¼
                         </button>
                     </div>
                 </div>
@@ -138,7 +138,7 @@
                     {
                         <div class="text-center p-5 text-muted">
                             <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
-                            <p class="mt-2">Bu tarih için hatýrlatýcý yok</p>
+                            <p class="mt-2">Bu tarih iÃ§in hatÄ±rlatÄ±cÄ± yok</p>
                         </div>
                     }
                     else
@@ -148,11 +148,11 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Saat</th>
-                                        <th>Baþlýk</th>
+                                        <th>BaÅŸlÄ±k</th>
                                         <th>Tip</th>
                                         <th>Cari</th>
                                         <th>Durum</th>
-                                        <th class="text-end">Ýþlem</th>
+                                        <th class="text-end">Ä°ÅŸlem</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -162,7 +162,7 @@
                                             <td>
                                                 @if (h.TumGun)
                                                 {
-                                                    <span class="badge bg-secondary">Tüm Gün</span>
+                                                    <span class="badge bg-secondary">TÃ¼m GÃ¼n</span>
                                                 }
                                                 else
                                                 {
@@ -204,7 +204,7 @@
                                                         <i class="bi bi-check"></i>
                                                     </button>
                                                 }
-                                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => HatirlaticiDuzenle(h)" title="Düzenle">
+                                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => HatirlaticiDuzenle(h)" title="DÃ¼zenle">
                                                     <i class="bi bi-pencil"></i>
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => HatirlaticiSil(h.Id)" title="Sil">
@@ -223,7 +223,7 @@
     </div>
 </div>
 
-<!-- Hatýrlatýcý Modal -->
+<!-- HatÄ±rlatÄ±cÄ± Modal -->
 @if (showModal)
 {
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
@@ -232,7 +232,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title">
                         <i class="bi bi-calendar-plus me-2"></i>
-                        @(editingHatirlatici?.Id > 0 ? "Hatýrlatýcý Düzenle" : "Yeni Hatýrlatýcý")
+                        @(editingHatirlatici?.Id > 0 ? "HatÄ±rlatÄ±cÄ± DÃ¼zenle" : "Yeni HatÄ±rlatÄ±cÄ±")
                     </h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
@@ -240,7 +240,7 @@
                     <div class="row">
                         <div class="col-md-8">
                             <div class="mb-3">
-                                <label class="form-label">Baþlýk *</label>
+                                <label class="form-label">BaÅŸlÄ±k *</label>
                                 <input type="text" class="form-control" @bind="editingHatirlatici!.Baslik" />
                             </div>
                         </div>
@@ -258,7 +258,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Açýklama</label>
+                        <label class="form-label">AÃ§Ä±klama</label>
                         <textarea class="form-control" rows="2" @bind="editingHatirlatici.Aciklama"></textarea>
                     </div>
 
@@ -273,7 +273,7 @@
                             <div class="mb-3">
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox" @bind="editingHatirlatici.TumGun" />
-                                    <label class="form-check-label">Tüm Gün</label>
+                                    <label class="form-check-label">TÃ¼m GÃ¼n</label>
                                 </div>
                             </div>
                         </div>
@@ -281,13 +281,13 @@
                         {
                             <div class="col-md-2">
                                 <div class="mb-3">
-                                    <label class="form-label">Baþlangýç</label>
+                                    <label class="form-label">BaÅŸlangÄ±Ã§</label>
                                     <input type="text" class="form-control" @bind="baslangicSaatStr" placeholder="09:00" />
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <div class="mb-3">
-                                    <label class="form-label">Bitiþ</label>
+                                    <label class="form-label">BitiÅŸ</label>
                                     <input type="text" class="form-control" @bind="bitisSaatStr" placeholder="10:00" />
                                 </div>
                             </div>
@@ -297,9 +297,9 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Ýliþkili Cari</label>
+                                <label class="form-label">Ä°liÅŸkili Cari</label>
                                 <select class="form-select" @bind="editingHatirlatici.CariId">
-                                    <option value="">Seçiniz</option>
+                                    <option value="">SeÃ§iniz</option>
                                     @foreach (var cari in cariler)
                                     {
                                         <option value="@cari.Id">@cari.Unvan</option>
@@ -315,7 +315,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="mb-3">
-                                <label class="form-label">Bildirim (dk önce)</label>
+                                <label class="form-label">Bildirim (dk Ã¶nce)</label>
                                 <input type="number" class="form-control" @bind="editingHatirlatici.BildirimDakikaOnce" />
                             </div>
                         </div>
@@ -337,13 +337,13 @@
                         {
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label class="form-label">Tekrar Aralýðý</label>
+                                    <label class="form-label">Tekrar AralÄ±ÄŸÄ±</label>
                                     <input type="number" class="form-control" @bind="editingHatirlatici.TekrarAraligi" min="1" />
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label class="form-label">Tekrar Bitiþ</label>
+                                    <label class="form-label">Tekrar BitiÅŸ</label>
                                     <input type="date" class="form-control" @bind="editingHatirlatici.TekrarBitisTarihi" />
                                 </div>
                             </div>
@@ -351,7 +351,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Ýptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Ä°ptal</button>
                     <button type="button" class="btn btn-primary" @onclick="HatirlaticiKaydet" disabled="@isSaving">
                         @if (isSaving)
                         {
@@ -404,8 +404,8 @@
         {
             if (aktifKullaniciId.HasValue)
             {
-                var ayBasi = new DateTime(secilenTarih.Year, secilenTarih.Month, 1);
-                var aySonu = ayBasi.AddMonths(1).AddDays(-1);
+                var ayBasi = DateTime.SpecifyKind(new DateTime(secilenTarih.Year, secilenTarih.Month, 1), DateTimeKind.Utc);
+                var aySonu = DateTime.SpecifyKind(ayBasi.AddMonths(1).AddDays(-1).AddHours(23).AddMinutes(59).AddSeconds(59), DateTimeKind.Utc);
 
                 hatirlaticilar = await CRMService.GetHatirlaticilarAsync(aktifKullaniciId.Value, ayBasi, aySonu);
                 bugunkuHatirlaticilar = await CRMService.GetBugunkuHatirlaticilarAsync(aktifKullaniciId.Value);
@@ -414,7 +414,7 @@
         }
         catch (Exception ex)
         {
-            ToastService.ShowError("Veriler yüklenirken hata: " + ex.Message);
+            ToastService.ShowError("Veriler yÃ¼klenirken hata: " + ex.Message);
         }
         finally
         {
@@ -450,7 +450,7 @@
         var ayBasi = new DateTime(secilenTarih.Year, secilenTarih.Month, 1);
         var aySonu = ayBasi.AddMonths(1).AddDays(-1);
 
-        // Ayýn ilk gününün haftanýn hangi günü olduðunu bul
+        // AyÄ±n ilk gÃ¼nÃ¼nÃ¼n haftanÄ±n hangi gÃ¼nÃ¼ olduÄŸunu bul
         var ilkGunHaftaGunu = (int)ayBasi.DayOfWeek;
         if (ilkGunHaftaGunu == 0) ilkGunHaftaGunu = 7; // Pazar = 7
         ilkGunHaftaGunu--; // 0-indexed yap
@@ -522,29 +522,36 @@
     {
         if (editingHatirlatici == null || string.IsNullOrWhiteSpace(editingHatirlatici.Baslik))
         {
-            ToastService.ShowWarning("Baþlýk zorunludur.");
+            ToastService.ShowWarning("BaÅŸlÄ±k zorunludur.");
             return;
         }
 
         isSaving = true;
         try
         {
-            editingHatirlatici.BaslangicTarihi = baslangicTarihi.Add(editingHatirlatici.TumGun ? TimeSpan.Zero : TimeSpan.Parse(baslangicSaatStr));
+            var baslangicDateTime = baslangicTarihi.Add(editingHatirlatici.TumGun ? TimeSpan.Zero : TimeSpan.Parse(baslangicSaatStr));
+            editingHatirlatici.BaslangicTarihi = DateTime.SpecifyKind(baslangicDateTime, DateTimeKind.Utc);
 
             if (!editingHatirlatici.TumGun)
             {
-                editingHatirlatici.BitisTarihi = baslangicTarihi.Add(TimeSpan.Parse(bitisSaatStr));
+                var bitisDateTime = baslangicTarihi.Add(TimeSpan.Parse(bitisSaatStr));
+                editingHatirlatici.BitisTarihi = DateTime.SpecifyKind(bitisDateTime, DateTimeKind.Utc);
+            }
+            
+            if (editingHatirlatici.TekrarBitisTarihi.HasValue)
+            {
+                editingHatirlatici.TekrarBitisTarihi = DateTime.SpecifyKind(editingHatirlatici.TekrarBitisTarihi.Value, DateTimeKind.Utc);
             }
 
             if (editingHatirlatici.Id == 0)
             {
                 await CRMService.CreateHatirlaticiAsync(editingHatirlatici);
-                ToastService.ShowSuccess("Hatýrlatýcý oluþturuldu.");
+                ToastService.ShowSuccess("HatÄ±rlatÄ±cÄ± oluÅŸturuldu.");
             }
             else
             {
                 await CRMService.UpdateHatirlaticiAsync(editingHatirlatici);
-                ToastService.ShowSuccess("Hatýrlatýcý güncellendi.");
+                ToastService.ShowSuccess("HatÄ±rlatÄ±cÄ± gÃ¼ncellendi.");
             }
 
             ModalKapat();
@@ -566,14 +573,14 @@
         var h = hatirlaticilar.FirstOrDefault(x => x.Id == id);
         if (h != null) h.Durum = HatirlaticiDurum.Tamamlandi;
         bugunkuHatirlaticilar.RemoveAll(x => x.Id == id);
-        ToastService.ShowSuccess("Hatýrlatýcý tamamlandý.");
+        ToastService.ShowSuccess("HatÄ±rlatÄ±cÄ± tamamlandÄ±.");
     }
 
     private async Task HatirlaticiSil(int id)
     {
         await CRMService.DeleteHatirlaticiAsync(id);
         hatirlaticilar.RemoveAll(x => x.Id == id);
-        ToastService.ShowSuccess("Hatýrlatýcý silindi.");
+        ToastService.ShowSuccess("HatÄ±rlatÄ±cÄ± silindi.");
     }
 
     private string GetHatirlaticiIcon(HatirlaticiTip tip) => tip switch
@@ -589,30 +596,30 @@
 
     private string GetHatirlaticiTipAdi(HatirlaticiTip tip) => tip switch
     {
-        HatirlaticiTip.Hatirlatici => "Hatýrlatýcý",
+        HatirlaticiTip.Hatirlatici => "HatÄ±rlatÄ±cÄ±",
         HatirlaticiTip.Randevu => "Randevu",
-        HatirlaticiTip.Toplanti => "Toplantý",
-        HatirlaticiTip.Gorev => "Görev",
+        HatirlaticiTip.Toplanti => "ToplantÄ±",
+        HatirlaticiTip.Gorev => "GÃ¶rev",
         HatirlaticiTip.Arama => "Arama",
         HatirlaticiTip.Ziyaret => "Ziyaret",
-        _ => "Diðer"
+        _ => "DiÄŸer"
     };
 
     private string GetTekrarTipAdi(TekrarTipi tip) => tip switch
     {
         TekrarTipi.Yok => "Tekrar Yok",
-        TekrarTipi.Gunluk => "Günlük",
-        TekrarTipi.Haftalik => "Haftalýk",
-        TekrarTipi.Aylik => "Aylýk",
-        TekrarTipi.Yillik => "Yýllýk",
+        TekrarTipi.Gunluk => "GÃ¼nlÃ¼k",
+        TekrarTipi.Haftalik => "HaftalÄ±k",
+        TekrarTipi.Aylik => "AylÄ±k",
+        TekrarTipi.Yillik => "YÄ±llÄ±k",
         _ => "Bilinmiyor"
     };
 
     private string GetDurumAdi(HatirlaticiDurum durum) => durum switch
     {
         HatirlaticiDurum.Bekliyor => "Bekliyor",
-        HatirlaticiDurum.Tamamlandi => "Tamamlandý",
-        HatirlaticiDurum.Iptal => "Ýptal",
+        HatirlaticiDurum.Tamamlandi => "TamamlandÄ±",
+        HatirlaticiDurum.Iptal => "Ä°ptal",
         HatirlaticiDurum.Ertelendi => "Ertelendi",
         _ => "Bilinmiyor"
     };
