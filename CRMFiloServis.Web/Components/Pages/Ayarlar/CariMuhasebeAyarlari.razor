@@ -231,10 +231,6 @@
             .OrderBy(h => h.HesapKodu)
             .ToListAsync();
 
-        var hesaplarByKod = muhasebeHesaplar
-            .GroupBy(h => h.HesapKodu)
-            .ToDictionary(g => g.Key, g => g.First());
-
         var cariler = await context.Cariler
             .AsNoTracking()
             .Include(c => c.MuhasebeHesap)
@@ -242,25 +238,47 @@
             .OrderBy(c => c.Unvan)
             .ToListAsync();
 
+        // Her cari tipi için son kodları hesapla
+        var musteriSonKod = GetSonrakiHesapKoduNumarasi(ayar.MusteriPrefix, muhasebeHesaplar);
+        var tedarikciSonKod = GetSonrakiHesapKoduNumarasi(ayar.TedarikciPrefix, muhasebeHesaplar);
+        var personelSonKod = GetSonrakiHesapKoduNumarasi(ayar.PersonelPrefix, muhasebeHesaplar);
+
+        var musteriSayac = 0;
+        var tedarikciSayac = 0;
+        var personelSayac = 0;
+
         tumCariler = cariler.Select(c =>
         {
+            // Eşleşmiş = MuhasebeHesapId dolu ise
+            var eslesmis = c.MuhasebeHesapId.HasValue;
             var mevcutHesapKodu = c.MuhasebeHesap?.HesapKodu;
 
-            if (string.IsNullOrWhiteSpace(mevcutHesapKodu)
-                && !string.IsNullOrWhiteSpace(c.CariKodu)
-                && IsMuhasebeHesapKodu(c.CariKodu)
-                && hesaplarByKod.ContainsKey(c.CariKodu))
+            string? onerilenKod = null;
+            if (!eslesmis)
             {
-                mevcutHesapKodu = c.CariKodu;
+                // Her eşleşmemiş cari için sıradaki kodu öner
+                if (c.CariTipi == CariTipi.Musteri || c.CariTipi == CariTipi.MusteriTedarikci)
+                {
+                    musteriSayac++;
+                    onerilenKod = $"{ayar.MusteriPrefix}.{musteriSonKod + musteriSayac:D3}";
+                }
+                else if (c.CariTipi == CariTipi.Tedarikci)
+                {
+                    tedarikciSayac++;
+                    onerilenKod = $"{ayar.TedarikciPrefix}.{tedarikciSonKod + tedarikciSayac:D3}";
+                }
+                else if (c.CariTipi == CariTipi.Personel)
+                {
+                    personelSayac++;
+                    onerilenKod = $"{ayar.PersonelPrefix}.{personelSonKod + personelSayac:D3}";
+                }
             }
-
-            var eslesmis = !string.IsNullOrWhiteSpace(mevcutHesapKodu);
 
             return new CariEslestirmeModel
             {
                 Cari = c,
                 MevcutHesapKodu = mevcutHesapKodu,
-                OnerilenKod = eslesmis ? null : GetSonrakiHesapKodu(GetPrefix(c.CariTipi), muhasebeHesaplar),
+                OnerilenKod = onerilenKod,
                 Eslesmis = eslesmis
             };
         })
@@ -334,11 +352,11 @@
         _ => ayar.MusteriPrefix
     };
 
-    private static string? GetSonrakiHesapKodu(string? prefix, List<MuhasebeHesap> hesaplar)
+    private static int GetSonrakiHesapKoduNumarasi(string? prefix, List<MuhasebeHesap> hesaplar)
     {
         if (string.IsNullOrWhiteSpace(prefix))
         {
-            return null;
+            return 0;
         }
 
         var sonKod = hesaplar
@@ -349,28 +367,16 @@
 
         if (string.IsNullOrWhiteSpace(sonKod))
         {
-            return prefix + ".001";
+            return 0;
         }
 
         var sonParca = sonKod.Split('.').LastOrDefault();
         if (!int.TryParse(sonParca, out var sonNumara))
         {
-            return prefix + ".001";
+            return 0;
         }
 
-        return $"{prefix}.{sonNumara + 1:D3}";
-    }
-
-    private static bool IsMuhasebeHesapKodu(string? kod)
-    {
-        if (string.IsNullOrWhiteSpace(kod))
-        {
-            return false;
-        }
-
-        return kod.StartsWith("120.", StringComparison.OrdinalIgnoreCase)
-            || kod.StartsWith("320.", StringComparison.OrdinalIgnoreCase)
-            || kod.StartsWith("335.", StringComparison.OrdinalIgnoreCase);
+        return sonNumara;
     }
 
     private async Task Kaydet()
