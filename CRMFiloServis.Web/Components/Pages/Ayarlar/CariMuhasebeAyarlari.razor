@@ -231,6 +231,16 @@
             .OrderBy(h => h.HesapKodu)
             .ToListAsync();
 
+        // Hesap kodlarını lookup için hazırla
+        var hesaplarByKod = muhasebeHesaplar
+            .GroupBy(h => h.HesapKodu)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // Hesap adlarını lookup için hazırla (unvan eşleştirmesi için)
+        var hesaplarByAd = muhasebeHesaplar
+            .GroupBy(h => h.HesapAdi.ToLowerInvariant().Trim())
+            .ToDictionary(g => g.Key, g => g.First());
+
         var cariler = await context.Cariler
             .AsNoTracking()
             .Include(c => c.MuhasebeHesap)
@@ -250,8 +260,25 @@
         tumCariler = cariler.Select(c =>
         {
             // Eşleşmiş = MuhasebeHesapId dolu ise
-            var eslesmis = c.MuhasebeHesapId.HasValue;
             var mevcutHesapKodu = c.MuhasebeHesap?.HesapKodu;
+            
+            // Eğer MuhasebeHesapId boş ama CariKodu hesap planında varsa
+            if (string.IsNullOrWhiteSpace(mevcutHesapKodu) 
+                && !string.IsNullOrWhiteSpace(c.CariKodu)
+                && hesaplarByKod.TryGetValue(c.CariKodu, out var kodHesabi))
+            {
+                mevcutHesapKodu = kodHesabi.HesapKodu;
+            }
+
+            // Eğer hâlâ boşsa ve Unvan ile hesap adı eşleşiyorsa
+            if (string.IsNullOrWhiteSpace(mevcutHesapKodu) 
+                && !string.IsNullOrWhiteSpace(c.Unvan)
+                && hesaplarByAd.TryGetValue(c.Unvan.ToLowerInvariant().Trim(), out var adHesabi))
+            {
+                mevcutHesapKodu = adHesabi.HesapKodu;
+            }
+
+            var eslesmis = c.MuhasebeHesapId.HasValue || !string.IsNullOrWhiteSpace(mevcutHesapKodu);
 
             string? onerilenKod = null;
             if (!eslesmis)
