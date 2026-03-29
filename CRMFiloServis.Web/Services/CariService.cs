@@ -15,23 +15,33 @@ public class CariService : ICariService
 
     public async Task<List<Cari>> GetAllAsync()
     {
-        return await _context.Cariler
-            .Where(c => !c.IsDeleted) // Soft delete filtresi
+        var cariler = await _context.Cariler
+            .Include(c => c.MuhasebeHesap)
+            .Where(c => !c.IsDeleted)
             .OrderBy(c => c.Unvan)
             .ToListAsync();
+
+        foreach (var cari in cariler)
+        {
+            await FillMuhasebeBilgisiAsync(cari);
+        }
+
+        return cariler;
     }
 
     public async Task<List<Cari>> GetAllWithBakiyeAsync()
     {
         var cariler = await _context.Cariler
-            .Where(c => !c.IsDeleted) // Soft delete filtresi
+            .Include(c => c.MuhasebeHesap)
+            .Where(c => !c.IsDeleted)
             .OrderBy(c => c.Unvan)
             .ToListAsync();
 
-        // Her cari icin borc/alacak hesapla
         foreach (var cari in cariler)
         {
-            // Gelen faturalar (Alis) = Borcumuz
+            await FillMuhasebeBilgisiAsync(cari);
+
+            // Her cari icin borc/alacak hesapla
             var gelenFaturalar = await _context.Faturalar
                 .Where(f => f.CariId == cari.Id && f.FaturaYonu == FaturaYonu.Gelen)
                 .SumAsync(f => (decimal?)f.GenelToplam) ?? 0;
@@ -89,17 +99,33 @@ public class CariService : ICariService
 
     public async Task<Cari?> GetByIdAsync(int id)
     {
-        return await _context.Cariler
+        var cari = await _context.Cariler
             .Include(c => c.Guzergahlar)
+            .Include(c => c.MuhasebeHesap)
             .Where(c => !c.IsDeleted)
             .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (cari != null)
+        {
+            await FillMuhasebeBilgisiAsync(cari);
+        }
+
+        return cari;
     }
 
     public async Task<Cari?> GetByKodAsync(string cariKodu)
     {
-        return await _context.Cariler
+        var cari = await _context.Cariler
+            .Include(c => c.MuhasebeHesap)
             .Where(c => !c.IsDeleted)
             .FirstOrDefaultAsync(c => c.CariKodu == cariKodu);
+
+        if (cari != null)
+        {
+            await FillMuhasebeBilgisiAsync(cari);
+        }
+
+        return cari;
     }
 
     public async Task<List<Cari>> GetByTipAsync(CariTipi tip)
@@ -113,18 +139,18 @@ public class CariService : ICariService
 
     public async Task<Cari> CreateAsync(Cari cari)
     {
-        // Kullanıcı ozel bir hesap kodu girdiyse (CRI- baslamayan) once hesap var mi bakalim
-        if (!string.IsNullOrWhiteSpace(cari.CariKodu) && !cari.CariKodu.StartsWith("CRI-"))
+        var girilenCariKodu = cari.CariKodu?.Trim();
+
+        if (!cari.MuhasebeHesapId.HasValue && IsMuhasebeHesapKodu(girilenCariKodu))
         {
-            var existingHesap = await _context.MuhasebeHesaplari.FirstOrDefaultAsync(h => h.HesapKodu == cari.CariKodu);
+            var existingHesap = await FindMuhasebeHesapByKodAsync(girilenCariKodu);
             if (existingHesap != null)
             {
                 cari.MuhasebeHesapId = existingHesap.Id;
             }
             else
             {
-                // Yoksa bu ozel kodla acalim
-                var ozelHesap = await CreateMuhasebeHesapAsync(cari, cari.CariKodu);
+                var ozelHesap = await CreateMuhasebeHesapAsync(cari, girilenCariKodu);
                 if (ozelHesap != null)
                 {
                     cari.MuhasebeHesapId = ozelHesap.Id;
@@ -132,26 +158,20 @@ public class CariService : ICariService
             }
         }
 
-        // Yukaridaki isleme ragmen Muhasebe hesabi otomatik olustur (eger kod girmeden secilmediyse) Veya var olani ustlen
         if (!cari.MuhasebeHesapId.HasValue)
         {
             var muhasebeHesap = await CreateMuhasebeHesapAsync(cari);
             if (muhasebeHesap != null)
             {
                 cari.MuhasebeHesapId = muhasebeHesap.Id;
-                cari.CariKodu = muhasebeHesap.HesapKodu;
             }
         }
-        else if (cari.CariKodu.StartsWith("CRI-"))
+
+        if (!string.IsNullOrWhiteSpace(girilenCariKodu))
         {
-            // Kullanici sectiyse onun kodunu bas
-            var bHesap = await _context.MuhasebeHesaplari.FindAsync(cari.MuhasebeHesapId.Value);
-            if (bHesap != null)
-            {
-                cari.CariKodu = bHesap.HesapKodu;
-            }
+            cari.CariKodu = girilenCariKodu;
         }
-        
+
         cari.IsDeleted = false;
         cari.CreatedAt = DateTime.UtcNow;
         _context.Cariler.Add(cari);
@@ -167,55 +187,56 @@ public class CariService : ICariService
             
         if (existing == null) throw new Exception("Cari bulunamadi");
 
-        // UI uzerinden kullanici cari kodunu manuel 120.xxx vs girip kaydettiyse:
-        if (!string.IsNullOrWhiteSpace(cari.CariKodu) && !cari.CariKodu.StartsWith("CRI-") && cari.CariKodu != existing.CariKodu)
+        var girilenCariKodu = cari.CariKodu?.Trim();
+        var kodDegisti = !string.Equals(girilenCariKodu, existing.CariKodu, StringComparison.OrdinalIgnoreCase);
+
+        if (!cari.MuhasebeHesapId.HasValue)
         {
-            // Bu hesabi hesapplaninda ara
-            var existingHesap = await _context.MuhasebeHesaplari.FirstOrDefaultAsync(h => h.HesapKodu == cari.CariKodu);
-            if (existingHesap != null)
+            var eslesecekKod = IsMuhasebeHesapKodu(girilenCariKodu)
+                ? girilenCariKodu
+                : (IsMuhasebeHesapKodu(existing.CariKodu) ? existing.CariKodu : null);
+
+            if (!string.IsNullOrWhiteSpace(eslesecekKod))
             {
-                cari.MuhasebeHesapId = existingHesap.Id;
-            }
-            else
-            {
-                // Yoksa bu ozel kodla acmayi dene
-                var ozelHesap = await CreateMuhasebeHesapAsync(cari, cari.CariKodu);
-                if (ozelHesap != null)
+                var existingHesap = await FindMuhasebeHesapByKodAsync(eslesecekKod);
+                if (existingHesap != null)
                 {
-                    cari.MuhasebeHesapId = ozelHesap.Id;
+                    cari.MuhasebeHesapId = existingHesap.Id;
+                }
+                else if (IsMuhasebeHesapKodu(girilenCariKodu) && kodDegisti)
+                {
+                    var ozelHesap = await CreateMuhasebeHesapAsync(cari, girilenCariKodu);
+                    if (ozelHesap != null)
+                    {
+                        cari.MuhasebeHesapId = ozelHesap.Id;
+                    }
                 }
             }
         }
 
-        // Cari muhasebe hesabı yoksa ve ayarlarda otomatik hesap aç seçiliyse açsın
         if (!cari.MuhasebeHesapId.HasValue && !existing.MuhasebeHesapId.HasValue)
         {
             var muhasebeHesap = await CreateMuhasebeHesapAsync(cari);
             if (muhasebeHesap != null)
             {
                 cari.MuhasebeHesapId = muhasebeHesap.Id;
-                cari.CariKodu = muhasebeHesap.HesapKodu;
             }
         }
-        else if (cari.MuhasebeHesapId.HasValue && cari.MuhasebeHesapId != existing.MuhasebeHesapId)
+        else if ((existing.MuhasebeHesapId ?? cari.MuhasebeHesapId).HasValue && existing.Unvan != cari.Unvan)
         {
-            // Kullanıcı dropdown listesinden muhasebe hesabını manuel değiştirdiyse hesap kodunu da güncelle
-            var bHesap = await _context.MuhasebeHesaplari.FindAsync(cari.MuhasebeHesapId.Value);
-            if (bHesap != null)
-            {
-                cari.CariKodu = bHesap.HesapKodu;
-            }
-        }
-        else if (existing.MuhasebeHesapId.HasValue && existing.Unvan != cari.Unvan) 
-        {
-            // Eğer cari adı değiştiyse bağli muhasebe hesap adını da güncelleyelim.
-            var mHesap = await _context.MuhasebeHesaplari.FindAsync(existing.MuhasebeHesapId.Value);
+            var hesapId = cari.MuhasebeHesapId ?? existing.MuhasebeHesapId;
+            var mHesap = await _context.MuhasebeHesaplari.FindAsync(hesapId!.Value);
             if (mHesap != null)
             {
                 mHesap.HesapAdi = cari.Unvan;
                 mHesap.UpdatedAt = DateTime.UtcNow;
                 _context.MuhasebeHesaplari.Update(mHesap);
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(girilenCariKodu))
+        {
+            cari.CariKodu = girilenCariKodu;
         }
 
         existing.CariKodu = cari.CariKodu;
@@ -236,6 +257,79 @@ public class CariService : ICariService
 
         await _context.SaveChangesAsync();
         return existing;
+    }
+
+    public async Task<Cari> MatchMuhasebeHesapByKodAsync(int cariId, string hesapKodu)
+    {
+        var cari = await _context.Cariler
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == cariId && !c.IsDeleted);
+
+        if (cari == null)
+        {
+            throw new Exception("Cari bulunamadi");
+        }
+
+        if (string.IsNullOrWhiteSpace(hesapKodu))
+        {
+            throw new Exception("Hesap kodu bos olamaz");
+        }
+
+        var muhasebeHesap = await FindMuhasebeHesapByKodAsync(hesapKodu);
+        if (muhasebeHesap == null)
+        {
+            throw new Exception("Girilen hesap kodu hesap planinda bulunamadi");
+        }
+
+        cari.MuhasebeHesapId = muhasebeHesap.Id;
+        cari.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return cari;
+    }
+
+    public async Task<Cari> EnsureMuhasebeHesapAsync(int cariId)
+    {
+        var cari = await _context.Cariler
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == cariId && !c.IsDeleted);
+
+        if (cari == null)
+        {
+            throw new Exception("Cari bulunamadi");
+        }
+
+        if (cari.MuhasebeHesapId.HasValue)
+        {
+            var bagliHesap = await _context.MuhasebeHesaplari.FindAsync(cari.MuhasebeHesapId.Value);
+            if (bagliHesap != null)
+            {
+                return cari;
+            }
+        }
+
+        if (IsMuhasebeHesapKodu(cari.CariKodu))
+        {
+            var existingHesap = await FindMuhasebeHesapByKodAsync(cari.CariKodu);
+            if (existingHesap != null)
+            {
+                cari.MuhasebeHesapId = existingHesap.Id;
+                cari.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return cari;
+            }
+        }
+
+        var olusanHesap = await CreateMuhasebeHesapAsync(cari);
+        if (olusanHesap == null)
+        {
+            throw new Exception("Muhasebe hesap kodu olusturulamadi");
+        }
+
+        cari.MuhasebeHesapId = olusanHesap.Id;
+        cari.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return cari;
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -442,5 +536,59 @@ public class CariService : ICariService
         {
             return null;
         }
+    }
+
+    private async Task<MuhasebeHesap?> FindMuhasebeHesapByKodAsync(string? hesapKodu)
+    {
+        if (string.IsNullOrWhiteSpace(hesapKodu))
+        {
+            return null;
+        }
+
+        var normalizedKod = hesapKodu.Trim();
+        return await _context.MuhasebeHesaplari
+            .FirstOrDefaultAsync(h => h.HesapKodu == normalizedKod);
+    }
+
+    private async Task FillMuhasebeBilgisiAsync(Cari cari)
+    {
+        var muhasebeHesap = cari.MuhasebeHesap;
+
+        if (muhasebeHesap == null && cari.MuhasebeHesapId.HasValue)
+        {
+            muhasebeHesap = await _context.MuhasebeHesaplari.FindAsync(cari.MuhasebeHesapId.Value);
+        }
+
+        if (muhasebeHesap == null && IsMuhasebeHesapKodu(cari.CariKodu))
+        {
+            muhasebeHesap = await FindMuhasebeHesapByKodAsync(cari.CariKodu);
+        }
+
+        if (muhasebeHesap == null && !string.IsNullOrWhiteSpace(cari.Unvan))
+        {
+            muhasebeHesap = await _context.MuhasebeHesaplari
+                .FirstOrDefaultAsync(h => h.HesapAdi == cari.Unvan)
+                ?? await _context.MuhasebeHesaplari
+                    .FirstOrDefaultAsync(h => h.HesapAdi.Contains(cari.Unvan) || cari.Unvan.Contains(h.HesapAdi));
+        }
+
+        if (muhasebeHesap != null)
+        {
+            cari.MuhasebeHesapId = muhasebeHesap.Id;
+            cari.MuhasebeHesap = muhasebeHesap;
+        }
+    }
+
+    private static bool IsMuhasebeHesapKodu(string? kod)
+    {
+        if (string.IsNullOrWhiteSpace(kod))
+        {
+            return false;
+        }
+
+        return kod.Contains('.') &&
+               (kod.StartsWith("120.", StringComparison.OrdinalIgnoreCase) ||
+                kod.StartsWith("320.", StringComparison.OrdinalIgnoreCase) ||
+                kod.StartsWith("335.", StringComparison.OrdinalIgnoreCase));
     }
 }

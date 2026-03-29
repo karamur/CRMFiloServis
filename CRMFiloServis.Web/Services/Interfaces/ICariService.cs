@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+﻿using CRMFiloServis.Shared.Entities;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -12,6 +12,8 @@ public interface ICariService
     Task<List<Cari>> GetByTipAsync(CariTipi tip);
     Task<Cari> CreateAsync(Cari cari);
     Task<Cari> UpdateAsync(Cari cari);
+    Task<Cari> MatchMuhasebeHesapByKodAsync(int cariId, string hesapKodu);
+    Task<Cari> EnsureMuhasebeHesapAsync(int cariId);
     Task<bool> DeleteAsync(int id);
     Task<string> GenerateNextKodAsync();
 }
