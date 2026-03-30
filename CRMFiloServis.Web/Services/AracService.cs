@@ -146,28 +146,43 @@ public class AracService : IAracService
         if (await PlakaMevcutMu(plaka))
             throw new InvalidOperationException($"Bu plaka ({plaka}) başka bir araçta aktif olarak kullanılıyor.");
         
-        // Araç oluştur
-        arac.AktifPlaka = plaka;
-        arac.CreatedAt = DateTime.UtcNow;
-        _context.Araclar.Add(arac);
-        await _context.SaveChangesAsync();
-        
-        // İlk plaka kaydını oluştur
-        var aracPlaka = new AracPlaka
+        try
         {
-            AracId = arac.Id,
-            Plaka = plaka,
-            GirisTarihi = DateTime.UtcNow,
-            IslemTipi = islemTipi,
-            IslemTutari = islemTutari,
-            CariId = cariId,
-            Aciklama = aciklama ?? $"Araç ilk kayıt - {islemTipi}",
-            CreatedAt = DateTime.UtcNow
-        };
-        _context.AracPlakalar.Add(aracPlaka);
-        await _context.SaveChangesAsync();
-        
-        return arac;
+            // Navigation property'leri temizle (tracking sorununu önle)
+            arac.PlakaGecmisi = new List<AracPlaka>();
+            arac.Masraflar = new List<AracMasraf>();
+            arac.ServisCalismalari = new List<ServisCalisma>();
+            arac.KiralikCari = null;
+            arac.KomisyoncuCari = null;
+            
+            // Araç oluştur
+            arac.AktifPlaka = plaka;
+            arac.CreatedAt = DateTime.UtcNow;
+            _context.Araclar.Add(arac);
+            await _context.SaveChangesAsync();
+            
+            // İlk plaka kaydını oluştur
+            var aracPlaka = new AracPlaka
+            {
+                AracId = arac.Id,
+                Plaka = plaka,
+                GirisTarihi = DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Utc),
+                IslemTipi = islemTipi,
+                IslemTutari = islemTutari,
+                CariId = cariId,
+                Aciklama = aciklama ?? $"Araç ilk kayıt - {islemTipi}",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.AracPlakalar.Add(aracPlaka);
+            await _context.SaveChangesAsync();
+            
+            return arac;
+        }
+        catch (Exception ex)
+        {
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            throw new InvalidOperationException($"Araç kayıt hatası: {innerMessage}", ex);
+        }
     }
 
     public async Task<Arac> UpdateAsync(Arac arac)
@@ -175,15 +190,57 @@ public class AracService : IAracService
         // Şase no kontrolü (kendi hariç)
         if (await SaseNoMevcutMu(arac.SaseNo, arac.Id))
             throw new InvalidOperationException($"Bu şase numarası ({arac.SaseNo}) sistemde zaten kayıtlı.");
+        
+        try
+        {
+            // Mevcut kaydı veritabanından al
+            var existing = await _context.Araclar.FindAsync(arac.Id);
+            if (existing == null)
+                throw new InvalidOperationException("Araç bulunamadı.");
             
-        arac.UpdatedAt = DateTime.UtcNow;
-        _context.Araclar.Update(arac);
-        await _context.SaveChangesAsync();
-        
-        // Aktif plakayı güncelle
-        await GuncelleAktifPlaka(arac.Id);
-        
-        return arac;
+            // Sadece değiştirilebilir alanları güncelle
+            existing.Marka = arac.Marka;
+            existing.Model = arac.Model;
+            existing.ModelYili = arac.ModelYili;
+            existing.MotorNo = arac.MotorNo;
+            existing.Renk = arac.Renk;
+            existing.KoltukSayisi = arac.KoltukSayisi;
+            existing.AracTipi = arac.AracTipi;
+            existing.SahiplikTipi = arac.SahiplikTipi;
+            existing.KiralikCariId = arac.KiralikCariId;
+            existing.GunlukKiraBedeli = arac.GunlukKiraBedeli;
+            existing.AylikKiraBedeli = arac.AylikKiraBedeli;
+            existing.SeferBasinaKiraBedeli = arac.SeferBasinaKiraBedeli;
+            existing.KiraHesaplamaTipi = arac.KiraHesaplamaTipi;
+            existing.KomisyonVar = arac.KomisyonVar;
+            existing.KomisyoncuCariId = arac.KomisyoncuCariId;
+            existing.KomisyonOrani = arac.KomisyonOrani;
+            existing.SabitKomisyonTutari = arac.SabitKomisyonTutari;
+            existing.KomisyonHesaplamaTipi = arac.KomisyonHesaplamaTipi;
+            existing.TrafikSigortaBitisTarihi = arac.TrafikSigortaBitisTarihi;
+            existing.KaskoBitisTarihi = arac.KaskoBitisTarihi;
+            existing.MuayeneBitisTarihi = arac.MuayeneBitisTarihi;
+            existing.KmDurumu = arac.KmDurumu;
+            existing.Aktif = arac.Aktif;
+            existing.Notlar = arac.Notlar;
+            existing.SatisaAcik = arac.SatisaAcik;
+            existing.SatisFiyati = arac.SatisFiyati;
+            existing.SatisaAcilmaTarihi = arac.SatisaAcilmaTarihi;
+            existing.SatisAciklamasi = arac.SatisAciklamasi;
+            existing.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+            
+            // Aktif plakayı güncelle
+            await GuncelleAktifPlaka(existing.Id);
+            
+            return existing;
+        }
+        catch (Exception ex)
+        {
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            throw new InvalidOperationException($"Araç güncelleme hatası: {innerMessage}", ex);
+        }
     }
 
     public async Task DeleteAsync(int id)
