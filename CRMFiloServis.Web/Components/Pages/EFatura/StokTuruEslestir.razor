@@ -3,6 +3,7 @@
 @using CRMFiloServis.Web.Services
 @inject IFaturaService FaturaService
 @inject IToastService ToastService
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Stok Türü Eşleştirme</PageTitle>
@@ -78,15 +79,15 @@
         <div class="col-md-2">
             <div class="card bg-info text-white">
                 <div class="card-body py-2 text-center">
-                    <h5 class="mb-0">@kalemler.Count</h5>
-                    <small>Toplam Kalem</small>
+                    <h5 class="mb-0">@filtrelenmisKalemler.Count</h5>
+                    <small>Filtreli</small>
                 </div>
             </div>
         </div>
         <div class="col-md-2">
             <div class="card bg-primary text-white">
                 <div class="card-body py-2 text-center">
-                    <h5 class="mb-0">@kalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Hizmet)</h5>
+                    <h5 class="mb-0">@filtrelenmisKalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Hizmet)</h5>
                     <small>Hizmet</small>
                 </div>
             </div>
@@ -94,7 +95,7 @@
         <div class="col-md-2">
             <div class="card bg-success text-white">
                 <div class="card-body py-2 text-center">
-                    <h5 class="mb-0">@kalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Mal)</h5>
+                    <h5 class="mb-0">@filtrelenmisKalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Mal)</h5>
                     <small>Mal</small>
                 </div>
             </div>
@@ -102,7 +103,7 @@
         <div class="col-md-2">
             <div class="card bg-warning text-dark">
                 <div class="card-body py-2 text-center">
-                    <h5 class="mb-0">@kalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Demirbas)</h5>
+                    <h5 class="mb-0">@filtrelenmisKalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Demirbas)</h5>
                     <small>Demirbaş</small>
                 </div>
             </div>
@@ -110,7 +111,7 @@
         <div class="col-md-2">
             <div class="card bg-danger text-white">
                 <div class="card-body py-2 text-center">
-                    <h5 class="mb-0">@kalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Arac)</h5>
+                    <h5 class="mb-0">@filtrelenmisKalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Arac)</h5>
                     <small>Araç</small>
                 </div>
             </div>
@@ -118,37 +119,64 @@
         <div class="col-md-2">
             <div class="card bg-secondary text-white">
                 <div class="card-body py-2 text-center">
-                    <h5 class="mb-0">@kalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Servis || k.KalemTipi == FaturaKalemTipi.Diger)</h5>
+                    <h5 class="mb-0">@filtrelenmisKalemler.Count(k => k.KalemTipi == FaturaKalemTipi.Servis || k.KalemTipi == FaturaKalemTipi.Diger)</h5>
                     <small>Servis/Diğer</small>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Toplu İşlem -->
-    @if (seciliKalemler.Any())
-    {
-        <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
-            <span><strong>@seciliKalemler.Count</strong> kalem seçildi</span>
-            <div class="d-flex gap-2">
-                <select class="form-select form-select-sm" style="width: 150px;" @bind="topluKalemTipi">
-                    <option value="">Tür Seç</option>
-                    <option value="@((int)FaturaKalemTipi.Hizmet)">Hizmet</option>
-                    <option value="@((int)FaturaKalemTipi.Mal)">Mal</option>
-                    <option value="@((int)FaturaKalemTipi.Demirbas)">Demirbaş</option>
-                    <option value="@((int)FaturaKalemTipi.Arac)">Araç</option>
-                    <option value="@((int)FaturaKalemTipi.Servis)">Servis</option>
-                    <option value="@((int)FaturaKalemTipi.Diger)">Diğer</option>
-                </select>
-                <button class="btn btn-primary btn-sm" @onclick="TopluTurDegistir" disabled="@(string.IsNullOrEmpty(topluKalemTipi))">
-                    <i class="bi bi-check me-1"></i>Uygula
-                </button>
-                <button class="btn btn-outline-secondary btn-sm" @onclick="SecimleriTemizle">
-                    <i class="bi bi-x"></i>
-                </button>
+    <!-- Toplu İşlem Toolbar -->
+    <div class="card mb-3 bg-light">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" @onclick="HepsiniIsaretle" title="Filtreli Tümünü Seç">
+                            <i class="bi bi-check-all me-1"></i>Hepsini Seç (@filtrelenmisKalemler.Count)
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="SecimleriTemizle" disabled="@(!seciliKalemler.Any())">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">Toplu Tür:</span>
+                        <select class="form-select" style="width: 130px;" @bind="topluKalemTipi">
+                            <option value="">Seç...</option>
+                            <option value="@((int)FaturaKalemTipi.Hizmet)">Hizmet</option>
+                            <option value="@((int)FaturaKalemTipi.Mal)">Mal</option>
+                            <option value="@((int)FaturaKalemTipi.Demirbas)">Demirbaş</option>
+                            <option value="@((int)FaturaKalemTipi.Arac)">Araç</option>
+                            <option value="@((int)FaturaKalemTipi.Servis)">Servis</option>
+                            <option value="@((int)FaturaKalemTipi.Diger)">Diğer</option>
+                        </select>
+                        <button class="btn btn-primary" @onclick="TopluTurDegistir" 
+                                disabled="@(string.IsNullOrEmpty(topluKalemTipi) || !seciliKalemler.Any())">
+                            <i class="bi bi-check me-1"></i>Uygula
+                        </button>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-success btn-sm" @onclick="TopluEslestirVeStokKartiOlustur" 
+                            disabled="@(!seciliKalemler.Any() || string.IsNullOrEmpty(topluKalemTipi) || isKaydediliyor)">
+                        @if (isKaydediliyor)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-box-seam me-1"></i>Eşleştir + Stok Kartı Oluştur
+                    </button>
+                </div>
+                @if (seciliKalemler.Any())
+                {
+                    <div class="col-auto">
+                        <span class="badge bg-info fs-6">@seciliKalemler.Count seçili</span>
+                    </div>
+                }
             </div>
         </div>
-    }
+    </div>
 
     <!-- Tablo -->
     @if (isLoading)
@@ -166,7 +194,9 @@
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th style="width: 40px;">
-                                    <input type="checkbox" class="form-check-input" @onchange="TumunuSec" />
+                                    <input type="checkbox" class="form-check-input" 
+                                           checked="@tumunuSecildiMi"
+                                           @onchange="TumunuSecHandler" />
                                 </th>
                                 <th style="width: 100px;">Fatura No</th>
                                 <th style="width: 90px;">Tarih</th>
@@ -265,6 +295,7 @@
     private bool stokKartiOlustur = false;
 
     private bool degisiklikVar => degistirilmisKalemler.Any();
+    private bool tumunuSecildiMi => filtrelenmisKalemler.Any() && filtrelenmisKalemler.All(k => seciliKalemler.Contains(k.Id));
 
     protected override async Task OnInitializedAsync()
     {
@@ -320,6 +351,7 @@
         }
 
         filtrelenmisKalemler = query.OrderByDescending(k => k.Fatura?.FaturaTarihi).ThenBy(k => k.SiraNo).ToList();
+        seciliKalemler.Clear(); // Filtre değişince seçimi temizle
     }
 
     private void KalemSecildi(int kalemId, bool secili)
@@ -330,7 +362,7 @@
             seciliKalemler.Remove(kalemId);
     }
 
-    private void TumunuSec(ChangeEventArgs e)
+    private void TumunuSecHandler(ChangeEventArgs e)
     {
         if ((bool)e.Value!)
         {
@@ -341,6 +373,13 @@
         {
             seciliKalemler.Clear();
         }
+    }
+
+    private void HepsiniIsaretle()
+    {
+        seciliKalemler.Clear();
+        foreach (var k in filtrelenmisKalemler)
+            seciliKalemler.Add(k.Id);
     }
 
     private void SecimleriTemizle()
@@ -354,7 +393,7 @@
         if (int.TryParse(e.Value?.ToString(), out var yeniTip))
         {
             kalem.KalemTipi = (FaturaKalemTipi)yeniTip;
-            kalem.AltTipi = null; // Alt tipi sıfırla
+            kalem.AltTipi = null;
             degistirilmisKalemler.Add(kalem.Id);
         }
     }
@@ -373,6 +412,7 @@
         if (string.IsNullOrEmpty(topluKalemTipi) || !seciliKalemler.Any()) return;
 
         var yeniTip = (FaturaKalemTipi)int.Parse(topluKalemTipi);
+        var sayac = 0;
 
         foreach (var kalemId in seciliKalemler)
         {
@@ -382,11 +422,73 @@
                 kalem.KalemTipi = yeniTip;
                 kalem.AltTipi = null;
                 degistirilmisKalemler.Add(kalem.Id);
+                sayac++;
             }
         }
 
-        SecimleriTemizle();
-        ToastService.ShowSuccess($"{seciliKalemler.Count} kalemin türü değiştirildi.");
+        ToastService.ShowSuccess($"{sayac} kalemin türü '{GetKalemTipiAdi(yeniTip)}' olarak değiştirildi.");
+    }
+
+    private async Task TopluEslestirVeStokKartiOlustur()
+    {
+        if (!seciliKalemler.Any() || string.IsNullOrEmpty(topluKalemTipi)) return;
+
+        var onay = await JS.InvokeAsync<bool>("confirm", 
+            $"{seciliKalemler.Count} kalem için tür eşleştirmesi yapılacak ve stok kartları oluşturulacak. Devam etmek istiyor musunuz?");
+        if (!onay) return;
+
+        isKaydediliyor = true;
+        StateHasChanged();
+
+        try
+        {
+            var yeniTip = (FaturaKalemTipi)int.Parse(topluKalemTipi);
+
+            // Önce seçili kalemlerin türünü değiştir
+            foreach (var kalemId in seciliKalemler)
+            {
+                var kalem = kalemler.FirstOrDefault(k => k.Id == kalemId);
+                if (kalem != null)
+                {
+                    kalem.KalemTipi = yeniTip;
+                    kalem.AltTipi = null;
+                    degistirilmisKalemler.Add(kalem.Id);
+                }
+            }
+
+            // Değiştirilen kalemleri kaydet ve stok kartı oluştur
+            var degistirilmisler = kalemler.Where(k => degistirilmisKalemler.Contains(k.Id)).ToList();
+            var sonuc = await FaturaService.UpdateFaturaKalemleriVeStokKartiOlusturAsync(degistirilmisler, true);
+
+            var mesaj = $"{sonuc.GuncellenenKalemSayisi} kalem '{GetKalemTipiAdi(yeniTip)}' olarak güncellendi.";
+            if (sonuc.OlusturulanStokKartiSayisi > 0)
+                mesaj += $" {sonuc.OlusturulanStokKartiSayisi} stok kartı oluşturuldu.";
+            if (sonuc.AtlananStokKartiSayisi > 0)
+                mesaj += $" {sonuc.AtlananStokKartiSayisi} stok kartı zaten mevcut.";
+
+            ToastService.ShowSuccess(mesaj);
+
+            if (sonuc.Hatalar.Any())
+            {
+                foreach (var hata in sonuc.Hatalar.Take(5))
+                {
+                    ToastService.ShowWarning(hata);
+                }
+            }
+
+            degistirilmisKalemler.Clear();
+            seciliKalemler.Clear();
+            topluKalemTipi = "";
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isKaydediliyor = false;
+            StateHasChanged();
+        }
     }
 
     private async Task TumunuKaydet()
@@ -402,7 +504,6 @@
             
             if (stokKartiOlustur)
             {
-                // Stok kartı da oluştur
                 var sonuc = await FaturaService.UpdateFaturaKalemleriVeStokKartiOlusturAsync(degistirilmisler, true);
                 
                 var mesaj = $"{sonuc.GuncellenenKalemSayisi} kalem güncellendi.";
@@ -423,7 +524,6 @@
             }
             else
             {
-                // Sadece güncelle
                 await FaturaService.UpdateFaturaKalemleriAsync(degistirilmisler);
                 ToastService.ShowSuccess($"{degistirilmisKalemler.Count} kalem güncellendi.");
             }
@@ -440,6 +540,17 @@
             StateHasChanged();
         }
     }
+
+    private string GetKalemTipiAdi(FaturaKalemTipi tip) => tip switch
+    {
+        FaturaKalemTipi.Hizmet => "Hizmet",
+        FaturaKalemTipi.Mal => "Mal",
+        FaturaKalemTipi.Demirbas => "Demirbaş",
+        FaturaKalemTipi.Arac => "Araç",
+        FaturaKalemTipi.Servis => "Servis",
+        FaturaKalemTipi.Diger => "Diğer",
+        _ => tip.ToString()
+    };
 
     private IEnumerable<FaturaKalemAltTipi> GetAltTipler(FaturaKalemTipi tip) => tip switch
     {
