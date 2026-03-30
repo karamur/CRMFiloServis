@@ -1,7 +1,7 @@
-namespace CRMFiloServis.Shared.Entities;
+﻿namespace CRMFiloServis.Shared.Entities;
 
 /// <summary>
-/// Banka hesaplar�
+/// Banka hesapları
 /// </summary>
 public class BankaHesap : BaseEntity
 {
@@ -17,6 +17,9 @@ public class BankaHesap : BaseEntity
     public decimal AcilisBakiye { get; set; } = 0;
     public bool Aktif { get; set; } = true;
     public string? Notlar { get; set; }
+    
+    // Kredi Kartı için ek alanlar
+    public Guid? KrediTaksitGrupId { get; set; } // İlişkili kredi/taksit grubu
 
     // Navigation Properties
     public virtual ICollection<BankaKasaHareket> Hareketler { get; set; } = new List<BankaKasaHareket>();
@@ -27,5 +30,6 @@ public enum HesapTipi
     Kasa = 1,
     VadesizHesap = 2,
     VadeliHesap = 3,
-    KrediHesabi = 4
+    KrediHesabi = 4,
+    KrediKarti = 5
 }

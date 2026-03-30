@@ -1,15 +1,15 @@
-@page "/banka-hesaplari"
+ï»¿@page "/banka-hesaplari"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @inject IBankaHesapService BankaHesapService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>Banka/Kasa Hesaplarý</PageTitle>
+<PageTitle>Banka/Kasa HesaplarÄ±</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-bank me-2"></i>Banka/Kasa Hesaplarý</h3>
+        <h3><i class="bi bi-bank me-2"></i>Banka/Kasa HesaplarÄ±</h3>
         <button class="btn btn-primary" @onclick="YeniHesap">
             <i class="bi bi-plus-lg me-1"></i>Yeni Hesap
         </button>
@@ -19,7 +19,7 @@
     {
         <div class="text-center">
             <div class="spinner-border" role="status">
-                <span class="visually-hidden">Yükleniyor...</span>
+                <span class="visually-hidden">YÃ¼kleniyor...</span>
             </div>
         </div>
     }
@@ -30,12 +30,12 @@
             {
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="card h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex justify-content-between align-items-center @(hesap.HesapTipi == HesapTipi.KrediKarti ? "bg-danger text-white" : "")">
                             <span>
-                                <i class="bi @(hesap.HesapTipi == HesapTipi.Kasa ? "bi-cash-coin" : "bi-bank") me-2"></i>
+                                <i class="bi @GetHesapIcon(hesap.HesapTipi) me-2"></i>
                                 @hesap.HesapAdi
                             </span>
-                            <span class="badge @(hesap.Aktif ? "bg-success" : "bg-danger")">
+                            <span class="badge @(hesap.Aktif ? "bg-success" : "bg-secondary")">
                                 @(hesap.Aktif ? "Aktif" : "Pasif")
                             </span>
                         </div>
@@ -52,15 +52,15 @@
                             }
                             <hr />
                             <div class="text-center">
-                                <span class="text-muted">Güncel Bakiye</span>
+                                <span class="text-muted">@(hesap.HesapTipi == HesapTipi.KrediKarti ? "KullanÄ±lan Limit" : "GÃ¼ncel Bakiye")</span>
                                 <h4 class="mb-0 @(bakiyeler.GetValueOrDefault(hesap.Id) >= 0 ? "text-success" : "text-danger")">
-                                    @bakiyeler.GetValueOrDefault(hesap.Id).ToString("N2") ?
+                                    @bakiyeler.GetValueOrDefault(hesap.Id).ToString("N2") â‚º
                                 </h4>
                             </div>
                         </div>
                         <div class="card-footer">
                             <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(hesap.Id)">
-                                <i class="bi bi-pencil"></i> Düzenle
+                                <i class="bi bi-pencil"></i> DÃ¼zenle
                             </button>
                             <button class="btn btn-sm btn-outline-info me-1" @onclick="() => Hareketler(hesap.Id)">
                                 <i class="bi bi-list"></i> Hareketler
@@ -77,7 +77,7 @@
         @if (!hesaplar.Any())
         {
             <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>Henüz banka/kasa hesabý bulunmamaktadýr.
+                <i class="bi bi-info-circle me-2"></i>HenÃ¼z banka/kasa hesabÄ± bulunmamaktadÄ±r.
             </div>
         }
     }
@@ -89,14 +89,14 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Silme Onayý</h5>
+                    <h5 class="modal-title">Silme OnayÄ±</h5>
                     <button type="button" class="btn-close" @onclick="() => showDeleteModal = false"></button>
                 </div>
                 <div class="modal-body">
-                    <p><strong>@silinecekHesap?.HesapAdi</strong> hesabýný silmek istediðinize emin misiniz?</p>
+                    <p><strong>@silinecekHesap?.HesapAdi</strong> hesabÄ±nÄ± silmek istediÄŸinize emin misiniz?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">Ýptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">Ä°ptal</button>
                     <button type="button" class="btn btn-danger" @onclick="Sil">Sil</button>
                 </div>
             </div>
@@ -161,7 +161,18 @@
         HesapTipi.Kasa => "Kasa",
         HesapTipi.VadesizHesap => "Vadesiz Hesap",
         HesapTipi.VadeliHesap => "Vadeli Hesap",
-        HesapTipi.KrediHesabi => "Kredi Hesabý",
+        HesapTipi.KrediHesabi => "Kredi HesabÄ±",
+        HesapTipi.KrediKarti => "Kredi KartÄ±",
         _ => tip.ToString()
+    };
+
+    private string GetHesapIcon(HesapTipi tip) => tip switch
+    {
+        HesapTipi.Kasa => "bi-cash-coin",
+        HesapTipi.VadesizHesap => "bi-bank",
+        HesapTipi.VadeliHesap => "bi-piggy-bank",
+        HesapTipi.KrediHesabi => "bi-credit-card-2-front",
+        HesapTipi.KrediKarti => "bi-credit-card",
+        _ => "bi-wallet"
     };
 }

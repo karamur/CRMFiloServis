@@ -1,16 +1,17 @@
-@page "/banka-hesaplari/yeni"
+﻿@page "/banka-hesaplari/yeni"
 @page "/banka-hesaplari/{Id:int}"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @inject IBankaHesapService BankaHesapService
+@inject IBudgetService BudgetService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEdit ? "Hesap D�zenle" : "Yeni Banka/Kasa Hesab�")</PageTitle>
+<PageTitle>@(IsEdit ? "Hesap Düzenle" : "Yeni Banka/Kasa Hesabı")</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-bank me-2"></i>@(IsEdit ? "Hesap D�zenle" : "Yeni Banka/Kasa Hesab�")</h3>
+        <h3><i class="bi bi-bank me-2"></i>@(IsEdit ? "Hesap Düzenle" : "Yeni Banka/Kasa Hesabı")</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -25,19 +26,21 @@
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Hesap Kodu *</label>
-                            <InputText @bind-Value="hesap.HesapKodu" class="form-control" readonly="@IsEdit" />
+                            <InputText @bind-Value="hesap.HesapKodu" class="form-control"
+                                readonly="@IsEdit" />
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Hesap Ad� *</label>
+                            <label class="form-label">Hesap Adı *</label>
                             <InputText @bind-Value="hesap.HesapAdi" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Hesap Tipi *</label>
-                            <InputSelect @bind-Value="hesap.HesapTipi" class="form-select">
+                            <InputSelect @bind-Value="hesap.HesapTipi" class="form-select"
+                                @bind-Value:after="OnHesapTipiChanged">
                                 @foreach (HesapTipi tip in Enum.GetValues(typeof(HesapTipi)))
                                 {
                                     <option value="@tip">@GetTipText(tip)</option>
@@ -47,22 +50,47 @@
                     </div>
                 </div>
 
+                @if (hesap.HesapTipi == HesapTipi.KrediKarti)
+                {
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label class="form-label">İlişkili Kredi/Taksit</label>
+                                <select class="form-select" @bind="secilenKrediGrupId">
+                                    <option value="">-- Seçiniz (Opsiyonel) --</option>
+                                    @if (krediOzetleri != null)
+                                    {
+                                        @foreach (var kredi in krediOzetleri)
+                                        {
+                                            <option value="@kredi.TaksitGrupId">@kredi.MasrafKalemi - @kredi.Aciklama (@FormatPara(kredi.KalanTutar)
+                                                kalan)
+                                            </option>
+                                        }
+                                    }
+                                </select>
+                                <small class="text-muted">Bu kredi kartı ile yapılan ödemeler seçilen kredi/taksitle
+                                    ilişkilendirilir</small>
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Banka Ad�</label>
+                            <label class="form-label">Banka Adı</label>
                             <InputText @bind-Value="hesap.BankaAdi" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">�ube Ad�</label>
+                            <label class="form-label">Şube Adı</label>
                             <InputText @bind-Value="hesap.SubeAdi" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">�ube Kodu</label>
+                            <label class="form-label">Şube Kodu</label>
                             <InputText @bind-Value="hesap.SubeKodu" class="form-control" />
                         </div>
                     </div>
@@ -71,7 +99,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Hesap No</label>
+                            <label class="form-label">Hesap No / Kart No</label>
                             <InputText @bind-Value="hesap.HesapNo" class="form-control" />
                         </div>
                     </div>
@@ -92,7 +120,8 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">A��l�� Bakiyesi (?)</label>
+                            <label class="form-label">@(hesap.HesapTipi == HesapTipi.KrediKarti ? "Kredi Limiti" :
+                            "Açılış Bakiyesi") (₺)</label>
                             <InputNumber @bind-Value="hesap.AcilisBakiye" class="form-control" />
                         </div>
                     </div>
@@ -116,7 +145,7 @@
                         <i class="bi bi-check-lg me-1"></i>Kaydet
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Geri">
-                        <i class="bi bi-x-lg me-1"></i>�ptal
+                        <i class="bi bi-x-lg me-1"></i>İptal
                     </button>
                 </div>
             </EditForm>
@@ -129,16 +158,25 @@
     public int? Id { get; set; }
 
     private BankaHesap hesap = new();
+    private List<KrediOzet>? krediOzetleri;
+    private string secilenKrediGrupId = "";
     private bool IsEdit => Id.HasValue;
 
     protected override async Task OnInitializedAsync()
     {
+        // Kredi/Taksit listesini yükle
+        krediOzetleri = await BudgetService.GetKrediOzetleriAsync();
+
         if (IsEdit)
         {
             var existing = await BankaHesapService.GetByIdAsync(Id!.Value);
             if (existing != null)
             {
                 hesap = existing;
+                if (hesap.KrediTaksitGrupId.HasValue)
+                {
+                    secilenKrediGrupId = hesap.KrediTaksitGrupId.Value.ToString();
+                }
             }
             else
             {
@@ -154,10 +192,29 @@
         }
     }
 
+    private async Task OnHesapTipiChanged()
+    {
+        if (hesap.HesapTipi != HesapTipi.KrediKarti)
+        {
+            secilenKrediGrupId = "";
+            hesap.KrediTaksitGrupId = null;
+        }
+    }
+
     private async Task Kaydet()
     {
         if (string.IsNullOrWhiteSpace(hesap.HesapAdi))
             return;
+
+        // Kredi kartı için ilişkili kredi ayarla
+        if (hesap.HesapTipi == HesapTipi.KrediKarti && !string.IsNullOrEmpty(secilenKrediGrupId))
+        {
+            hesap.KrediTaksitGrupId = Guid.Parse(secilenKrediGrupId);
+        }
+        else
+        {
+            hesap.KrediTaksitGrupId = null;
+        }
 
         if (IsEdit)
         {
@@ -180,7 +237,13 @@
         HesapTipi.Kasa => "Kasa",
         HesapTipi.VadesizHesap => "Vadesiz Hesap",
         HesapTipi.VadeliHesap => "Vadeli Hesap",
-        HesapTipi.KrediHesabi => "Kredi Hesab�",
+        HesapTipi.KrediHesabi => "Kredi Hesabı",
+        HesapTipi.KrediKarti => "Kredi Kartı",
         _ => tip.ToString()
     };
+
+    private string FormatPara(decimal tutar)
+    {
+        return tutar.ToString("N2", new System.Globalization.CultureInfo("tr-TR")) + " ₺";
+    }
 }
