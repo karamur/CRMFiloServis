@@ -316,10 +316,17 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.KdvTutar).HasPrecision(18, 2);
             entity.Property(e => e.GenelToplam).HasPrecision(18, 2);
             entity.Property(e => e.OdenenTutar).HasPrecision(18, 2);
+            entity.Property(e => e.TevkifatOrani).HasPrecision(5, 2);
+            entity.Property(e => e.TevkifatTutar).HasPrecision(18, 2);
+            entity.Property(e => e.TevkifatKodu).HasMaxLength(20);
             entity.HasOne(e => e.Cari)
                 .WithMany(c => c.Faturalar)
                 .HasForeignKey(e => e.CariId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Arac)
+                .WithMany()
+                .HasForeignKey(e => e.AracId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 
@@ -331,7 +338,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.KdvTutar).HasPrecision(18, 2);
             entity.Property(e => e.ToplamTutar).HasPrecision(18, 2);
             entity.Property(e => e.Miktar).HasPrecision(18, 4);
+            entity.Property(e => e.IskontoOrani).HasPrecision(5, 2);
+            entity.Property(e => e.IskontoTutar).HasPrecision(18, 2);
+            entity.Property(e => e.TevkifatOrani).HasPrecision(5, 2);
+            entity.Property(e => e.TevkifatTutar).HasPrecision(18, 2);
             entity.Property(e => e.Birim).HasMaxLength(20);
+            entity.Property(e => e.UrunKodu).HasMaxLength(50);
             entity.HasOne(e => e.Fatura)
                 .WithMany(f => f.FaturaKalemleri)
                 .HasForeignKey(e => e.FaturaId)
@@ -339,6 +351,10 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.MuhasebeHesap)
                 .WithMany()
                 .HasForeignKey(e => e.MuhasebeHesapId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Arac)
+                .WithMany()
+                .HasForeignKey(e => e.AracId)
                 .OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });

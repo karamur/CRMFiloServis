@@ -802,11 +802,14 @@ public class FaturaService : IFaturaService
                 
                 foreach (var line in invoiceLines)
                 {
+                    var urunKodu = GetValue(line, "ID");
+                    var aciklama = GetValue(line.Descendants().FirstOrDefault(x => x.Name.LocalName == "Item"), "Name");
+                    
                     var kalem = new FaturaKalem
                     {
                         SiraNo = siraNo++,
-                        UrunKodu = GetValue(line, "ID"),
-                        Aciklama = GetValue(line.Descendants().FirstOrDefault(x => x.Name.LocalName == "Item"), "Name"),
+                        UrunKodu = urunKodu,
+                        Aciklama = aciklama,
                         Miktar = GetDecimalValue(line, "InvoicedQuantity"),
                         BirimFiyat = GetDecimalValue(line.Descendants().FirstOrDefault(x => x.Name.LocalName == "Price"), "PriceAmount"),
                         KdvOrani = GetDecimalValue(line.Descendants().FirstOrDefault(x => x.Name.LocalName == "TaxTotal")?.Descendants().FirstOrDefault(x => x.Name.LocalName == "TaxSubtotal")?.Descendants().FirstOrDefault(x => x.Name.LocalName == "TaxCategory"), "Percent"),
@@ -847,14 +850,35 @@ public class FaturaService : IFaturaService
                         }
                     }
 
-                    // Varsayılan muhasebe hesabı ata (ayarlara göre)
+                    // Kalem tipini belirle (açıklamaya göre)
+                    kalem.KalemTipi = DetermineKalemTipi(aciklama, urunKodu);
+                    kalem.AltTipi = DetermineKalemAltTipi(aciklama, urunKodu, kalem.KalemTipi);
+
+                    // Araç ilişkisi - açıklamada şase/plaka varsa
+                    var aracBilgisi = ExtractAracBilgisi(aciklama);
+                    if (aracBilgisi.HasValue)
+                    {
+                        var arac = await FindOrCreateAracAsync(aracBilgisi.Value, yon, cari.Id);
+                        if (arac != null)
+                        {
+                            kalem.AracId = arac.Id;
+                            kalem.KalemTipi = FaturaKalemTipi.Arac;
+                            kalem.AltTipi = yon == FaturaYonu.Giden ? FaturaKalemAltTipi.AracSatis : FaturaKalemAltTipi.AracAlis;
+                            
+                            // Ana faturaya da araç ilişkisi ekle
+                            fatura.AracId = arac.Id;
+                            fatura.AracFaturasi = true;
+                        }
+                    }
+
+                    // Varsayılan muhasebe hesabı ata (kalem tipine göre)
                     if (otomatikHesapKoduOlustur && ayar != null)
                     {
-                        var varsayilanHesapKodu = yon == FaturaYonu.Giden ? ayar.SatisGelirHesabi : ayar.AlisGiderHesabi;
-                        var varsayilanHesap = await _context.MuhasebeHesaplari.FirstOrDefaultAsync(h => h.HesapKodu == varsayilanHesapKodu);
-                        if (varsayilanHesap != null)
+                        var hesapKodu = GetMuhasebeHesapKoduByKalemTipi(kalem.KalemTipi, yon, ayar);
+                        var hesap = await _context.MuhasebeHesaplari.FirstOrDefaultAsync(h => h.HesapKodu == hesapKodu);
+                        if (hesap != null)
                         {
-                            kalem.MuhasebeHesapId = varsayilanHesap.Id;
+                            kalem.MuhasebeHesapId = hesap.Id;
                         }
                     }
 
@@ -1152,6 +1176,203 @@ public class FaturaService : IFaturaService
             exists = await _context.Cariler.IgnoreQueryFilters().AnyAsync(c => c.CariKodu == code);
         }
         return code;
+    }
+
+    /// <summary>
+    /// Açıklamaya göre kalem tipini belirler
+    /// </summary>
+    private static FaturaKalemTipi DetermineKalemTipi(string? aciklama, string? urunKodu)
+    {
+        if (string.IsNullOrWhiteSpace(aciklama))
+            return FaturaKalemTipi.Hizmet;
+
+        var lower = aciklama.ToLowerInvariant();
+
+        // Araç kontrolü
+        if (lower.Contains("araç") || lower.Contains("otomobil") || lower.Contains("minibüs") || 
+            lower.Contains("otobüs") || lower.Contains("midibüs") || lower.Contains("panelvan") ||
+            lower.Contains("şase") || lower.Contains("plaka"))
+            return FaturaKalemTipi.Arac;
+
+        // Servis kontrolü
+        if (lower.Contains("servis") || lower.Contains("bakım") || lower.Contains("onarım") ||
+            lower.Contains("tamir") || lower.Contains("yağ değişimi") || lower.Contains("lastik") ||
+            lower.Contains("muayene") || lower.Contains("sigorta") || lower.Contains("kasko"))
+            return FaturaKalemTipi.Servis;
+
+        // Demirbaş kontrolü
+        if (lower.Contains("demirbaş") || lower.Contains("ofis") || lower.Contains("makina") ||
+            lower.Contains("makine") || lower.Contains("teçhizat") || lower.Contains("ekipman"))
+            return FaturaKalemTipi.Demirbas;
+
+        // Mal kontrolü
+        if (lower.Contains("mal") || lower.Contains("ürün") || lower.Contains("parça") ||
+            lower.Contains("yedek") || lower.Contains("malzeme"))
+            return FaturaKalemTipi.Mal;
+
+        // Varsayılan olarak hizmet
+        return FaturaKalemTipi.Hizmet;
+    }
+
+    /// <summary>
+    /// Açıklamaya göre kalem alt tipini belirler
+    /// </summary>
+    private static FaturaKalemAltTipi? DetermineKalemAltTipi(string? aciklama, string? urunKodu, FaturaKalemTipi kalemTipi)
+    {
+        if (string.IsNullOrWhiteSpace(aciklama))
+            return null;
+
+        var lower = aciklama.ToLowerInvariant();
+
+        return kalemTipi switch
+        {
+            FaturaKalemTipi.Hizmet => lower switch
+            {
+                var s when s.Contains("taşıma") || s.Contains("nakil") || s.Contains("transfer") => FaturaKalemAltTipi.TasimaHizmeti,
+                var s when s.Contains("kiralama") || s.Contains("kira") => FaturaKalemAltTipi.KiralamaHizmeti,
+                var s when s.Contains("danışmanlık") || s.Contains("müşavirlik") => FaturaKalemAltTipi.DanismanlikHizmeti,
+                _ => null
+            },
+            FaturaKalemTipi.Mal => lower switch
+            {
+                var s when s.Contains("yedek") || s.Contains("parça") => FaturaKalemAltTipi.YedekParca,
+                var s when s.Contains("sarf") || s.Contains("malzeme") => FaturaKalemAltTipi.SarfMalzeme,
+                _ => FaturaKalemAltTipi.TicariMal
+            },
+            FaturaKalemTipi.Demirbas => lower switch
+            {
+                var s when s.Contains("araç") => FaturaKalemAltTipi.AracDemirbas,
+                var s when s.Contains("ofis") => FaturaKalemAltTipi.OfisEkipmani,
+                var s when s.Contains("makina") || s.Contains("makine") || s.Contains("teçhizat") => FaturaKalemAltTipi.MakinaTechizat,
+                _ => FaturaKalemAltTipi.DigerDemirbas
+            },
+            FaturaKalemTipi.Servis => lower switch
+            {
+                var s when s.Contains("bakım") || s.Contains("onarım") || s.Contains("tamir") => FaturaKalemAltTipi.BakimOnarim,
+                var s when s.Contains("kasko") => FaturaKalemAltTipi.Kasko,
+                var s when s.Contains("sigorta") => FaturaKalemAltTipi.Sigorta,
+                var s when s.Contains("muayene") => FaturaKalemAltTipi.Muayene,
+                var s when s.Contains("lastik") => FaturaKalemAltTipi.Lastik,
+                var s when s.Contains("yakıt") || s.Contains("akaryakıt") => FaturaKalemAltTipi.Yakit,
+                _ => FaturaKalemAltTipi.BakimOnarim
+            },
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Açıklamadan araç bilgisi (şase/plaka) çıkarır
+    /// </summary>
+    private static (string? SaseNo, string? Plaka)? ExtractAracBilgisi(string? aciklama)
+    {
+        if (string.IsNullOrWhiteSpace(aciklama))
+            return null;
+
+        // Şase numarası pattern (17 karakter)
+        var saseMatch = System.Text.RegularExpressions.Regex.Match(aciklama, @"\b[A-HJ-NPR-Z0-9]{17}\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        // Plaka pattern (34ABC123 gibi)
+        var plakaMatch = System.Text.RegularExpressions.Regex.Match(aciklama, @"\b\d{2}\s?[A-Z]{1,3}\s?\d{2,4}\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        if (saseMatch.Success || plakaMatch.Success)
+        {
+            return (saseMatch.Success ? saseMatch.Value.ToUpperInvariant() : null, 
+                    plakaMatch.Success ? plakaMatch.Value.Replace(" ", "").ToUpperInvariant() : null);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Şase veya plakaya göre araç bulur veya yeni araç oluşturur
+    /// </summary>
+    private async Task<Arac?> FindOrCreateAracAsync((string? SaseNo, string? Plaka) aracBilgisi, FaturaYonu yon, int cariId)
+    {
+        Arac? arac = null;
+
+        // Önce şase ile ara
+        if (!string.IsNullOrWhiteSpace(aracBilgisi.SaseNo))
+        {
+            arac = await _context.Araclar
+                .FirstOrDefaultAsync(a => a.SaseNo == aracBilgisi.SaseNo);
+        }
+
+        // Şase bulunamadıysa plaka ile ara
+        if (arac == null && !string.IsNullOrWhiteSpace(aracBilgisi.Plaka))
+        {
+            var plakaKaydi = await _context.Set<AracPlaka>()
+                .Include(p => p.Arac)
+                .FirstOrDefaultAsync(p => p.Plaka == aracBilgisi.Plaka);
+            
+            arac = plakaKaydi?.Arac;
+        }
+
+        // Araç bulunamadıysa ve alış faturasıysa yeni araç oluştur
+        if (arac == null && yon == FaturaYonu.Gelen && !string.IsNullOrWhiteSpace(aracBilgisi.SaseNo))
+        {
+            arac = new Arac
+            {
+                SaseNo = aracBilgisi.SaseNo,
+                AktifPlaka = aracBilgisi.Plaka,
+                SahiplikTipi = AracSahiplikTipi.Ozmal,
+                Aktif = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            _context.Araclar.Add(arac);
+            await _context.SaveChangesAsync();
+
+            // Plaka kaydı oluştur
+            if (!string.IsNullOrWhiteSpace(aracBilgisi.Plaka))
+            {
+                var plakaKaydi = new AracPlaka
+                {
+                    AracId = arac.Id,
+                    Plaka = aracBilgisi.Plaka,
+                    GirisTarihi = DateTime.Today,
+                    IslemTipi = PlakaIslemTipi.Alis,
+                    CariId = cariId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Set<AracPlaka>().Add(plakaKaydi);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        return arac;
+    }
+
+    /// <summary>
+    /// Kalem tipine göre varsayılan muhasebe hesap kodunu döner
+    /// </summary>
+    private static string GetMuhasebeHesapKoduByKalemTipi(FaturaKalemTipi kalemTipi, FaturaYonu yon, MuhasebeAyar ayar)
+    {
+        if (yon == FaturaYonu.Giden)
+        {
+            // Satış faturası
+            return kalemTipi switch
+            {
+                FaturaKalemTipi.Arac => "253", // Taşıtlar (satış için)
+                FaturaKalemTipi.Demirbas => "255", // Demirbaşlar
+                FaturaKalemTipi.Mal => "600.01", // Satış geliri
+                FaturaKalemTipi.Hizmet => ayar.SatisGelirHesabi,
+                FaturaKalemTipi.Servis => ayar.SatisGelirHesabi,
+                _ => ayar.SatisGelirHesabi
+            };
+        }
+        else
+        {
+            // Alış faturası
+            return kalemTipi switch
+            {
+                FaturaKalemTipi.Arac => "253", // Taşıtlar
+                FaturaKalemTipi.Demirbas => "255", // Demirbaşlar
+                FaturaKalemTipi.Mal => "153", // Ticari mallar
+                FaturaKalemTipi.Hizmet => ayar.AlisGiderHesabi,
+                FaturaKalemTipi.Servis => "770.07", // Bakım onarım giderleri
+                _ => ayar.AlisGiderHesabi
+            };
+        }
     }
 
     #endregion

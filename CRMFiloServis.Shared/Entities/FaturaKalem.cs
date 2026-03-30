@@ -17,6 +17,10 @@ public class FaturaKalem : BaseEntity
     public decimal KdvTutar { get; set; }
     public decimal ToplamTutar { get; set; }
 
+    // Kalem Tipi - Hizmet, Mal, Demirbaş vb.
+    public FaturaKalemTipi KalemTipi { get; set; } = FaturaKalemTipi.Hizmet;
+    public FaturaKalemAltTipi? AltTipi { get; set; }
+
     // Tevkifat (kalem bazında)
     public decimal TevkifatOrani { get; set; } = 0;
     public decimal TevkifatTutar { get; set; } = 0;
@@ -24,6 +28,14 @@ public class FaturaKalem : BaseEntity
     // Muhasebe Hesap Eşleştirme (Gelir/Gider hesabı)
     public int? MuhasebeHesapId { get; set; }
     public virtual MuhasebeHesap? MuhasebeHesap { get; set; }
+
+    // Araç İlişkisi (Araç satış/ alış veya servis için)
+    public int? AracId { get; set; }
+    public virtual Arac? Arac { get; set; }
+
+    // Demirbaş İlişkisi
+    public int? DemirbasId { get; set; }
+    // public virtual Demirbas? Demirbas { get; set; } // İleride eklenebilir
 
     // Foreign Key
     public int FaturaId { get; set; }
@@ -34,4 +46,53 @@ public class FaturaKalem : BaseEntity
     // Hesaplanan değerler
     public decimal NetTutar => (Miktar * BirimFiyat) - IskontoTutar;
     public decimal TevkifatliKdvTutar => KdvTutar - TevkifatTutar;
+}
+
+/// <summary>
+/// Fatura kalemi ana tipi
+/// </summary>
+public enum FaturaKalemTipi
+{
+    Hizmet = 1,         // Hizmet satışı/alışı
+    Mal = 2,            // Mal satışı/alışı (Ticari mal)
+    Demirbas = 3,       // Demirbaş satışı/alışı
+    Arac = 4,           // Araç satışı/alışı
+    Servis = 5,         // Servis hizmeti
+    Diger = 99
+}
+
+/// <summary>
+/// Fatura kalemi alt tipi (detay)
+/// </summary>
+public enum FaturaKalemAltTipi
+{
+    // Hizmet Alt Tipleri
+    TasimaHizmeti = 101,
+    KiralamaHizmeti = 102,
+    DanismanlikHizmeti = 103,
+    
+    // Mal Alt Tipleri
+    TicariMal = 201,
+    YedekParca = 202,
+    SarfMalzeme = 203,
+    
+    // Demirbaş Alt Tipleri
+    AracDemirbas = 301,
+    OfisEkipmani = 302,
+    MakinaTechizat = 303,
+    DigerDemirbas = 399,
+    
+    // Araç Alt Tipleri
+    AracSatis = 401,
+    AracAlis = 402,
+    
+    // Servis Alt Tipleri
+    BakimOnarim = 501,
+    Kasko = 502,
+    Sigorta = 503,
+    Muayene = 504,
+    Lastik = 505,
+    Yakit = 506,
+    
+    Diger = 999
 }

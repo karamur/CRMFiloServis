@@ -46,6 +46,11 @@ public class Fatura : BaseEntity
     public bool MuhasebeFisiOlusturuldu { get; set; } = false;
     public int? MuhasebeFisId { get; set; }
 
+    // Araç Satış/Alış İlişkisi (Ana araç faturası ise)
+    public int? AracId { get; set; }
+    public virtual Arac? Arac { get; set; }
+    public bool AracFaturasi { get; set; } = false;
+
     // Foreign Key
     public int CariId { get; set; }
 
