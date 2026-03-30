@@ -506,11 +506,33 @@
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(editOdeme.Id > 0 ? "Odeme Duzenle" : "Yeni Odeme")</h5>
+                <div class="modal-header @(editOdeme.TaksitliMi ? "bg-warning text-dark" : "")">
+                    <h5 class="modal-title">
+                        @if (editOdeme.TaksitliMi && editOdeme.Id > 0)
+                        {
+                            <i class="bi bi-credit-card me-2"></i>
+                            <text>Taksit Duzenle</text>
+                        }
+                        else
+                        {
+                            @(editOdeme.Id > 0 ? "Odeme Duzenle" : "Yeni Odeme")
+                        }
+                    </h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
+                    @if (editOdeme.TaksitliMi && editOdeme.Id > 0)
+                    {
+                        <div class="alert alert-info py-2 mb-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Kredi/Taksit:</strong> @editOdeme.MasrafKalemi
+                            <br/><small>Taksit @editOdeme.KacinciTaksit / @editOdeme.ToplamTaksitSayisi</small>
+                        </div>
+                        <div class="alert alert-warning py-2 mb-3 small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Yapacaginiz degisiklikler <strong>tum raporlara</strong> (Butce Analiz, Kredi/Taksitler, Fatura Odeme vb.) otomatik olarak yansiyacaktir.
+                        </div>
+                    }
                     <div class="mb-3">
                         <label class="form-label">Firma</label>
                         <select class="form-select" @bind="editOdeme.FirmaId">
@@ -528,27 +550,30 @@
                         <label class="form-label">Odeme Tarihi *</label>
                         <input type="date" class="form-control" @bind="editOdeme.OdemeTarihi" />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Masraf Kalemi *</label>
-                        <input type="text" class="form-control" @bind="editOdeme.MasrafKalemi" list="masrafList" />
-                        <datalist id="masrafList">
-                            @if (masrafKalemleri != null)
-                            {
-                                @foreach (var k in masrafKalemleri)
+                    @if (!editOdeme.TaksitliMi || editOdeme.Id == 0)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Masraf Kalemi *</label>
+                            <input type="text" class="form-control" @bind="editOdeme.MasrafKalemi" list="masrafList" />
+                            <datalist id="masrafList">
+                                @if (masrafKalemleri != null)
                                 {
-                                    <option value="@k.KalemAdi" />
+                                    @foreach (var k in masrafKalemleri)
+                                    {
+                                        <option value="@k.KalemAdi" />
+                                    }
                                 }
-                            }
-                        </datalist>
-                    </div>
+                            </datalist>
+                        </div>
+                    }
                     <div class="mb-3">
                         <label class="form-label">Aciklama</label>
                         <input type="text" class="form-control" @bind="editOdeme.Aciklama" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Miktar *</label>
+                        <label class="form-label">Miktar * @(editOdeme.TaksitliMi ? "(Taksit Tutari)" : "")</label>
                         <div class="input-group">
-                            <input type="number" class="form-control" @bind="editOdeme.Miktar" step="0.01" />
+                            <input type="number" class="form-control @(editOdeme.TaksitliMi ? "border-warning" : "")" @bind="editOdeme.Miktar" step="0.01" />
                             <span class="input-group-text">TL</span>
                         </div>
                     </div>
@@ -564,7 +589,13 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
-                    <button type="button" class="btn btn-primary" @onclick="OdemeKaydet">Kaydet</button>
+                    <button type="button" class="btn @(editOdeme.TaksitliMi ? "btn-warning" : "btn-primary")" @onclick="OdemeKaydet">
+                        @if (editOdeme.TaksitliMi)
+                        {
+                            <i class="bi bi-check-lg me-1"></i>
+                        }
+                        Kaydet
+                    </button>
                 </div>
             </div>
         </div>
@@ -1326,7 +1357,12 @@
             Aciklama = odeme.Aciklama,
             Miktar = odeme.Miktar,
             Durum = odeme.Durum,
-            FirmaId = odeme.FirmaId
+            FirmaId = odeme.FirmaId,
+            // Taksit bilgilerini de kopyala
+            TaksitliMi = odeme.TaksitliMi,
+            TaksitGrupId = odeme.TaksitGrupId,
+            KacinciTaksit = odeme.KacinciTaksit,
+            ToplamTaksitSayisi = odeme.ToplamTaksitSayisi
         };
         showOdemeModal = true;
     }
@@ -1419,7 +1455,7 @@
     }
 
     private void ExcelYukleModalAc()
-    {
+{
         excelDosya = null;
         showExcelModal = true;
     }
