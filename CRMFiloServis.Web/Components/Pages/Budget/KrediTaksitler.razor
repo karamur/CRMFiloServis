@@ -1347,11 +1347,7 @@
     {
         if (duzenlenenTaksit == null || secilenKredi == null) return;
 
-        if (duzenlenenTaksitTutar <= 0)
-        {
-            ToastService.ShowWarning("Geçerli bir tutar giriniz");
-            return;
-        }
+        // Tutar kontrolü kaldırıldı - kullanıcı ne yazdıysa o kaydedilsin (0 veya negatif dahil)
 
         isSaving = true;
         try
