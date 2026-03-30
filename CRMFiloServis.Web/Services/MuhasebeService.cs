@@ -162,6 +162,155 @@ public class MuhasebeService : IMuhasebeService
         await _context.SaveChangesAsync();
     }
 
+    public async Task<bool> HesapIslemGormusMuAsync(int hesapId)
+    {
+        return await _context.MuhasebeFisKalemleri.AnyAsync(k => k.HesapId == hesapId);
+    }
+
+    public async Task<HesapPlaniImportResult> ImportHesapPlaniFromExcelAsync(byte[] fileContent)
+    {
+        var result = new HesapPlaniImportResult();
+        
+        try
+        {
+            using var stream = new MemoryStream(fileContent);
+            using var workbook = new ClosedXML.Excel.XLWorkbook(stream);
+            var ws = workbook.Worksheets.First();
+            
+            var lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+            var mevcutHesaplar = await _context.MuhasebeHesaplari.ToListAsync();
+            var mevcutKodlar = mevcutHesaplar.ToDictionary(h => h.HesapKodu.Trim().ToUpper(), h => h);
+            
+            for (int row = 2; row <= lastRow; row++) // 1. satır başlık
+            {
+                try
+                {
+                    var hesapKodu = ws.Cell(row, 1).GetString()?.Trim();
+                    var hesapAdi = ws.Cell(row, 2).GetString()?.Trim();
+                    
+                    if (string.IsNullOrWhiteSpace(hesapKodu) || string.IsNullOrWhiteSpace(hesapAdi))
+                        continue;
+                    
+                    // Hesap kodunu normalize et (123 -> 123, 123.01 -> 123.01)
+                    hesapKodu = NormalizeHesapKodu(hesapKodu);
+                    
+                    // Hesap grubu ve türü otomatik belirle
+                    var (grup, tur) = DetermineHesapGrupVeTur(hesapKodu);
+                    
+                    if (mevcutKodlar.TryGetValue(hesapKodu.ToUpper(), out var mevcutHesap))
+                    {
+                        // Mevcut hesabı güncelle (sadece ismi)
+                        if (mevcutHesap.HesapAdi != hesapAdi)
+                        {
+                            mevcutHesap.HesapAdi = hesapAdi;
+                            mevcutHesap.UpdatedAt = DateTime.UtcNow;
+                            result.UpdatedCount++;
+                        }
+                    }
+                    else
+                    {
+                        // Yeni hesap ekle
+                        var yeniHesap = new MuhasebeHesap
+                        {
+                            HesapKodu = hesapKodu,
+                            HesapAdi = hesapAdi,
+                            HesapGrubu = grup,
+                            HesapTuru = tur,
+                            Aktif = true,
+                            AltHesapVar = !hesapKodu.Contains('.'),
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.MuhasebeHesaplari.Add(yeniHesap);
+                        mevcutKodlar[hesapKodu.ToUpper()] = yeniHesap;
+                        result.ImportedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add($"Satir {row}: {ex.Message}");
+                    result.ErrorCount++;
+                }
+            }
+            
+            await _context.SaveChangesAsync();
+            result.Success = true;
+        }
+        catch (Exception ex)
+        {
+            result.Errors.Add($"Excel okuma hatasi: {ex.Message}");
+            result.Success = false;
+        }
+        
+        return result;
+    }
+
+    public async Task<byte[]> GetHesapPlaniSablonAsync()
+    {
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var ws = workbook.Worksheets.Add("Hesap Plani");
+        
+        // Başlıklar
+        ws.Cell(1, 1).Value = "Hesap Kodu";
+        ws.Cell(1, 2).Value = "Hesap Adi";
+        ws.Row(1).Style.Font.Bold = true;
+        ws.Row(1).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightBlue;
+        
+        // Örnek veriler
+        ws.Cell(2, 1).Value = "100";
+        ws.Cell(2, 2).Value = "KASA";
+        ws.Cell(3, 1).Value = "100.01";
+        ws.Cell(3, 2).Value = "Merkez Kasa";
+        ws.Cell(4, 1).Value = "102";
+        ws.Cell(4, 2).Value = "BANKALAR";
+        ws.Cell(5, 1).Value = "120";
+        ws.Cell(5, 2).Value = "ALICILAR";
+        ws.Cell(6, 1).Value = "320";
+        ws.Cell(6, 2).Value = "SATICILAR";
+        ws.Cell(7, 1).Value = "600";
+        ws.Cell(7, 2).Value = "YURTICI SATISLAR";
+        ws.Cell(8, 1).Value = "770";
+        ws.Cell(8, 2).Value = "GENEL YONETIM GIDERLERI";
+        
+        ws.Columns().AdjustToContents();
+        
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private string NormalizeHesapKodu(string kod)
+    {
+        // Boşlukları temizle
+        kod = kod.Trim().Replace(" ", "");
+        
+        // Virgülleri noktaya çevir
+        kod = kod.Replace(",", ".");
+        
+        return kod;
+    }
+
+    private (HesapGrubu grup, HesapTuru tur) DetermineHesapGrupVeTur(string hesapKodu)
+    {
+        if (string.IsNullOrEmpty(hesapKodu)) 
+            return (HesapGrubu.DonenVarliklar, HesapTuru.Aktif);
+        
+        var ilkKarakter = hesapKodu[0];
+        
+        return ilkKarakter switch
+        {
+            '1' => (HesapGrubu.DonenVarliklar, HesapTuru.Aktif),
+            '2' => (HesapGrubu.DuranVarliklar, HesapTuru.Aktif),
+            '3' => (HesapGrubu.KisaVadeliYabanciKaynaklar, HesapTuru.Pasif),
+            '4' => (HesapGrubu.UzunVadeliYabanciKaynaklar, HesapTuru.Pasif),
+            '5' => (HesapGrubu.Ozkaynaklar, HesapTuru.Pasif),
+            '6' => (HesapGrubu.GelirTablosu, HesapTuru.Gelir),
+            '7' => (HesapGrubu.MaliyetHesaplari, HesapTuru.Gider),
+            '8' => (HesapGrubu.MaliyetHesaplari, HesapTuru.Maliyet),
+            '9' => (HesapGrubu.MaliyetHesaplari, HesapTuru.Maliyet),
+            _ => (HesapGrubu.DonenVarliklar, HesapTuru.Aktif)
+        };
+    }
+
     #endregion
 
     #region Muhasebe Fisleri

@@ -1,8 +1,10 @@
-@page "/muhasebe/hesap-plani"
+﻿@page "/muhasebe/hesap-plani"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
 @inject IMuhasebeService MuhasebeService
 @inject IToastService ToastService
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Hesap Plani</PageTitle>
@@ -12,6 +14,12 @@
         <h3><i class="bi bi-list-nested me-2"></i>Hesap Plani</h3>
         <div class="d-flex gap-2">
             <input type="text" class="form-control" placeholder="Hesap ara..." @bind="aramaMetni" @bind:event="oninput" style="width: 200px;" />
+            <button class="btn btn-outline-success" @onclick="ExcelImportAc" title="Excel'den Aktar">
+                <i class="bi bi-upload me-1"></i>Excel
+            </button>
+            <button class="btn btn-outline-info" @onclick="SablonIndir" title="Sablon Indir">
+                <i class="bi bi-download"></i>
+            </button>
             <button class="btn btn-primary" @onclick="YeniHesapAc">
                 <i class="bi bi-plus-lg me-1"></i>Yeni Hesap
             </button>
@@ -51,7 +59,7 @@
                                 <th style="width: 100px;">Tur</th>
                                 <th class="text-center" style="width: 80px;">Sistem</th>
                                 <th class="text-center" style="width: 80px;">Aktif</th>
-                                <th class="text-center" style="width: 100px;">Islem</th>
+                                <th class="text-center" style="width: 120px;">Islem</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -72,7 +80,7 @@
                                     <td class="text-center">
                                         @if (hesap.SistemHesabi)
                                         {
-                                            <i class="bi bi-lock-fill text-warning"></i>
+                                            <i class="bi bi-lock-fill text-warning" title="Sistem hesabi"></i>
                                         }
                                     </td>
                                     <td class="text-center">
@@ -86,12 +94,17 @@
                                         }
                                     </td>
                                     <td class="text-center">
-                                        @if (!hesap.SistemHesabi)
-                                        {
-                                            <button class="btn btn-sm btn-outline-primary py-0 px-1" @onclick="() => HesapDuzenle(hesap)">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary py-0 px-1" @onclick="() => HesapDuzenle(hesap)" title="Duzenle">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                        }
+                                            @if (!hesap.SistemHesabi)
+                                            {
+                                                <button class="btn btn-outline-danger py-0 px-1" @onclick="() => HesapSilOnay(hesap)" title="Sil">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            }
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -117,9 +130,17 @@
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
+                    @if (hesapIslemGormusMu && editHesap.Id > 0)
+                    {
+                        <div class="alert alert-warning py-2 mb-3">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Bu hesap islem gormus. Sadece hesap adi ve aciklama degistirilebilir.
+                        </div>
+                    }
                     <div class="mb-3">
                         <label class="form-label">Hesap Kodu *</label>
-                        <input type="text" class="form-control" @bind="editHesap.HesapKodu" maxlength="10" disabled="@(editHesap.Id > 0)" />
+                        <input type="text" class="form-control" @bind="editHesap.HesapKodu" maxlength="15" 
+                               disabled="@(editHesap.Id > 0)" placeholder="Ornek: 100.01" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Hesap Adi *</label>
@@ -129,7 +150,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label class="form-label">Hesap Grubu</label>
-                                <select class="form-select" @bind="editHesap.HesapGrubu" disabled="@(editHesap.Id > 0)">
+                                <select class="form-select" @bind="editHesap.HesapGrubu" disabled="@(editHesap.Id > 0 && hesapIslemGormusMu)">
                                     <option value="@HesapGrubu.DonenVarliklar">1-Donen Varliklar</option>
                                     <option value="@HesapGrubu.DuranVarliklar">2-Duran Varliklar</option>
                                     <option value="@HesapGrubu.KisaVadeliYabanciKaynaklar">3-Kisa Vadeli</option>
@@ -143,7 +164,7 @@
                         <div class="col-6">
                             <div class="mb-3">
                                 <label class="form-label">Hesap Turu</label>
-                                <select class="form-select" @bind="editHesap.HesapTuru" disabled="@(editHesap.Id > 0)">
+                                <select class="form-select" @bind="editHesap.HesapTuru" disabled="@(editHesap.Id > 0 && hesapIslemGormusMu)">
                                     <option value="@HesapTuru.Aktif">Aktif (Varlik)</option>
                                     <option value="@HesapTuru.Pasif">Pasif (Kaynak)</option>
                                     <option value="@HesapTuru.Gelir">Gelir</option>
@@ -171,14 +192,91 @@
     </div>
 }
 
+<!-- Excel Import Modal -->
+@if (showImportModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel me-2"></i>Hesap Plani Excel'den Aktar</h5>
+                    <button type="button" class="btn-close" @onclick="ModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Zirve hesap plani formatinda Excel dosyasi yukleyebilirsiniz. Sutunlar: <strong>Hesap Kodu | Hesap Adi</strong>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Excel Dosyasi Sec *</label>
+                        <InputFile class="form-control" OnChange="DosyaSecildi" accept=".xlsx,.xls" />
+                    </div>
+                    
+                    @if (importResult != null)
+                    {
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <div class="card bg-success text-white text-center py-2">
+                                    <h4 class="mb-0">@importResult.ImportedCount</h4>
+                                    <small>Eklenen</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="card bg-warning text-dark text-center py-2">
+                                    <h4 class="mb-0">@importResult.UpdatedCount</h4>
+                                    <small>Guncellenen</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="card bg-danger text-white text-center py-2">
+                                    <h4 class="mb-0">@importResult.ErrorCount</h4>
+                                    <small>Hata</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        @if (importResult.Errors.Any())
+                        {
+                            <div class="alert alert-danger py-2" style="max-height: 150px; overflow-y: auto;">
+                                @foreach (var error in importResult.Errors.Take(20))
+                                {
+                                    <div><small>@error</small></div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-info" @onclick="SablonIndir">
+                        <i class="bi bi-download me-1"></i>Sablon Indir
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
+                    <button type="button" class="btn btn-primary" @onclick="ExcelImportYap" disabled="@(isImporting || importFile == null)">
+                        @if (isImporting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Aktarimi Baslat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private bool isLoading = true;
     private bool showModal = false;
+    private bool showImportModal = false;
     private string aramaMetni = "";
     private HesapGrubu? seciliGrup = null;
     private List<MuhasebeHesap> hesaplar = new();
     private List<MuhasebeHesap> filtrelenmisHesaplar = new();
     private MuhasebeHesap editHesap = new();
+    private bool isImporting = false;
+    private IBrowserFile? importFile = null;
+    private HesapPlaniImportResult? importResult = null;
+    private bool hesapIslemGormusMu = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -227,10 +325,11 @@
     private void YeniHesapAc()
     {
         editHesap = new MuhasebeHesap { Aktif = true };
+        hesapIslemGormusMu = false;
         showModal = true;
     }
 
-    private void HesapDuzenle(MuhasebeHesap hesap)
+    private async Task HesapDuzenle(MuhasebeHesap hesap)
     {
         editHesap = new MuhasebeHesap
         {
@@ -240,9 +339,45 @@
             HesapGrubu = hesap.HesapGrubu,
             HesapTuru = hesap.HesapTuru,
             Aciklama = hesap.Aciklama,
-            Aktif = hesap.Aktif
+            Aktif = hesap.Aktif,
+            SistemHesabi = hesap.SistemHesabi
         };
+        
+        // Hesap islem gormus mu kontrol et
+        hesapIslemGormusMu = await MuhasebeService.HesapIslemGormusMuAsync(hesap.Id);
         showModal = true;
+    }
+
+    private async Task HesapSilOnay(MuhasebeHesap hesap)
+    {
+        // Sistem hesabi silinmez
+        if (hesap.SistemHesabi)
+        {
+            ToastService.ShowWarning("Sistem hesaplari silinemez!");
+            return;
+        }
+        
+        // Islem goren hesap silinemez
+        var islemGormus = await MuhasebeService.HesapIslemGormusMuAsync(hesap.Id);
+        if (islemGormus)
+        {
+            ToastService.ShowWarning("Bu hesap islem gormus, silinemez! Pasif yapabilirsiniz.");
+            return;
+        }
+        
+        var result = await JS.InvokeAsync<bool>("confirm", $"'{hesap.HesapKodu} - {hesap.HesapAdi}' hesabini silmek istediginizden emin misiniz?");
+        if (!result) return;
+        
+        try
+        {
+            await MuhasebeService.DeleteHesapAsync(hesap.Id);
+            ToastService.ShowSuccess("Hesap silindi.");
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
     }
 
     private async Task HesapKaydet()
@@ -270,7 +405,76 @@
         }
     }
 
-    private void ModalKapat() => showModal = false;
+    private void ExcelImportAc()
+    {
+        importFile = null;
+        importResult = null;
+        showImportModal = true;
+    }
+
+    private void DosyaSecildi(InputFileChangeEventArgs e)
+    {
+        importFile = e.File;
+        importResult = null;
+    }
+
+    private async Task ExcelImportYap()
+    {
+        if (importFile == null) return;
+        
+        isImporting = true;
+        importResult = null;
+        StateHasChanged();
+        
+        try
+        {
+            using var stream = new MemoryStream();
+            await importFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
+            var fileContent = stream.ToArray();
+            
+            importResult = await MuhasebeService.ImportHesapPlaniFromExcelAsync(fileContent);
+            
+            if (importResult.Success)
+            {
+                ToastService.ShowSuccess($"{importResult.ImportedCount} hesap eklendi, {importResult.UpdatedCount} guncellendi.");
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            importResult = new HesapPlaniImportResult 
+            { 
+                Success = false, 
+                Errors = new List<string> { $"Import hatasi: {ex.Message}" } 
+            };
+            ToastService.ShowError($"Import hatasi: {ex.Message}");
+        }
+        finally
+        {
+            isImporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SablonIndir()
+    {
+        try
+        {
+            var bytes = await MuhasebeService.GetHesapPlaniSablonAsync();
+            await JS.InvokeVoidAsync("downloadFileFromBase64", "hesap_plani_sablon.xlsx", Convert.ToBase64String(bytes));
+            ToastService.ShowSuccess("Sablon indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+    }
+
+    private void ModalKapat()
+    {
+        showModal = false;
+        showImportModal = false;
+    }
 
     private string GetGrupAdi(HesapGrubu grup) => grup switch
     {

@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+﻿using CRMFiloServis.Shared.Entities;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -13,6 +13,9 @@ public interface IMuhasebeService
     Task<MuhasebeHesap> UpdateHesapAsync(MuhasebeHesap hesap);
     Task DeleteHesapAsync(int id);
     Task SeedVarsayilanHesapPlaniAsync();
+    Task<bool> HesapIslemGormusMuAsync(int hesapId);
+    Task<HesapPlaniImportResult> ImportHesapPlaniFromExcelAsync(byte[] fileContent);
+    Task<byte[]> GetHesapPlaniSablonAsync();
 
     // Muhasebe Fisleri
     Task<List<MuhasebeFis>> GetFislerAsync(int yil, int? ay = null);
@@ -44,6 +47,16 @@ public interface IMuhasebeService
     // Hesap Bakiyeleri
     Task<decimal> GetHesapBakiyeAsync(string hesapKodu, DateTime? tarih = null);
     Task<List<HesapBakiye>> GetHesapBakiyeleriAsync(HesapGrubu grup, DateTime? tarih = null);
+}
+
+// Hesap Plani Import Result
+public class HesapPlaniImportResult
+{
+    public bool Success { get; set; }
+    public int ImportedCount { get; set; }
+    public int UpdatedCount { get; set; }
+    public int ErrorCount { get; set; }
+    public List<string> Errors { get; set; } = new();
 }
 
 #region Rapor Modelleri

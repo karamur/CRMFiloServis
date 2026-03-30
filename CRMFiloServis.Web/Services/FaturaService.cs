@@ -630,6 +630,13 @@ public class FaturaService : IFaturaService
 
                 string cariUnvan = string.Empty;
                 string cariVkn = string.Empty;
+                string cariVergiDairesi = string.Empty;
+                string cariAdres = string.Empty;
+                string cariTelefon = string.Empty;
+                string cariEmail = string.Empty;
+                string cariIlce = string.Empty;
+                string cariIl = string.Empty;
+                string cariUlke = string.Empty;
                 
                 System.Xml.Linq.XElement? supplierNode = invoice.Descendants().FirstOrDefault(x => x.Name.LocalName == "AccountingSupplierParty");
                 System.Xml.Linq.XElement? customerNode = invoice.Descendants().FirstOrDefault(x => x.Name.LocalName == "AccountingCustomerParty");
@@ -638,9 +645,93 @@ public class FaturaService : IFaturaService
 
                 if (partyNode != null)
                 {
-                    cariUnvan = GetValue(partyNode, "Name").Trim();
-                    cariVkn = GetValue(partyNode, "CompanyID").Trim();
+                    // Firma/Şahıs adı - PartyName içindeki Name elementinden al (tam isim)
+                    var partyNameNode = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "PartyName");
+                    if (partyNameNode != null)
+                    {
+                        cariUnvan = GetValue(partyNameNode, "Name").Trim();
+                    }
                     
+                    // Eğer PartyName'den alınamadıysa, eski yöntemle dene
+                    if (string.IsNullOrWhiteSpace(cariUnvan))
+                    {
+                        cariUnvan = GetValue(partyNode, "Name").Trim();
+                    }
+                    
+                    // Vergi No / TC Kimlik No
+                    var partyIdentification = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "PartyIdentification");
+                    if (partyIdentification != null)
+                    {
+                        cariVkn = GetValue(partyIdentification, "ID").Trim();
+                    }
+                    
+                    // Vergi Dairesi
+                    var taxScheme = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "PartyTaxScheme");
+                    if (taxScheme != null)
+                    {
+                        cariVergiDairesi = GetValue(taxScheme, "Name").Trim();
+                        // Eğer Name yoksa TaxSchemeName'den al
+                        if (string.IsNullOrWhiteSpace(cariVergiDairesi))
+                        {
+                            var taxSchemeNode = taxScheme.Descendants().FirstOrDefault(x => x.Name.LocalName == "TaxScheme");
+                            if (taxSchemeNode != null)
+                            {
+                                cariVergiDairesi = GetValue(taxSchemeNode, "Name").Trim();
+                            }
+                        }
+                    }
+                    
+                    // Adres bilgileri
+                    var postalAddress = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "PostalAddress");
+                    if (postalAddress != null)
+                    {
+                        var streetName = GetValue(postalAddress, "StreetName").Trim();
+                        var buildingName = GetValue(postalAddress, "BuildingName").Trim();
+                        var buildingNumber = GetValue(postalAddress, "BuildingNumber").Trim();
+                        var room = GetValue(postalAddress, "Room").Trim();
+                        var citySubdivisionName = GetValue(postalAddress, "CitySubdivisionName").Trim();
+                        var cityName = GetValue(postalAddress, "CityName").Trim();
+                        var postalZone = GetValue(postalAddress, "PostalZone").Trim();
+                        var countryName = GetValue(postalAddress.Descendants().FirstOrDefault(x => x.Name.LocalName == "Country"), "Name").Trim();
+                        
+                        // Tam adres oluştur
+                        var adresParcalari = new List<string>();
+                        if (!string.IsNullOrWhiteSpace(streetName)) adresParcalari.Add(streetName);
+                        if (!string.IsNullOrWhiteSpace(buildingName)) adresParcalari.Add(buildingName);
+                        if (!string.IsNullOrWhiteSpace(buildingNumber)) adresParcalari.Add($"No:{buildingNumber}");
+                        if (!string.IsNullOrWhiteSpace(room)) adresParcalari.Add($"Daire:{room}");
+                        
+                        cariAdres = string.Join(" ", adresParcalari);
+                        cariIlce = citySubdivisionName;
+                        cariIl = cityName;
+                        cariUlke = countryName;
+                        
+                        // Tam adres formatı
+                        if (!string.IsNullOrWhiteSpace(cariIlce) || !string.IsNullOrWhiteSpace(cariIl))
+                        {
+                            if (!string.IsNullOrWhiteSpace(cariAdres))
+                                cariAdres += " ";
+                            if (!string.IsNullOrWhiteSpace(cariIlce))
+                                cariAdres += cariIlce + " ";
+                            if (!string.IsNullOrWhiteSpace(cariIl))
+                                cariAdres += cariIl;
+                            if (!string.IsNullOrWhiteSpace(cariUlke) && cariUlke.ToUpperInvariant() != "TÜRKİYE" && cariUlke.ToUpperInvariant() != "TURKEY")
+                                cariAdres += " / " + cariUlke;
+                        }
+                        cariAdres = cariAdres.Trim();
+                    }
+                    
+                    // İletişim bilgileri
+                    var contact = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "Contact");
+                    if (contact != null)
+                    {
+                        cariTelefon = GetValue(contact, "Telephone").Trim();
+                        if (string.IsNullOrWhiteSpace(cariTelefon))
+                            cariTelefon = GetValue(contact, "Telefax").Trim();
+                        cariEmail = GetValue(contact, "ElectronicMail").Trim();
+                    }
+                    
+                    // Şahıs ise ad soyad al
                     if (string.IsNullOrWhiteSpace(cariUnvan))
                     {
                         var personNode = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "Person");
@@ -678,6 +769,39 @@ public class FaturaService : IFaturaService
                     cari = await _context.Cariler.Include(c => c.MuhasebeHesap).FirstOrDefaultAsync(c => c.Unvan.ToLower() == cariUnvan.ToLower());
                 }
 
+                // Mevcut cari varsa eksik bilgileri güncelle
+                if (cari != null)
+                {
+                    bool guncellendi = false;
+                    
+                    if (string.IsNullOrWhiteSpace(cari.VergiDairesi) && !string.IsNullOrWhiteSpace(cariVergiDairesi))
+                    {
+                        cari.VergiDairesi = cariVergiDairesi;
+                        guncellendi = true;
+                    }
+                    if (string.IsNullOrWhiteSpace(cari.Adres) && !string.IsNullOrWhiteSpace(cariAdres))
+                    {
+                        cari.Adres = cariAdres;
+                        guncellendi = true;
+                    }
+                    if (string.IsNullOrWhiteSpace(cari.Telefon) && !string.IsNullOrWhiteSpace(cariTelefon))
+                    {
+                        cari.Telefon = cariTelefon;
+                        guncellendi = true;
+                    }
+                    if (string.IsNullOrWhiteSpace(cari.Email) && !string.IsNullOrWhiteSpace(cariEmail))
+                    {
+                        cari.Email = cariEmail;
+                        guncellendi = true;
+                    }
+                    
+                    if (guncellendi)
+                    {
+                        cari.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
                 if (cari == null && otomatikCariOlustur)
                 {
                     var uniqueCode = await GetUniqueCariCodeAsync(nextCariNum);
@@ -688,6 +812,10 @@ public class FaturaService : IFaturaService
                         CariKodu = uniqueCode,
                         Unvan = cariUnvan,
                         VergiNo = cariVkn ?? string.Empty,
+                        VergiDairesi = cariVergiDairesi,
+                        Adres = cariAdres,
+                        Telefon = cariTelefon,
+                        Email = cariEmail,
                         CariTipi = cariTipi,
                         Aktif = true,
                         CreatedAt = DateTime.UtcNow

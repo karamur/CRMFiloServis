@@ -1751,6 +1751,82 @@
 
     private string FormatPara(decimal t) => t.ToString("N2", new System.Globalization.CultureInfo("tr-TR")) + " TL";
 
+    #region Detay Modal Islemleri
+
+    private void DetayFaturaDuzenle()
+    {
+        if (detayFatura == null) return;
+        FaturaDuzenle(detayFatura);
+        showDetayModal = false;
+    }
+
+    private void DetayFaturaTahsilatYap()
+    {
+        if (detayFatura == null) return;
+        TahsilatYapAc(detayFatura);
+        showDetayModal = false;
+    }
+
+    private async Task DetayFaturaSil()
+    {
+        if (detayFatura == null) return;
+        
+        var result = await JS.InvokeAsync<bool>("confirm", $"'{detayFatura.FaturaNo}' numarali faturayi silmek istediginizden emin misiniz?");
+        if (!result) return;
+        
+        try
+        {
+            await FaturaService.DeleteAsync(detayFatura.Id);
+            ToastService.ShowSuccess("Fatura silindi.");
+            showDetayModal = false;
+            detayFatura = null;
+            await YenileAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+    }
+
+    private async Task DetayFaturaMuhasebeles()
+    {
+        if (detayFatura == null) return;
+        
+        isMuhasebeLeniyor = true;
+        StateHasChanged();
+        
+        try
+        {
+            if (detayFatura.Cari == null)
+            {
+                ToastService.ShowError("Faturaya ait cari bulunamadi!");
+                return;
+            }
+            
+            var fis = await MuhasebeService.CreateFaturaFisiAsync(detayFatura);
+            
+            detayFatura.MuhasebeFisiOlusturuldu = true;
+            detayFatura.MuhasebeFisId = fis.Id;
+            await FaturaService.UpdateAsync(detayFatura);
+            
+            ToastService.ShowSuccess($"Muhasebe fisi olusturuldu. Fis No: {fis.FisNo}");
+            await YenileAsync();
+            
+            detayFatura = faturalar.FirstOrDefault(f => f.Id == detayFatura.Id);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Muhaselelestirme hatasi: {ex.Message}");
+        }
+        finally
+        {
+            isMuhasebeLeniyor = false;
+            StateHasChanged();
+        }
+    }
+
+    #endregion
+
     // Cari Ekstre Hareket sinifi
     private class CariEkstreHareket
     {
