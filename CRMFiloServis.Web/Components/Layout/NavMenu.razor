@@ -465,6 +465,42 @@
             </div>
         }
 
+        <!-- STOK / ENVANTER -->
+        @if (HasMenuYetki("menu.stok") || HasMenuYetki("menu.filoservis"))
+        {
+            <div class="nav-section">
+                <div class="nav-section-header" @onclick="() => ToggleSection(13)" style="cursor: pointer;">
+                    <span><i class="bi bi-box-seam me-2"></i>STOK / ENVANTER</span>
+                    <i class="bi @(expandedSections.Length > 13 && expandedSections[13] ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                </div>
+                @if (expandedSections.Length > 13 && expandedSections[13])
+                {
+                    <div class="nav-section-content">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="stok">
+                                <i class="bi bi-speedometer2 me-2 text-primary"></i> Stok Dashboard
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="stok/kartlar">
+                                <i class="bi bi-box-seam me-2 text-info"></i> Stok Kartları
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="stok/arac-islem">
+                                <i class="bi bi-truck me-2 text-success"></i> Araç Alış/Satış
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="stok/servis">
+                                <i class="bi bi-tools me-2 text-warning"></i> Servis Kayıtları
+                            </NavLink>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
         <!-- CHECKLIST -->
         @if (HasMenuYetki("menu.checklist"))
         {

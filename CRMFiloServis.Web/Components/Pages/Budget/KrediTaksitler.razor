@@ -301,7 +301,7 @@
                                             <th>Tarih</th>
                                             <th class="text-end">Tutar</th>
                                             <th class="text-center">Durum</th>
-                                            <th class="text-center" style="width: 120px;">İşlem</th>
+                                            <th class="text-center" style="width: 150px;">İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -341,6 +341,9 @@
                                                 <td class="text-center">
                                                     @if (taksit.Durum != OdemeDurum.Odendi)
                                                     {
+                                                        <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => TaksitDuzenleAc(taksit)" title="Düzenle">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
                                                         <button class="btn btn-success btn-sm" @onclick="() => OdemeYapModalAc(taksit)" title="Ödeme Yap">
                                                             <i class="bi bi-cash-coin"></i>
                                                         </button>
@@ -836,6 +839,51 @@
     </div>
 }
 
+<!-- Taksit Düzenleme Modal -->
+@if (showTaksitDuzenleModal && duzenlenenTaksit != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Taksit Düzenle</h5>
+                    <button type="button" class="btn-close" @onclick="ModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 mb-3">
+                        <strong>@secilenKredi?.MasrafKalemi</strong> - Taksit @duzenlenenTaksit.KacinciTaksit/@duzenlenenTaksit.ToplamTaksitSayisi
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ödeme Tarihi *</label>
+                        <input type="date" class="form-control" @bind="duzenlenenTaksitTarihi" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tutar *</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" @bind="duzenlenenTaksitTutar" step="0.01" />
+                            <span class="input-group-text">₺</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning py-2 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Bu değişiklik bütçe analizine ve tüm raporlara otomatik yansıyacaktır.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">İptal</button>
+                    <button type="button" class="btn btn-warning" @onclick="TaksitGuncelle" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-check-lg me-1"></i>Güncelle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<KrediOzet> tumKrediler = new();
     private List<KrediOzet> krediler = new();
@@ -845,6 +893,9 @@
 
     private KrediOzet? secilenKredi;
     private KrediTaksitDetay? secilenTaksit;
+    private KrediTaksitDetay? duzenlenenTaksit;
+    private DateTime duzenlenenTaksitTarihi = DateTime.Today;
+    private decimal duzenlenenTaksitTutar;
 
     private bool isLoading = true;
     private bool isSaving = false;
@@ -853,6 +904,7 @@
     private bool showTekrarlayanModal = false;
     private bool showTekrarlayanDuzenleModal = false;
     private bool showKrediDuzenleModal = false;
+    private bool showTaksitDuzenleModal = false;
 
     private int secilenYil = 0; // 0 = Tüm yıllar
     private int filtreAy = 0; // 0 = Tüm aylar
@@ -1248,7 +1300,52 @@
         showTekrarlayanModal = false;
         showTekrarlayanDuzenleModal = false;
         showKrediDuzenleModal = false;
+        showTaksitDuzenleModal = false;
         secilenTaksit = null;
+        duzenlenenTaksit = null;
+    }
+
+    private void TaksitDuzenleAc(KrediTaksitDetay taksit)
+    {
+        duzenlenenTaksit = taksit;
+        duzenlenenTaksitTarihi = taksit.OdemeTarihi;
+        duzenlenenTaksitTutar = taksit.Tutar;
+        showTaksitDuzenleModal = true;
+    }
+
+    private async Task TaksitGuncelle()
+    {
+        if (duzenlenenTaksit == null || secilenKredi == null) return;
+
+        if (duzenlenenTaksitTutar <= 0)
+        {
+            ToastService.ShowWarning("Geçerli bir tutar giriniz");
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            // Ödeme kaydını bul ve güncelle
+            var odeme = await BudgetService.GetTaksitOdemeAsync(secilenKredi.TaksitGrupId, duzenlenenTaksit.KacinciTaksit);
+            if (odeme != null)
+            {
+                odeme.Miktar = duzenlenenTaksitTutar;
+                odeme.OdemeTarihi = duzenlenenTaksitTarihi;
+                await BudgetService.UpdateOdemeAsync(odeme);
+                ToastService.ShowSuccess("Taksit güncellendi - değişiklikler raporlara yansıdı");
+                ModalKapat();
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 
     private void SetOdemeTipiKasa()
@@ -1343,6 +1440,68 @@
         await LoadDataAsync();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
