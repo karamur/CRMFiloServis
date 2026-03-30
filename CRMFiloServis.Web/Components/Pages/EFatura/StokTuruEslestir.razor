@@ -11,7 +11,15 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3><i class="bi bi-tags me-2"></i>Stok Türü Eşleştirme</h3>
         <div class="d-flex gap-2">
-            <button class="btn btn-success" @onclick="TumunuKaydet" disabled="@(!degisiklikVar)">
+            <div class="form-check form-switch d-flex align-items-center me-2">
+                <input class="form-check-input" type="checkbox" id="stokKartiOlustur" @bind="stokKartiOlustur" />
+                <label class="form-check-label ms-2 small" for="stokKartiOlustur">Stok Kartı Oluştur</label>
+            </div>
+            <button class="btn btn-success" @onclick="TumunuKaydet" disabled="@(!degisiklikVar || isKaydediliyor)">
+                @if (isKaydediliyor)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
                 <i class="bi bi-check-all me-1"></i>Tümünü Kaydet
             </button>
             <button class="btn btn-outline-secondary" @onclick="YenileAsync">
@@ -245,6 +253,7 @@
     private HashSet<int> seciliKalemler = new();
     private HashSet<int> degistirilmisKalemler = new();
     private bool isLoading = true;
+    private bool isKaydediliyor = false;
 
     // Filtreler
     private DateTime? filtreBaslangic;
@@ -253,6 +262,7 @@
     private string filtreKalemTipi = "";
     private string aramaMetni = "";
     private string topluKalemTipi = "";
+    private bool stokKartiOlustur = false;
 
     private bool degisiklikVar => degistirilmisKalemler.Any();
 
@@ -383,17 +393,51 @@
     {
         if (!degistirilmisKalemler.Any()) return;
 
+        isKaydediliyor = true;
+        StateHasChanged();
+
         try
         {
             var degistirilmisler = kalemler.Where(k => degistirilmisKalemler.Contains(k.Id)).ToList();
-            await FaturaService.UpdateFaturaKalemleriAsync(degistirilmisler);
-
-            ToastService.ShowSuccess($"{degistirilmisKalemler.Count} kalem güncellendi.");
+            
+            if (stokKartiOlustur)
+            {
+                // Stok kartı da oluştur
+                var sonuc = await FaturaService.UpdateFaturaKalemleriVeStokKartiOlusturAsync(degistirilmisler, true);
+                
+                var mesaj = $"{sonuc.GuncellenenKalemSayisi} kalem güncellendi.";
+                if (sonuc.OlusturulanStokKartiSayisi > 0)
+                    mesaj += $" {sonuc.OlusturulanStokKartiSayisi} stok kartı oluşturuldu.";
+                if (sonuc.AtlananStokKartiSayisi > 0)
+                    mesaj += $" {sonuc.AtlananStokKartiSayisi} stok kartı zaten mevcut.";
+                
+                ToastService.ShowSuccess(mesaj);
+                
+                if (sonuc.Hatalar.Any())
+                {
+                    foreach (var hata in sonuc.Hatalar.Take(5))
+                    {
+                        ToastService.ShowWarning(hata);
+                    }
+                }
+            }
+            else
+            {
+                // Sadece güncelle
+                await FaturaService.UpdateFaturaKalemleriAsync(degistirilmisler);
+                ToastService.ShowSuccess($"{degistirilmisKalemler.Count} kalem güncellendi.");
+            }
+            
             degistirilmisKalemler.Clear();
         }
         catch (Exception ex)
         {
             ToastService.ShowError($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isKaydediliyor = false;
+            StateHasChanged();
         }
     }
 

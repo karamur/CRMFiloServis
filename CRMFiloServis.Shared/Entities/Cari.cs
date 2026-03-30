@@ -1,4 +1,4 @@
-namespace CRMFiloServis.Shared.Entities;
+﻿namespace CRMFiloServis.Shared.Entities;
 
 /// <summary>
 /// Cari hesap (Musteri/Tedarikci/Firma/Personel)
@@ -12,8 +12,14 @@ public class Cari : BaseEntity
     public string? VergiNo { get; set; }
     public string? TcKimlikNo { get; set; } // TC Kimlik Numarasi
     public string? Adres { get; set; }
+    public string? Il { get; set; }
+    public string? Ilce { get; set; }
+    public string? PostaKodu { get; set; }
     public string? Telefon { get; set; }
+    public string? Telefon2 { get; set; }
+    public string? Fax { get; set; }
     public string? Email { get; set; }
+    public string? WebSitesi { get; set; }
     public string? YetkiliKisi { get; set; }
     public string? Notlar { get; set; }
     public bool Aktif { get; set; } = true;
