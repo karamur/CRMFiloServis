@@ -14,7 +14,6 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <ApplicationIcon>installer.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
