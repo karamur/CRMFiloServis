@@ -48,29 +48,29 @@
         <div class="login-form">
             <div class="form-floating mb-3">
                 <input type="text" class="form-control" id="kullaniciAdi" placeholder="Kullanici Adi"
-                       @bind="kullaniciAdi" @bind:event="oninput" @onkeypress="HandleKeyPress" autocomplete="username" />
+                       @bind="kullaniciAdi" @onkeydown="HandleKeyDown" autocomplete="username" />
                 <label for="kullaniciAdi"><i class="bi bi-person me-2"></i>Kullanici Adi</label>
             </div>
 
             <div class="form-floating mb-3 position-relative">
-                <input type="@(showPassword ? "text" : "password")" class="form-control" id="sifre" placeholder="Sifre"
-                       @bind="sifre" @bind:event="oninput" @onkeypress="HandleKeyPress" autocomplete="current-password" />
+                <input type="@sifreTipi" class="form-control" id="sifre" placeholder="Sifre"
+                       @bind="sifre" @onkeydown="HandleKeyDown" autocomplete="current-password" />
                 <label for="sifre"><i class="bi bi-lock me-2"></i>Sifre</label>
-                <button type="button" class="password-toggle" @onclick="TogglePassword" @onclick:preventDefault @onclick:stopPropagation>
+                <span class="password-toggle" @onclick="TogglePassword" style="cursor:pointer;">
                     <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
-                </button>
+                </span>
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="beniHatirla" 
-                           checked="@beniHatirla" @onchange="OnBeniHatirlaChanged" />
+                           @bind="beniHatirla" />
                     <label class="form-check-label" for="beniHatirla">Beni Hatirla</label>
                 </div>
                 <a href="#" class="forgot-password" @onclick="SifremiUnuttum" @onclick:preventDefault>Sifremi Unuttum</a>
             </div>
 
-            <button class="btn btn-primary btn-login w-100" @onclick="GirisYapAsync" disabled="@isLoading">
+            <button type="button" class="btn btn-primary btn-login w-100" @onclick="GirisYapAsync" disabled="@isLoading">
                 @if (isLoading)
                 {
                     <span class="spinner-border spinner-border-sm me-2"></span>
@@ -377,14 +377,20 @@
 
     private const string REMEMBER_KEY = "CRMFiloServis_RememberMe";
 
+    private string sifreTipi => showPassword ? "text" : "password";
+
     private void TogglePassword()
     {
         showPassword = !showPassword;
+        StateHasChanged();
     }
 
-    private void OnBeniHatirlaChanged(ChangeEventArgs e)
+    private async Task HandleKeyDown(KeyboardEventArgs e)
     {
-        beniHatirla = (bool)(e.Value ?? false);
+        if (e.Key == "Enter")
+        {
+            await GirisYapAsync();
+        }
     }
 
     protected override async Task OnInitializedAsync()
@@ -470,14 +476,6 @@
         {
             isLoading = false;
             StateHasChanged();
-        }
-    }
-
-    private async Task HandleKeyPress(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await GirisYapAsync();
         }
     }
 
