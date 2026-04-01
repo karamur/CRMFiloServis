@@ -1,4 +1,4 @@
-@page "/ayarlar/roller"
+﻿@page "/ayarlar/roller"
 @using CRMFiloServis.Web.Services
 @using CRMFiloServis.Shared.Entities
 @inject IKullaniciService KullaniciService
@@ -364,6 +364,10 @@
         {
             new("Ana Sayfa", "bi-house-door-fill", "menu.anasayfa", new List<AltMenuYapisi>
             {
+                new("Dashboard", "bi-speedometer2", new List<YetkiItem>
+                {
+                    new("dashboard", "Goruntuleme"),
+                }),
                 new("Belge Uyarilari", "bi-exclamation-triangle", new List<YetkiItem>
                 {
                     new("belgeuyari.oku", "Okuma"),
@@ -561,6 +565,11 @@
                     new("faturahazirlik.yaz", "Yazma"),
                     new("faturahazirlik.duzenle", "Duzenleme"),
                 }),
+                new("Stok Turu Eslestirme", "bi-tags", new List<YetkiItem>
+                {
+                    new("gelenfatura.oku", "Okuma"),
+                    new("gelenfatura.duzenle", "Duzenleme"),
+                }),
             }),
             
             new("Banka / Kasa", "bi-bank", "menu.bankakasa", new List<AltMenuYapisi>
@@ -587,14 +596,8 @@
                 }),
             }),
             
-            new("Checklist", "bi-clipboard-check", "menu.checklist", new List<AltMenuYapisi>
+            new("Butce Modulu", "bi-wallet2", "menu.butce", new List<AltMenuYapisi>
             {
-                new("Aylik Checklist", "bi-calendar-check", new List<YetkiItem>
-                {
-                    new("checklist.oku", "Okuma"),
-                    new("checklist.yaz", "Yazma"),
-                    new("checklist.duzenle", "Duzenleme"),
-                }),
                 new("Butce Analiz", "bi-wallet2", new List<YetkiItem>
                 {
                     new("butceanaliz.oku", "Okuma"),
@@ -609,10 +612,56 @@
                     new("odemeyonetim.duzenle", "Duzenleme"),
                     new("odemeyonetim.sil", "Silme"),
                 }),
+                new("Kredi / Taksitler", "bi-calendar-plus", new List<YetkiItem>
+                {
+                    new("tekrarlayanodem.oku", "Okuma"),
+                    new("tekrarlayanodem.yaz", "Yazma"),
+                    new("tekrarlayanodem.duzenle", "Duzenleme"),
+                    new("tekrarlayanodem.sil", "Silme"),
+                }),
+            }),
+
+            new("Checklist", "bi-clipboard-check", "menu.checklist", new List<AltMenuYapisi>
+            {
+                new("Aylik Checklist", "bi-calendar-check", new List<YetkiItem>
+                {
+                    new("checklist.oku", "Okuma"),
+                    new("checklist.yaz", "Yazma"),
+                    new("checklist.duzenle", "Duzenleme"),
+                }),
                 new("Mali Analiz", "bi-graph-up-arrow", new List<YetkiItem>
                 {
                     new("checklistmali.oku", "Goruntuleme"),
                     new("checklistmali.export", "Export"),
+                }),
+            }),
+
+            new("Stok / Envanter", "bi-box-seam", "menu.stok", new List<AltMenuYapisi>
+            {
+                new("Stok Dashboard", "bi-speedometer2", new List<YetkiItem>
+                {
+                    new("stokdash.oku", "Goruntuleme"),
+                }),
+                new("Stok Kartlari", "bi-box-seam", new List<YetkiItem>
+                {
+                    new("stokkart.oku", "Okuma"),
+                    new("stokkart.yaz", "Yazma"),
+                    new("stokkart.duzenle", "Duzenleme"),
+                    new("stokkart.sil", "Silme"),
+                }),
+                new("Arac Alis / Satis", "bi-truck", new List<YetkiItem>
+                {
+                    new("aracislem.oku", "Okuma"),
+                    new("aracislem.yaz", "Yazma"),
+                    new("aracislem.duzenle", "Duzenleme"),
+                    new("aracislem.sil", "Silme"),
+                }),
+                new("Servis Kayitlari", "bi-tools", new List<YetkiItem>
+                {
+                    new("serviskaydi.oku", "Okuma"),
+                    new("serviskaydi.yaz", "Yazma"),
+                    new("serviskaydi.duzenle", "Duzenleme"),
+                    new("serviskaydi.sil", "Silme"),
                 }),
             }),
             
@@ -625,6 +674,7 @@
                 }),
                 new("Kiralik Arac Raporu", "bi-building", new List<YetkiItem>
                 {
+                    new("raporkirala.oku", "Goruntuleme"),
                     new("raporkirali.oku", "Goruntuleme"),
                     new("raporkirali.export", "Export"),
                 }),
