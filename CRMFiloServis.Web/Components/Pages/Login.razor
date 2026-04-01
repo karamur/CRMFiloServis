@@ -11,7 +11,7 @@
 @inject ProtectedLocalStorage LocalStorage
 @rendermode InteractiveServer
 
-<PageTitle>Giris - CRM Filo Servis</PageTitle>
+<PageTitle>Giriş - CRMFiloServis</PageTitle>
 
 <div class="login-container">
     <div class="login-background">
@@ -25,8 +25,8 @@
             <div class="logo-container">
                 <i class="bi bi-truck"></i>
             </div>
-            <h1>CRM Filo Servis</h1>
-            <p>Filo Yonetim ve Muhasebe Sistemi</p>
+            <h1><span class="brand-crm">CRM</span><span class="brand-filo">Filo</span><span class="brand-servis">Servis</span></h1>
+            <p>Filo Yönetim & Muhasebe Platformu</p>
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -207,13 +207,29 @@
     .login-header h1 {
         font-size: 1.75rem;
         font-weight: 700;
-        color: #1e3c72;
         margin-bottom: 5px;
+        letter-spacing: -0.5px;
+    }
+
+    .brand-crm {
+        color: #1e3c72;
+        font-weight: 800;
+    }
+
+    .brand-filo {
+        color: #2a5298;
+        font-weight: 700;
+    }
+
+    .brand-servis {
+        color: #4a90d9;
+        font-weight: 600;
     }
 
     .login-header p {
         color: #6c757d;
         font-size: 0.9rem;
+        letter-spacing: 0.5px;
     }
 
     .form-floating {
