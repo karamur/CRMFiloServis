@@ -163,10 +163,14 @@
                         <tbody>
                             @foreach (var backup in backups)
                             {
-                                <tr>
+                                <tr class="@(backup.FileName.StartsWith("uploaded_") ? "table-info" : "")">
                                     <td>
                                         <i class="bi @GetFileIcon(backup.FileName) me-1"></i>
                                         @backup.FileName
+                                        @if (backup.FileName.StartsWith("uploaded_"))
+                                        {
+                                            <span class="badge bg-info ms-1">Yuklendi</span>
+                                        }
                                     </td>
                                     <td>@backup.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
                                     <td>@backup.FileSizeFormatted</td>
@@ -178,7 +182,7 @@
                                             <button class="btn btn-outline-success" @onclick="() => YedekIndir(backup)" title="Indir">
                                                 <i class="bi bi-download"></i>
                                             </button>
-                                            @if (!backup.FileName.EndsWith(".json"))
+                                            @if (CanRestore(backup.FileName))
                                             {
                                                 <button class="btn btn-outline-warning" @onclick="() => GeriYukleOnay(backup)" title="Geri Yukle">
                                                     <i class="bi bi-arrow-counterclockwise"></i>
@@ -508,6 +512,7 @@
         if (fileName.EndsWith(".db")) return "bi-database-fill text-success";
         if (fileName.EndsWith(".sql")) return "bi-filetype-sql text-primary";
         if (fileName.EndsWith(".bak")) return "bi-file-earmark-zip text-danger";
+        if (fileName.EndsWith(".backup")) return "bi-file-earmark-arrow-up text-info";
         if (fileName.EndsWith(".json")) return "bi-filetype-json text-warning";
         return "bi-file-earmark";
     }
@@ -517,6 +522,7 @@
         if (fileName.EndsWith(".db")) return "bg-success";
         if (fileName.EndsWith(".sql")) return "bg-primary";
         if (fileName.EndsWith(".bak")) return "bg-danger";
+        if (fileName.EndsWith(".backup")) return "bg-info";
         if (fileName.EndsWith(".json")) return "bg-warning text-dark";
         return "bg-secondary";
     }
@@ -524,8 +530,11 @@
     private string GetFileType(string fileName)
     {
         if (fileName.EndsWith(".db")) return "SQLite";
-        if (fileName.EndsWith(".sql")) return "PostgreSQL";
+        if (fileName.EndsWith(".sql") && fileName.Contains("PostgreSQL")) return "PostgreSQL";
+        if (fileName.EndsWith(".sql") && fileName.Contains("MySQL")) return "MySQL";
+        if (fileName.EndsWith(".sql")) return "SQL";
         if (fileName.EndsWith(".bak")) return "MSSQL";
+        if (fileName.EndsWith(".backup")) return "Backup";
         if (fileName.EndsWith(".json")) return "JSON";
         return "Bilinmiyor";
     }
@@ -610,5 +619,18 @@
             isMigrating = false;
             StateHasChanged();
         }
+    }
+
+    private static bool CanRestore(string fileName)
+    {
+        // JSON dosyalari restore edilemez
+        if (fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Desteklenen formatlar
+        return fileName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) ||
+               fileName.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ||
+               fileName.EndsWith(".bak", StringComparison.OrdinalIgnoreCase) ||
+               fileName.EndsWith(".backup", StringComparison.OrdinalIgnoreCase);
     }
 }

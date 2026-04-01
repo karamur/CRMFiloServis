@@ -543,11 +543,25 @@ public class BackupService : IBackupService
 
         if (Directory.Exists(backupFolder))
         {
-            var files = Directory.GetFiles(backupFolder, "CRMFiloServis_*.*")
-                .Where(f => f.EndsWith(".sql") || f.EndsWith(".json") || f.EndsWith(".db") || f.EndsWith(".bak"))
-                .OrderByDescending(f => f);
+            // CRMFiloServis_ ile baslayan dosyalar
+            var crmFiles = Directory.GetFiles(backupFolder, "CRMFiloServis_*.*")
+                .Where(f => f.EndsWith(".sql") || f.EndsWith(".json") || f.EndsWith(".db") || f.EndsWith(".bak"));
 
-            foreach (var file in files)
+            // uploaded_ ile baslayan dosyalar (disaridan yuklenen)
+            var uploadedFiles = Directory.GetFiles(backupFolder, "uploaded_*.*")
+                .Where(f => f.EndsWith(".sql") || f.EndsWith(".db") || f.EndsWith(".bak") || f.EndsWith(".backup"));
+
+            // Diger yedek dosyalari
+            var otherFiles = Directory.GetFiles(backupFolder)
+                .Where(f => !Path.GetFileName(f).StartsWith("CRMFiloServis_") && 
+                            !Path.GetFileName(f).StartsWith("uploaded_") &&
+                            (f.EndsWith(".sql") || f.EndsWith(".db") || f.EndsWith(".bak") || f.EndsWith(".backup")));
+
+            var allFiles = crmFiles.Concat(uploadedFiles).Concat(otherFiles)
+                .Distinct()
+                .OrderByDescending(f => new FileInfo(f).CreationTime);
+
+            foreach (var file in allFiles)
             {
                 var fileInfo = new FileInfo(file);
                 backups.Add(new BackupInfo
@@ -578,64 +592,54 @@ public class BackupService : IBackupService
             }
 
             var dbProvider = GetCurrentDatabaseProvider();
+            _logger.LogInformation("Restore baslatiliyor: {FileName}, Provider: {Provider}", backupFileName, dbProvider);
 
+            // SQLite restore
             if (backupFilePath.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
             {
-                var connectionString = ResolveConnectionString("SQLite");
-                var targetPath = connectionString?.Replace("Data Source=", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().TrimEnd(';');
-                if (!string.IsNullOrWhiteSpace(targetPath))
-                {
-                    if (!Path.IsPathRooted(targetPath))
-                        targetPath = Path.Combine(_environment.ContentRootPath, targetPath);
-
-                    File.Copy(backupFilePath, targetPath, overwrite: true);
-                    _logger.LogInformation("SQLite restore basarili");
-                    return true;
-                }
+                return await RestoreSqliteAsync(backupFilePath);
             }
 
+            // JSON restore desteklenmiyor
             if (backupFilePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning("JSON yedekten geri yukleme henuz desteklenmiyor.");
                 return false;
             }
 
-            if (backupFilePath.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) && dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+            // PostgreSQL restore
+            if (backupFilePath.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) && 
+                (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase) || backupFileName.Contains("PostgreSQL", StringComparison.OrdinalIgnoreCase)))
             {
-                var connectionString = ResolveConnectionString("PostgreSQL");
-                if (string.IsNullOrWhiteSpace(connectionString))
-                    return false;
-
-                var connParts = ParseConnectionString(connectionString);
-                var psqlPath = FindPgDump()?.Replace("pg_dump", "psql", StringComparison.OrdinalIgnoreCase);
-
-                if (!string.IsNullOrWhiteSpace(psqlPath) && File.Exists(psqlPath))
-                {
-                    var processInfo = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = psqlPath,
-                        Arguments = $"-h {connParts.GetValueOrDefault("Host", "localhost")} -p {connParts.GetValueOrDefault("Port", "5432")} -U {connParts.GetValueOrDefault("Username", string.Empty)} -d {connParts.GetValueOrDefault("Database", string.Empty)} -f \"{backupFilePath}\"",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-
-                    processInfo.Environment["PGPASSWORD"] = connParts.GetValueOrDefault("Password", string.Empty);
-
-                    using var process = System.Diagnostics.Process.Start(processInfo);
-                    if (process != null)
-                    {
-                        await process.WaitForExitAsync();
-                        if (process.ExitCode == 0)
-                        {
-                            _logger.LogInformation("PostgreSQL restore basarili");
-                            return true;
-                        }
-                    }
-                }
+                return await RestorePostgreSqlAsync(backupFilePath);
             }
 
+            // MSSQL restore
+            if (backupFilePath.EndsWith(".bak", StringComparison.OrdinalIgnoreCase) && 
+                (dbProvider.Equals("MSSQL", StringComparison.OrdinalIgnoreCase) || dbProvider.Equals("SQLServer", StringComparison.OrdinalIgnoreCase)))
+            {
+                return await RestoreMsSqlAsync(backupFilePath);
+            }
+
+            // MySQL restore
+            if (backupFilePath.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) && 
+                (dbProvider.Equals("MySQL", StringComparison.OrdinalIgnoreCase) || backupFileName.Contains("MySQL", StringComparison.OrdinalIgnoreCase)))
+            {
+                return await RestoreMySqlAsync(backupFilePath);
+            }
+
+            // .backup uzantılı dosyalar için provider'a göre restore dene
+            if (backupFilePath.EndsWith(".backup", StringComparison.OrdinalIgnoreCase))
+            {
+                return dbProvider.ToUpperInvariant() switch
+                {
+                    "POSTGRESQL" => await RestorePostgreSqlAsync(backupFilePath),
+                    "MYSQL" => await RestoreMySqlAsync(backupFilePath),
+                    _ => false
+                };
+            }
+
+            _logger.LogWarning("Desteklenmeyen yedek formati: {FileName}", backupFileName);
             return false;
         }
         catch (Exception ex)
@@ -643,6 +647,230 @@ public class BackupService : IBackupService
             _logger.LogError(ex, "Restore hatasi");
             return false;
         }
+    }
+
+    private async Task<bool> RestoreSqliteAsync(string backupFilePath)
+    {
+        try
+        {
+            var connectionString = ResolveConnectionString("SQLite");
+            var targetPath = connectionString?.Replace("Data Source=", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().TrimEnd(';');
+
+            if (string.IsNullOrWhiteSpace(targetPath))
+            {
+                _logger.LogError("SQLite hedef yolu bulunamadi");
+                return false;
+            }
+
+            if (!Path.IsPathRooted(targetPath))
+                targetPath = Path.Combine(_environment.ContentRootPath, targetPath);
+
+            File.Copy(backupFilePath, targetPath, overwrite: true);
+            _logger.LogInformation("SQLite restore basarili: {Path}", targetPath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SQLite restore hatasi");
+            return false;
+        }
+    }
+
+    private async Task<bool> RestorePostgreSqlAsync(string backupFilePath)
+    {
+        try
+        {
+            var connectionString = ResolveConnectionString("PostgreSQL");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                _logger.LogError("PostgreSQL connection string bulunamadi");
+                return false;
+            }
+
+            var connParts = ParseConnectionString(connectionString);
+            var psqlPath = FindPsql();
+
+            if (string.IsNullOrWhiteSpace(psqlPath))
+            {
+                _logger.LogError("psql bulunamadi. PostgreSQL client kurulu olmali.");
+                return false;
+            }
+
+            var host = connParts.GetValueOrDefault("Host", "localhost");
+            var port = connParts.GetValueOrDefault("Port", "5432");
+            var username = connParts.GetValueOrDefault("Username", string.Empty);
+            var database = connParts.GetValueOrDefault("Database", string.Empty);
+            var password = connParts.GetValueOrDefault("Password", string.Empty);
+
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = psqlPath,
+                Arguments = $"-h {host} -p {port} -U {username} -d {database} -f \"{backupFilePath}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            processInfo.Environment["PGPASSWORD"] = password;
+
+            _logger.LogInformation("PostgreSQL restore calistiriliyor: psql -h {Host} -d {Database}", host, database);
+
+            using var process = System.Diagnostics.Process.Start(processInfo);
+            if (process != null)
+            {
+                var output = await process.StandardOutput.ReadToEndAsync();
+                var error = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode == 0)
+                {
+                    _logger.LogInformation("PostgreSQL restore basarili");
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError("PostgreSQL restore hatasi: {Error}", error);
+                }
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PostgreSQL restore hatasi");
+            return false;
+        }
+    }
+
+    private async Task<bool> RestoreMsSqlAsync(string backupFilePath)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var dbName = context.Database.GetDbConnection().Database;
+
+            var restoreSql = $@"
+                ALTER DATABASE [{dbName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                RESTORE DATABASE [{dbName}] FROM DISK = N'{backupFilePath}' WITH REPLACE;
+                ALTER DATABASE [{dbName}] SET MULTI_USER;";
+
+            await context.Database.ExecuteSqlRawAsync(restoreSql);
+            _logger.LogInformation("MSSQL restore basarili");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "MSSQL restore hatasi");
+            return false;
+        }
+    }
+
+    private async Task<bool> RestoreMySqlAsync(string backupFilePath)
+    {
+        try
+        {
+            var connectionString = ResolveConnectionString("MySQL");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                _logger.LogError("MySQL connection string bulunamadi");
+                return false;
+            }
+
+            var connParts = ParseConnectionString(connectionString);
+            var mysqlPath = FindMySql();
+
+            if (string.IsNullOrWhiteSpace(mysqlPath))
+            {
+                _logger.LogError("mysql client bulunamadi.");
+                return false;
+            }
+
+            var host = connParts.GetValueOrDefault("Server") ?? connParts.GetValueOrDefault("Host") ?? "localhost";
+            var port = connParts.GetValueOrDefault("Port") ?? "3306";
+            var username = connParts.GetValueOrDefault("User") ?? connParts.GetValueOrDefault("User Id") ?? connParts.GetValueOrDefault("Username") ?? string.Empty;
+            var password = connParts.GetValueOrDefault("Password") ?? string.Empty;
+            var database = connParts.GetValueOrDefault("Database") ?? string.Empty;
+
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = mysqlPath,
+                Arguments = $"--host={host} --port={port} --user={username} {database} < \"{backupFilePath}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            processInfo.Environment["MYSQL_PWD"] = password;
+
+            using var process = System.Diagnostics.Process.Start(processInfo);
+            if (process != null)
+            {
+                // SQL dosyasını stdin'e yaz
+                var sql = await File.ReadAllTextAsync(backupFilePath);
+                await process.StandardInput.WriteAsync(sql);
+                process.StandardInput.Close();
+
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode == 0)
+                {
+                    _logger.LogInformation("MySQL restore basarili");
+                    return true;
+                }
+                else
+                {
+                    var error = await process.StandardError.ReadToEndAsync();
+                    _logger.LogError("MySQL restore hatasi: {Error}", error);
+                }
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "MySQL restore hatasi");
+            return false;
+        }
+    }
+
+    private string? FindPsql()
+    {
+        var pgDumpPath = FindPgDump();
+        if (!string.IsNullOrWhiteSpace(pgDumpPath))
+        {
+            var psqlPath = pgDumpPath.Replace("pg_dump", "psql", StringComparison.OrdinalIgnoreCase);
+            if (File.Exists(psqlPath))
+                return psqlPath;
+        }
+
+        var commonPaths = new[]
+        {
+            @"C:\Program Files\PostgreSQL\17\bin\psql.exe",
+            @"C:\Program Files\PostgreSQL\16\bin\psql.exe",
+            @"C:\Program Files\PostgreSQL\15\bin\psql.exe",
+            @"C:\Program Files\PostgreSQL\14\bin\psql.exe",
+            "/usr/bin/psql",
+            "/usr/local/bin/psql"
+        };
+
+        return commonPaths.FirstOrDefault(File.Exists);
+    }
+
+    private string? FindMySql()
+    {
+        var commonPaths = new[]
+        {
+            @"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe",
+            @"C:\Program Files\MySQL\MySQL Server 5.7\bin\mysql.exe",
+            "/usr/bin/mysql",
+            "/usr/local/bin/mysql"
+        };
+
+        return commonPaths.FirstOrDefault(File.Exists);
     }
 
     public async Task<bool> DeleteBackupAsync(string backupFileName)
