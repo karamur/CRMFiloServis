@@ -1,4 +1,4 @@
-﻿# CRM Filo Servis
+﻿# Koa Filo Servis
 
 Filo Yonetimi, Muhasebe ve CRM Uygulamasi - .NET 10 Blazor Server
 

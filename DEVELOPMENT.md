@@ -87,6 +87,9 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 - sol menü marka adı güncellendi
 - `README.md` başlığı güncellendi
 - `KURULUM.md` başlığı güncellendi
+- deploy dokümantasyonu ve build script başlıkları güncellendi
+- lisans masaüstü uygulama başlıkları güncellendi
+- lisans kodu ön eki `KOA-` olarak güncellendi
 
 **Yapılacaklar:**
 - proje genelinde görünen eski marka adları taranmalı
@@ -175,7 +178,7 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 | 006 | Bütçe + cari mahsup | Devam ediyor | Yüksek | Uçtan uca kayıt akışı tamamlanmalı |
 | 007 | Marka adı tutarlılığı | Devam ediyor | Orta | Proje genelinde eski isimler taranmalı |
 | 008 | Repo temizliği / uploads | Tamamlandı | Orta | Ignore + cached dosya temizliği yapıldı |
-| 009 | Dokümantasyon marka güncellemesi | Devam ediyor | Düşük | README ve kurulum başlıkları güncellendi |
+| 009 | Dokümantasyon marka güncellemesi | Devam ediyor | Düşük | README, kurulum ve deploy başlıkları güncellendi |
 | 010 | Çalışma zamanı dosya disiplini | Kısmen tamamlandı | Düşük | Upload klasörü ignore edildi |
 
 ---

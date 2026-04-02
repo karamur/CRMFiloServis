@@ -17,7 +17,7 @@ if ([string]::IsNullOrEmpty($Version)) {
 $packageFile = Join-Path $outputDir "CRMFiloServis.Web-$Version.zip"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  CRM Filo Servis - Web Paketi" -ForegroundColor Cyan
+Write-Host "  Koa Filo Servis - Web Paketi" -ForegroundColor Cyan
 Write-Host "  Versiyon: $Version" -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""

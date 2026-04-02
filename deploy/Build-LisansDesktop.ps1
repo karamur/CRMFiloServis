@@ -4,7 +4,7 @@ $project = Join-Path $root "CRMFiloServis.LisansDesktop\CRMFiloServis.LisansDesk
 $outputDir = Join-Path $root "artifacts\lisans"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  CRM Filo Servis - Lisans Olusturucu" -ForegroundColor Cyan
+Write-Host "  Koa Filo Servis - Lisans Olusturucu" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 

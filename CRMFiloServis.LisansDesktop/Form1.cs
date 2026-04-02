@@ -266,7 +266,7 @@ public partial class Form1 : Form
     private static string UretLisansKodu()
     {
         var random = new Random();
-        return $"CRM-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}";
+        return $"KOA-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}-{random.Next(1000, 9999)}";
     }
 
     private static string EncryptString(string plainText)

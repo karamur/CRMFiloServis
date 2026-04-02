@@ -1,6 +1,6 @@
 ﻿# Deploy - Yayın Paketleri
 
-Bu klasör CRM Filo Servis yayın paketlerini oluşturur.
+Bu klasör Koa Filo Servis yayın paketlerini oluşturur.
 
 ## Hızlı Kullanım
 

@@ -61,7 +61,7 @@ partial class Form1
         lblBaslik.Name = "lblBaslik";
         lblBaslik.Size = new Size(296, 35);
         lblBaslik.TabIndex = 0;
-        lblBaslik.Text = "CRM Lisans Oluşturucu";
+        lblBaslik.Text = "Koa Filo Servis Lisans Oluşturucu";
         // 
         // lblFirmaAdi
         // 
@@ -388,7 +388,7 @@ partial class Form1
         MaximizeBox = false;
         Name = "Form1";
         StartPosition = FormStartPosition.CenterScreen;
-        Text = "CRMFiloServis Lisans Oluşturucu";
+        Text = "Koa Filo Servis Lisans Oluşturucu";
         ((System.ComponentModel.ISupportInitialize)numMaxKullanici).EndInit();
         ((System.ComponentModel.ISupportInitialize)dgvKayitlar).EndInit();
         ResumeLayout(false);

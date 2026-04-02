@@ -4,7 +4,7 @@ $project = Join-Path $root "CRMFiloServis.Installer\CRMFiloServis.Installer.cspr
 $outputDir = Join-Path $root "artifacts\installer"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  CRM Filo Servis - Kurulum Programi" -ForegroundColor Cyan
+Write-Host "  Koa Filo Servis - Kurulum Programi" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 

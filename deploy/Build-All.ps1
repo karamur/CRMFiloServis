@@ -13,7 +13,7 @@ if ([string]::IsNullOrEmpty($Version)) {
 Write-Host ""
 Write-Host "###############################################" -ForegroundColor Magenta
 Write-Host "#                                             #" -ForegroundColor Magenta
-Write-Host "#     CRM FILO SERVIS - TUM PAKETLER         #" -ForegroundColor Magenta
+Write-Host "#     KOA FILO SERVIS - TUM PAKETLER         #" -ForegroundColor Magenta
 Write-Host "#     Versiyon: $Version                      " -ForegroundColor Yellow
 Write-Host "#                                             #" -ForegroundColor Magenta
 Write-Host "###############################################" -ForegroundColor Magenta
