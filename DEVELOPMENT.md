@@ -528,6 +528,33 @@ Yeni bir kullanıcı talebi geldiğinde aşağıdaki format kullanılmalıdır:
 
 ---
 
+## Login Doğrulama Checklist
+
+### Fonksiyonel Kontroller
+- [ ] `/login` sayfası tek endpoint olarak açılıyor mu
+- [ ] kullanıcı adı alanı veri alıyor mu
+- [ ] şifre alanı veri alıyor mu
+- [ ] `Giriş Yap` butonu tıklanınca servis çağrısı çalışıyor mu
+- [ ] hatalı kullanıcı adı doğru hata mesajı veriyor mu
+- [ ] hatalı şifre doğru hata mesajı veriyor mu
+- [ ] başarılı giriş sonrası ana sayfaya yönleniyor mu
+- [ ] giriş sonrası kullanıcı yetkili sayfalara erişebiliyor mu
+- [ ] tarayıcı yenilendiğinde oturum davranışı beklenen şekilde mi
+
+### UI Kontrolleri
+- [ ] şifre göster / gizle çalışıyor mu
+- [ ] `Beni Hatırla` seçimi kalıyor mu
+- [ ] başarı ve hata mesajları görünüyor mu
+- [ ] mobil görünümde form bozulmuyor mu
+
+### Teknik Kontroller
+- [ ] `AuthProvider` giriş sonrası state yayıyor mu
+- [ ] `KullaniciService.GirisYapAsync` sonucu beklenen kullanıcıyı döndürüyor mu
+- [ ] yönlendirme sonrası `AuthorizeRouteView` kullanıcıyı anonim görmüyor mu
+- [ ] local storage erişiminde hata oluşursa login akışı kırılmıyor mu
+
+---
+
 ## Not
 Bu dosya canlı durum özeti olarak kullanılmalı.
 Yeni modül veya önemli değişikliklerden sonra güncellenmesi önerilir.
