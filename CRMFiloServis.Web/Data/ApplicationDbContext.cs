@@ -312,6 +312,18 @@ public class ApplicationDbContext : DbContext
                 .WithMany(s => s.ArizaMasraflari)
                 .HasForeignKey(e => e.ServisCalismaId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Sofor)
+                .WithMany()
+                .HasForeignKey(e => e.SoforId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Cari)
+                .WithMany()
+                .HasForeignKey(e => e.CariId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.MuhasebeFis)
+                .WithMany()
+                .HasForeignKey(e => e.MuhasebeFisId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 

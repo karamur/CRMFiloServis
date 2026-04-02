@@ -1,25 +1,31 @@
-namespace CRMFiloServis.Shared.Entities;
+ï»¿namespace CRMFiloServis.Shared.Entities;
 
 /// <summary>
-/// Araç masraf girişleri
+/// AraÃ§ masraf giriÅŸleri
 /// </summary>
 public class AracMasraf : BaseEntity
 {
     public DateTime MasrafTarihi { get; set; }
     public decimal Tutar { get; set; }
     public string? Aciklama { get; set; }
-    public string? BelgeNo { get; set; } // Fatura/Fiş numarası
-    public bool ArizaKaynaklimi { get; set; } = false; // Arıza nedeniyle mi?
+    public string? BelgeNo { get; set; } // Fatura/FiÅŸ numarasÄ±
+    public bool ArizaKaynaklimi { get; set; } = false; // ArÄ±za nedeniyle mi?
 
     // Foreign Keys
     public int AracId { get; set; }
     public int MasrafKalemiId { get; set; }
-    public int? GuzergahId { get; set; } // Arıza kaynaklı personel ulaşım masrafları için
-    public int? ServisCalismaId { get; set; } // İlgili servis çalışması
+    public int? GuzergahId { get; set; } // ArÄ±za kaynaklÄ± personel ulaÅŸÄ±m masraflarÄ± iÃ§in
+    public int? ServisCalismaId { get; set; } // Ä°lgili servis Ã§alÄ±ÅŸmasÄ±
+    public int? SoforId { get; set; }
+    public int? CariId { get; set; }
+    public int? MuhasebeFisId { get; set; }
 
     // Navigation Properties
     public virtual Arac Arac { get; set; } = null!;
     public virtual MasrafKalemi MasrafKalemi { get; set; } = null!;
     public virtual Guzergah? Guzergah { get; set; }
     public virtual ServisCalisma? ServisCalisma { get; set; }
+    public virtual Sofor? Sofor { get; set; }
+    public virtual Cari? Cari { get; set; }
+    public virtual MuhasebeFis? MuhasebeFis { get; set; }
 }

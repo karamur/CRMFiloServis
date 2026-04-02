@@ -31,6 +31,8 @@ public interface IBordroService
     Task<byte[]> ExportBankaOdemeListesiAsync(int bordroId);
     Task<byte[]> ExportEkOdemeListesiAsync(int bordroId);
     Task<byte[]> ExportTumBordroAsync(int bordroId);
+    Task<List<BordroKalanOdemeSatir>> GetKalanOdemeRaporuAsync(int bordroId);
+    Task<byte[]> ExportKalanOdemeRaporuAsync(int bordroId);
     Task<byte[]> ExportBordroOzetAsync(int? firmaId, int? yil);
     
     // Ayarlar
@@ -53,4 +55,16 @@ public class BordroOzet
     public decimal GenelToplam => ToplamNetMaas + ToplamEkOdeme;
     public int OnayliDönemSayisi { get; set; }
     public int BekleyenDönemSayisi { get; set; }
+}
+
+public class BordroKalanOdemeSatir
+{
+    public int PersonelId { get; set; }
+    public string PersonelKodu { get; set; } = string.Empty;
+    public string PersonelAdSoyad { get; set; } = string.Empty;
+    public string? Iban { get; set; }
+    public decimal KalanMaas { get; set; }
+    public decimal PersonelHarcamalari { get; set; }
+    public decimal PersonelAvansAlacaklari { get; set; }
+    public decimal KalanOdeme => KalanMaas + PersonelHarcamalari + PersonelAvansAlacaklari;
 }

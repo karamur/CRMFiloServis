@@ -690,6 +690,110 @@ public class BordroService : IBordroService
         return stream.ToArray();
     }
 
+    public async Task<List<BordroKalanOdemeSatir>> GetKalanOdemeRaporuAsync(int bordroId)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var bordro = await context.Bordrolar
+            .Include(b => b.BordroDetaylar)
+                .ThenInclude(d => d.Personel)
+            .FirstOrDefaultAsync(b => b.Id == bordroId);
+
+        if (bordro == null)
+            throw new InvalidOperationException("Bordro bulunamadı!");
+
+        var personelIds = bordro.BordroDetaylar.Select(d => d.PersonelId).Distinct().ToList();
+
+        var acikBorclar = await context.PersonelBorclar
+            .Where(b => personelIds.Contains(b.PersonelId)
+                && b.OdemeDurum != BorcOdemeDurum.IptalEdildi
+                && b.KalanBorc > 0
+                && b.BorcTipi != BorcTipi.MaasAlacagi)
+            .GroupBy(b => b.PersonelId)
+            .Select(g => new { PersonelId = g.Key, Tutar = g.Sum(x => x.KalanBorc) })
+            .ToDictionaryAsync(x => x.PersonelId, x => x.Tutar);
+
+        var acikAvanslar = await context.PersonelAvanslar
+            .Where(a => personelIds.Contains(a.PersonelId)
+                && a.Durum != AvansDurum.IptalEdildi
+                && a.Kalan > 0)
+            .GroupBy(a => a.PersonelId)
+            .Select(g => new { PersonelId = g.Key, Tutar = g.Sum(x => x.Kalan) })
+            .ToDictionaryAsync(x => x.PersonelId, x => x.Tutar);
+
+        return bordro.BordroDetaylar
+            .OrderBy(d => d.Personel.Ad)
+            .ThenBy(d => d.Personel.Soyad)
+            .Select(detay => new BordroKalanOdemeSatir
+            {
+                PersonelId = detay.PersonelId,
+                PersonelKodu = detay.Personel.SoforKodu,
+                PersonelAdSoyad = detay.Personel.TamAd,
+                Iban = detay.Personel.IBAN,
+                KalanMaas = (detay.BankaOdemesiYapildi ? 0 : detay.NetMaas + detay.ToplamEkOdeme)
+                    + (detay.EkOdemeYapildi ? 0 : detay.EkOdeme),
+                PersonelHarcamalari = acikBorclar.GetValueOrDefault(detay.PersonelId),
+                PersonelAvansAlacaklari = acikAvanslar.GetValueOrDefault(detay.PersonelId)
+            })
+            .ToList();
+    }
+
+    public async Task<byte[]> ExportKalanOdemeRaporuAsync(int bordroId)
+    {
+        var bordro = await GetBordroByIdAsync(bordroId);
+        if (bordro == null)
+            throw new InvalidOperationException("Bordro bulunamadı!");
+
+        var satirlar = await GetKalanOdemeRaporuAsync(bordroId);
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Kalan Ödeme Raporu");
+
+        worksheet.Cell("A1").Value = $"{bordro.DonemeAdi} {bordro.BordroTipi} Bordro - Kalan Ödeme Raporu";
+        worksheet.Range("A1:G1").Merge().Style.Font.Bold = true;
+        worksheet.Range("A1:G1").Style.Font.FontSize = 14;
+        worksheet.Range("A1:G1").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        var header = worksheet.Row(3);
+        header.Cell(1).Value = "Personel Kodu";
+        header.Cell(2).Value = "Ad Soyad";
+        header.Cell(3).Value = "IBAN";
+        header.Cell(4).Value = "Kalan Maaş";
+        header.Cell(5).Value = "Personel Harcamaları";
+        header.Cell(6).Value = "Personel Avans Alacakları";
+        header.Cell(7).Value = "Kalan Ödeme";
+        header.Style.Font.Bold = true;
+        header.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+        var row = 4;
+        foreach (var satir in satirlar)
+        {
+            worksheet.Cell(row, 1).Value = satir.PersonelKodu;
+            worksheet.Cell(row, 2).Value = satir.PersonelAdSoyad;
+            worksheet.Cell(row, 3).Value = satir.Iban ?? string.Empty;
+            worksheet.Cell(row, 4).Value = satir.KalanMaas;
+            worksheet.Cell(row, 5).Value = satir.PersonelHarcamalari;
+            worksheet.Cell(row, 6).Value = satir.PersonelAvansAlacaklari;
+            worksheet.Cell(row, 7).Value = satir.KalanOdeme;
+            row++;
+        }
+
+        worksheet.Cell(row, 3).Value = "TOPLAM:";
+        worksheet.Cell(row, 4).Value = satirlar.Sum(x => x.KalanMaas);
+        worksheet.Cell(row, 5).Value = satirlar.Sum(x => x.PersonelHarcamalari);
+        worksheet.Cell(row, 6).Value = satirlar.Sum(x => x.PersonelAvansAlacaklari);
+        worksheet.Cell(row, 7).Value = satirlar.Sum(x => x.KalanOdeme);
+        worksheet.Range(row, 3, row, 7).Style.Font.Bold = true;
+        worksheet.Range(row, 3, row, 7).Style.Fill.BackgroundColor = XLColor.LightYellow;
+
+        worksheet.Range(4, 4, row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
     public async Task<byte[]> ExportBordroOzetAsync(int? firmaId, int? yil)
     {
         var bordrolar = await GetBordrolarAsync(firmaId, yil);

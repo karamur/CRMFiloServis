@@ -1,4 +1,4 @@
-@page "/arac-masraflari/yeni"
+ï»¿@page "/arac-masraflari/yeni"
 @page "/arac-masraflari/{Id:int}"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
@@ -7,14 +7,17 @@
 @inject IMasrafKalemiService MasrafKalemiService
 @inject IGuzergahService GuzergahService
 @inject IServisCalismaService ServisCalismaService
+@inject ISoforService SoforService
+@inject ICariService CariService
+@inject IToastService ToastService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEdit ? "Masraf Düzenle" : "Yeni Araç Masrafý")</PageTitle>
+<PageTitle>@(IsEdit ? "Masraf DÃ¼zenle" : "Yeni AraÃ§ MasrafÄ±")</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-cash-stack me-2"></i>@(IsEdit ? "Masraf Düzenle" : "Yeni Araç Masrafý")</h3>
+        <h3><i class="bi bi-cash-stack me-2"></i>@(IsEdit ? "Masraf DÃ¼zenle" : "Yeni AraÃ§ MasrafÄ±")</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -34,9 +37,9 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Araç (Plaka) *</label>
+                            <label class="form-label">AraÃ§ (Plaka) *</label>
                             <InputSelect @bind-Value="masraf.AracId" class="form-select">
-                                <option value="0">-- Araç Seçiniz --</option>
+                                <option value="0">-- AraÃ§ SeÃ§iniz --</option>
                                 @foreach (var arac in araclar)
                                 {
                                     <option value="@arac.Id">@arac.AktifPlaka - @arac.Marka @arac.Model</option>
@@ -48,7 +51,7 @@
                         <div class="mb-3">
                             <label class="form-label">Masraf Kalemi *</label>
                             <InputSelect @bind-Value="masraf.MasrafKalemiId" class="form-select">
-                                <option value="0">-- Masraf Kalemi Seçiniz --</option>
+                                <option value="0">-- Masraf Kalemi SeÃ§iniz --</option>
                                 @foreach (var kalem in masrafKalemleri)
                                 {
                                     <option value="@kalem.Id">@kalem.MasrafAdi (@GetKategoriText(kalem.Kategori))</option>
@@ -61,7 +64,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Tutar (?) *</label>
+                            <label class="form-label">Tutar (â‚º) *</label>
                             <InputNumber @bind-Value="masraf.Tutar" class="form-control" />
                         </div>
                     </div>
@@ -73,14 +76,51 @@
                     </div>
                 </div>
 
+                <div class="card bg-light border-primary mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title text-primary"><i class="bi bi-person-vcard me-2"></i>FiÅŸ / Muhatap Bilgisi</h6>
+                        <p class="small text-muted mb-3">Masraf personele veya cariye baÄŸlÄ±ysa seÃ§in. KayÄ±t kaydedildiÄŸinde muhasebe fiÅŸi otomatik oluÅŸturulur ve deÄŸiÅŸikliklerde gÃ¼ncellenir.</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Personel</label>
+                                    <InputSelect TValue="int?" @bind-Value="masraf.SoforId" class="form-select">
+                                        <option value="">-- Personel SeÃ§iniz --</option>
+                                        @foreach (var sofor in soforler)
+                                        {
+                                            <option value="@sofor.Id">@sofor.TamAd (@sofor.SoforKodu)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Cari</label>
+                                    <InputSelect TValue="int?" @bind-Value="masraf.CariId" class="form-select">
+                                        <option value="">-- Cari SeÃ§iniz --</option>
+                                        @foreach (var cari in cariler)
+                                        {
+                                            <option value="@cari.Id">@cari.Unvan (@cari.CariKodu)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
+                        @if (masraf.SoforId.HasValue && masraf.CariId.HasValue)
+                        {
+                            <div class="alert alert-warning py-2 mb-0">AynÄ± masraf iÃ§in hem personel hem cari seÃ§ilemez.</div>
+                        }
+                    </div>
+                </div>
+
                 <div class="card bg-light mb-3">
                     <div class="card-body">
-                        <h6 class="card-title text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Arýza Kaynaklý Masraf</h6>
-                        <p class="small text-muted">Araç arýzasý nedeniyle personel ulaþýmý (taksi, toplu taþýma vb.) masraflarý için bu bölümü kullanýn.</p>
+                        <h6 class="card-title text-warning"><i class="bi bi-exclamation-triangle me-2"></i>ArÄ±za KaynaklÄ± Masraf</h6>
+                        <p class="small text-muted">AraÃ§ arÄ±zasÄ± nedeniyle personel ulaÅŸÄ±mÄ± (taksi, toplu taÅŸÄ±ma vb.) masraflarÄ± iÃ§in bu bÃ¶lÃ¼mÃ¼ kullanÄ±n.</p>
 
                         <div class="form-check mb-3">
                             <InputCheckbox @bind-Value="masraf.ArizaKaynaklimi" class="form-check-input" id="arizaKaynakli" />
-                            <label class="form-check-label" for="arizaKaynakli">Bu masraf arýza nedeniyle oluþtu</label>
+                            <label class="form-check-label" for="arizaKaynakli">Bu masraf arÄ±za nedeniyle oluÅŸtu</label>
                         </div>
 
                         @if (masraf.ArizaKaynaklimi)
@@ -88,9 +128,9 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Güzergah</label>
+                                        <label class="form-label">GÃ¼zergah</label>
                                         <InputSelect @bind-Value="masraf.GuzergahId" class="form-select">
-                                            <option value="">-- Güzergah Seçiniz --</option>
+                                            <option value="">-- GÃ¼zergah SeÃ§iniz --</option>
                                             @foreach (var guzergah in guzergahlar)
                                             {
                                                 <option value="@guzergah.Id">@guzergah.GuzergahAdi (@guzergah.Cari?.Unvan)</option>
@@ -100,9 +140,9 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Ýlgili Servis Çalýþmasý</label>
+                                        <label class="form-label">Ä°lgili Servis Ã‡alÄ±ÅŸmasÄ±</label>
                                         <InputSelect @bind-Value="masraf.ServisCalismaId" class="form-select">
-                                            <option value="">-- Servis Çalýþmasý Seçiniz --</option>
+                                            <option value="">-- Servis Ã‡alÄ±ÅŸmasÄ± SeÃ§iniz --</option>
                                             @foreach (var calisma in servisCalismalar)
                                             {
                                                 <option value="@calisma.Id">@calisma.CalismaTarihi.ToString("dd.MM.yyyy") - @calisma.Arac?.AktifPlaka - @calisma.Guzergah?.GuzergahAdi</option>
@@ -116,7 +156,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Açýklama</label>
+                    <label class="form-label">AÃ§Ä±klama</label>
                     <InputTextArea @bind-Value="masraf.Aciklama" class="form-control" rows="3" />
                 </div>
 
@@ -125,7 +165,7 @@
                         <i class="bi bi-check-lg me-1"></i>Kaydet
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Geri">
-                        <i class="bi bi-x-lg me-1"></i>Ýptal
+                        <i class="bi bi-x-lg me-1"></i>Ä°ptal
                     </button>
                 </div>
             </EditForm>
@@ -142,6 +182,8 @@
     private List<MasrafKalemi> masrafKalemleri = new();
     private List<Guzergah> guzergahlar = new();
     private List<ServisCalisma> servisCalismalar = new();
+    private List<Sofor> soforler = new();
+    private List<Cari> cariler = new();
     private bool IsEdit => Id.HasValue;
 
     protected override async Task OnInitializedAsync()
@@ -149,8 +191,9 @@
         araclar = await AracService.GetActiveAsync();
         masrafKalemleri = await MasrafKalemiService.GetActiveAsync();
         guzergahlar = await GuzergahService.GetActiveAsync();
+        soforler = await SoforService.GetActiveAsync();
+        cariler = await CariService.GetAllAsync();
 
-        // Son 30 günün servis çalýþmalarýný getir
         var endDate = DateTime.Today;
         var startDate = endDate.AddDays(-30);
         servisCalismalar = await ServisCalismaService.GetByDateRangeAsync(startDate, endDate);
@@ -176,17 +219,36 @@
     private async Task Kaydet()
     {
         if (masraf.AracId == 0 || masraf.MasrafKalemiId == 0 || masraf.Tutar <= 0)
+        {
+            ToastService.ShowWarning("AraÃ§, masraf kalemi ve tutar bilgisi zorunludur.");
             return;
+        }
 
-        if (IsEdit)
+        if (masraf.SoforId.HasValue && masraf.CariId.HasValue)
         {
-            await AracMasrafService.UpdateAsync(masraf);
+            ToastService.ShowWarning("AynÄ± masraf iÃ§in hem personel hem cari seÃ§ilemez.");
+            return;
         }
-        else
+
+        try
         {
-            await AracMasrafService.CreateAsync(masraf);
+            if (IsEdit)
+            {
+                await AracMasrafService.UpdateAsync(masraf);
+                ToastService.ShowSuccess("Masraf kaydÄ± ve muhasebe fiÅŸi gÃ¼ncellendi.");
+            }
+            else
+            {
+                await AracMasrafService.CreateAsync(masraf);
+                ToastService.ShowSuccess("Masraf kaydÄ± ve muhasebe fiÅŸi oluÅŸturuldu.");
+            }
+
+            Navigation.NavigateTo("/arac-masraflari");
         }
-        Navigation.NavigateTo("/arac-masraflari");
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
     }
 
     private void Geri()
@@ -196,15 +258,15 @@
 
     private string GetKategoriText(MasrafKategori kategori) => kategori switch
     {
-        MasrafKategori.Yakit => "Yakýt",
-        MasrafKategori.Bakim => "Bakým",
+        MasrafKategori.Yakit => "YakÄ±t",
+        MasrafKategori.Bakim => "BakÄ±m",
         MasrafKategori.Tamir => "Tamir",
         MasrafKategori.Sigorta => "Sigorta",
         MasrafKategori.Vergi => "Vergi",
-        MasrafKategori.Personel => "Personel Ulaþým",
+        MasrafKategori.Personel => "Personel UlaÅŸÄ±m",
         MasrafKategori.Lastik => "Lastik",
-        MasrafKategori.YedekParca => "Yedek Parça",
-        MasrafKategori.Diger => "Diðer",
+        MasrafKategori.YedekParca => "Yedek ParÃ§a",
+        MasrafKategori.Diger => "DiÄŸer",
         _ => kategori.ToString()
     };
 }

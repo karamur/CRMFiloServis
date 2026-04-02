@@ -160,6 +160,12 @@ using (var scope = app.Services.CreateScope())
     
     // Cari alan genişletme migration (Il, Ilce, Fax vb.)
     await CRMFiloServis.Web.Data.Migrations.CariMigrationHelper.ApplyCariAlanGenisletmeAsync(context);
+
+    // Şoför maaş/ARGE alanları migration
+    await CRMFiloServis.Web.Data.Migrations.SoforMaasMigrationHelper.ApplySoforMaasAlanlariAsync(context);
+
+    // Araç masraf personel/cari/muhasebe alanları migration
+    await CRMFiloServis.Web.Data.Migrations.AracMasrafMuhasebeMigrationHelper.ApplyAracMasrafMuhasebeAlanlariAsync(context);
     
     // Personel özlük evrak tabloları migration
     await CRMFiloServis.Web.Data.Migrations.OzlukEvrakMigrationHelper.ApplyOzlukEvrakMigrationAsync(context);

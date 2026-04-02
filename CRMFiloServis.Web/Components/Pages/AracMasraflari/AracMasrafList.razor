@@ -1,15 +1,16 @@
-@page "/arac-masraflari"
+ï»¿@page "/arac-masraflari"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @inject IAracMasrafService AracMasrafService
 @inject NavigationManager Navigation
+@inject IToastService ToastService
 @rendermode InteractiveServer
 
-<PageTitle>Araç Masraflarý</PageTitle>
+<PageTitle>AraÃ§ MasraflarÄ±</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-cash-stack me-2"></i>Araç Masraflarý</h3>
+        <h3><i class="bi bi-cash-stack me-2"></i>AraÃ§ MasraflarÄ±</h3>
         <button class="btn btn-primary" @onclick="YeniMasraf">
             <i class="bi bi-plus-lg me-1"></i>Yeni Masraf
         </button>
@@ -19,14 +20,14 @@
     {
         <div class="text-center">
             <div class="spinner-border" role="status">
-                <span class="visually-hidden">Yükleniyor...</span>
+                <span class="visually-hidden">YÃ¼kleniyor...</span>
             </div>
         </div>
     }
     else if (!masraflar.Any())
     {
         <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>Henüz araç masraf kaydý bulunmamaktadýr.
+            <i class="bi bi-info-circle me-2"></i>HenÃ¼z araÃ§ masraf kaydÄ± bulunmamaktadÄ±r.
         </div>
     }
     else
@@ -42,9 +43,9 @@
                                 <th>Masraf Kalemi</th>
                                 <th>Tutar</th>
                                 <th>Belge No</th>
-                                <th>Güzergah</th>
-                                <th>Arýza Kaynaklý</th>
-                                <th style="width: 120px;">Ýþlemler</th>
+                                <th>GÃ¼zergah</th>
+                                <th>ArÄ±za KaynaklÄ±</th>
+                                <th style="width: 120px;">Ä°ÅŸlemler</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -54,8 +55,19 @@
                                     <td><strong>@masraf.MasrafTarihi.ToString("dd.MM.yyyy")</strong></td>
                                     <td>@masraf.Arac?.AktifPlaka</td>
                                     <td>@masraf.MasrafKalemi?.MasrafAdi</td>
-                                    <td><strong>@masraf.Tutar.ToString("N2") ?</strong></td>
+                                    <td><strong>@masraf.Tutar.ToString("N2") â‚º</strong></td>
                                     <td>@masraf.BelgeNo</td>
+                                    <td>@GetMuhatapText(masraf)</td>
+                                    <td>
+                                        @if (masraf.MuhasebeFisId.HasValue)
+                                        {
+                                            <span class="badge bg-success">OluÅŸturuldu</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Yok</span>
+                                        }
+                                    </td>
                                     <td>@masraf.Guzergah?.GuzergahAdi</td>
                                     <td>
                                         @if (masraf.ArizaKaynaklimi)
@@ -64,11 +76,11 @@
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary">Hayýr</span>
+                                            <span class="badge bg-secondary">HayÄ±r</span>
                                         }
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(masraf.Id)" title="Düzenle">
+                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(masraf.Id)" title="DÃ¼zenle">
                                             <i class="bi bi-pencil"></i>
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger" @onclick="() => SilOnay(masraf)" title="Sil">
@@ -91,14 +103,14 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Silme Onayý</h5>
+                    <h5 class="modal-title">Silme OnayÄ±</h5>
                     <button type="button" class="btn-close" @onclick="() => showDeleteModal = false"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Bu masraf kaydýný silmek istediðinize emin misiniz?</p>
+                    <p>Bu masraf kaydÄ±nÄ± silmek istediÄŸinize emin misiniz?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">Ýptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">Ä°ptal</button>
                     <button type="button" class="btn btn-danger" @onclick="Sil">Sil</button>
                 </div>
             </div>
@@ -141,10 +153,29 @@
     {
         if (silinecekMasraf != null)
         {
-            await AracMasrafService.DeleteAsync(silinecekMasraf.Id);
-            await LoadData();
+            try
+            {
+                await AracMasrafService.DeleteAsync(silinecekMasraf.Id);
+                ToastService.ShowSuccess("Masraf kaydÄ± ve baÄŸlÄ± muhasebe fiÅŸi silindi.");
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError($"Hata: {ex.Message}");
+            }
         }
         showDeleteModal = false;
         silinecekMasraf = null;
+    }
+
+    private static string GetMuhatapText(AracMasraf masraf)
+    {
+        if (masraf.Sofor != null)
+            return $"Personel: {masraf.Sofor.TamAd}";
+
+        if (masraf.Cari != null)
+            return $"Cari: {masraf.Cari.Unvan}";
+
+        return "Kasa / Genel";
     }
 }
