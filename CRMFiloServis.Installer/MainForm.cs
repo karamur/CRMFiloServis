@@ -2,6 +2,7 @@
 using System.IO.Compression;
 using System.Text.Json;
 using CRMFiloServis.Shared;
+using CRMFiloServis.Shared.Entities;
 
 namespace CRMFiloServis.Installer;
 
@@ -220,6 +221,9 @@ public partial class MainForm : Form
             File.Copy(exampleConfig, prodConfig);
         }
 
+        ConfigureSqliteForNormalInstall();
+        CreateDesktopShortcut();
+
         try { Directory.Delete(tempDir, true); } catch { }
 
         lblDurum.Text = "Kurulum tamamlandı.";
@@ -307,6 +311,100 @@ public partial class MainForm : Form
         {
             var destSubDir = Path.Combine(destDir, Path.GetFileName(dir));
             CopyDirectory(dir, destSubDir);
+        }
+    }
+
+    private void ConfigureSqliteForNormalInstall()
+    {
+        var dataDir = Path.Combine(_hedefDizin, "Data");
+        Directory.CreateDirectory(dataDir);
+
+        var sqliteRelativePath = Path.Combine("Data", "CRMFiloServis.db");
+        var sqliteFullPath = Path.Combine(_hedefDizin, sqliteRelativePath);
+
+        if (!File.Exists(sqliteFullPath))
+        {
+            using var stream = File.Create(sqliteFullPath);
+        }
+
+        var prodJson = """
+        {
+          "DatabaseProvider": "SQLite",
+          "ConnectionStrings": {
+            "DefaultConnection": "Data Source=Data/CRMFiloServis.db;"
+          },
+          "OpenAI": {
+            "ApiKey": "",
+            "Model": "gpt-4o-mini",
+            "BaseUrl": "https://api.openai.com/v1"
+          },
+          "PythonScraper": {
+            "BaseUrl": "http://localhost:5050",
+            "Enabled": false
+          },
+          "Logging": {
+            "LogLevel": {
+              "Default": "Information",
+              "Microsoft.AspNetCore": "Warning",
+              "Microsoft.EntityFrameworkCore.Database.Command": "Warning",
+              "Microsoft.EntityFrameworkCore.Infrastructure": "Warning",
+              "System.Net.Http.HttpClient": "Warning"
+            }
+          },
+          "AllowedHosts": "*"
+        }
+        """;
+
+        File.WriteAllText(Path.Combine(_hedefDizin, "appsettings.Production.json"), prodJson);
+
+        var dbSettings = new DatabaseSettings
+        {
+            Provider = DatabaseProvider.SQLite,
+            DatabaseName = sqliteRelativePath.Replace('\\', '/'),
+            Host = string.Empty,
+            Port = 0,
+            Username = string.Empty,
+            Password = string.Empty,
+            UseIntegratedSecurity = false,
+            AdditionalOptions = null,
+            LastUpdated = DateTime.UtcNow
+        };
+
+        var dbSettingsJson = JsonSerializer.Serialize(dbSettings, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        File.WriteAllText(Path.Combine(_hedefDizin, "dbsettings.json"), dbSettingsJson);
+    }
+
+    private void CreateDesktopShortcut()
+    {
+        try
+        {
+            var exePath = Path.Combine(_hedefDizin, "CRMFiloServis.Web.exe");
+            if (!File.Exists(exePath))
+                return;
+
+            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            if (string.IsNullOrWhiteSpace(desktopPath))
+                return;
+
+            var shortcutPath = Path.Combine(desktopPath, "CRMFiloServis.lnk");
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType == null)
+                return;
+
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            dynamic shortcut = shell.CreateShortcut(shortcutPath);
+            shortcut.TargetPath = exePath;
+            shortcut.WorkingDirectory = _hedefDizin;
+            shortcut.IconLocation = exePath;
+            shortcut.Description = "CRM Filo Servis";
+            shortcut.Save();
+        }
+        catch
+        {
         }
     }
 
