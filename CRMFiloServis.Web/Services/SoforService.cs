@@ -60,6 +60,7 @@ public class SoforService : ISoforService
     public async Task<Sofor> CreateAsync(Sofor sofor)
     {
         sofor.NetMaas = sofor.ResmiNetMaas + sofor.DigerMaas;
+        SyncBordroFlags(sofor);
         _context.Soforler.Add(sofor);
         await _context.SaveChangesAsync();
         return sofor;
@@ -92,6 +93,9 @@ public class SoforService : ISoforService
         existing.ResmiNetMaas = sofor.ResmiNetMaas;
         existing.DigerMaas = sofor.DigerMaas;
         existing.NetMaas = sofor.ResmiNetMaas + sofor.DigerMaas;
+        existing.SGKBordroDahilMi = sofor.SGKBordroDahilMi;
+        existing.BordroTipiPersonel = sofor.BordroTipiPersonel;
+        SyncBordroFlags(existing);
         existing.BankaAdi = sofor.BankaAdi;
         existing.IBAN = sofor.IBAN;
         existing.Notlar = sofor.Notlar;
@@ -115,13 +119,38 @@ public class SoforService : ISoforService
 
     public async Task<string> GenerateNextKodAsync()
     {
-        var lastSofor = await _context.Soforler
+        return await GenerateNextKodAsync(PersonelGorev.Sofor);
+    }
+
+    public async Task<string> GenerateNextKodAsync(PersonelGorev gorev)
+    {
+        var prefix = GetKodPrefix(gorev);
+        var lastKod = await _context.Soforler
             .IgnoreQueryFilters()
-            .OrderByDescending(s => s.Id)
+            .Where(s => s.SoforKodu.StartsWith(prefix + "-"))
+            .OrderByDescending(s => s.SoforKodu)
+            .Select(s => s.SoforKodu)
             .FirstOrDefaultAsync();
 
-        var nextNumber = (lastSofor?.Id ?? 0) + 1;
-        return $"SFR-{nextNumber:D4}";
+        var nextNumber = 1;
+        if (lastKod != null)
+        {
+            var parts = lastKod.Split('-');
+            if (parts.Length == 2 && int.TryParse(parts[1], out var num))
+                nextNumber = num + 1;
+        }
+
+        return $"{prefix}-{nextNumber:D4}";
+    }
+
+    public static string GetKodPrefix(PersonelGorev gorev)
+    {
+        return gorev switch
+        {
+            PersonelGorev.Sofor => "SFR",
+            PersonelGorev.Muhasebe => "MUH",
+            _ => "PRS"
+        };
     }
 
     // Görev bazlı filtreleme metodları
@@ -172,5 +201,11 @@ public class SoforService : ISoforService
         }
 
         sofor.NetMaas = sofor.ResmiNetMaas + sofor.DigerMaas;
+    }
+
+    private static void SyncBordroFlags(Sofor sofor)
+    {
+        // ArgePersoneli geriye dönük uyumluluk
+        sofor.ArgePersoneli = sofor.SGKBordroDahilMi && sofor.BordroTipiPersonel == PersonelBordroTipi.Arge;
     }
 }

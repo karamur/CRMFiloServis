@@ -24,10 +24,25 @@ public static class SoforMaasMigrationHelper
                         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'SgkMaasi') THEN
                             ALTER TABLE ""Soforler"" ADD COLUMN ""SgkMaasi"" numeric(18,2) NOT NULL DEFAULT 0;
                         END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'ResmiNetMaas') THEN
+                            ALTER TABLE ""Soforler"" ADD COLUMN ""ResmiNetMaas"" numeric(18,2) NOT NULL DEFAULT 0;
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'DigerMaas') THEN
+                            ALTER TABLE ""Soforler"" ADD COLUMN ""DigerMaas"" numeric(18,2) NOT NULL DEFAULT 0;
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'SGKBordroDahilMi') THEN
+                            ALTER TABLE ""Soforler"" ADD COLUMN ""SGKBordroDahilMi"" boolean NOT NULL DEFAULT FALSE;
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'BordroTipiPersonel') THEN
+                            ALTER TABLE ""Soforler"" ADD COLUMN ""BordroTipiPersonel"" integer NOT NULL DEFAULT 0;
+                        END IF;
                     END $$;
                 ";
 
                 await context.Database.ExecuteSqlRawAsync(sql);
+                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Soforler"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE COALESCE(""ResmiNetMaas"", 0) = 0 AND COALESCE(""DigerMaas"", 0) = 0 AND COALESCE(""NetMaas"", 0) > 0");
+                // Mevcut ArgePersoneli = true olanları SGKBordroDahilMi = true, BordroTipiPersonel = 2 (Arge) yap
+                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Soforler"" SET ""SGKBordroDahilMi"" = TRUE, ""BordroTipiPersonel"" = 2 WHERE ""ArgePersoneli"" = TRUE AND ""SGKBordroDahilMi"" = FALSE");
                 return;
             }
 

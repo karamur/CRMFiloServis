@@ -132,11 +132,13 @@ public class BordroService : IBordroService
         // Not: Sofor entity'sinde FirmaId yok, tüm aktif personeller alınır
         // Firma bilgisi bordro detayında tutulur
 
-        // Bordro tipine göre filtrele
+        // Bordro tipine göre filtrele (SGKBordroDahilMi ve BordroTipiPersonel'e göre)
+        personelQuery = personelQuery.Where(s => s.SGKBordroDahilMi);
+
         if (bordro.BordroTipi == BordroTipi.Arge)
-            personelQuery = personelQuery.Where(s => s.ArgePersoneli);
+            personelQuery = personelQuery.Where(s => s.BordroTipiPersonel == PersonelBordroTipi.Arge);
         else if (bordro.BordroTipi == BordroTipi.Normal)
-            personelQuery = personelQuery.Where(s => !s.ArgePersoneli);
+            personelQuery = personelQuery.Where(s => s.BordroTipiPersonel == PersonelBordroTipi.Normal);
 
         var personeller = await personelQuery.ToListAsync();
 

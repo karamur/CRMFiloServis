@@ -916,7 +916,7 @@ else
                 await TryLoadDashboardSectionAsync(async sp =>
                 {
                     var soforService = sp.GetRequiredService<ISoforService>();
-                    soforSayisi = await soforService.GetActiveCountAsync();
+                    soforSayisi = (await soforService.GetActiveByGorevAsync(PersonelGorev.Sofor)).Count;
                     await Task.Delay(10);
                 }, "Şoför verileri");
             }

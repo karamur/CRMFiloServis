@@ -203,6 +203,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ResmiNetMaas).HasPrecision(18, 2);
             entity.Property(e => e.DigerMaas).HasPrecision(18, 2);
             entity.Property(e => e.NetMaas).HasPrecision(18, 2);
+            entity.Property(e => e.TopluMaas).HasPrecision(18, 2);
+            entity.Property(e => e.SgkMaasi).HasPrecision(18, 2);
+            entity.Property(e => e.SGKBordroDahilMi).HasDefaultValue(false);
+            entity.Property(e => e.BordroTipiPersonel).HasDefaultValue(PersonelBordroTipi.Yok);
+            entity.Ignore(e => e.EkOdeme);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 

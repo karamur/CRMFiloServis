@@ -37,8 +37,12 @@ public class Sofor : BaseEntity
     public decimal DigerMaas { get; set; }
     public decimal NetMaas { get; set; }
 
+    // SGK Bordro Ayarları
+    public bool SGKBordroDahilMi { get; set; } = false;
+    public PersonelBordroTipi BordroTipiPersonel { get; set; } = PersonelBordroTipi.Yok;
+
     // ARGE ve Toplu Maaş Bilgileri
-    public bool ArgePersoneli { get; set; } = false;
+    public bool ArgePersoneli { get; set; } = false; // Geriye dönük uyumluluk
     public decimal TopluMaas { get; set; } // SGK'ya bildirilen + ekstra ödeme toplamı
     public decimal SgkMaasi { get; set; } // SGK'ya bildirilen maaş
     public decimal EkOdeme => TopluMaas - SgkMaasi; // Geriye kalan ödeme
@@ -70,4 +74,14 @@ public enum PersonelGorev
     Yonetici = 4,
     Teknik = 5,
     Diger = 99
+}
+
+/// <summary>
+/// Personel bordro tipi (SGK bordrosuna dahil mi ve hangi tip)
+/// </summary>
+public enum PersonelBordroTipi
+{
+    Yok = 0,
+    Normal = 1,
+    Arge = 2
 }

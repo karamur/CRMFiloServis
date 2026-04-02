@@ -57,7 +57,7 @@
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Görev *</label>
-                            <InputSelect @bind-Value="sofor.Gorev" class="form-select">
+                            <InputSelect @bind-Value="sofor.Gorev" class="form-select" @bind-Value:after="GorevDegisti">
                                 @foreach (PersonelGorev gorev in Enum.GetValues(typeof(PersonelGorev)))
                                 {
                                     <option value="@gorev">@GetGorevAdi(gorev)</option>
@@ -153,16 +153,31 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Brüt Maaş (?)</label>
+                            <label class="form-label">Brüt Maaş (₺)</label>
                             <InputNumber @bind-Value="sofor.BrutMaas" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Net Maaş (?)</label>
-                            <InputNumber @bind-Value="sofor.NetMaas" class="form-control" />
+                            <label class="form-label">Resmi Net Maaş (₺) *</label>
+                            <InputNumber @bind-Value="sofor.ResmiNetMaas" class="form-control" />
                         </div>
                     </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Diğer Maaş (₺)</label>
+                            <InputNumber @bind-Value="sofor.DigerMaas" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Net Maaş (₺)</label>
+                            <input type="text" class="form-control bg-light" readonly value="@((sofor.ResmiNetMaas + sofor.DigerMaas).ToString("N2"))" />
+                            <small class="text-muted">Resmi Net + Diğer = Net Maaş</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
                     <div class="col-md-3">
                         <div class="mb-3">
                             <label class="form-label">Banka Adı</label>
@@ -175,6 +190,28 @@
                             <InputText @bind-Value="sofor.IBAN" class="form-control" placeholder="TR00 0000 0000 0000 0000 0000 00" />
                         </div>
                     </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <div class="form-check form-switch mt-4">
+                                <InputCheckbox @bind-Value="sofor.SGKBordroDahilMi" class="form-check-input" id="sgkBordro" />
+                                <label class="form-check-label" for="sgkBordro">
+                                    <strong>SGK Bordro Düzenlensin</strong>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    @if (sofor.SGKBordroDahilMi)
+                    {
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Bordro Tipi *</label>
+                                <InputSelect @bind-Value="sofor.BordroTipiPersonel" class="form-select">
+                                    <option value="@PersonelBordroTipi.Normal">Normal</option>
+                                    <option value="@PersonelBordroTipi.Arge">ARGE</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+                    }
                 </div>
 
                 <!-- Durum ve Notlar -->
@@ -235,7 +272,7 @@
         }
         else
         {
-            sofor.SoforKodu = await SoforService.GenerateNextKodAsync();
+            sofor.SoforKodu = await SoforService.GenerateNextKodAsync(sofor.Gorev);
             sofor.Aktif = true;
             sofor.Gorev = PersonelGorev.Sofor;
         }
@@ -248,6 +285,21 @@
             ToastService.ShowWarning("Ad ve Soyad alanları zorunludur!");
             return;
         }
+
+        // SGK bordro dahilse ama tipi Yok seçiliyse uyar
+        if (sofor.SGKBordroDahilMi && sofor.BordroTipiPersonel == PersonelBordroTipi.Yok)
+        {
+            sofor.BordroTipiPersonel = PersonelBordroTipi.Normal;
+        }
+
+        // SGK bordro dahil değilse tipi Yok yap
+        if (!sofor.SGKBordroDahilMi)
+        {
+            sofor.BordroTipiPersonel = PersonelBordroTipi.Yok;
+        }
+
+        // NetMaas hesapla
+        sofor.NetMaas = sofor.ResmiNetMaas + sofor.DigerMaas;
 
         try
         {
@@ -274,6 +326,14 @@
         Navigation.NavigateTo("/personel");
     }
     
+    private async Task GorevDegisti()
+    {
+        if (!IsEdit)
+        {
+            sofor.SoforKodu = await SoforService.GenerateNextKodAsync(sofor.Gorev);
+        }
+    }
+
     private string GetGorevAdi(PersonelGorev gorev)
     {
         return gorev switch
