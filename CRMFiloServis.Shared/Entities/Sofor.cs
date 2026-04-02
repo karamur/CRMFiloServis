@@ -1,7 +1,7 @@
-namespace CRMFiloServis.Shared.Entities;
+ï»¿namespace CRMFiloServis.Shared.Entities;
 
 /// <summary>
-/// Personel bilgileri (Þoför, Ofis Çalýþaný, Yönetici vb.)
+/// Personel bilgileri (ÅžofÃ¶r, Ofis Ã‡alÄ±ÅŸanÄ±, YÃ¶netici vb.)
 /// </summary>
 public class Sofor : BaseEntity
 {
@@ -13,12 +13,12 @@ public class Sofor : BaseEntity
     public string? Email { get; set; }
     public string? Adres { get; set; }
     
-    // Görev Bilgisi
+    // GÃ¶rev Bilgisi
     public PersonelGorev Gorev { get; set; } = PersonelGorev.Sofor;
     public string? Departman { get; set; }
     public string? Pozisyon { get; set; }
     
-    // Þoför Belgeler (Sadece þoförler için)
+    // ÅžofÃ¶r Belgeler (Sadece ÅŸofÃ¶rler iÃ§in)
     public string? EhliyetNo { get; set; }
     public DateTime? EhliyetGecerlilikTarihi { get; set; }
     public DateTime? SrcBelgesiGecerlilikTarihi { get; set; }
@@ -31,17 +31,23 @@ public class Sofor : BaseEntity
     public bool Aktif { get; set; } = true;
     public string? Notlar { get; set; }
     
-    // Maaþ Bilgileri
+    // MaaÅŸ Bilgileri
     public decimal BrutMaas { get; set; }
     public decimal NetMaas { get; set; }
-    
+
+    // ARGE ve Toplu MaaÅŸ Bilgileri
+    public bool ArgePersoneli { get; set; } = false;
+    public decimal TopluMaas { get; set; } // SGK'ya bildirilen + ekstra Ã¶deme toplamÄ±
+    public decimal SgkMaasi { get; set; } // SGK'ya bildirilen maaÅŸ
+    public decimal EkOdeme => TopluMaas - SgkMaasi; // Geriye kalan Ã¶deme
+
     // Banka Bilgileri
     public string? BankaAdi { get; set; }
     public string? IBAN { get; set; }
 
     public string TamAd => $"{Ad} {Soyad}";
     
-    // Þoför mü kontrolü
+    // ÅžofÃ¶r mÃ¼ kontrolÃ¼
     public bool IsSofor => Gorev == PersonelGorev.Sofor;
 
     // Navigation Properties
@@ -52,7 +58,7 @@ public class Sofor : BaseEntity
 }
 
 /// <summary>
-/// Personel görev türleri
+/// Personel gÃ¶rev tÃ¼rleri
 /// </summary>
 public enum PersonelGorev
 {

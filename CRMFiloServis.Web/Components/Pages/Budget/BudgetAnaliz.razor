@@ -516,31 +516,31 @@
                         <div class="col-12">
                             <label class="form-label">Ödeme Şekli *</label>
                             <div class="btn-group w-100 flex-wrap">
-                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? "btn-success" : "btn-outline-success")" 
-                                        @onclick="() => OdemeTipiDegisti(OdemeTipi.Kasa)">
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? "btn-success" : "btn-outline-success")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.Kasa)">
                                     <i class="bi bi-cash-stack me-1"></i>Kasa
                                 </button>
-                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.Banka ? "btn-primary" : "btn-outline-primary")" 
-                                        @onclick="() => OdemeTipiDegisti(OdemeTipi.Banka)">
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Banka ? "btn-primary" : "btn-outline-primary")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.Banka)">
                                     <i class="bi bi-bank me-1"></i>Banka
                                 </button>
-                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.KrediKarti ? "btn-danger" : "btn-outline-danger")" 
-                                        @onclick="() => OdemeTipiDegisti(OdemeTipi.KrediKarti)">
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.KrediKarti ? "btn-danger" : "btn-outline-danger")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.KrediKarti)">
                                     <i class="bi bi-credit-card me-1"></i>Kredi Kartı
                                 </button>
-                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.Mahsup ? "btn-secondary" : "btn-outline-secondary")" 
-                                        @onclick="() => OdemeTipiDegisti(OdemeTipi.Mahsup)">
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Mahsup ? "btn-secondary" : "btn-outline-secondary")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.Mahsup)">
                                     <i class="bi bi-arrow-left-right me-1"></i>Hesap Mahsup
                                 </button>
-                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.CariMahsup ? "btn-warning" : "btn-outline-warning")" 
-                                        @onclick="() => OdemeTipiDegisti(OdemeTipi.CariMahsup)">
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.CariMahsup ? "btn-warning" : "btn-outline-warning")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.CariMahsup)">
                                     <i class="bi bi-person-lines-fill me-1"></i>Cari Mahsup
                                 </button>
                             </div>
                         </div>
 
                         <!-- Cari Seçimi (Cari Mahsup için) -->
-                        @if (odemeYapRequest.OdemeTipi == OdemeTipi.CariMahsup)
+                        @if (odemeYapRequest.OdemeTipi == Services.OdemeTipi.CariMahsup)
                         {
                             <div class="col-md-6">
                                 <label class="form-label">Cari Hesap *</label>
@@ -561,7 +561,7 @@
                             </div>
                         }
                         <!-- Hesap Seçimi -->
-                        else if (odemeYapRequest.OdemeTipi != OdemeTipi.Mahsup && bankaHesaplari != null)
+                        @if (odemeYapRequest.OdemeTipi != Services.OdemeTipi.Mahsup && odemeYapRequest.OdemeTipi != Services.OdemeTipi.CariMahsup && bankaHesaplari != null)
                         {
                             <div class="col-md-6">
                                 <label class="form-label">@GetHesapLabel() *</label>
@@ -1546,7 +1546,7 @@
         odemeYapilacak = odeme;
         odemeYapRequest = new OdemeYapRequest
         {
-            OdemeTipi = OdemeTipi.Kasa,
+            OdemeTipi = Services.OdemeTipi.Kasa,
             OdemeTarihi = DateTime.Today,
             MasrafKesintisi = 0,
             CezaKesintisi = 0,
@@ -1560,7 +1560,7 @@
         if (odemeYapilacak == null) return;
 
         // Validasyon
-        if (odemeYapRequest.OdemeTipi == OdemeTipi.CariMahsup)
+        if (odemeYapRequest.OdemeTipi == Services.OdemeTipi.CariMahsup)
         {
             if (!odemeYapRequest.CariId.HasValue || odemeYapRequest.CariId == 0)
             {
@@ -1568,7 +1568,7 @@
                 return;
             }
         }
-        else if (odemeYapRequest.OdemeTipi != OdemeTipi.Mahsup && !odemeYapRequest.BankaHesapId.HasValue)
+        else if (odemeYapRequest.OdemeTipi != Services.OdemeTipi.Mahsup && !odemeYapRequest.BankaHesapId.HasValue)
         {
             ToastService.ShowWarning("Lütfen hesap seçin!");
             return;
@@ -1606,7 +1606,7 @@
     }
 
     // Ödeme Modal Helper Metodları
-    private void OdemeTipiDegisti(OdemeTipi tip)
+    private void OdemeTipiDegisti(Services.OdemeTipi tip)
     {
         odemeYapRequest.OdemeTipi = tip;
         odemeYapRequest.BankaHesapId = null; // Hesap seçimini sıfırla
@@ -1615,9 +1615,9 @@
 
     private string GetHesapLabel() => odemeYapRequest.OdemeTipi switch
     {
-        OdemeTipi.Kasa => "Kasa Hesabı",
-        OdemeTipi.Banka => "Banka Hesabı",
-        OdemeTipi.KrediKarti => "Kredi Kartı",
+        Services.OdemeTipi.Kasa => "Kasa Hesabı",
+        Services.OdemeTipi.Banka => "Banka Hesabı",
+        Services.OdemeTipi.KrediKarti => "Kredi Kartı",
         _ => "Hesap"
     };
 
@@ -1627,8 +1627,8 @@
 
         return odemeYapRequest.OdemeTipi switch
         {
-            OdemeTipi.Kasa => bankaHesaplari.Where(h => h.HesapTipi == HesapTipi.Kasa),
-            OdemeTipi.KrediKarti => bankaHesaplari.Where(h => h.HesapTipi == HesapTipi.KrediKarti),
+            Services.OdemeTipi.Kasa => bankaHesaplari.Where(h => h.HesapTipi == HesapTipi.Kasa),
+            Services.OdemeTipi.KrediKarti => bankaHesaplari.Where(h => h.HesapTipi == HesapTipi.KrediKarti),
             _ => bankaHesaplari.Where(h => h.HesapTipi != HesapTipi.Kasa && h.HesapTipi != HesapTipi.KrediKarti)
         };
     }

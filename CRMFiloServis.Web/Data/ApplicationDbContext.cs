@@ -129,6 +129,20 @@ public class ApplicationDbContext : DbContext
     public DbSet<OzlukEvrakTanim> OzlukEvrakTanimlari { get; set; }
     public DbSet<PersonelOzlukEvrak> PersonelOzlukEvraklar { get; set; }
 
+    // Personel Finans Modülü (Avans ve Borç Takip)
+    public DbSet<PersonelAvans> PersonelAvanslar { get; set; }
+    public DbSet<PersonelBorc> PersonelBorclar { get; set; }
+    public DbSet<PersonelAvansMahsup> PersonelAvansMahsuplar { get; set; }
+    public DbSet<PersonelBorcOdeme> PersonelBorcOdemeler { get; set; }
+    public DbSet<PersonelFinansAyar> PersonelFinansAyarlar { get; set; }
+
+    // Bordro Modülü
+    public DbSet<Bordro> Bordrolar { get; set; }
+    public DbSet<BordroDetay> BordroDetaylar { get; set; }
+    public DbSet<BordroOdeme> BordroOdemeler { get; set; }
+    public DbSet<BordroAyar> BordroAyarlar { get; set; }
+
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

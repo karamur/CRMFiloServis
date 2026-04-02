@@ -1,6 +1,7 @@
 ﻿using CRMFiloServis.Web.Components;
 using CRMFiloServis.Web.Data;
 using CRMFiloServis.Web.Services;
+using CRMFiloServis.Web.Services.Interfaces;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
@@ -113,6 +114,8 @@ builder.Services.AddScoped<ICRMService, CRMService>(); // CRM Servisi - Bildirim
 builder.Services.AddScoped<CRMFiloServis.Web.Services.Interfaces.IWhatsAppService, WhatsAppService>(); // WhatsApp Servisi
 builder.Services.AddScoped<IStokService, StokService>(); // Stok/Envanter Servisi
 builder.Services.AddScoped<IPersonelOzlukService, PersonelOzlukService>(); // Personel Özlük Evrak Servisi
+builder.Services.AddScoped<IPersonelFinansService, PersonelFinansService>(); // Personel Finans (Avans/Borç) Servisi
+builder.Services.AddScoped<IBordroService, BordroService>(); // Bordro Servisi
 builder.Services.AddHttpClient("OpenAI"); // OpenAI icin HttpClient
 builder.Services.AddHttpClient("Scraper"); // Scraper icin HttpClient
 builder.Services.AddHostedService<AutoBackupService>();

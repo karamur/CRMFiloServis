@@ -211,27 +211,27 @@
                     <div class="mb-3">
                         <label class="form-label">Odeme Tipi *</label>
                         <div class="btn-group w-100">
-                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? "btn-primary" : "btn-outline-primary")" 
-                                    @onclick="() => odemeYapRequest.OdemeTipi = OdemeTipi.Kasa">
+                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? "btn-primary" : "btn-outline-primary")" 
+                                    @onclick="() => odemeYapRequest.OdemeTipi = Services.OdemeTipi.Kasa">
                                 <i class="bi bi-cash-stack me-1"></i>Kasa
                             </button>
-                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.Banka ? "btn-primary" : "btn-outline-primary")" 
-                                    @onclick="() => odemeYapRequest.OdemeTipi = OdemeTipi.Banka">
+                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Banka ? "btn-primary" : "btn-outline-primary")" 
+                                    @onclick="() => odemeYapRequest.OdemeTipi = Services.OdemeTipi.Banka">
                                 <i class="bi bi-bank me-1"></i>Banka
                             </button>
-                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == OdemeTipi.Mahsup ? "btn-primary" : "btn-outline-primary")" 
-                                    @onclick="() => odemeYapRequest.OdemeTipi = OdemeTipi.Mahsup">
+                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Mahsup ? "btn-primary" : "btn-outline-primary")" 
+                                    @onclick="() => odemeYapRequest.OdemeTipi = Services.OdemeTipi.Mahsup">
                                 <i class="bi bi-arrow-left-right me-1"></i>Mahsup
                             </button>
                         </div>
                     </div>
-                    @if ((odemeYapRequest.OdemeTipi == OdemeTipi.Kasa || odemeYapRequest.OdemeTipi == OdemeTipi.Banka) && bankaHesaplari != null)
+                    @if ((odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa || odemeYapRequest.OdemeTipi == Services.OdemeTipi.Banka) && bankaHesaplari != null)
                     {
                         <div class="mb-3">
-                            <label class="form-label">@(odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? "Kasa Hesabi" : "Banka Hesabi") *</label>
+                            <label class="form-label">@(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? "Kasa Hesabi" : "Banka Hesabi") *</label>
                             <select class="form-select" @bind="odemeYapRequest.BankaHesapId">
                                 <option value="">Secin...</option>
-                                @foreach (var hesap in bankaHesaplari.Where(h => odemeYapRequest.OdemeTipi == OdemeTipi.Kasa ? h.HesapTipi == HesapTipi.Kasa : h.HesapTipi != HesapTipi.Kasa))
+                                @foreach (var hesap in bankaHesaplari.Where(h => odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? h.HesapTipi == HesapTipi.Kasa : h.HesapTipi != HesapTipi.Kasa))
                                 {
                                     <option value="@hesap.Id">@hesap.HesapAdi</option>
                                 }
@@ -612,7 +612,7 @@
         odemeYapilacak = odeme;
         odemeYapRequest = new OdemeYapRequest
         {
-            OdemeTipi = OdemeTipi.Kasa,
+            OdemeTipi = Services.OdemeTipi.Kasa,
             OdemeTarihi = DateTime.Today
         };
         showOdemeYapModal = true;
@@ -622,7 +622,7 @@
     {
         if (odemeYapilacak == null) return;
 
-        if ((odemeYapRequest.OdemeTipi == OdemeTipi.Kasa || odemeYapRequest.OdemeTipi == OdemeTipi.Banka) && !odemeYapRequest.BankaHesapId.HasValue)
+        if ((odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa || odemeYapRequest.OdemeTipi == Services.OdemeTipi.Banka) && !odemeYapRequest.BankaHesapId.HasValue)
         {
             ToastService.ShowWarning("Hesap secin!");
             return;
