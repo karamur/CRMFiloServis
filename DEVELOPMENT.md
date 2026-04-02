@@ -51,6 +51,31 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 **Durum:** Tamamlandı
 
+### Kayıt 011 - Servis katmanında takip/izleme güvenliği refaktörü
+**Talep:** Bekleyen servis değişikliklerinin sınıflandırılması ve güvenli hale getirilmesi.
+
+**Yapılanlar:**
+- bekleyen servis değişikliklerinin büyük ölçüde aynı refaktör grubunda olduğu tespit edildi
+- sorgu tarafında `AsNoTracking()` kullanımı yaygınlaştırıldı
+- güncelleme işlemlerinde doğrudan `Update(entity)` yerine mevcut kaydı bulup alan bazlı güncelleme yaklaşımı uygulanmaya başlandı
+- çözüm dosyasına yanlışlıkla eklenen harici proje referansı geri alındı
+
+**Yapılacaklar:**
+- refaktör edilen servislerin tamamı gözden geçirilmeli
+- bu değişiklikler ayrı bir teknik borç/refaktör commit'i olarak ele alınmalı
+- davranış değişikliği riski olan servislerde manuel doğrulama yapılmalı
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Services/BankaHesapService.cs`
+- `CRMFiloServis.Web/Services/BankaKasaHareketService.cs`
+- `CRMFiloServis.Web/Services/GuzergahService.cs`
+- `CRMFiloServis.Web/Services/MasrafKalemiService.cs`
+- `CRMFiloServis.Web/Services/PiyasaKaynakService.cs`
+- `CRMFiloServis.Web/Services/SoforService.cs`
+- `CRMFiloServis.slnx`
+
+**Durum:** Devam ediyor
+
 ### Kayıt 002 - Taşıma hizmetlerinden güzergah üretimi
 **Talep:** Stok türü eşleştirmede `Hizmet > Taşıma` seçildiğinde güzergah listesi hazırlanması ve kullanıcı onayı sonrası firma bazlı güzergah açılması.
 
@@ -180,6 +205,7 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 | 008 | Repo temizliği / uploads | Tamamlandı | Orta | Ignore + cached dosya temizliği yapıldı |
 | 009 | Dokümantasyon marka güncellemesi | Devam ediyor | Düşük | README, kurulum ve deploy başlıkları güncellendi |
 | 010 | Çalışma zamanı dosya disiplini | Kısmen tamamlandı | Düşük | Upload klasörü ignore edildi |
+| 011 | Servis refaktörlerinin sınıflandırılması | Devam ediyor | Orta | NoTracking ve güvenli update refaktörü bekliyor |
 
 ---
 

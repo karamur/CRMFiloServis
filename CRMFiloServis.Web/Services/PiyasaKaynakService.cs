@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+ï»¿using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -34,6 +34,7 @@ public class PiyasaKaynakService : IPiyasaKaynakService
         try
         {
             return await _context.PiyasaKaynaklar
+                .AsNoTracking()
                 .Where(x => !x.IsDeleted)
                 .OrderBy(x => x.Sira)
                 .ThenBy(x => x.Ad)
@@ -50,6 +51,7 @@ public class PiyasaKaynakService : IPiyasaKaynakService
         try
         {
             return await _context.PiyasaKaynaklar
+                .AsNoTracking()
                 .Where(x => !x.IsDeleted && x.Aktif)
                 .OrderBy(x => x.Sira)
                 .ToListAsync();
@@ -65,6 +67,7 @@ public class PiyasaKaynakService : IPiyasaKaynakService
         try
         {
             return await _context.PiyasaKaynaklar
+                .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
         }
         catch
@@ -78,6 +81,7 @@ public class PiyasaKaynakService : IPiyasaKaynakService
         try
         {
             return await _context.PiyasaKaynaklar
+                .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Kod == kod && !x.IsDeleted);
         }
         catch
@@ -107,11 +111,25 @@ public class PiyasaKaynakService : IPiyasaKaynakService
     {
         try
         {
-            kaynak.GuncellemeTarihi = DateTime.Now;
-            kaynak.Kod = SlugOlustur(kaynak.Kod);
-            _context.PiyasaKaynaklar.Update(kaynak);
+            var existing = await _context.PiyasaKaynaklar.FindAsync(kaynak.Id);
+            if (existing == null)
+                throw new InvalidOperationException($"Piyasa kaynaÄŸÄ± bulunamadÄ±. Id: {kaynak.Id}");
+
+            existing.Kod = SlugOlustur(kaynak.Kod);
+            existing.Ad = kaynak.Ad;
+            existing.BaseUrl = kaynak.BaseUrl;
+            existing.AramaUrl = kaynak.AramaUrl;
+            existing.AramaParametreleri = kaynak.AramaParametreleri;
+            existing.Selectors = kaynak.Selectors;
+            existing.DesteklenenMarkalar = kaynak.DesteklenenMarkalar;
+            existing.KaynakTipi = kaynak.KaynakTipi;
+            existing.Aktif = kaynak.Aktif;
+            existing.Sira = kaynak.Sira;
+            existing.IsDeleted = kaynak.IsDeleted;
+            existing.GuncellemeTarihi = DateTime.Now;
+
             await _context.SaveChangesAsync();
-            return kaynak;
+            return existing;
         }
         catch (Exception ex)
         {
@@ -402,10 +420,10 @@ public class PiyasaKaynakService : IPiyasaKaynakService
                 })
             },
 
-            // Sýfýr Araç Siteleri
+            // SÄ±fÄ±r AraÃ§ Siteleri
             new PiyasaKaynak
             {
-                Ad = "Toyota Türkiye",
+                Ad = "Toyota TÃ¼rkiye",
                 Kod = "toyota",
                 BaseUrl = "https://www.toyota.com.tr",
                 AramaUrl = "/modeller",
@@ -416,7 +434,7 @@ public class PiyasaKaynakService : IPiyasaKaynakService
             },
             new PiyasaKaynak
             {
-                Ad = "Renault Türkiye",
+                Ad = "Renault TÃ¼rkiye",
                 Kod = "renault",
                 BaseUrl = "https://www.renault.com.tr",
                 AramaUrl = "/araclar",
@@ -432,8 +450,8 @@ public class PiyasaKaynakService : IPiyasaKaynakService
     {
         if (string.IsNullOrEmpty(text)) return "";
         return text.ToLower()
-            .Replace("ý", "i").Replace("ö", "o").Replace("ü", "u")
-            .Replace("þ", "s").Replace("ð", "g").Replace("ç", "c")
+            .Replace("Ä±", "i").Replace("Ã¶", "o").Replace("Ã¼", "u")
+            .Replace("ÅŸ", "s").Replace("ÄŸ", "g").Replace("Ã§", "c")
             .Replace(" ", "-").Replace(".", "").Replace(",", "")
             .Replace("--", "-").Trim('-');
     }

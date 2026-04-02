@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+﻿using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +16,7 @@ public class MasrafKalemiService : IMasrafKalemiService
     public async Task<List<MasrafKalemi>> GetAllAsync()
     {
         return await _context.MasrafKalemleri
+            .AsNoTracking()
             .OrderBy(m => m.Kategori)
             .ThenBy(m => m.MasrafAdi)
             .ToListAsync();
@@ -24,6 +25,7 @@ public class MasrafKalemiService : IMasrafKalemiService
     public async Task<List<MasrafKalemi>> GetActiveAsync()
     {
         return await _context.MasrafKalemleri
+            .AsNoTracking()
             .Where(m => m.Aktif)
             .OrderBy(m => m.Kategori)
             .ThenBy(m => m.MasrafAdi)
@@ -33,6 +35,7 @@ public class MasrafKalemiService : IMasrafKalemiService
     public async Task<List<MasrafKalemi>> GetByKategoriAsync(MasrafKategori kategori)
     {
         return await _context.MasrafKalemleri
+            .AsNoTracking()
             .Where(m => m.Kategori == kategori && m.Aktif)
             .OrderBy(m => m.MasrafAdi)
             .ToListAsync();
@@ -40,7 +43,9 @@ public class MasrafKalemiService : IMasrafKalemiService
 
     public async Task<MasrafKalemi?> GetByIdAsync(int id)
     {
-        return await _context.MasrafKalemleri.FindAsync(id);
+        return await _context.MasrafKalemleri
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == id);
     }
 
     public async Task<MasrafKalemi> CreateAsync(MasrafKalemi masrafKalemi)
@@ -52,9 +57,20 @@ public class MasrafKalemiService : IMasrafKalemiService
 
     public async Task<MasrafKalemi> UpdateAsync(MasrafKalemi masrafKalemi)
     {
-        _context.MasrafKalemleri.Update(masrafKalemi);
+        var existing = await _context.MasrafKalemleri.FindAsync(masrafKalemi.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"Masraf kalemi bulunamadı. Id: {masrafKalemi.Id}");
+
+        existing.MasrafKodu = masrafKalemi.MasrafKodu;
+        existing.MasrafAdi = masrafKalemi.MasrafAdi;
+        existing.Kategori = masrafKalemi.Kategori;
+        existing.Notlar = masrafKalemi.Notlar;
+        existing.Aktif = masrafKalemi.Aktif;
+        existing.IsDeleted = masrafKalemi.IsDeleted;
+        existing.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
-        return masrafKalemi;
+        return existing;
     }
 
     public async Task DeleteAsync(int id)

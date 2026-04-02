@@ -16,6 +16,7 @@ public class BankaHesapService : IBankaHesapService
     public async Task<List<BankaHesap>> GetAllAsync()
     {
         return await _context.BankaHesaplari
+            .AsNoTracking()
             .OrderBy(b => b.HesapAdi)
             .ToListAsync();
     }
@@ -23,6 +24,7 @@ public class BankaHesapService : IBankaHesapService
     public async Task<List<BankaHesap>> GetActiveAsync()
     {
         return await _context.BankaHesaplari
+            .AsNoTracking()
             .Where(b => b.Aktif)
             .OrderBy(b => b.HesapAdi)
             .ToListAsync();
@@ -31,6 +33,7 @@ public class BankaHesapService : IBankaHesapService
     public async Task<List<BankaHesap>> GetByTipAsync(HesapTipi tip)
     {
         return await _context.BankaHesaplari
+            .AsNoTracking()
             .Where(b => b.HesapTipi == tip && b.Aktif)
             .OrderBy(b => b.HesapAdi)
             .ToListAsync();
@@ -38,7 +41,9 @@ public class BankaHesapService : IBankaHesapService
 
     public async Task<BankaHesap?> GetByIdAsync(int id)
     {
-        return await _context.BankaHesaplari.FindAsync(id);
+        return await _context.BankaHesaplari
+            .AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == id);
     }
 
     public async Task<BankaHesap> CreateAsync(BankaHesap bankaHesap)
@@ -50,9 +55,30 @@ public class BankaHesapService : IBankaHesapService
 
     public async Task<BankaHesap> UpdateAsync(BankaHesap bankaHesap)
     {
-        _context.BankaHesaplari.Update(bankaHesap);
+        var existing = await _context.BankaHesaplari.FindAsync(bankaHesap.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"Banka hesabı bulunamadı. Id: {bankaHesap.Id}");
+
+        existing.HesapKodu = bankaHesap.HesapKodu;
+        existing.HesapAdi = bankaHesap.HesapAdi;
+        existing.HesapTipi = bankaHesap.HesapTipi;
+        existing.BankaAdi = bankaHesap.BankaAdi;
+        existing.SubeAdi = bankaHesap.SubeAdi;
+        existing.SubeKodu = bankaHesap.SubeKodu;
+        existing.HesapNo = bankaHesap.HesapNo;
+        existing.Iban = bankaHesap.Iban;
+        existing.ParaBirimi = bankaHesap.ParaBirimi;
+        existing.AcilisBakiye = bankaHesap.AcilisBakiye;
+        existing.Aktif = bankaHesap.Aktif;
+        existing.Notlar = bankaHesap.Notlar;
+        existing.KrediTaksitGrupId = bankaHesap.KrediTaksitGrupId;
+        existing.VarsayilanMuhasebeKodu = bankaHesap.VarsayilanMuhasebeKodu;
+        existing.VarsayilanKostMerkezi = bankaHesap.VarsayilanKostMerkezi;
+        existing.IsDeleted = bankaHesap.IsDeleted;
+        existing.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
-        return bankaHesap;
+        return existing;
     }
 
     public async Task DeleteAsync(int id)

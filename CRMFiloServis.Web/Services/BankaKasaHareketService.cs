@@ -16,6 +16,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetAllAsync()
     {
         return await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .OrderByDescending(h => h.IslemTarihi)
@@ -25,6 +26,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetRecentAsync(int count = 5)
     {
         return await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .OrderByDescending(h => h.IslemTarihi)
@@ -35,6 +37,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetByHesapIdAsync(int hesapId)
     {
         return await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.Cari)
             .Where(h => h.BankaHesapId == hesapId)
             .OrderByDescending(h => h.IslemTarihi)
@@ -44,6 +47,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetByCariIdAsync(int cariId)
     {
         return await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Where(h => h.CariId == cariId)
             .OrderByDescending(h => h.IslemTarihi)
@@ -53,6 +57,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
     {
         return await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .Where(h => h.IslemTarihi >= startDate && h.IslemTarihi <= endDate)
@@ -63,6 +68,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetByTipAsync(HareketTipi tip)
     {
         return await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .Where(h => h.HareketTipi == tip)
@@ -74,6 +80,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     {
         // Tamamen eşleştirilmemiş hareketleri getir
         var hareketler = await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Include(h => h.OdemeEslestirmeleri)
             .Where(h => h.CariId == cariId && h.HareketTipi == tip)
@@ -89,6 +96,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<BankaKasaHareket?> GetByIdAsync(int id)
     {
         return await _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .Include(h => h.OdemeEslestirmeleri)
@@ -98,6 +106,8 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<BankaKasaHareket> CreateAsync(BankaKasaHareket hareket)
     {
+        hareket.BankaHesap = null!;
+        hareket.Cari = null;
         _context.BankaKasaHareketleri.Add(hareket);
         await _context.SaveChangesAsync();
         return hareket;
@@ -105,9 +115,31 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<BankaKasaHareket> UpdateAsync(BankaKasaHareket hareket)
     {
-        _context.BankaKasaHareketleri.Update(hareket);
+        var existing = await _context.BankaKasaHareketleri.FindAsync(hareket.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"Banka/Kasa hareketi bulunamadı. Id: {hareket.Id}");
+
+        existing.IslemNo = hareket.IslemNo;
+        existing.IslemTarihi = hareket.IslemTarihi;
+        existing.HareketTipi = hareket.HareketTipi;
+        existing.Tutar = hareket.Tutar;
+        existing.Aciklama = hareket.Aciklama;
+        existing.BelgeNo = hareket.BelgeNo;
+        existing.IslemKaynak = hareket.IslemKaynak;
+        existing.MahsupHareketId = hareket.MahsupHareketId;
+        existing.MahsupGrupId = hareket.MahsupGrupId;
+        existing.MuhasebeHesapKodu = hareket.MuhasebeHesapKodu;
+        existing.MuhasebeAltHesapKodu = hareket.MuhasebeAltHesapKodu;
+        existing.KostMerkeziKodu = hareket.KostMerkeziKodu;
+        existing.ProjeKodu = hareket.ProjeKodu;
+        existing.MuhasebeAciklama = hareket.MuhasebeAciklama;
+        existing.BankaHesapId = hareket.BankaHesapId;
+        existing.CariId = hareket.CariId;
+        existing.IsDeleted = hareket.IsDeleted;
+        existing.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
-        return hareket;
+        return existing;
     }
 
     public async Task DeleteAsync(int id)
@@ -148,6 +180,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaHesap>> GetHesaplarAsync()
     {
         var hesaplar = await _context.BankaHesaplari
+            .AsNoTracking()
             .Include(h => h.Hareketler)
             .OrderBy(h => h.HesapTipi)
             .ThenBy(h => h.HesapAdi)
@@ -159,6 +192,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaHesap>> GetAktifHesaplarAsync()
     {
         return await _context.BankaHesaplari
+            .AsNoTracking()
             .Include(h => h.Hareketler)
             .Where(h => h.Aktif)
             .OrderBy(h => h.HesapTipi)
@@ -169,6 +203,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<BankaHesap?> GetHesapByIdAsync(int id)
     {
         return await _context.BankaHesaplari
+            .AsNoTracking()
             .Include(h => h.Hareketler)
             .FirstOrDefaultAsync(h => h.Id == id);
     }
@@ -182,9 +217,30 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<BankaHesap> UpdateHesapAsync(BankaHesap hesap)
     {
-        _context.BankaHesaplari.Update(hesap);
+        var existing = await _context.BankaHesaplari.FindAsync(hesap.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"Banka hesabı bulunamadı. Id: {hesap.Id}");
+
+        existing.HesapKodu = hesap.HesapKodu;
+        existing.HesapAdi = hesap.HesapAdi;
+        existing.HesapTipi = hesap.HesapTipi;
+        existing.BankaAdi = hesap.BankaAdi;
+        existing.SubeAdi = hesap.SubeAdi;
+        existing.SubeKodu = hesap.SubeKodu;
+        existing.HesapNo = hesap.HesapNo;
+        existing.Iban = hesap.Iban;
+        existing.ParaBirimi = hesap.ParaBirimi;
+        existing.AcilisBakiye = hesap.AcilisBakiye;
+        existing.Aktif = hesap.Aktif;
+        existing.Notlar = hesap.Notlar;
+        existing.KrediTaksitGrupId = hesap.KrediTaksitGrupId;
+        existing.VarsayilanMuhasebeKodu = hesap.VarsayilanMuhasebeKodu;
+        existing.VarsayilanKostMerkezi = hesap.VarsayilanKostMerkezi;
+        existing.IsDeleted = hesap.IsDeleted;
+        existing.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
-        return hesap;
+        return existing;
     }
 
     public async Task DeleteHesapAsync(int id)
@@ -356,6 +412,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetMahsupHareketleriAsync(DateTime? baslangic = null, DateTime? bitis = null)
     {
         var query = _context.BankaKasaHareketleri
+            .AsNoTracking()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .Where(h => !h.IsDeleted && (h.IslemKaynak == IslemKaynak.Mahsup || h.IslemKaynak == IslemKaynak.CariMahsup));

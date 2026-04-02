@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+﻿using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +16,7 @@ public class SoforService : ISoforService
     public async Task<List<Sofor>> GetAllAsync()
     {
         return await _context.Soforler
+            .AsNoTracking()
             .OrderBy(s => s.Ad)
             .ThenBy(s => s.Soyad)
             .ToListAsync();
@@ -24,6 +25,7 @@ public class SoforService : ISoforService
     public async Task<List<Sofor>> GetActiveAsync()
     {
         return await _context.Soforler
+            .AsNoTracking()
             .Where(s => s.Aktif)
             .OrderBy(s => s.Ad)
             .ThenBy(s => s.Soyad)
@@ -39,7 +41,9 @@ public class SoforService : ISoforService
 
     public async Task<Sofor?> GetByIdAsync(int id)
     {
-        return await _context.Soforler.FindAsync(id);
+        return await _context.Soforler
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == id);
     }
 
     public async Task<Sofor> CreateAsync(Sofor sofor)
@@ -51,9 +55,38 @@ public class SoforService : ISoforService
 
     public async Task<Sofor> UpdateAsync(Sofor sofor)
     {
-        _context.Soforler.Update(sofor);
+        var existing = await _context.Soforler.FindAsync(sofor.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"Şoför bulunamadı. Id: {sofor.Id}");
+
+        existing.SoforKodu = sofor.SoforKodu;
+        existing.Ad = sofor.Ad;
+        existing.Soyad = sofor.Soyad;
+        existing.TcKimlikNo = sofor.TcKimlikNo;
+        existing.Telefon = sofor.Telefon;
+        existing.Email = sofor.Email;
+        existing.Adres = sofor.Adres;
+        existing.Gorev = sofor.Gorev;
+        existing.Departman = sofor.Departman;
+        existing.Pozisyon = sofor.Pozisyon;
+        existing.EhliyetNo = sofor.EhliyetNo;
+        existing.EhliyetGecerlilikTarihi = sofor.EhliyetGecerlilikTarihi;
+        existing.SrcBelgesiGecerlilikTarihi = sofor.SrcBelgesiGecerlilikTarihi;
+        existing.PsikoteknikGecerlilikTarihi = sofor.PsikoteknikGecerlilikTarihi;
+        existing.SaglikRaporuGecerlilikTarihi = sofor.SaglikRaporuGecerlilikTarihi;
+        existing.IseBaslamaTarihi = sofor.IseBaslamaTarihi;
+        existing.IstenAyrilmaTarihi = sofor.IstenAyrilmaTarihi;
+        existing.BrutMaas = sofor.BrutMaas;
+        existing.NetMaas = sofor.NetMaas;
+        existing.BankaAdi = sofor.BankaAdi;
+        existing.IBAN = sofor.IBAN;
+        existing.Notlar = sofor.Notlar;
+        existing.Aktif = sofor.Aktif;
+        existing.IsDeleted = sofor.IsDeleted;
+        existing.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
-        return sofor;
+        return existing;
     }
 
     public async Task DeleteAsync(int id)
@@ -77,10 +110,11 @@ public class SoforService : ISoforService
         return $"SFR-{nextNumber:D4}";
     }
 
-    // G�rev bazl� filtreleme metodlar�
+    // Görev bazlı filtreleme metodları
     public async Task<List<Sofor>> GetByGorevAsync(PersonelGorev gorev)
     {
         return await _context.Soforler
+            .AsNoTracking()
             .Where(s => s.Gorev == gorev)
             .OrderBy(s => s.Ad)
             .ThenBy(s => s.Soyad)
@@ -90,6 +124,7 @@ public class SoforService : ISoforService
     public async Task<List<Sofor>> GetActiveSoforlerAsync()
     {
         return await _context.Soforler
+            .AsNoTracking()
             .Where(s => s.Aktif && s.Gorev == PersonelGorev.Sofor)
             .OrderBy(s => s.Ad)
             .ThenBy(s => s.Soyad)
@@ -99,6 +134,7 @@ public class SoforService : ISoforService
     public async Task<List<Sofor>> GetActiveByGorevAsync(PersonelGorev gorev)
     {
         return await _context.Soforler
+            .AsNoTracking()
             .Where(s => s.Aktif && s.Gorev == gorev)
             .OrderBy(s => s.Ad)
             .ThenBy(s => s.Soyad)

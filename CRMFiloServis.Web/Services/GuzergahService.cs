@@ -16,6 +16,7 @@ public class GuzergahService : IGuzergahService
     public async Task<List<Guzergah>> GetAllAsync()
     {
         return await _context.Guzergahlar
+            .AsNoTracking()
             .Include(g => g.Cari)
             .Include(g => g.Firma)
             .Where(g => g.Cari == null || !g.Cari.IsDeleted)
@@ -26,6 +27,7 @@ public class GuzergahService : IGuzergahService
     public async Task<List<Guzergah>> GetActiveAsync()
     {
         return await _context.Guzergahlar
+            .AsNoTracking()
             .Include(g => g.Cari)
             .Include(g => g.Firma)
             .Where(g => g.Aktif)
@@ -37,6 +39,7 @@ public class GuzergahService : IGuzergahService
     public async Task<List<Guzergah>> GetByCariIdAsync(int cariId)
     {
         return await _context.Guzergahlar
+            .AsNoTracking()
             .Where(g => g.CariId == cariId)
             .OrderBy(g => g.GuzergahAdi)
             .ToListAsync();
@@ -45,6 +48,7 @@ public class GuzergahService : IGuzergahService
     public async Task<List<Guzergah>> GetByFirmaIdAsync(int firmaId)
     {
         return await _context.Guzergahlar
+            .AsNoTracking()
             .Include(g => g.VarsayilanArac)
             .Include(g => g.VarsayilanSofor)
             .Where(g => g.FirmaId == firmaId && g.Aktif)
@@ -55,6 +59,7 @@ public class GuzergahService : IGuzergahService
     public async Task<Guzergah?> GetByIdAsync(int id)
     {
         return await _context.Guzergahlar
+            .AsNoTracking()
             .Include(g => g.Cari)
             .Include(g => g.Firma)
             .Include(g => g.VarsayilanArac)
@@ -76,9 +81,27 @@ public class GuzergahService : IGuzergahService
 
     public async Task<Guzergah> UpdateAsync(Guzergah guzergah)
     {
-        _context.Guzergahlar.Update(guzergah);
+        var existing = await _context.Guzergahlar.FindAsync(guzergah.Id);
+        if (existing == null)
+            throw new InvalidOperationException($"Güzergah bulunamadı. Id: {guzergah.Id}");
+
+        existing.GuzergahKodu = guzergah.GuzergahKodu;
+        existing.GuzergahAdi = guzergah.GuzergahAdi;
+        existing.BaslangicNoktasi = guzergah.BaslangicNoktasi;
+        existing.BitisNoktasi = guzergah.BitisNoktasi;
+        existing.Mesafe = guzergah.Mesafe;
+        existing.TahminiSure = guzergah.TahminiSure;
+        existing.CariId = guzergah.CariId;
+        existing.FirmaId = guzergah.FirmaId;
+        existing.VarsayilanAracId = guzergah.VarsayilanAracId;
+        existing.VarsayilanSoforId = guzergah.VarsayilanSoforId;
+        existing.Notlar = guzergah.Notlar;
+        existing.Aktif = guzergah.Aktif;
+        existing.IsDeleted = guzergah.IsDeleted;
+        existing.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
-        return guzergah;
+        return existing;
     }
 
     public async Task DeleteAsync(int id)
