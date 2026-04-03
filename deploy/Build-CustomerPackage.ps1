@@ -75,7 +75,7 @@ Write-Host "[3/5] Ayar dosyaları hazırlanıyor..." -ForegroundColor Yellow
 $productionSettings = @{
     DatabaseProvider = "SQLite"
     ConnectionStrings = @{
-        DefaultConnection = "Data Source=CRMFiloServis.db"
+        DefaultConnection = "Data Source=Data/CRMFiloServis.db;"
     }
     OpenAI = @{
         ApiKey = ""
@@ -98,6 +98,21 @@ $productionSettings = @{
 
 $productionSettings | ConvertTo-Json -Depth 10 | Out-File -FilePath "$packageDir\appsettings.json" -Encoding UTF8
 Write-Host "  OK - appsettings.json oluşturuldu (SQLite)" -ForegroundColor Green
+
+$dbSettings = @{
+    Provider = 1
+    Host = ""
+    Port = 0
+    DatabaseName = "Data/CRMFiloServis.db"
+    Username = ""
+    Password = ""
+    UseIntegratedSecurity = $false
+    AdditionalOptions = $null
+    LastUpdated = (Get-Date).ToUniversalTime().ToString("o")
+}
+
+$dbSettings | ConvertTo-Json -Depth 10 | Out-File -FilePath "$packageDir\dbsettings.json" -Encoding UTF8
+Write-Host "  OK - dbsettings.json oluşturuldu (SQLite)" -ForegroundColor Green
 
 # 4. Kurulum dosyalarını ekle
 Write-Host "[4/5] Kurulum dosyaları ekleniyor..." -ForegroundColor Yellow
@@ -144,7 +159,7 @@ GitHub: https://github.com/karamur/CRMFiloServis
 $readmeContent | Out-File -FilePath "$packageDir\BENIOKU.txt" -Encoding UTF8
 
 # Boş klasörleri oluştur
-@("yedekleme", "yedekleme\database", "yedekleme\uploads", "yedekleme\keys", "yedekleme\logs") | ForEach-Object {
+@("Data", "yedekleme", "yedekleme\database", "yedekleme\uploads", "yedekleme\keys", "yedekleme\logs") | ForEach-Object {
     $folderPath = Join-Path $packageDir $_
     New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
     # .gitkeep dosyası ekle (boş klasör GitHub'da görünsün)

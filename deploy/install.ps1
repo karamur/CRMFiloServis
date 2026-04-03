@@ -67,6 +67,7 @@ Write-Host "  OK - Dosyalar kopyalandi" -ForegroundColor Green
 Write-Host "[4/6] Gerekli klasorler olusturuluyor..." -ForegroundColor Yellow
 $storageRoot = Join-Path $InstallPath "yedekleme"
 $folders = @(
+    (Join-Path $InstallPath "Data"),
     $storageRoot,
     (Join-Path $storageRoot "database"),
     (Join-Path $storageRoot "uploads"),
