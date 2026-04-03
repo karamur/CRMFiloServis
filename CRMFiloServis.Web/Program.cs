@@ -49,11 +49,12 @@ if (File.Exists(dbSettingsPath))
 }
 
 // Diger PC'lerden erisim icin tum IP'lerden dinle
-// Eger HTTPS_PORT ortam degiskeni veya --urls parametresi verilmisse onu kullan
+// Kurulum ortami icin varsayilan olarak sadece HTTP acilir.
+// HTTPS kullanilacaksa kullanici sertifika/URL ayarini disaridan vermelidir.
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")) &&
     !args.Any(a => a.StartsWith("--urls")))
 {
-    builder.WebHost.UseUrls("http://0.0.0.0:5190", "https://0.0.0.0:7113");
+    builder.WebHost.UseUrls("http://0.0.0.0:5190");
 }
 
 // Add services to the container.
