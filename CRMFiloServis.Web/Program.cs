@@ -179,6 +179,9 @@ using (var scope = app.Services.CreateScope())
     var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     await DbInitializer.InitializeAsync(context, configuration);
 
+    // Eski Soforler tablosunu Personeller tablosuna tasi
+    await CRMFiloServis.Web.Data.Migrations.PersonelTableMigrationHelper.ApplyPersonelTableMigrationAsync(context);
+
     // Şoför maaş/çıkış alanları migration
     await CRMFiloServis.Web.Data.Migrations.SoforMaasMigrationHelper.ApplySoforMaasAlanlariAsync(context);
     

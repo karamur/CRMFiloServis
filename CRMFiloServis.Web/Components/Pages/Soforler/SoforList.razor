@@ -81,7 +81,7 @@
                                     <td>@personel.IseBaslamaTarihi?.ToString("dd.MM.yyyy")</td>
                                      <td>@personel.IstenAyrilmaTarihi?.ToString("dd.MM.yyyy")</td>
                                      <td>@personel.SgkCikisTarihi?.ToString("dd.MM.yyyy")</td>
-                                    <td class="text-end">@personel.NetMaas.ToString("N0") ?</td>
+                                    <td class="text-end">@personel.NetMaas.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))</td>
                                     <td class="text-center">
                                         @if (personel.IsSofor)
                                         {
@@ -168,7 +168,7 @@
                 <div class="card bg-light">
                     <div class="card-body py-2 text-center">
                         <small class="text-muted">Toplam Maaş</small>
-                        <h5 class="mb-0">@personeller.Where(p => p.Aktif).Sum(p => p.NetMaas).ToString("N0") ?</h5>
+                        <h5 class="mb-0">@personeller.Where(p => p.Aktif).Sum(p => p.NetMaas).ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))</h5>
                     </div>
                 </div>
             </div>

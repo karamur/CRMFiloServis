@@ -43,9 +43,9 @@ public static class SoforMaasMigrationHelper
                 ";
 
                 await context.Database.ExecuteSqlRawAsync(sql);
-                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Soforler"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE COALESCE(""ResmiNetMaas"", 0) = 0 AND COALESCE(""DigerMaas"", 0) = 0 AND COALESCE(""NetMaas"", 0) > 0");
+                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Personeller"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE COALESCE(""ResmiNetMaas"", 0) = 0 AND COALESCE(""DigerMaas"", 0) = 0 AND COALESCE(""NetMaas"", 0) > 0");
                 // Mevcut ArgePersoneli = true olanları SGKBordroDahilMi = true, BordroTipiPersonel = 2 (Arge) yap
-                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Soforler"" SET ""SGKBordroDahilMi"" = TRUE, ""BordroTipiPersonel"" = 2 WHERE ""ArgePersoneli"" = TRUE AND ""SGKBordroDahilMi"" = FALSE");
+                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Personeller"" SET ""SGKBordroDahilMi"" = TRUE, ""BordroTipiPersonel"" = 2 WHERE ""ArgePersoneli"" = TRUE AND ""SGKBordroDahilMi"" = FALSE");
                 return;
             }
 
@@ -57,7 +57,7 @@ public static class SoforMaasMigrationHelper
                 await EnsureSqliteColumnAsync(context, "ResmiNetMaas", "TEXT NOT NULL DEFAULT '0'");
                 await EnsureSqliteColumnAsync(context, "DigerMaas", "TEXT NOT NULL DEFAULT '0'");
                 await EnsureSqliteColumnAsync(context, "SgkCikisTarihi", "TEXT NULL");
-                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Soforler"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE IFNULL(""ResmiNetMaas"", '0') = '0' AND IFNULL(""DigerMaas"", '0') = '0' AND IFNULL(""NetMaas"", '0') <> '0'");
+                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Personeller"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE IFNULL(""ResmiNetMaas"", '0') = '0' AND IFNULL(""DigerMaas"", '0') = '0' AND IFNULL(""NetMaas"", '0') <> '0'");
             }
         }
         catch (Exception ex)
@@ -76,7 +76,7 @@ public static class SoforMaasMigrationHelper
         }
 
         await using var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = "SELECT 1 FROM pragma_table_info('Soforler') WHERE name = $columnName LIMIT 1";
+        checkCommand.CommandText = "SELECT 1 FROM pragma_table_info('Personeller') WHERE name = $columnName LIMIT 1";
 
         var parameter = checkCommand.CreateParameter();
         parameter.ParameterName = "$columnName";
@@ -90,7 +90,7 @@ public static class SoforMaasMigrationHelper
         }
 
         await using var alterCommand = connection.CreateCommand();
-        alterCommand.CommandText = $"ALTER TABLE \"Soforler\" ADD COLUMN \"{columnName}\" {columnDefinition}";
+        alterCommand.CommandText = $"ALTER TABLE \"Personeller\" ADD COLUMN \"{columnName}\" {columnDefinition}";
         await alterCommand.ExecuteNonQueryAsync();
     }
 }

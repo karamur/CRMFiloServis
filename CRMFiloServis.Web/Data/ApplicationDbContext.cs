@@ -193,6 +193,7 @@ public class ApplicationDbContext : DbContext
         // Şoför
         modelBuilder.Entity<Sofor>(entity =>
         {
+            entity.ToTable("Personeller");
             entity.HasIndex(e => e.SoforKodu).IsUnique();
             entity.Property(e => e.SoforKodu).HasMaxLength(50);
             entity.Property(e => e.Ad).HasMaxLength(100);

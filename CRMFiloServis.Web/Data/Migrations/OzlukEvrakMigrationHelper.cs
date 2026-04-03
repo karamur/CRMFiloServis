@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS ""PersonelOzlukEvraklar"" (
     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ""UpdatedAt"" TIMESTAMP WITH TIME ZONE,
     ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT ""FK_PersonelOzlukEvraklar_Soforler"" FOREIGN KEY (""SoforId"") REFERENCES ""Soforler"" (""Id"") ON DELETE CASCADE,
+    CONSTRAINT ""FK_PersonelOzlukEvraklar_Personeller"" FOREIGN KEY (""SoforId"") REFERENCES ""Personeller"" (""Id"") ON DELETE CASCADE,
     CONSTRAINT ""FK_PersonelOzlukEvraklar_OzlukEvrakTanimlari"" FOREIGN KEY (""EvrakTanimId"") REFERENCES ""OzlukEvrakTanimlari"" (""Id"") ON DELETE CASCADE
 );";
 
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS ""PersonelOzlukEvraklar"" (
     ""CreatedAt"" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ""UpdatedAt"" TEXT NULL,
     ""IsDeleted"" INTEGER NOT NULL DEFAULT 0,
-    CONSTRAINT ""FK_PersonelOzlukEvraklar_Soforler"" FOREIGN KEY (""SoforId"") REFERENCES ""Soforler"" (""Id"") ON DELETE CASCADE,
+    CONSTRAINT ""FK_PersonelOzlukEvraklar_Personeller"" FOREIGN KEY (""SoforId"") REFERENCES ""Personeller"" (""Id"") ON DELETE CASCADE,
     CONSTRAINT ""FK_PersonelOzlukEvraklar_OzlukEvrakTanimlari"" FOREIGN KEY (""EvrakTanimId"") REFERENCES ""OzlukEvrakTanimlari"" (""Id"") ON DELETE CASCADE
 )");
     }
