@@ -1,7 +1,7 @@
-{
+﻿{
   "AutoBackupEnabled": true,
   "AutoBackupIntervalHours": 6,
   "KeepBackupCount": 30,
-  "BackupFolder": "Backups",
-  "LastBackupTime": "2026-04-02T17:27:21.8902731+03:00"
+  "BackupFolder": "D:\\calisma\\Claude-Code\\yedekleme\\database",
+  "LastBackupTime": "2026-04-03T11:40:18.6985484+03:00"
 }

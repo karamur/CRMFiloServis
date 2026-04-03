@@ -3,6 +3,7 @@ using CRMFiloServis.Web.Data;
 using CRMFiloServis.Web.Services;
 using CRMFiloServis.Web.Services.Interfaces;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 
@@ -199,6 +200,15 @@ if (httpsPort.HasValue)
 }
 
 app.UseAntiforgery();
+
+var externalUploadsPath = @"D:\calisma\Claude-Code\yedekleme\uploads";
+Directory.CreateDirectory(externalUploadsPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(externalUploadsPath),
+    RequestPath = "/uploads"
+});
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

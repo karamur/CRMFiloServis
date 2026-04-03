@@ -63,7 +63,12 @@ appsettings.Production.json
 
 # Artifacts
 [Aa]rtifacts/
+CRMFiloServis.Web/Backups/
+CRMFiloServis.Web/wwwroot/uploads/**/*.pdf
+CRMFiloServis.Web/wwwroot/uploads/**/*.xml
+CRMFiloServis.Web/wwwroot/uploads/**/*.sql
+CRMFiloServis.Web/wwwroot/uploads/**/*.bak
 
 # Runtime uploads / generated user files
+CRMFiloServis.Web/wwwroot/uploads/
 CRMFiloServis.Web/wwwroot/uploads/**
-!CRMFiloServis.Web/wwwroot/uploads/.gitkeep

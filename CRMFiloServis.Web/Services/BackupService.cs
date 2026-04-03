@@ -8,6 +8,7 @@ namespace CRMFiloServis.Web.Services;
 
 public class BackupService : IBackupService
 {
+    private const string DefaultBackupRoot = @"D:\calisma\Claude-Code\yedekleme\database";
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
     private readonly IServiceProvider _serviceProvider;
@@ -68,7 +69,8 @@ public class BackupService : IBackupService
         try
         {
             var settings = GetSettings();
-            var backupFolder = customBackupFolder ?? GetBackupFolderPath(settings);
+            var backupRoot = customBackupFolder ?? GetBackupFolderPath(settings);
+            var backupFolder = GetArchiveFolderPath(backupRoot, DateTime.Now);
 
             if (!Directory.Exists(backupFolder))
                 Directory.CreateDirectory(backupFolder);
@@ -544,15 +546,15 @@ public class BackupService : IBackupService
         if (Directory.Exists(backupFolder))
         {
             // CRMFiloServis_ ile baslayan dosyalar
-            var crmFiles = Directory.GetFiles(backupFolder, "CRMFiloServis_*.*")
+            var crmFiles = Directory.GetFiles(backupFolder, "CRMFiloServis_*.*", SearchOption.AllDirectories)
                 .Where(f => f.EndsWith(".sql") || f.EndsWith(".json") || f.EndsWith(".db") || f.EndsWith(".bak"));
 
             // uploaded_ ile baslayan dosyalar (disaridan yuklenen)
-            var uploadedFiles = Directory.GetFiles(backupFolder, "uploaded_*.*")
+            var uploadedFiles = Directory.GetFiles(backupFolder, "uploaded_*.*", SearchOption.AllDirectories)
                 .Where(f => f.EndsWith(".sql") || f.EndsWith(".db") || f.EndsWith(".bak") || f.EndsWith(".backup"));
 
             // Diger yedek dosyalari
-            var otherFiles = Directory.GetFiles(backupFolder)
+            var otherFiles = Directory.GetFiles(backupFolder, "*.*", SearchOption.AllDirectories)
                 .Where(f => !Path.GetFileName(f).StartsWith("CRMFiloServis_") && 
                             !Path.GetFileName(f).StartsWith("uploaded_") &&
                             (f.EndsWith(".sql") || f.EndsWith(".db") || f.EndsWith(".bak") || f.EndsWith(".backup")));
@@ -583,9 +585,9 @@ public class BackupService : IBackupService
         {
             var settings = GetSettings();
             var backupFolder = GetBackupFolderPath(settings);
-            var backupFilePath = Path.Combine(backupFolder, backupFileName);
+            var backupFilePath = FindBackupFilePath(backupFolder, backupFileName);
 
-            if (!File.Exists(backupFilePath))
+            if (string.IsNullOrWhiteSpace(backupFilePath) || !File.Exists(backupFilePath))
             {
                 _logger.LogError("Yedek dosyasi bulunamadi: {FileName}", backupFileName);
                 return false;
@@ -879,9 +881,9 @@ public class BackupService : IBackupService
         {
             var settings = GetSettings();
             var backupFolder = GetBackupFolderPath(settings);
-            var backupFilePath = Path.Combine(backupFolder, backupFileName);
+            var backupFilePath = FindBackupFilePath(backupFolder, backupFileName);
 
-            if (File.Exists(backupFilePath))
+            if (!string.IsNullOrWhiteSpace(backupFilePath) && File.Exists(backupFilePath))
             {
                 File.Delete(backupFilePath);
                 _logger.LogInformation("Yedek silindi: {FileName}", backupFileName);
@@ -907,7 +909,7 @@ public class BackupService : IBackupService
             if (!Directory.Exists(backupFolder))
                 return;
 
-            var files = Directory.GetFiles(backupFolder, "CRMFiloServis_*.*")
+            var files = Directory.GetFiles(backupFolder, "CRMFiloServis_*.*", SearchOption.AllDirectories)
                 .Where(f => f.EndsWith(".sql") || f.EndsWith(".json") || f.EndsWith(".db") || f.EndsWith(".bak"))
                 .OrderByDescending(f => new FileInfo(f).CreationTime)
                 .Skip(keepCount)
@@ -960,12 +962,27 @@ public class BackupService : IBackupService
         var folder = settings.BackupFolder;
 
         if (string.IsNullOrWhiteSpace(folder))
-            folder = "Backups";
+            folder = DefaultBackupRoot;
 
         if (!Path.IsPathRooted(folder))
-            folder = Path.Combine(_environment.ContentRootPath, folder);
+            folder = Path.Combine(DefaultBackupRoot, folder);
 
         return folder;
+    }
+
+    private static string GetArchiveFolderPath(string backupRoot, DateTime tarih)
+    {
+        return Path.Combine(backupRoot, tarih.ToString("yyyy"), tarih.ToString("MM"));
+    }
+
+    private static string? FindBackupFilePath(string backupRoot, string backupFileName)
+    {
+        if (string.IsNullOrWhiteSpace(backupRoot) || !Directory.Exists(backupRoot))
+            return null;
+
+        return Directory.GetFiles(backupRoot, backupFileName, SearchOption.AllDirectories)
+            .OrderByDescending(f => new FileInfo(f).CreationTime)
+            .FirstOrDefault();
     }
 
     public async Task<bool> ApplyMigrationsAsync()

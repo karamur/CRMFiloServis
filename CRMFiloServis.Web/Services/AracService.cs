@@ -7,6 +7,7 @@ namespace CRMFiloServis.Web.Services;
 
 public class AracService : IAracService
 {
+    private const string ExternalUploadsRoot = @"D:\calisma\Claude-Code\yedekleme\uploads";
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _env;
 
@@ -530,7 +531,11 @@ public class AracService : IAracService
             // Dosyaları sil
             foreach (var dosya in evrak.Dosyalar)
             {
-                var dosyaYolu = Path.Combine(_env.ContentRootPath, "wwwroot", dosya.DosyaYolu);
+                var relativePath = dosya.DosyaYolu.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+                if (relativePath.StartsWith($"uploads{Path.DirectorySeparatorChar}"))
+                    relativePath = relativePath.Substring($"uploads{Path.DirectorySeparatorChar}".Length);
+
+                var dosyaYolu = Path.Combine(ExternalUploadsRoot, relativePath);
                 if (File.Exists(dosyaYolu))
                     File.Delete(dosyaYolu);
             }
@@ -546,7 +551,7 @@ public class AracService : IAracService
         if (evrak == null)
             throw new Exception("Evrak bulunamadi");
 
-        var klasorYolu = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "evraklar", evrakId.ToString());
+        var klasorYolu = Path.Combine(ExternalUploadsRoot, "evraklar", evrakId.ToString());
         if (!Directory.Exists(klasorYolu))
             Directory.CreateDirectory(klasorYolu);
 

@@ -7,6 +7,7 @@ namespace CRMFiloServis.Web.Services;
 
 public class FaturaService : IFaturaService
 {
+    private const string ExternalUploadsRoot = @"D:\calisma\Claude-Code\yedekleme\uploads";
     private readonly ApplicationDbContext _context;
     private readonly IMuhasebeService _muhasebeService;
     private readonly IWebHostEnvironment _env;
@@ -99,6 +100,8 @@ public class FaturaService : IFaturaService
 
     public async Task<Fatura> CreateAsync(Fatura fatura)
     {
+        await PrepareFaturaForSaveAsync(fatura);
+
         // Tutarları hesapla
         CalculateTotals(fatura);
 
@@ -120,6 +123,8 @@ public class FaturaService : IFaturaService
         if (existing == null) throw new Exception("Fatura bulunamadi");
 
         // Mevcut entity'yi guncelle
+        await PrepareFaturaForSaveAsync(fatura);
+
         existing.FaturaNo = fatura.FaturaNo;
         existing.FaturaTarihi = fatura.FaturaTarihi;
         existing.VadeTarihi = fatura.VadeTarihi;
@@ -1222,7 +1227,7 @@ public class FaturaService : IFaturaService
         try
         {
             // Dosya yolunu oluştur
-            var uploadsFolder = Path.Combine(_env.WebRootPath ?? "wwwroot", "uploads", "faturalar", fatura.FaturaYonu.ToString().ToLower());
+            var uploadsFolder = Path.Combine(ExternalUploadsRoot, "faturalar", fatura.FaturaYonu.ToString().ToLower());
             Directory.CreateDirectory(uploadsFolder);
 
             // Benzersiz dosya adı: FaturaNo_FaturaId_Timestamp.pdf
@@ -1242,6 +1247,25 @@ public class FaturaService : IFaturaService
         {
             return false;
         }
+    }
+
+    private async Task PrepareFaturaForSaveAsync(Fatura fatura)
+    {
+        fatura.FaturaNo = NormalizeFaturaNo(fatura.FaturaNo);
+        fatura.FaturaTarihi = DateTime.SpecifyKind(fatura.FaturaTarihi, DateTimeKind.Utc);
+
+        if (fatura.VadeTarihi.HasValue)
+            fatura.VadeTarihi = DateTime.SpecifyKind(fatura.VadeTarihi.Value, DateTimeKind.Utc);
+
+        if (!fatura.FirmaId.HasValue && fatura.CariId > 0)
+        {
+            fatura.FirmaId = await _context.Cariler
+                .Where(c => c.Id == fatura.CariId)
+                .Select(c => c.FirmaId)
+                .FirstOrDefaultAsync();
+        }
+
+        fatura.UpdatedAt = DateTime.UtcNow;
     }
 
     private async Task<string> GetSonrakiHesapKoduAsync(string prefix)
