@@ -1,110 +1,73 @@
-﻿# CRM Filo Servis - Windows Kurulum Betiği
-# PowerShell 5.1+ gerektirir
-
-param(
-    [string]$InstallPath = "C:\CRMFiloServis",
-    [string]$DatabaseProvider = "SQLite",
-    [switch]$InstallAsService
-)
+﻿#Requires -RunAsAdministrator
+<#
+.SYNOPSIS
+    KOA Filo Servis - Otomatik Kurulum
+#>
 
 $ErrorActionPreference = "Stop"
+$InstallPath = "C:\KOAFiloServis"
+$AppName = "KOA Filo Servis"
+$Port = 5000
 
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host " CRM Filo Servis Kurulum Sihirbazi" -ForegroundColor Cyan
-Write-Host "======================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "╔═══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║       KOA Filo Servis - Kurulum Sihirbazi                 ║" -ForegroundColor Cyan
+Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
-# .NET Runtime kontrolü
-Write-Host "[1/5] .NET Runtime kontrolu yapiliyor..." -ForegroundColor Yellow
-$dotnetVersion = dotnet --version 2>$null
-if (-not $dotnetVersion -or $dotnetVersion -notlike "10.*") {
-    Write-Host "HATA: .NET 10 Runtime bulunamadi!" -ForegroundColor Red
-    Write-Host "Lutfen https://dotnet.microsoft.com/download/dotnet/10.0 adresinden indirin." -ForegroundColor Yellow
-    exit 1
+# Mevcut kurulum kontrolü
+if (Test-Path $InstallPath) {
+    Write-Host "⚠ Mevcut kurulum bulundu" -ForegroundColor Yellow
+    $confirm = Read-Host "Uzerine yazmak ister misiniz? (E/H)"
+    if ($confirm -ne "E") { exit }
+    Remove-Item $InstallPath -Recurse -Force
 }
-Write-Host "  .NET $dotnetVersion bulundu" -ForegroundColor Green
-
-# Kurulum dizini oluştur
-Write-Host "[2/5] Kurulum dizini hazirlaniyor..." -ForegroundColor Yellow
-if (-not (Test-Path $InstallPath)) {
-    New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
-}
-Write-Host "  Dizin: $InstallPath" -ForegroundColor Green
 
 # Dosyaları kopyala
-Write-Host "[3/5] Dosyalar kopyalaniyor..." -ForegroundColor Yellow
-$sourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Copy-Item -Path "$sourceDir\app\*" -Destination $InstallPath -Recurse -Force
-Write-Host "  Dosyalar kopyalandi" -ForegroundColor Green
+Write-Host "▶ [1/4] Dosyalar kopyalaniyor..." -ForegroundColor Blue
+New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
+Copy-Item -Path ".\app\*" -Destination $InstallPath -Recurse -Force
+Write-Host "  ✓ $InstallPath" -ForegroundColor Green
 
-# Alt dizinleri oluştur
-Write-Host "[4/5] Dizin yapisi olusturuluyor..." -ForegroundColor Yellow
-$subDirs = @("data", "logs", "backups")
-foreach ($dir in $subDirs) {
-    $path = Join-Path $InstallPath $dir
-    if (-not (Test-Path $path)) {
-        New-Item -ItemType Directory -Path $path -Force | Out-Null
-    }
+# Firewall kuralı
+Write-Host "▶ [2/4] Firewall kurali ekleniyor..." -ForegroundColor Blue
+$rule = Get-NetFirewallRule -DisplayName $AppName -ErrorAction SilentlyContinue
+if (-not $rule) {
+    New-NetFirewallRule -DisplayName $AppName -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow | Out-Null
 }
-Write-Host "  Alt dizinler olusturuldu" -ForegroundColor Green
+Write-Host "  ✓ Port $Port acildi" -ForegroundColor Green
 
-# Yapılandırma dosyası
-Write-Host "[5/5] Yapilandirma hazirlaniyor..." -ForegroundColor Yellow
-$configFile = Join-Path $InstallPath "appsettings.Production.json"
-$config = @{
-    "ConnectionStrings" = @{
-        "DefaultConnection" = if ($DatabaseProvider -eq "PostgreSQL") {
-            "Host=localhost;Database=crmfilo;Username=postgres;Password=your_password"
-        } else {
-            "Data Source=data/crm_filo.db"
-        }
-    }
-    "DatabaseProvider" = $DatabaseProvider
-    "Logging" = @{
-        "LogLevel" = @{
-            "Default" = "Information"
-            "Microsoft.AspNetCore" = "Warning"
-        }
-    }
+# Masaüstü kısayolu
+Write-Host "▶ [3/4] Kisayollar olusturuluyor..." -ForegroundColor Blue
+$WshShell = New-Object -ComObject WScript.Shell
+
+$DesktopShortcut = "$env:USERPROFILE\Desktop\$AppName.lnk"
+$Shortcut = $WshShell.CreateShortcut($DesktopShortcut)
+$Shortcut.TargetPath = "$InstallPath\KOAFiloServis.Web.exe"
+$Shortcut.WorkingDirectory = $InstallPath
+$Shortcut.Save()
+
+$StartMenuShortcut = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\$AppName.lnk"
+$Shortcut2 = $WshShell.CreateShortcut($StartMenuShortcut)
+$Shortcut2.TargetPath = "$InstallPath\KOAFiloServis.Web.exe"
+$Shortcut2.WorkingDirectory = $InstallPath
+$Shortcut2.Save()
+Write-Host "  ✓ Masaustu ve Baslat menusu" -ForegroundColor Green
+
+Write-Host "▶ [4/4] Kurulum tamamlandi!" -ForegroundColor Blue
+
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host "              KURULUM TAMAMLANDI!" -ForegroundColor Green
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host ""
+Write-Host "  Kurulum:    $InstallPath" -ForegroundColor White
+Write-Host "  Web:        http://localhost:$Port" -ForegroundColor White
+Write-Host ""
+
+$start = Read-Host "Uygulamayi simdi baslatmak ister misiniz? (E/H)"
+if ($start -eq "E") {
+    Start-Process "$InstallPath\KOAFiloServis.Web.exe"
+    Start-Sleep -Seconds 3
+    Start-Process "http://localhost:$Port"
 }
-$config | ConvertTo-Json -Depth 4 | Set-Content $configFile -Encoding UTF8
-Write-Host "  Yapilandirma dosyasi olusturuldu" -ForegroundColor Green
-
-# Servis kurulumu (opsiyonel)
-if ($InstallAsService) {
-    Write-Host ""
-    Write-Host "Windows Servisi kuruluyor..." -ForegroundColor Yellow
-    $serviceName = "CRMFiloServis"
-    $exePath = Join-Path $InstallPath "CRMFiloServis.Web.exe"
-    
-    # Mevcut servisi kaldır
-    if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
-        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-        sc.exe delete $serviceName | Out-Null
-        Start-Sleep -Seconds 2
-    }
-    
-    # Yeni servis oluştur
-    New-Service -Name $serviceName `
-                -BinaryPathName $exePath `
-                -DisplayName "CRM Filo Servis" `
-                -Description "CRM Filo Servis Uygulamasi" `
-                -StartupType Automatic | Out-Null
-    
-    Write-Host "  Servis kuruldu: $serviceName" -ForegroundColor Green
-}
-
-Write-Host ""
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host " Kurulum Tamamlandi!" -ForegroundColor Green
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Sonraki adimlar:" -ForegroundColor Yellow
-Write-Host "  1. license.key dosyasini $InstallPath dizinine kopyalayin"
-Write-Host "  2. Uygulamayi baslatin: .\start.ps1"
-Write-Host "  3. Tarayicida acin: http://localhost:5190"
-Write-Host ""
-Write-Host "Varsayilan giris bilgileri:" -ForegroundColor Yellow
-Write-Host "  Kullanici: admin"
-Write-Host "  Sifre: Admin123!"
-Write-Host ""

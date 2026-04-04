@@ -1,165 +1,118 @@
-﻿version: '3.8'
+# KOA Filo Servis - Docker Compose (Full Stack)
+
+version: '3.8'
 
 services:
   # Ana Uygulama
   app:
-    image: crmfiloservis:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: crmfiloservis-app
+    build: ./app
+    container_name: koafilo-app
     ports:
-      - "5190:8080"
+      - "5000:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=db;Database=crmfilo;Username=postgres;Password=${DB_PASSWORD:-CrmFilo2026!}
-      - DatabaseProvider=PostgreSQL
-      - Redis__ConnectionString=redis:6379
-      - AdminPanel__Enabled=true
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=db;Database=koafilo;Username=postgres;Password=${POSTGRES_PASSWORD:-KoaFilo2024!}
+      - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD:-Redis2024!}
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_healthy
+        condition: service_started
     volumes:
-      - app_data:/app/data
-      - app_logs:/app/logs
-      - ./license.key:/app/license.key:ro
-      - ./appsettings.Production.json:/app/appsettings.Production.json:ro
+      - app-data:/app/data
+      - app-logs:/app/logs
     restart: unless-stopped
     networks:
-      - crmfilo-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      - koafilo-net
 
-  # PostgreSQL Veritabanı
+  # PostgreSQL
   db:
-    image: postgres:15-alpine
-    container_name: crmfiloservis-db
+    image: postgres:16-alpine
+    container_name: koafilo-db
     environment:
-      - POSTGRES_DB=crmfilo
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-CrmFilo2026!}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-KoaFilo2024!}
+      - POSTGRES_DB=koafilo
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ./backups:/backups
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-    networks:
-      - crmfilo-network
+      - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d crmfilo"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - koafilo-net
 
-  # Redis Cache
+  # Redis
   redis:
     image: redis:7-alpine
-    container_name: crmfiloservis-redis
-    command: redis-server --appendonly yes
+    container_name: koafilo-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-Redis2024!}
     volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
+      - redis-data:/data
     restart: unless-stopped
     networks:
-      - crmfilo-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - koafilo-net
 
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: crmfiloservis-nginx
+    container_name: koafilo-nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./web-landing/dist:/var/www/landing:ro
-      - ./ssl:/etc/nginx/ssl:ro
+      - ./web-landing:/usr/share/nginx/html/landing:ro
+      - ./admin-panel:/usr/share/nginx/html/admin:ro
     depends_on:
       - app
     restart: unless-stopped
     networks:
-      - crmfilo-network
+      - koafilo-net
 
-  # Prometheus Monitoring
+  # Prometheus
   prometheus:
     image: prom/prometheus:latest
-    container_name: crmfiloservis-prometheus
+    container_name: koafilo-prometheus
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
+      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
     restart: unless-stopped
     networks:
-      - crmfilo-network
-    profiles:
-      - monitoring
+      - koafilo-net
 
-  # Grafana Dashboard
+  # Grafana
   grafana:
     image: grafana/grafana:latest
-    container_name: crmfiloservis-grafana
+    container_name: koafilo-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-Admin2026!}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-Grafana2024!}
     volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
     ports:
       - "3000:3000"
     depends_on:
       - prometheus
     restart: unless-stopped
     networks:
-      - crmfilo-network
-    profiles:
-      - monitoring
-
-  # Backup Service
-  backup:
-    image: postgres:15-alpine
-    container_name: crmfiloservis-backup
-    environment:
-      - PGHOST=db
-      - PGDATABASE=crmfilo
-      - PGUSER=postgres
-      - PGPASSWORD=${DB_PASSWORD:-CrmFilo2026!}
-    volumes:
-      - ./backups:/backups
-      - ./scripts/backup.sh:/backup.sh:ro
-    entrypoint: ["/bin/sh", "-c", "while true; do /backup.sh; sleep 86400; done"]
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - crmfilo-network
-    profiles:
-      - backup
+      - koafilo-net
 
 volumes:
-  postgres_data:
-  redis_data:
-  prometheus_data:
-  grafana_data:
-  app_data:
-  app_logs:
+  app-data:
+  app-logs:
+  db-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
 
 networks:
-  crmfilo-network:
-    driver: bridge
+  koafilo-net:
+    name: koafilo-network

@@ -1,86 +1,70 @@
-﻿# CRM Filo Servis - Lisans Sistemi
+﻿# KOA Filo Servis - Lisans Yönetimi
 
-## 📜 Lisans Türleri
+## 📋 Lisans Sistemi
 
-| Lisans | Kullanıcı | Araç | Süre | Özellikler |
-|--------|-----------|------|------|------------|
-| **Trial** | 2 | 10 | 30 gün | Temel özellikler |
-| **Starter** | 5 | 50 | 1 yıl | Temel + Raporlar |
-| **Professional** | 20 | 200 | 1 yıl | Tüm özellikler |
-| **Enterprise** | Sınırsız | Sınırsız | 1 yıl | Tüm + API + Özelleştirme |
+KOA Filo Servis, RSA-2048 tabanlı dijital imza kullanan güvenli bir lisans sistemi içerir.
 
 ---
 
-## 🔑 Lisans Aktivasyonu
+## 📦 Dosyalar
 
-### Adım 1: Lisans Dosyasını Kopyalayın
-```bash
-# Windows
-copy license.key C:\CRMFiloServis\
-
-# Linux/Docker
-cp license.key /app/
-```
-
-### Adım 2: Uygulamayı Yeniden Başlatın
-```bash
-# Windows Servisi
-Restart-Service CRMFiloServis
-
-# Docker
-docker-compose restart
-```
-
-### Adım 3: Lisansı Doğrulayın
-Tarayıcıda: `http://localhost:5190/admin/license`
+| Dosya | Açıklama |
+|-------|----------|
+| `LicenseGenerator.cs` | Lisans oluşturma kodu |
+| `LicenseValidator.cs` | Lisans doğrulama kodu |
+| `LicenseService.cs` | Uygulama entegrasyonu |
+| `license-trial.key` | Örnek deneme lisansı |
+| `LisansOlustur.bat` | Lisans oluşturma aracı |
 
 ---
 
-## 📝 Lisans Dosyası Formatı
+## 🔑 Lisans Türleri
+
+| Tür | Süre | Araç | Kullanıcı | Özellikler |
+|-----|------|------|-----------|------------|
+| **Trial** | 30 gün | 10 | 3 | Temel |
+| **Standard** | 1 yıl | 50 | 10 | + Raporlar |
+| **Professional** | 1 yıl | 200 | 50 | + API |
+| **Enterprise** | Süresiz | ∞ | ∞ | Tümü |
+
+---
+
+## 🛠️ Kullanım
+
+### Lisans Oluşturma (PowerShell)
+
+```powershell
+.\LisansOlustur.ps1 -Sirket "ABC Ltd" -Tur "Professional" -Gun 365
+```
+
+### Lisans Doğrulama (C#)
+
+```csharp
+var validator = new LicenseValidator();
+var result = validator.Validate("license.key");
+
+if (result.IsValid)
+    Console.WriteLine($"Lisans geçerli: {result.License.CompanyName}");
+```
+
+---
+
+## 📄 Lisans Dosya Formatı
 
 ```
------BEGIN LICENSE-----
-LicenseId: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+-----BEGIN KOA FILO SERVIS LICENSE-----
+Version: 1.0
+Company: ABC Şirketi
 Type: Professional
-Company: Şirket Adı
-MaxUsers: 20
 MaxVehicles: 200
-IssuedDate: 2026-01-01
-ExpiryDate: 2027-01-01
-Features: All
-Signature: [encrypted_signature]
------END LICENSE-----
+Expires: 2025-12-31
+Signature: BASE64_RSA_SIGNATURE
+-----END KOA FILO SERVIS LICENSE-----
 ```
 
 ---
 
-## ⚠️ Önemli Notlar
+## 📞 Lisans Talebi
 
-1. **Lisans dosyası taşınamaz** - Her kurulum için ayrı lisans gerekir
-2. **Hardware ID** değişirse lisans geçersiz olur
-3. **Lisans yenileme** son kullanma tarihinden 30 gün önce hatırlatılır
-4. **Deneme süresi** uzatılamaz
-
----
-
-## 🔄 Lisans Yenileme
-
-1. Mevcut lisans bilgilerinizi `http://localhost:5190/admin/license` adresinden alın
-2. Yenileme talebini destek@crmfiloservis.com adresine gönderin
-3. Yeni lisans dosyasını alıp kuruluma kopyalayın
-
----
-
-## 🛡️ Lisans Koruma
-
-- Lisans dosyası şifrelenmiştir
-- Değiştirme tespit edilir ve lisans geçersiz olur
-- Çoklu kurulum tespitinde tüm lisanslar devre dışı bırakılır
-
----
-
-## 📞 Destek
-
-Lisans sorunları için:
-- 📧 info@allglb.com
-- 📱 +90 XXX XXX XX XX
+- **E-posta:** license@koafiloservis.com
+- **Tel:** +90 212 123 45 67

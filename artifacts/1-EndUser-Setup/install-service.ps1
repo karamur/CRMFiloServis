@@ -1,73 +1,63 @@
-﻿# CRM Filo Servis - Windows Servisi Kurulum Betiği
-# Yönetici yetkisi gerektirir
+﻿#Requires -RunAsAdministrator
+<#
+.SYNOPSIS
+    KOA Filo Servis - Windows Service Kurulumu
+#>
 
-#Requires -RunAsAdministrator
+$ServiceName = "KOAFiloServis"
+$DisplayName = "KOA Filo Servis"
+$InstallPath = "C:\KOAFiloServis"
+$ExePath = "$InstallPath\KOAFiloServis.Web.exe"
 
-$ErrorActionPreference = "Stop"
-
-$serviceName = "CRMFiloServis"
-$appPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-$exePath = Join-Path $appPath "CRMFiloServis.Web.exe"
-
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host " Windows Servisi Kurulumu" -ForegroundColor Cyan
-Write-Host "======================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "╔═══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║    KOA Filo Servis - Windows Service Kurulumu             ║" -ForegroundColor Cyan
+Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
-# Exe dosyası kontrolü
-if (-not (Test-Path $exePath)) {
-    Write-Host "HATA: $exePath bulunamadi!" -ForegroundColor Red
-    Write-Host "Oncelikle install.ps1 betigini calistirin." -ForegroundColor Yellow
+# Mevcut service kontrolü
+$existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+if ($existing) {
+    Write-Host "⚠ Mevcut servis bulundu" -ForegroundColor Yellow
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    sc.exe delete $ServiceName | Out-Null
+    Start-Sleep -Seconds 2
+    Write-Host "  ✓ Eski servis kaldirildi" -ForegroundColor Green
+}
+
+# Uygulama kontrolü
+if (-not (Test-Path $ExePath)) {
+    Write-Host "✗ Uygulama bulunamadi: $ExePath" -ForegroundColor Red
+    Write-Host "  Once install.ps1 veya Kur.bat calistirin" -ForegroundColor Yellow
     exit 1
 }
 
-# Mevcut servisi kontrol et
-$existingService = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-if ($existingService) {
-    Write-Host "Mevcut servis durduruluyor..." -ForegroundColor Yellow
-    Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-    
-    Write-Host "Mevcut servis kaldiriliyor..." -ForegroundColor Yellow
-    sc.exe delete $serviceName | Out-Null
-    Start-Sleep -Seconds 2
-}
+# Service oluştur
+Write-Host "▶ Service olusturuluyor..." -ForegroundColor Blue
+New-Service -Name $ServiceName -BinaryPathName $ExePath -DisplayName $DisplayName -StartupType Automatic -Description "KOA Filo Servis - Filo Yonetim Uygulamasi" | Out-Null
 
-# Yeni servis oluştur
-Write-Host "Yeni servis olusturuluyor..." -ForegroundColor Yellow
-
-$params = @{
-    Name = $serviceName
-    BinaryPathName = "`"$exePath`" --contentRoot `"$appPath`""
-    DisplayName = "CRM Filo Servis"
-    Description = "CRM Filo Servis - Filo Yonetim ve CRM Uygulamasi"
-    StartupType = "Automatic"
-}
-
-New-Service @params | Out-Null
-
-# Servis recovery ayarları
-$actions = "restart/60000/restart/60000/restart/60000"
-sc.exe failure $serviceName reset= 86400 actions= $actions | Out-Null
+# Recovery ayarları
+sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 | Out-Null
 
 # Servisi başlat
-Write-Host "Servis baslatiliyor..." -ForegroundColor Yellow
-Start-Service -Name $serviceName
+Write-Host "▶ Service baslatiliyor..." -ForegroundColor Blue
+Start-Service -Name $ServiceName
+Start-Sleep -Seconds 3
 
-# Durum kontrolü
-$service = Get-Service -Name $serviceName
+$svc = Get-Service -Name $ServiceName
 Write-Host ""
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host " Kurulum Tamamlandi!" -ForegroundColor Green
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Servis Adi: $serviceName" -ForegroundColor White
-Write-Host "Durum: $($service.Status)" -ForegroundColor White
-Write-Host ""
-Write-Host "Yonetim komutlari:" -ForegroundColor Yellow
-Write-Host "  Start-Service $serviceName   # Baslat"
-Write-Host "  Stop-Service $serviceName    # Durdur"
-Write-Host "  Restart-Service $serviceName # Yeniden baslat"
-Write-Host ""
-Write-Host "Uygulama URL: http://localhost:5190" -ForegroundColor Green
-Write-Host ""
+if ($svc.Status -eq "Running") {
+    Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "         SERVICE KURULUMU TAMAMLANDI!" -ForegroundColor Green
+    Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  Service:  $ServiceName (Calisiyor)" -ForegroundColor White
+    Write-Host "  Web:      http://localhost:5000" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  Komutlar:" -ForegroundColor Yellow
+    Write-Host "    Durdur:     Stop-Service $ServiceName" -ForegroundColor Gray
+    Write-Host "    Baslat:     Start-Service $ServiceName" -ForegroundColor Gray
+    Write-Host "    Kaldir:     sc.exe delete $ServiceName" -ForegroundColor Gray
+} else {
+    Write-Host "⚠ Service durumu: $($svc.Status)" -ForegroundColor Yellow
+}

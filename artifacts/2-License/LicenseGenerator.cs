@@ -1,143 +1,117 @@
-﻿using System.Security.Cryptography;
+﻿using System;
+using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace CRMFiloServis.Licensing;
+namespace KOAFiloServis.Licensing;
 
-/// <summary>
-/// Lisans dosyası oluşturma servisi - Sadece yönetim tarafı için
-/// </summary>
 public class LicenseGenerator
 {
-    private const string PrivateKeyPath = "license-private.key";
-    private const string PublicKeyPath = "license-public.key";
-    
-    /// <summary>
-    /// RSA anahtar çifti oluşturur
-    /// </summary>
-    public static void GenerateKeyPair()
-    {
-        using var rsa = RSA.Create(2048);
-        
-        // Private key (güvenli saklanmalı)
-        var privateKey = rsa.ExportRSAPrivateKey();
-        File.WriteAllBytes(PrivateKeyPath, privateKey);
-        
-        // Public key (uygulamaya gömülür)
-        var publicKey = rsa.ExportRSAPublicKey();
-        File.WriteAllBytes(PublicKeyPath, publicKey);
-        
-        Console.WriteLine("Anahtar çifti oluşturuldu.");
-        Console.WriteLine($"Private Key: {PrivateKeyPath} (GÜVENLİ SAKLAYIN!)");
-        Console.WriteLine($"Public Key: {PublicKeyPath} (Uygulamaya ekleyin)");
-    }
-    
-    /// <summary>
-    /// Lisans dosyası oluşturur
-    /// </summary>
-    public static string GenerateLicense(LicenseInfo info)
-    {
-        // Private key'i yükle
-        var privateKeyBytes = File.ReadAllBytes(PrivateKeyPath);
-        using var rsa = RSA.Create();
-        rsa.ImportRSAPrivateKey(privateKeyBytes, out _);
-        
-        // Lisans ID oluştur
-        info.LicenseId = Guid.NewGuid().ToString();
-        
-        // Lisans verisini JSON'a çevir
-        var licenseData = JsonSerializer.Serialize(info);
-        var dataBytes = Encoding.UTF8.GetBytes(licenseData);
-        
-        // İmzala
-        var signature = rsa.SignData(dataBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        var signatureBase64 = Convert.ToBase64String(signature);
-        
-        // Lisans dosyası formatı
-        var licenseFile = $@"-----BEGIN LICENSE-----
-LicenseId: {info.LicenseId}
-Type: {info.Type}
-Company: {info.Company}
-MaxUsers: {info.MaxUsers}
-MaxVehicles: {info.MaxVehicles}
-IssuedDate: {info.IssuedDate:yyyy-MM-dd}
-ExpiryDate: {info.ExpiryDate:yyyy-MM-dd}
-Features: {string.Join(",", info.Features)}
-HardwareId: {info.HardwareId ?? "*"}
-Signature: {signatureBase64}
------END LICENSE-----";
+    private readonly RSA _rsa;
 
-        return licenseFile;
-    }
-    
-    /// <summary>
-    /// Toplu lisans oluşturma örneği
-    /// </summary>
-    public static void GenerateSampleLicenses()
+    public LicenseGenerator(string? privateKeyPath = null)
     {
-        var licenses = new[]
-        {
-            new LicenseInfo
-            {
-                Type = "Trial",
-                Company = "Demo Company",
-                MaxUsers = 2,
-                MaxVehicles = 10,
-                IssuedDate = DateTime.Today,
-                ExpiryDate = DateTime.Today.AddDays(30),
-                Features = new[] { "Basic", "Reports" }
-            },
-            new LicenseInfo
-            {
-                Type = "Starter",
-                Company = "Sample Customer",
-                MaxUsers = 5,
-                MaxVehicles = 50,
-                IssuedDate = DateTime.Today,
-                ExpiryDate = DateTime.Today.AddYears(1),
-                Features = new[] { "Basic", "Reports", "Export" }
-            },
-            new LicenseInfo
-            {
-                Type = "Professional",
-                Company = "Professional Customer",
-                MaxUsers = 20,
-                MaxVehicles = 200,
-                IssuedDate = DateTime.Today,
-                ExpiryDate = DateTime.Today.AddYears(1),
-                Features = new[] { "All" }
-            },
-            new LicenseInfo
-            {
-                Type = "Enterprise",
-                Company = "Enterprise Customer",
-                MaxUsers = -1, // Sınırsız
-                MaxVehicles = -1,
-                IssuedDate = DateTime.Today,
-                ExpiryDate = DateTime.Today.AddYears(1),
-                Features = new[] { "All", "API", "Customization", "MultiTenant" }
-            }
-        };
+        _rsa = RSA.Create(2048);
         
-        foreach (var license in licenses)
+        if (!string.IsNullOrEmpty(privateKeyPath) && File.Exists(privateKeyPath))
         {
-            var licenseFile = GenerateLicense(license);
-            var fileName = $"license-{license.Type.ToLower()}-sample.key";
-            File.WriteAllText(fileName, licenseFile);
-            Console.WriteLine($"Oluşturuldu: {fileName}");
+            _rsa.ImportRSAPrivateKey(Convert.FromBase64String(File.ReadAllText(privateKeyPath)), out _);
+        }
+        else
+        {
+            // Yeni anahtar oluştur ve kaydet
+            Directory.CreateDirectory("keys");
+            File.WriteAllText("keys/private.key", Convert.ToBase64String(_rsa.ExportRSAPrivateKey()));
+            File.WriteAllText("keys/public.key", Convert.ToBase64String(_rsa.ExportRSAPublicKey()));
         }
     }
+
+    public string Generate(LicenseRequest request)
+    {
+        var license = new LicenseData
+        {
+            LicenseId = Guid.NewGuid().ToString("N")[..12].ToUpper(),
+            CompanyName = request.CompanyName,
+            ContactEmail = request.ContactEmail,
+            Type = request.Type,
+            MaxVehicles = GetMaxVehicles(request.Type),
+            MaxUsers = GetMaxUsers(request.Type),
+            Features = GetFeatures(request.Type),
+            IssuedDate = DateTime.UtcNow,
+            ExpirationDate = request.ExpirationDate,
+            MachineId = request.MachineId ?? "*"
+        };
+
+        var jsonData = JsonSerializer.Serialize(license);
+        var dataBytes = Encoding.UTF8.GetBytes(jsonData);
+        var signature = _rsa.SignData(dataBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+        var sb = new StringBuilder();
+        sb.AppendLine("-----BEGIN KOA FILO SERVIS LICENSE-----");
+        sb.AppendLine($"Version: 1.0");
+        sb.AppendLine($"LicenseId: {license.LicenseId}");
+        sb.AppendLine($"Company: {license.CompanyName}");
+        sb.AppendLine($"Type: {license.Type}");
+        sb.AppendLine($"MaxVehicles: {license.MaxVehicles}");
+        sb.AppendLine($"MaxUsers: {license.MaxUsers}");
+        sb.AppendLine($"Expires: {license.ExpirationDate:yyyy-MM-dd}");
+        sb.AppendLine($"Data: {Convert.ToBase64String(dataBytes)}");
+        sb.AppendLine($"Signature: {Convert.ToBase64String(signature)}");
+        sb.AppendLine("-----END KOA FILO SERVIS LICENSE-----");
+
+        return sb.ToString();
+    }
+
+    private int GetMaxVehicles(LicenseType type) => type switch
+    {
+        LicenseType.Trial => 10,
+        LicenseType.Standard => 50,
+        LicenseType.Professional => 200,
+        LicenseType.Enterprise => 999999,
+        _ => 10
+    };
+
+    private int GetMaxUsers(LicenseType type) => type switch
+    {
+        LicenseType.Trial => 3,
+        LicenseType.Standard => 10,
+        LicenseType.Professional => 50,
+        LicenseType.Enterprise => 999999,
+        _ => 3
+    };
+
+    private List<string> GetFeatures(LicenseType type) => type switch
+    {
+        LicenseType.Trial => new() { "core" },
+        LicenseType.Standard => new() { "core", "reports" },
+        LicenseType.Professional => new() { "core", "reports", "api", "export" },
+        LicenseType.Enterprise => new() { "core", "reports", "api", "export", "whitelabel" },
+        _ => new() { "core" }
+    };
 }
 
-public class LicenseInfo
+public class LicenseRequest
+{
+    public string CompanyName { get; set; } = "";
+    public string? ContactEmail { get; set; }
+    public LicenseType Type { get; set; } = LicenseType.Trial;
+    public DateTime ExpirationDate { get; set; } = DateTime.UtcNow.AddDays(30);
+    public string? MachineId { get; set; }
+}
+
+public class LicenseData
 {
     public string LicenseId { get; set; } = "";
-    public string Type { get; set; } = "Trial";
-    public string Company { get; set; } = "";
-    public int MaxUsers { get; set; } = 2;
-    public int MaxVehicles { get; set; } = 10;
-    public DateTime IssuedDate { get; set; } = DateTime.Today;
-    public DateTime ExpiryDate { get; set; } = DateTime.Today.AddDays(30);
-    public string[] Features { get; set; } = Array.Empty<string>();
-    public string? HardwareId { get; set; }
+    public string CompanyName { get; set; } = "";
+    public string? ContactEmail { get; set; }
+    public LicenseType Type { get; set; }
+    public int MaxVehicles { get; set; }
+    public int MaxUsers { get; set; }
+    public List<string> Features { get; set; } = new();
+    public DateTime IssuedDate { get; set; }
+    public DateTime ExpirationDate { get; set; }
+    public string MachineId { get; set; } = "*";
 }
+
+public enum LicenseType { Trial, Standard, Professional, Enterprise }

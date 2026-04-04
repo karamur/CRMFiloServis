@@ -1,160 +1,139 @@
-﻿# CRM Filo Servis - Son Kullanıcı Kurulum Rehberi
+﻿# KOA Filo Servis - Son Kullanıcı Kurulum Rehberi
 
-## 📋 Gereksinimler
+## 📦 Paket İçeriği
 
-### Windows Kurulumu
-- Windows 10/11 veya Windows Server 2019+
-- .NET 10 Runtime
-- SQLite (dahili) veya PostgreSQL 15+
-
-### Docker Kurulumu
-- Docker Desktop veya Docker Engine
-- Docker Compose v2+
+```
+1-EndUser-Setup/
+├── app/
+│   ├── KOAFiloServis.Web.exe    # Ana uygulama (107 MB, self-contained)
+│   ├── appsettings.json         # Yapılandırma
+│   └── wwwroot/                 # Statik dosyalar
+├── Kur.bat                      # Çift tıkla kurulum
+├── Baslat.bat                   # Hızlı başlatma
+├── install.ps1                  # PowerShell kurulum
+├── install-service.ps1          # Windows Service kurulumu
+├── docker-compose.yml           # Docker ile kurulum
+└── README.md                    # Bu dosya
+```
 
 ---
 
-## 🚀 Hızlı Kurulum
+## 🚀 Hızlı Kurulum (4 Yöntem)
 
-### Seçenek 1: Windows Kurulumu
+### Yöntem 1: Çift Tıkla Kurulum (En Kolay) ⭐
 
-1. **Uygulamayı indirin ve çıkarın**
-   ```powershell
-   Expand-Archive -Path CRMFiloServis-Setup.zip -DestinationPath C:\CRMFiloServis
-   ```
+```
+1. "Kur.bat" dosyasına çift tıklayın
+2. Kurulum otomatik tamamlanır
+3. Tarayıcı otomatik açılır
+```
 
-2. **Kurulum betiğini çalıştırın**
-   ```powershell
-   cd C:\CRMFiloServis
-   .\install.ps1
-   ```
+---
 
-3. **Servisi başlatın**
-   ```powershell
-   .\start.ps1
-   ```
+### Yöntem 2: Direkt Çalıştırma
 
-4. **Tarayıcıda açın**
-   ```
-   http://localhost:5190
-   ```
+```
+1. "Baslat.bat" dosyasına çift tıklayın
+2. Tarayıcıda http://localhost:5000 açın
+```
 
-### Seçenek 2: Docker Kurulumu
+---
 
-1. **Docker Compose ile başlatın**
-   ```bash
-   docker-compose up -d
-   ```
+### Yöntem 3: PowerShell Kurulum (Önerilen)
 
-2. **Tarayıcıda açın**
-   ```
-   http://localhost:5190
-   ```
+```powershell
+# PowerShell'i Yönetici olarak açın
+.\install.ps1
+```
+
+Bu script:
+- ✅ C:\KOAFiloServis dizinine kurar
+- ✅ Masaüstü kısayolu oluşturur
+- ✅ Başlat menüsüne ekler
+- ✅ Firewall kuralı ekler
+
+---
+
+### Yöntem 4: Windows Service Olarak
+
+```powershell
+# Yönetici olarak çalıştırın
+.\install-service.ps1
+```
+
+Service olarak kurulum:
+- Bilgisayar açıldığında otomatik başlar
+- Arka planda çalışır
+- Windows Hizmetleri'nden yönetilir
+
+---
+
+### Yöntem 5: Docker ile
+
+```bash
+docker-compose up -d
+```
 
 ---
 
 ## ⚙️ Yapılandırma
 
-### Veritabanı Ayarları
+`app\appsettings.json` dosyasını düzenleyin:
 
-`appsettings.json` dosyasında veritabanı bağlantısını yapılandırın:
-
-**SQLite (Varsayılan):**
+### Veritabanı
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=crm_filo.db"
-  },
-  "DatabaseProvider": "SQLite"
+    "DefaultConnection": "Host=localhost;Database=koafilo;Username=postgres;Password=SIFRE"
+  }
 }
 ```
 
-**PostgreSQL:**
+### Port Değiştirme
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=crmfilo;Username=postgres;Password=your_password"
-  },
-  "DatabaseProvider": "PostgreSQL"
+  "Kestrel": {
+    "Endpoints": {
+      "Http": { "Url": "http://0.0.0.0:8080" }
+    }
+  }
 }
 ```
 
-### Lisans Aktivasyonu
+---
 
-İlk çalıştırmada lisans dosyası istenecektir:
-1. Lisans dosyanızı (`license.key`) uygulama dizinine kopyalayın
-2. Uygulamayı yeniden başlatın
+## 📋 Sistem Gereksinimleri
+
+| Bileşen | Minimum | Önerilen |
+|---------|---------|----------|
+| İşletim Sistemi | Windows 10 x64 | Windows 11/Server 2022 |
+| RAM | 2 GB | 4 GB |
+| Disk | 500 MB | 2 GB |
+| .NET Runtime | Gerekmez (dahil) | - |
 
 ---
 
-## 🔧 Servis Yönetimi
+## 🔧 Sorun Giderme
 
-### Windows Servisi Olarak Kurulum
-```powershell
-.\install-service.ps1
-```
+### Uygulama Açılmıyor
+1. Yönetici olarak çalıştırın
+2. Antivirüs yazılımını kontrol edin
+3. Port 5000'in boş olduğundan emin olun:
+   ```powershell
+   netstat -ano | findstr :5000
+   ```
 
-### Servis Komutları
-```powershell
-# Başlat
-Start-Service CRMFiloServis
-
-# Durdur
-Stop-Service CRMFiloServis
-
-# Durum
-Get-Service CRMFiloServis
-```
-
-### Docker Komutları
-```bash
-# Başlat
-docker-compose up -d
-
-# Durdur
-docker-compose down
-
-# Logları görüntüle
-docker-compose logs -f
-```
-
----
-
-## 📊 Varsayılan Giriş Bilgileri
-
-| Kullanıcı | Şifre | Rol |
-|-----------|-------|-----|
-| admin | Admin123! | Yönetici |
-
-⚠️ **İlk girişten sonra şifreyi mutlaka değiştirin!**
-
----
-
-## 🔍 Sorun Giderme
-
-### Uygulama başlamıyor
-1. .NET 10 Runtime'ın yüklü olduğunu kontrol edin
-2. Port 5190'ın kullanılabilir olduğunu kontrol edin
-3. Logları inceleyin: `logs/` klasörü
-
-### Veritabanı bağlantı hatası
-1. Connection string'i kontrol edin
-2. Veritabanı sunucusunun çalıştığını doğrulayın
-3. Firewall ayarlarını kontrol edin
-
-### Lisans hatası
-1. `license.key` dosyasının uygulama dizininde olduğunu kontrol edin
-2. Lisans süresinin dolmadığını doğrulayın
-3. Destek ile iletişime geçin
+### Veritabanı Hatası
+- SQLite kullanmak için `appsettings.json`:
+  ```json
+  "UseSqlite": true
+  ```
 
 ---
 
 ## 📞 Destek
 
-- 📧 E-posta: info@allglb.com
-- 📱 Telefon: +90 XXX XXX XX XX
-- 🌐 Web: http://www.allglb.com
+- **E-posta:** support@koafiloservis.com
+- **Web:** https://koafiloservis.com
 
----
-
-**Versiyon:** 1.0.0  
-**Son Güncelleme:** Nisan 2026
+**Versiyon:** 1.0.0
