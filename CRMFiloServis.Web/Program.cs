@@ -172,63 +172,115 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Seed Database
-using (var scope = app.Services.CreateScope())
+static async Task RunScopedAsync(WebApplication app, Func<IServiceProvider, Task> action)
 {
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    await DbInitializer.InitializeAsync(context, configuration);
-
-    // Eski Soforler tablosunu Personeller tablosuna tasi
-    await CRMFiloServis.Web.Data.Migrations.PersonelTableMigrationHelper.ApplyPersonelTableMigrationAsync(context);
-
-    // Şoför maaş/çıkış alanları migration
-    await CRMFiloServis.Web.Data.Migrations.SoforMaasMigrationHelper.ApplySoforMaasAlanlariAsync(context);
-    
-    // Seed kritik verileri
-    await DbSeeder.SeedAsync(context);
-    
-    // Kullanici ve Lisans seed
-    var kullaniciService = scope.ServiceProvider.GetRequiredService<IKullaniciService>();
-    await kullaniciService.SeedAdminAsync();
-    
-    var lisansService = scope.ServiceProvider.GetRequiredService<ILisansService>();
-    await lisansService.GetAktifLisansAsync(); // Trial lisans olusturur
-    
-    var satisService = scope.ServiceProvider.GetRequiredService<ISatisService>();
-    await satisService.SeedMarkaModelAsync();
-    
-    // Muhasebe hesap plani seed
-    var muhasebeService = scope.ServiceProvider.GetRequiredService<IMuhasebeService>();
-    await muhasebeService.SeedVarsayilanHesapPlaniAsync();
-    
-    // Piyasa kaynakları seed
-    var piyasaKaynakService = scope.ServiceProvider.GetRequiredService<IPiyasaKaynakService>();
-    await piyasaKaynakService.SeedDefaultKaynaklarAsync();
-    
-    // Bütçe masraf kalemleri seed (Kredi Kartı dahil)
-    var budgetService = scope.ServiceProvider.GetRequiredService<IBudgetService>();
-    await budgetService.SeedMasrafKalemleriAsync();
-    
-    // Cari alan genişletme migration (Il, Ilce, Fax vb.)
-    await CRMFiloServis.Web.Data.Migrations.CariMigrationHelper.ApplyCariAlanGenisletmeAsync(context);
-
-    // Bordro tabloları migration
-    await CRMFiloServis.Web.Data.Migrations.BordroMigrationHelper.ApplyBordroTablolariAsync(context);
-
-    // Araç masraf personel/cari/muhasebe alanları migration
-    await CRMFiloServis.Web.Data.Migrations.AracMasrafMuhasebeMigrationHelper.ApplyAracMasrafMuhasebeAlanlariAsync(context);
-    
-    // Personel özlük evrak tabloları migration
-    await CRMFiloServis.Web.Data.Migrations.OzlukEvrakMigrationHelper.ApplyOzlukEvrakMigrationAsync(context);
-    
-    // Muhasebe ayarları - stok masraf aktarım alanları
-    await CRMFiloServis.Web.Data.Migrations.MuhasebeAyarMigrationHelper.ApplyStokMasrafAyarlariAsync(context);
-    
-    // Personel özlük evrak tanımları seed
-    var ozlukService = scope.ServiceProvider.GetRequiredService<IPersonelOzlukService>();
-    await ozlukService.SeedDefaultEvrakTanimlariAsync();
+    using var scope = app.Services.CreateScope();
+    await action(scope.ServiceProvider);
 }
+
+// Seed Database
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    var configuration = services.GetRequiredService<IConfiguration>();
+    await DbInitializer.InitializeAsync(context, configuration);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.PersonelTableMigrationHelper.ApplyPersonelTableMigrationAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.PersonelMaasHesaplamaMigrationHelper.ApplyPersonelMaasHesaplamaAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.SoforMaasMigrationHelper.ApplySoforMaasAlanlariAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await DbSeeder.SeedAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var kullaniciService = services.GetRequiredService<IKullaniciService>();
+    await kullaniciService.SeedAdminAsync();
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var lisansService = services.GetRequiredService<ILisansService>();
+    await lisansService.GetAktifLisansAsync(); // Trial lisans olusturur
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var satisService = services.GetRequiredService<ISatisService>();
+    await satisService.SeedMarkaModelAsync();
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var muhasebeService = services.GetRequiredService<IMuhasebeService>();
+    await muhasebeService.SeedVarsayilanHesapPlaniAsync();
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var piyasaKaynakService = services.GetRequiredService<IPiyasaKaynakService>();
+    await piyasaKaynakService.SeedDefaultKaynaklarAsync();
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var budgetService = services.GetRequiredService<IBudgetService>();
+    await budgetService.SeedMasrafKalemleriAsync();
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.CariMigrationHelper.ApplyCariAlanGenisletmeAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.BordroMigrationHelper.ApplyBordroTablolariAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.AracMasrafMuhasebeMigrationHelper.ApplyAracMasrafMuhasebeAlanlariAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.OzlukEvrakMigrationHelper.ApplyOzlukEvrakMigrationAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await CRMFiloServis.Web.Data.Migrations.MuhasebeAyarMigrationHelper.ApplyStokMasrafAyarlariAsync(context);
+});
+
+await RunScopedAsync(app, async services =>
+{
+    var ozlukService = services.GetRequiredService<IPersonelOzlukService>();
+    await ozlukService.SeedDefaultEvrakTanimlariAsync();
+});
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

@@ -51,28 +51,40 @@ public static class CariMigrationHelper
 
     private static async Task EnsureSqliteColumnAsync(ApplicationDbContext context, string columnName, string columnDefinition)
     {
-        await using var connection = context.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
         {
             await connection.OpenAsync();
         }
 
-        await using var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = "SELECT 1 FROM pragma_table_info('Cariler') WHERE name = $columnName LIMIT 1";
-
-        var parameter = checkCommand.CreateParameter();
-        parameter.ParameterName = "$columnName";
-        parameter.Value = columnName;
-        checkCommand.Parameters.Add(parameter);
-
-        var exists = await checkCommand.ExecuteScalarAsync() is not null;
-        if (exists)
+        try
         {
-            return;
-        }
+            await using var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = "SELECT 1 FROM pragma_table_info('Cariler') WHERE name = $columnName LIMIT 1";
 
-        await using var alterCommand = connection.CreateCommand();
-        alterCommand.CommandText = $"ALTER TABLE \"Cariler\" ADD COLUMN \"{columnName}\" {columnDefinition}";
-        await alterCommand.ExecuteNonQueryAsync();
+            var parameter = checkCommand.CreateParameter();
+            parameter.ParameterName = "$columnName";
+            parameter.Value = columnName;
+            checkCommand.Parameters.Add(parameter);
+
+            var exists = await checkCommand.ExecuteScalarAsync() is not null;
+            if (exists)
+            {
+                return;
+            }
+
+            await using var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = $"ALTER TABLE \"Cariler\" ADD COLUMN \"{columnName}\" {columnDefinition}";
+            await alterCommand.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 }

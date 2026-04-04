@@ -65,19 +65,23 @@ CREATE TABLE IF NOT EXISTS ""PersonelOzlukEvraklar"" (
 
     private static async Task EnsureSqliteSchemaAsync(ApplicationDbContext context)
     {
-        await using var connection = context.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
         {
             await connection.OpenAsync();
         }
 
-        if (await RequiresSqliteTableRebuildAsync(connection, "OzlukEvrakTanimlari"))
+        try
         {
-            await ExecuteSqliteNonQueryAsync(connection, "DROP TABLE IF EXISTS \"PersonelOzlukEvraklar\"");
-            await ExecuteSqliteNonQueryAsync(connection, "DROP TABLE IF EXISTS \"OzlukEvrakTanimlari\"");
-        }
+            if (await RequiresSqliteTableRebuildAsync(connection, "OzlukEvrakTanimlari"))
+            {
+                await ExecuteSqliteNonQueryAsync(connection, "DROP TABLE IF EXISTS \"PersonelOzlukEvraklar\"");
+                await ExecuteSqliteNonQueryAsync(connection, "DROP TABLE IF EXISTS \"OzlukEvrakTanimlari\"");
+            }
 
-        await ExecuteSqliteNonQueryAsync(connection, @"
+            await ExecuteSqliteNonQueryAsync(connection, @"
 CREATE TABLE IF NOT EXISTS ""OzlukEvrakTanimlari"" (
     ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_OzlukEvrakTanimlari"" PRIMARY KEY AUTOINCREMENT,
     ""EvrakAdi"" TEXT NOT NULL,
@@ -92,7 +96,7 @@ CREATE TABLE IF NOT EXISTS ""OzlukEvrakTanimlari"" (
     ""IsDeleted"" INTEGER NOT NULL DEFAULT 0
 )");
 
-        await ExecuteSqliteNonQueryAsync(connection, @"
+            await ExecuteSqliteNonQueryAsync(connection, @"
 CREATE TABLE IF NOT EXISTS ""PersonelOzlukEvraklar"" (
     ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_PersonelOzlukEvraklar"" PRIMARY KEY AUTOINCREMENT,
     ""SoforId"" INTEGER NOT NULL,
@@ -107,6 +111,14 @@ CREATE TABLE IF NOT EXISTS ""PersonelOzlukEvraklar"" (
     CONSTRAINT ""FK_PersonelOzlukEvraklar_Personeller"" FOREIGN KEY (""SoforId"") REFERENCES ""Personeller"" (""Id"") ON DELETE CASCADE,
     CONSTRAINT ""FK_PersonelOzlukEvraklar_OzlukEvrakTanimlari"" FOREIGN KEY (""EvrakTanimId"") REFERENCES ""OzlukEvrakTanimlari"" (""Id"") ON DELETE CASCADE
 )");
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 
     private static async Task<bool> RequiresSqliteTableRebuildAsync(System.Data.Common.DbConnection connection, string tableName)

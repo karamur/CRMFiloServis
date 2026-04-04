@@ -203,14 +203,26 @@ public static class BordroMigrationHelper
 
     private static async Task EnsureSqliteTableAsync(ApplicationDbContext context, string createTableSql)
     {
-        await using var connection = context.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
         {
             await connection.OpenAsync();
         }
 
-        await using var command = connection.CreateCommand();
-        command.CommandText = createTableSql;
-        await command.ExecuteNonQueryAsync();
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = createTableSql;
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 }

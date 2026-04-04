@@ -74,68 +74,90 @@ public static class SoforMaasMigrationHelper
 
     private static async Task<string?> ResolvePersonelTableNameAsync(ApplicationDbContext context)
     {
-        await using var connection = context.Database.GetDbConnection();
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
 
-        if (connection.State != ConnectionState.Open)
+        if (shouldClose)
         {
             await connection.OpenAsync();
         }
 
-        await using var command = connection.CreateCommand();
-
-        if (context.Database.IsNpgsql())
+        try
         {
-            command.CommandText = @"
+            await using var command = connection.CreateCommand();
+
+            if (context.Database.IsNpgsql())
+            {
+                command.CommandText = @"
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_schema = current_schema()
                   AND table_name IN ('Personeller', 'Soforler')
                 ORDER BY CASE WHEN table_name = 'Personeller' THEN 0 ELSE 1 END
                 LIMIT 1";
-        }
-        else if (context.Database.IsSqlite())
-        {
-            command.CommandText = @"
+            }
+            else if (context.Database.IsSqlite())
+            {
+                command.CommandText = @"
                 SELECT name
                 FROM sqlite_master
                 WHERE type = 'table'
                   AND name IN ('Personeller', 'Soforler')
                 ORDER BY CASE WHEN name = 'Personeller' THEN 0 ELSE 1 END
                 LIMIT 1";
-        }
-        else
-        {
-            return null;
-        }
+            }
+            else
+            {
+                return null;
+            }
 
-        return await command.ExecuteScalarAsync() as string;
+            return await command.ExecuteScalarAsync() as string;
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 
     private static async Task EnsureSqliteColumnAsync(ApplicationDbContext context, string tableName, string columnName, string columnDefinition)
     {
-        await using var connection = context.Database.GetDbConnection();
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
 
-        if (connection.State != ConnectionState.Open)
+        if (shouldClose)
         {
             await connection.OpenAsync();
         }
 
-        await using var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = $"SELECT 1 FROM pragma_table_info('{tableName}') WHERE name = $columnName LIMIT 1";
-
-        var parameter = checkCommand.CreateParameter();
-        parameter.ParameterName = "$columnName";
-        parameter.Value = columnName;
-        checkCommand.Parameters.Add(parameter);
-
-        var exists = await checkCommand.ExecuteScalarAsync() is not null;
-        if (exists)
+        try
         {
-            return;
-        }
+            await using var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = $"SELECT 1 FROM pragma_table_info('{tableName}') WHERE name = $columnName LIMIT 1";
 
-        await using var alterCommand = connection.CreateCommand();
-        alterCommand.CommandText = $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{columnName}\" {columnDefinition}";
-        await alterCommand.ExecuteNonQueryAsync();
+            var parameter = checkCommand.CreateParameter();
+            parameter.ParameterName = "$columnName";
+            parameter.Value = columnName;
+            checkCommand.Parameters.Add(parameter);
+
+            var exists = await checkCommand.ExecuteScalarAsync() is not null;
+            if (exists)
+            {
+                return;
+            }
+
+            await using var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{columnName}\" {columnDefinition}";
+            await alterCommand.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 }

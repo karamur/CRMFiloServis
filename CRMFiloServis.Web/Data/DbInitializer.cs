@@ -249,30 +249,42 @@ public static class DbInitializer
             else
             {
                 // SQLite için
-                await using var connection = context.Database.GetDbConnection();
-                if (connection.State != System.Data.ConnectionState.Open)
+                var connection = context.Database.GetDbConnection();
+                var shouldClose = connection.State != System.Data.ConnectionState.Open;
+
+                if (shouldClose)
                 {
                     await connection.OpenAsync();
                 }
 
-                await using var checkCommand = connection.CreateCommand();
-                checkCommand.CommandText = "SELECT 1 FROM pragma_table_info('Roller') WHERE name = $columnName LIMIT 1";
-                var parameter = checkCommand.CreateParameter();
-                parameter.ParameterName = "$columnName";
-                parameter.Value = "Renk";
-                checkCommand.Parameters.Add(parameter);
+                try
+                {
+                    await using var checkCommand = connection.CreateCommand();
+                    checkCommand.CommandText = "SELECT 1 FROM pragma_table_info('Roller') WHERE name = $columnName LIMIT 1";
+                    var parameter = checkCommand.CreateParameter();
+                    parameter.ParameterName = "$columnName";
+                    parameter.Value = "Renk";
+                    checkCommand.Parameters.Add(parameter);
 
-                var exists = await checkCommand.ExecuteScalarAsync() is not null;
-                if (!exists)
-                {
-                    await using var alterCommand = connection.CreateCommand();
-                    alterCommand.CommandText = "ALTER TABLE \"Roller\" ADD COLUMN \"Renk\" TEXT DEFAULT '#dc3545'";
-                    await alterCommand.ExecuteNonQueryAsync();
-                    Console.WriteLine("Roller tablosuna Renk kolonu eklendi.");
+                    var exists = await checkCommand.ExecuteScalarAsync() is not null;
+                    if (!exists)
+                    {
+                        await using var alterCommand = connection.CreateCommand();
+                        alterCommand.CommandText = "ALTER TABLE \"Roller\" ADD COLUMN \"Renk\" TEXT DEFAULT '#dc3545'";
+                        await alterCommand.ExecuteNonQueryAsync();
+                        Console.WriteLine("Roller tablosuna Renk kolonu eklendi.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Roller tablosunda Renk kolonu zaten mevcut.");
+                    }
                 }
-                else
+                finally
                 {
-                    Console.WriteLine("Roller tablosunda Renk kolonu zaten mevcut.");
+                    if (shouldClose)
+                    {
+                        await connection.CloseAsync();
+                    }
                 }
             }
         }

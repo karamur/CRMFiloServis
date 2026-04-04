@@ -26,20 +26,32 @@ END $$;";
 
             if (context.Database.IsSqlite())
             {
-                await using var connection = context.Database.GetDbConnection();
-                if (connection.State != ConnectionState.Open)
+                var connection = context.Database.GetDbConnection();
+                var shouldClose = connection.State != ConnectionState.Open;
+
+                if (shouldClose)
                 {
                     await connection.OpenAsync();
                 }
 
-                var hasSoforler = await TableExistsAsync(connection, "Soforler");
-                var hasPersoneller = await TableExistsAsync(connection, "Personeller");
-
-                if (hasSoforler && !hasPersoneller)
+                try
                 {
-                    await using var command = connection.CreateCommand();
-                    command.CommandText = "ALTER TABLE \"Soforler\" RENAME TO \"Personeller\"";
-                    await command.ExecuteNonQueryAsync();
+                    var hasSoforler = await TableExistsAsync(connection, "Soforler");
+                    var hasPersoneller = await TableExistsAsync(connection, "Personeller");
+
+                    if (hasSoforler && !hasPersoneller)
+                    {
+                        await using var command = connection.CreateCommand();
+                        command.CommandText = "ALTER TABLE \"Soforler\" RENAME TO \"Personeller\"";
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+                finally
+                {
+                    if (shouldClose)
+                    {
+                        await connection.CloseAsync();
+                    }
                 }
             }
         }
