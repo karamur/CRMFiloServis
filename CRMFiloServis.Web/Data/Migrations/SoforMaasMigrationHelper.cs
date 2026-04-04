@@ -10,54 +10,60 @@ public static class SoforMaasMigrationHelper
     {
         try
         {
+            var tableName = await ResolvePersonelTableNameAsync(context);
+            if (string.IsNullOrWhiteSpace(tableName))
+            {
+                return;
+            }
+
             if (context.Database.IsNpgsql())
             {
-                var sql = @"
+                var sql = $@"
                     DO $$
                     BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'ArgePersoneli') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""ArgePersoneli"" boolean NOT NULL DEFAULT FALSE;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'ArgePersoneli') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""ArgePersoneli"" boolean NOT NULL DEFAULT FALSE;
                         END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'TopluMaas') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""TopluMaas"" numeric(18,2) NOT NULL DEFAULT 0;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'TopluMaas') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""TopluMaas"" numeric(18,2) NOT NULL DEFAULT 0;
                         END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'SgkMaasi') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""SgkMaasi"" numeric(18,2) NOT NULL DEFAULT 0;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'SgkMaasi') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""SgkMaasi"" numeric(18,2) NOT NULL DEFAULT 0;
                         END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'ResmiNetMaas') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""ResmiNetMaas"" numeric(18,2) NOT NULL DEFAULT 0;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'ResmiNetMaas') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""ResmiNetMaas"" numeric(18,2) NOT NULL DEFAULT 0;
                         END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'DigerMaas') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""DigerMaas"" numeric(18,2) NOT NULL DEFAULT 0;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'DigerMaas') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""DigerMaas"" numeric(18,2) NOT NULL DEFAULT 0;
                         END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'SGKBordroDahilMi') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""SGKBordroDahilMi"" boolean NOT NULL DEFAULT FALSE;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'SGKBordroDahilMi') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""SGKBordroDahilMi"" boolean NOT NULL DEFAULT FALSE;
                         END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'BordroTipiPersonel') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""BordroTipiPersonel"" integer NOT NULL DEFAULT 0;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'BordroTipiPersonel') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""BordroTipiPersonel"" integer NOT NULL DEFAULT 0;
                         END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Soforler' AND column_name = 'SgkCikisTarihi') THEN
-                            ALTER TABLE ""Soforler"" ADD COLUMN ""SgkCikisTarihi"" timestamp without time zone NULL;
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = '{tableName}' AND column_name = 'SgkCikisTarihi') THEN
+                            ALTER TABLE ""{tableName}"" ADD COLUMN ""SgkCikisTarihi"" timestamp without time zone NULL;
                         END IF;
                     END $$;
                 ";
 
                 await context.Database.ExecuteSqlRawAsync(sql);
-                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Personeller"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE COALESCE(""ResmiNetMaas"", 0) = 0 AND COALESCE(""DigerMaas"", 0) = 0 AND COALESCE(""NetMaas"", 0) > 0");
+                await context.Database.ExecuteSqlRawAsync($@"UPDATE ""{tableName}"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE COALESCE(""ResmiNetMaas"", 0) = 0 AND COALESCE(""DigerMaas"", 0) = 0 AND COALESCE(""NetMaas"", 0) > 0");
                 // Mevcut ArgePersoneli = true olanları SGKBordroDahilMi = true, BordroTipiPersonel = 2 (Arge) yap
-                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Personeller"" SET ""SGKBordroDahilMi"" = TRUE, ""BordroTipiPersonel"" = 2 WHERE ""ArgePersoneli"" = TRUE AND ""SGKBordroDahilMi"" = FALSE");
+                await context.Database.ExecuteSqlRawAsync($@"UPDATE ""{tableName}"" SET ""SGKBordroDahilMi"" = TRUE, ""BordroTipiPersonel"" = 2 WHERE ""ArgePersoneli"" = TRUE AND ""SGKBordroDahilMi"" = FALSE");
                 return;
             }
 
             if (context.Database.IsSqlite())
             {
-                await EnsureSqliteColumnAsync(context, "ArgePersoneli", "INTEGER NOT NULL DEFAULT 0");
-                await EnsureSqliteColumnAsync(context, "TopluMaas", "TEXT NOT NULL DEFAULT '0'");
-                await EnsureSqliteColumnAsync(context, "SgkMaasi", "TEXT NOT NULL DEFAULT '0'");
-                await EnsureSqliteColumnAsync(context, "ResmiNetMaas", "TEXT NOT NULL DEFAULT '0'");
-                await EnsureSqliteColumnAsync(context, "DigerMaas", "TEXT NOT NULL DEFAULT '0'");
-                await EnsureSqliteColumnAsync(context, "SgkCikisTarihi", "TEXT NULL");
-                await context.Database.ExecuteSqlRawAsync(@"UPDATE ""Personeller"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE IFNULL(""ResmiNetMaas"", '0') = '0' AND IFNULL(""DigerMaas"", '0') = '0' AND IFNULL(""NetMaas"", '0') <> '0'");
+                await EnsureSqliteColumnAsync(context, tableName, "ArgePersoneli", "INTEGER NOT NULL DEFAULT 0");
+                await EnsureSqliteColumnAsync(context, tableName, "TopluMaas", "TEXT NOT NULL DEFAULT '0'");
+                await EnsureSqliteColumnAsync(context, tableName, "SgkMaasi", "TEXT NOT NULL DEFAULT '0'");
+                await EnsureSqliteColumnAsync(context, tableName, "ResmiNetMaas", "TEXT NOT NULL DEFAULT '0'");
+                await EnsureSqliteColumnAsync(context, tableName, "DigerMaas", "TEXT NOT NULL DEFAULT '0'");
+                await EnsureSqliteColumnAsync(context, tableName, "SgkCikisTarihi", "TEXT NULL");
+                await context.Database.ExecuteSqlRawAsync($@"UPDATE ""{tableName}"" SET ""ResmiNetMaas"" = ""NetMaas"" WHERE IFNULL(""ResmiNetMaas"", '0') = '0' AND IFNULL(""DigerMaas"", '0') = '0' AND IFNULL(""NetMaas"", '0') <> '0'");
             }
         }
         catch (Exception ex)
@@ -66,7 +72,46 @@ public static class SoforMaasMigrationHelper
         }
     }
 
-    private static async Task EnsureSqliteColumnAsync(ApplicationDbContext context, string columnName, string columnDefinition)
+    private static async Task<string?> ResolvePersonelTableNameAsync(ApplicationDbContext context)
+    {
+        await using var connection = context.Database.GetDbConnection();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync();
+        }
+
+        await using var command = connection.CreateCommand();
+
+        if (context.Database.IsNpgsql())
+        {
+            command.CommandText = @"
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = current_schema()
+                  AND table_name IN ('Personeller', 'Soforler')
+                ORDER BY CASE WHEN table_name = 'Personeller' THEN 0 ELSE 1 END
+                LIMIT 1";
+        }
+        else if (context.Database.IsSqlite())
+        {
+            command.CommandText = @"
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table'
+                  AND name IN ('Personeller', 'Soforler')
+                ORDER BY CASE WHEN name = 'Personeller' THEN 0 ELSE 1 END
+                LIMIT 1";
+        }
+        else
+        {
+            return null;
+        }
+
+        return await command.ExecuteScalarAsync() as string;
+    }
+
+    private static async Task EnsureSqliteColumnAsync(ApplicationDbContext context, string tableName, string columnName, string columnDefinition)
     {
         await using var connection = context.Database.GetDbConnection();
 
@@ -76,7 +121,7 @@ public static class SoforMaasMigrationHelper
         }
 
         await using var checkCommand = connection.CreateCommand();
-        checkCommand.CommandText = "SELECT 1 FROM pragma_table_info('Personeller') WHERE name = $columnName LIMIT 1";
+        checkCommand.CommandText = $"SELECT 1 FROM pragma_table_info('{tableName}') WHERE name = $columnName LIMIT 1";
 
         var parameter = checkCommand.CreateParameter();
         parameter.ParameterName = "$columnName";
@@ -90,7 +135,7 @@ public static class SoforMaasMigrationHelper
         }
 
         await using var alterCommand = connection.CreateCommand();
-        alterCommand.CommandText = $"ALTER TABLE \"Personeller\" ADD COLUMN \"{columnName}\" {columnDefinition}";
+        alterCommand.CommandText = $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{columnName}\" {columnDefinition}";
         await alterCommand.ExecuteNonQueryAsync();
     }
 }
