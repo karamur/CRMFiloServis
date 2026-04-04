@@ -21,8 +21,14 @@
         <!-- Sol Panel - Giriş Formu -->
         <div class="col-lg-5">
             <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Yeni Masraf/Hareket</h5>
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>@(isDuzenleme ? "Hareket Düzenle" : "Yeni Masraf/Hareket")</h5>
+                    @if (isDuzenleme)
+                    {
+                        <button class="btn btn-sm btn-light" @onclick="YeniKayitModunaGec">
+                            <i class="bi bi-x-lg me-1"></i>İptal
+                        </button>
+                    }
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
@@ -160,8 +166,14 @@
                             {
                                 <span class="spinner-border spinner-border-sm me-1"></span>
                             }
-                            <i class="bi bi-check-lg me-1"></i>Kaydet
+                            <i class="bi bi-check-lg me-1"></i>@(isDuzenleme ? "Güncelle" : "Kaydet")
                         </button>
+                        @if (isDuzenleme)
+                        {
+                            <button type="button" class="btn btn-outline-secondary" @onclick="YeniKayitModunaGec">
+                                <i class="bi bi-x-lg me-1"></i>İptal
+                            </button>
+                        }
                     </div>
                 </div>
             </div>
@@ -247,6 +259,9 @@
                                                 </span>
                                             </td>
                                             <td class="text-center">
+                                                <button class="btn btn-sm btn-outline-primary py-0 me-1" @onclick="() => DuzenleAsync(h)" title="Düzenle">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
                                                 <button class="btn btn-sm btn-outline-danger py-0" @onclick="() => SilAsync(h)" title="Sil">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -282,6 +297,8 @@
     private int masrafKalemiId = 0;
     private bool muhasebeFisiOlustur = false;
     private bool isKaydediliyor = false;
+    private bool isDuzenleme = false;
+    private int duzenlenecekId = 0;
 
     private int ekstreAy = DateTime.Today.Month;
     private int ekstreYil = DateTime.Today.Year;
@@ -362,26 +379,39 @@
 
         try
         {
-            if (seciliHesapTipi == HesapTipi.KrediKarti && hareket.HareketTipi == HareketTipi.Cikis)
+            if (isDuzenleme)
             {
-                await BudgetService.AddKrediKartiBorcAsync(
-                    hareket.BankaHesapId,
-                    hareket.Tutar,
-                    ekstreAy,
-                    ekstreYil,
-                    hareket.Aciklama ?? "Kredi karti harcamasi");
+                // Güncelleme işlemi
+                hareket.Id = duzenlenecekId;
+                await HareketService.UpdateAsync(hareket);
+                ToastService.ShowSuccess("Hareket güncellendi.");
+                isDuzenleme = false;
+                duzenlenecekId = 0;
             }
-
-            hareket.IslemNo = await HareketService.GenerateNextIslemNoAsync();
-            hareket.IslemKaynak = IslemKaynak.Manuel;
-            await HareketService.CreateAsync(hareket);
-
-            if (muhasebeFisiOlustur)
+            else
             {
-                await OlusturMuhasebeFisiAsync();
-            }
+                // Yeni kayıt işlemi
+                if (seciliHesapTipi == HesapTipi.KrediKarti && hareket.HareketTipi == HareketTipi.Cikis)
+                {
+                    await BudgetService.AddKrediKartiBorcAsync(
+                        hareket.BankaHesapId,
+                        hareket.Tutar,
+                        ekstreAy,
+                        ekstreYil,
+                        hareket.Aciklama ?? "Kredi karti harcamasi");
+                }
 
-            ToastService.ShowSuccess("Hareket kaydedildi.");
+                hareket.IslemNo = await HareketService.GenerateNextIslemNoAsync();
+                hareket.IslemKaynak = IslemKaynak.Manuel;
+                await HareketService.CreateAsync(hareket);
+
+                if (muhasebeFisiOlustur)
+                {
+                    await OlusturMuhasebeFisiAsync();
+                }
+
+                ToastService.ShowSuccess("Hareket kaydedildi.");
+            }
 
             var eskiHesapId = hareket.BankaHesapId;
             hareket = new BankaKasaHareket
@@ -437,6 +467,57 @@
         {
             ToastService.ShowWarning($"Muhasebe fisi olusturulamadi: {ex.Message}");
         }
+    }
+
+    private async Task DuzenleAsync(BankaKasaHareket h)
+    {
+        var mevcutHareket = await HareketService.GetByIdAsync(h.Id);
+        if (mevcutHareket == null)
+        {
+            ToastService.ShowError("Hareket bulunamadı.");
+            return;
+        }
+
+        isDuzenleme = true;
+        duzenlenecekId = h.Id;
+
+        hareket = new BankaKasaHareket
+        {
+            IslemNo = mevcutHareket.IslemNo,
+            IslemTarihi = mevcutHareket.IslemTarihi,
+            HareketTipi = mevcutHareket.HareketTipi,
+            Tutar = mevcutHareket.Tutar,
+            Aciklama = mevcutHareket.Aciklama,
+            BelgeNo = mevcutHareket.BelgeNo,
+            BankaHesapId = mevcutHareket.BankaHesapId,
+            CariId = mevcutHareket.CariId,
+            IslemKaynak = mevcutHareket.IslemKaynak
+        };
+
+        // Hesap tipini ve seçili hesabı ayarla
+        seciliHesap = hesaplar.FirstOrDefault(he => he.Id == mevcutHareket.BankaHesapId);
+        if (seciliHesap != null)
+        {
+            seciliHesapTipi = seciliHesap.HesapTipi;
+            filtreliHesaplar = hesaplar.Where(he => he.HesapTipi == seciliHesapTipi && he.Aktif).ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private void YeniKayitModunaGec()
+    {
+        isDuzenleme = false;
+        duzenlenecekId = 0;
+        hareket = new BankaKasaHareket
+        {
+            IslemTarihi = DateTime.Today,
+            HareketTipi = HareketTipi.Cikis
+        };
+        seciliHesapTipi = null;
+        seciliHesap = null;
+        filtreliHesaplar = new List<BankaHesap>();
+        StateHasChanged();
     }
 
     private async Task SilAsync(BankaKasaHareket h)

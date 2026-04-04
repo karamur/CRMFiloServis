@@ -1,18 +1,19 @@
-@page "/banka-hareketleri/yeni"
+ï»¿@page "/banka-hareketleri/yeni"
 @page "/banka-hareketleri/{Id:int}"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @inject IBankaKasaHareketService HareketService
 @inject IBankaHesapService BankaHesapService
 @inject ICariService CariService
+@inject IToastService ToastService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEdit ? "Hareket Düzenle" : "Yeni Hareket")</PageTitle>
+<PageTitle>@(IsEdit ? "Hareket DÃ¼zenle" : "Yeni Hareket")</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-arrow-left-right me-2"></i>@(IsEdit ? "Hareket Düzenle" : "Yeni Banka/Kasa Hareketi")</h3>
+        <h3><i class="bi bi-arrow-left-right me-2"></i>@(IsEdit ? "Hareket DÃ¼zenle" : "Yeni Banka/Kasa Hareketi")</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -26,13 +27,13 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Ýþlem No *</label>
+                            <label class="form-label">Ä°ÅŸlem No *</label>
                             <InputText @bind-Value="hareket.IslemNo" class="form-control" readonly="@IsEdit" />
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Ýþlem Tarihi *</label>
+                            <label class="form-label">Ä°ÅŸlem Tarihi *</label>
                             <InputDate @bind-Value="hareket.IslemTarihi" class="form-control" />
                         </div>
                     </div>
@@ -40,8 +41,8 @@
                         <div class="mb-3">
                             <label class="form-label">Hareket Tipi *</label>
                             <InputSelect @bind-Value="hareket.HareketTipi" class="form-select">
-                                <option value="@HareketTipi.Giris">Giriþ (Tahsilat)</option>
-                                <option value="@HareketTipi.Cikis">Çýkýþ (Ödeme)</option>
+                                <option value="@HareketTipi.Giris">GiriÅŸ (Tahsilat)</option>
+                                <option value="@HareketTipi.Cikis">Ã‡Ä±kÄ±ÅŸ (Ã–deme)</option>
                             </InputSelect>
                         </div>
                     </div>
@@ -52,7 +53,7 @@
                         <div class="mb-3">
                             <label class="form-label">Hesap *</label>
                             <InputSelect @bind-Value="hareket.BankaHesapId" class="form-select">
-                                <option value="0">-- Hesap Seçiniz --</option>
+                                <option value="0">-- Hesap SeÃ§iniz --</option>
                                 @foreach (var hesap in hesaplar)
                                 {
                                     <option value="@hesap.Id">@hesap.HesapAdi (@GetTipText(hesap.HesapTipi))</option>
@@ -64,7 +65,7 @@
                         <div class="mb-3">
                             <label class="form-label">Cari (Opsiyonel)</label>
                             <InputSelect @bind-Value="hareket.CariId" class="form-select">
-                                <option value="">-- Cari Seçiniz --</option>
+                                <option value="">-- Cari SeÃ§iniz --</option>
                                 @foreach (var cari in cariler)
                                 {
                                     <option value="@cari.Id">@cari.Unvan</option>
@@ -89,7 +90,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Ýþlem Kaynaðý</label>
+                            <label class="form-label">Ä°ÅŸlem KaynaÄŸÄ±</label>
                             <InputSelect @bind-Value="hareket.IslemKaynak" class="form-select">
                                 @foreach (IslemKaynak kaynak in Enum.GetValues(typeof(IslemKaynak)))
                                 {
@@ -101,7 +102,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Açýklama</label>
+                    <label class="form-label">AÃ§Ä±klama</label>
                     <InputTextArea @bind-Value="hareket.Aciklama" class="form-control" rows="3" />
                 </div>
 
@@ -110,7 +111,7 @@
                         <i class="bi bi-check-lg me-1"></i>Kaydet
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Geri">
-                        <i class="bi bi-x-lg me-1"></i>Ýptal
+                        <i class="bi bi-x-lg me-1"></i>Ä°ptal
                     </button>
                 </div>
             </EditForm>
@@ -156,17 +157,29 @@
     private async Task Kaydet()
     {
         if (hareket.BankaHesapId == 0 || hareket.Tutar <= 0)
+        {
+            ToastService.ShowWarning("LÃ¼tfen tÃ¼m zorunlu alanlarÄ± doldurunuz.");
             return;
+        }
 
-        if (IsEdit)
+        try
         {
-            await HareketService.UpdateAsync(hareket);
+            if (IsEdit)
+            {
+                await HareketService.UpdateAsync(hareket);
+                ToastService.ShowSuccess("Hareket gÃ¼ncellendi.");
+            }
+            else
+            {
+                await HareketService.CreateAsync(hareket);
+                ToastService.ShowSuccess("Hareket kaydedildi.");
+            }
+            Navigation.NavigateTo("/banka-hareketleri");
         }
-        else
+        catch (Exception ex)
         {
-            await HareketService.CreateAsync(hareket);
+            ToastService.ShowError($"Hata: {ex.Message}");
         }
-        Navigation.NavigateTo("/banka-hareketleri");
     }
 
     private void Geri()
@@ -186,7 +199,7 @@
     private string GetKaynakText(IslemKaynak kaynak) => kaynak switch
     {
         IslemKaynak.Manuel => "Manuel",
-        IslemKaynak.FaturaOdeme => "Fatura Ödeme",
+        IslemKaynak.FaturaOdeme => "Fatura Ã–deme",
         IslemKaynak.FaturaTahsilat => "Fatura Tahsilat",
         IslemKaynak.Havale => "Havale",
         IslemKaynak.Eft => "EFT",
