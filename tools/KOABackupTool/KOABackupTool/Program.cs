@@ -283,9 +283,28 @@ class Program
             // Migration tablosunu oluştur
             await EnsureMigrationTableExistsAsync(conn);
 
+            // Önce mevcut tabloları sil (foreign key sorunlarını önlemek için)
+            AnsiConsole.MarkupLine("[grey]Mevcut tablolar siliniyor...[/]");
+            using (var dropCmd = new NpgsqlCommand(@"
+                DO $$ DECLARE r RECORD;
+                BEGIN
+                    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != '__EFMigrationsHistory') LOOP
+                        EXECUTE 'DROP TABLE IF EXISTS ""' || r.tablename || '"" CASCADE';
+                    END LOOP;
+                END $$;", conn))
+            {
+                await dropCmd.ExecuteNonQueryAsync();
+            }
+
             AnsiConsole.MarkupLine("[grey]SQL komutlari calistiriliyor...[/]");
+
+            // Foreign key kontrollerini devre dışı bırak
+            using (var fkCmd = new NpgsqlCommand("SET session_replication_role = 'replica';", conn))
+                await fkCmd.ExecuteNonQueryAsync();
+
             var statements = sql.Split(';').Where(s => !string.IsNullOrWhiteSpace(s) && !s.TrimStart().StartsWith("--")).ToList();
             int success = 0, failed = 0;
+            var errors = new List<string>();
 
             foreach (var stmt in statements)
             {
@@ -295,10 +314,23 @@ class Program
                     await cmd.ExecuteNonQueryAsync();
                     success++;
                 } 
-                catch { failed++; }
+                catch (Exception ex) 
+                { 
+                    failed++;
+                    if (errors.Count < 5) errors.Add(ex.Message.Split('\n')[0]);
+                }
             }
 
+            // Foreign key kontrollerini tekrar etkinleştir
+            using (var fkCmd = new NpgsqlCommand("SET session_replication_role = 'origin';", conn))
+                await fkCmd.ExecuteNonQueryAsync();
+
             AnsiConsole.MarkupLine($"[green]Yuklendi! ({success} basarili, {failed} atlandi)[/]");
+            if (errors.Any())
+            {
+                AnsiConsole.MarkupLine("[yellow]Bazi hatalar:[/]");
+                foreach (var e in errors) AnsiConsole.MarkupLine($"[grey]  - {e}[/]");
+            }
         }
         catch (Exception ex) { AnsiConsole.MarkupLine("[red]" + ex.Message + "[/]"); }
     }
