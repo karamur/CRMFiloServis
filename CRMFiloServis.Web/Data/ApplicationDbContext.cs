@@ -149,6 +149,13 @@ public class ApplicationDbContext : DbContext
     public DbSet<BordroOdeme> BordroOdemeler { get; set; }
     public DbSet<BordroAyar> BordroAyarlar { get; set; }
 
+    // Araç İlan Yayın ve Kullanıcı Tercihleri Modülü
+    public DbSet<IlanPlatformu> IlanPlatformlari { get; set; }
+    public DbSet<AracIlanYayin> AracIlanYayinlar { get; set; }
+    public DbSet<AracIlanIcerik> AracIlanIcerikleri { get; set; }
+    public DbSet<KullaniciTercihi> KullaniciTercihleri { get; set; }
+    public DbSet<KullaniciSonIslem> KullaniciSonIslemler { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -896,6 +903,100 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.AracId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // ===== ARAÇ İLAN YAYIN VE KULLANICI TERCİHLERİ MODÜLÜ =====
+
+        // IlanPlatformu (arabam, sahibinden, letgo vb.)
+        modelBuilder.Entity<IlanPlatformu>(entity =>
+        {
+            entity.HasIndex(e => e.PlatformAdi).IsUnique();
+            entity.Property(e => e.PlatformAdi).HasMaxLength(50);
+            entity.Property(e => e.WebSiteUrl).HasMaxLength(100);
+            entity.Property(e => e.ApiUrl).HasMaxLength(100);
+            entity.Property(e => e.ApiKey).HasMaxLength(200);
+            entity.Property(e => e.ApiSecret).HasMaxLength(100);
+            entity.Property(e => e.KullaniciAdi).HasMaxLength(100);
+            entity.Property(e => e.Sifre).HasMaxLength(100);
+            entity.Property(e => e.Icon).HasMaxLength(50);
+            entity.Property(e => e.Renk).HasMaxLength(20);
+            entity.Property(e => e.Notlar).HasMaxLength(500);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // AracIlanYayin - hangi araç hangi platformda yayında
+        modelBuilder.Entity<AracIlanYayin>(entity =>
+        {
+            entity.HasIndex(e => new { e.AracId, e.PlatformId }).IsUnique().HasFilter("\"IsDeleted\" = false");
+            entity.Property(e => e.PlatformIlanNo).HasMaxLength(100);
+            entity.Property(e => e.PlatformIlanUrl).HasMaxLength(500);
+            entity.Property(e => e.YayinFiyati).HasPrecision(18, 2);
+            entity.Property(e => e.FiyatAciklama).HasMaxLength(50);
+            entity.Property(e => e.OneCikarmaBedeli).HasPrecision(18, 2);
+            entity.Property(e => e.Notlar).HasMaxLength(500);
+            entity.HasOne(e => e.Arac)
+                .WithMany()
+                .HasForeignKey(e => e.AracId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Platform)
+                .WithMany(p => p.Yayinlar)
+                .HasForeignKey(e => e.PlatformId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.YayinlayanKullanici)
+                .WithMany()
+                .HasForeignKey(e => e.YayinlayanKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // AracIlanIcerik - ilan içeriği (başlık, açıklama, fotoğraflar)
+        modelBuilder.Entity<AracIlanIcerik>(entity =>
+        {
+            entity.HasIndex(e => new { e.AracId, e.PlatformId });
+            entity.Property(e => e.IlanBasligi).HasMaxLength(200);
+            entity.Property(e => e.MetaBaslik).HasMaxLength(200);
+            entity.Property(e => e.MetaAciklama).HasMaxLength(500);
+            entity.Property(e => e.AnahtarKelimeler).HasMaxLength(200);
+            entity.HasOne(e => e.Arac)
+                .WithMany()
+                .HasForeignKey(e => e.AracId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Platform)
+                .WithMany()
+                .HasForeignKey(e => e.PlatformId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // KullaniciTercihi - varsayılan anasayfa, tema, bildirimler
+        modelBuilder.Entity<KullaniciTercihi>(entity =>
+        {
+            entity.HasIndex(e => e.KullaniciId).IsUnique();
+            entity.Property(e => e.VarsayilanAnasayfa).HasMaxLength(100);
+            entity.Property(e => e.Tema).HasMaxLength(20);
+            entity.Property(e => e.SidebarDurum).HasMaxLength(20);
+            entity.Property(e => e.VarsayilanSiralama).HasMaxLength(2000);
+            entity.Property(e => e.AnasayfaWidgetSirasi).HasMaxLength(2000);
+            entity.Property(e => e.DigerTercihler).HasMaxLength(4000);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // KullaniciSonIslem - son erişilen sayfalar
+        modelBuilder.Entity<KullaniciSonIslem>(entity =>
+        {
+            entity.HasIndex(e => new { e.KullaniciId, e.SayfaYolu });
+            entity.Property(e => e.SayfaYolu).HasMaxLength(200);
+            entity.Property(e => e.SayfaBasligi).HasMaxLength(200);
+            entity.Property(e => e.Icon).HasMaxLength(50);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 
