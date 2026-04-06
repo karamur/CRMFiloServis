@@ -144,10 +144,20 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task DeleteAsync(int id)
     {
-        var hareket = await _context.BankaKasaHareketleri.FindAsync(id);
+        var hareket = await _context.BankaKasaHareketleri
+            .Include(h => h.OdemeEslestirmeleri)
+            .FirstOrDefaultAsync(h => h.Id == id);
+
         if (hareket != null)
         {
-            hareket.IsDeleted = true;
+            // Önce ilişkili OdemeEslestirmeleri sil
+            if (hareket.OdemeEslestirmeleri.Any())
+            {
+                _context.OdemeEslestirmeleri.RemoveRange(hareket.OdemeEslestirmeleri);
+            }
+
+            // Veritabanından tamamen sil (hard delete)
+            _context.BankaKasaHareketleri.Remove(hareket);
             await _context.SaveChangesAsync();
         }
     }
@@ -429,13 +439,19 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task MahsupIptalAsync(Guid mahsupGrupId)
     {
         var hareketler = await _context.BankaKasaHareketleri
+            .Include(h => h.OdemeEslestirmeleri)
             .Where(h => h.MahsupGrupId == mahsupGrupId)
             .ToListAsync();
 
-        foreach (var hareket in hareketler)
+        // Önce ilişkili OdemeEslestirmeleri sil
+        var eslestirmeler = hareketler.SelectMany(h => h.OdemeEslestirmeleri).ToList();
+        if (eslestirmeler.Any())
         {
-            hareket.IsDeleted = true;
+            _context.OdemeEslestirmeleri.RemoveRange(eslestirmeler);
         }
+
+        // Veritabanından tamamen sil (hard delete)
+        _context.BankaKasaHareketleri.RemoveRange(hareketler);
 
         await _context.SaveChangesAsync();
     }

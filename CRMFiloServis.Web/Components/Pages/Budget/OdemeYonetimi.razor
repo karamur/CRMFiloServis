@@ -655,16 +655,13 @@
 
     private async Task OdemeGeriAl(BudgetOdeme odeme)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", $"'{odeme.MasrafKalemi}' odemesini geri almak istediginize emin misiniz?");
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"'{odeme.MasrafKalemi}' odemesini geri almak istediginize emin misiniz? İlişkili kasa/banka hareketi de silinecektir.");
         if (confirmed)
         {
             try
             {
-                odeme.Durum = OdemeDurum.Bekliyor;
-                odeme.GercekOdemeTarihi = null;
-                odeme.OdenenTutar = null;
-                await BudgetService.UpdateOdemeAsync(odeme);
-                ToastService.ShowSuccess("Odeme geri alindi.");
+                await BudgetService.OdemeGeriAlAsync(odeme.Id);
+                ToastService.ShowSuccess("Odeme geri alindi ve hareket silindi.");
                 await LoadDataAsync();
             }
             catch (Exception ex)

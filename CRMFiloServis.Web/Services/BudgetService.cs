@@ -192,6 +192,7 @@ public class BudgetService : IBudgetService
     /// Kasa'dan odeme yapildiginda:
     /// - Kasa = Borc (Cikis)
     /// - Odeme kaydi = Alacak olarak islenir
+    /// Kredi Karti odemelerinde kesintiler (masraf, faiz vb.) borca EKLENIR
     /// </summary>
     public async Task<BudgetOdeme> OdemeYapAsync(int odemeId, OdemeYapRequest request)
     {
@@ -211,16 +212,29 @@ public class BudgetService : IBudgetService
         odeme.DigerKesinti = digerKesinti;
         odeme.KesintiAciklamasi = request.KesintiAciklamasi;
 
-        // Net ödeme tutarı (kesintiler düşülmüş)
         var toplamKesinti = masrafKesintisi + cezaKesintisi + digerKesinti;
-        var netOdemeTutari = RoundCurrency(odemeTutari - toplamKesinti);
+        decimal netOdemeTutari;
+
+        // Kredi kartı ödemesinde kesintiler EKLENIR (faiz, komisyon = ekstra borç)
+        // Diğer ödemelerde kesintiler DÜŞÜLÜR
+        if (request.OdemeTipi == OdemeTipi.KrediKarti)
+        {
+            // Kredi kartı: Kesintiler (faiz/komisyon) borca eklenir
+            netOdemeTutari = RoundCurrency(odemeTutari + toplamKesinti);
+        }
+        else
+        {
+            // Kasa/Banka: Kesintiler düşülür
+            netOdemeTutari = RoundCurrency(odemeTutari - toplamKesinti);
+        }
+
         if (netOdemeTutari <= 0)
             throw new Exception("Net ödeme tutarı sıfırdan büyük olmalıdır.");
 
         // Odeme durumunu guncelle
         odeme.Durum = OdemeDurum.Odendi;
         odeme.GercekOdemeTarihi = odemeTarihi;
-        odeme.OdenenTutar = odemeTutari;
+        odeme.OdenenTutar = netOdemeTutari; // Net tutar kaydedilsin
         odeme.OdemeYapildigiHesapId = request.BankaHesapId;
         odeme.OdemeNotu = request.OdemeNotu ?? request.Aciklama;
         odeme.UpdatedAt = DateTime.UtcNow;
@@ -233,9 +247,14 @@ public class BudgetService : IBudgetService
             if (!string.IsNullOrEmpty(request.OdemeNotu))
                 aciklamaBuilder += $" - {request.OdemeNotu}";
             if (toplamKesinti != 0)
-                aciklamaBuilder += toplamKesinti > 0
-                    ? $" (Kesinti: {toplamKesinti:N2} ₺)"
-                    : $" (Ekleme: {Math.Abs(toplamKesinti):N2} ₺)";
+            {
+                if (request.OdemeTipi == OdemeTipi.KrediKarti)
+                    aciklamaBuilder += $" (Ek Masraf: {toplamKesinti:N2} ₺)";
+                else
+                    aciklamaBuilder += toplamKesinti > 0
+                        ? $" (Kesinti: {toplamKesinti:N2} ₺)"
+                        : $" (Ekleme: {Math.Abs(toplamKesinti):N2} ₺)";
+            }
 
             var hareket = new BankaKasaHareket
             {
@@ -243,7 +262,7 @@ public class BudgetService : IBudgetService
                 IslemTarihi = odemeTarihi,
                 HareketTipi = HareketTipi.Cikis, // Kasa = Borc (para cikiyor)
                 BankaHesapId = request.BankaHesapId.Value,
-                Tutar = netOdemeTutari, // Net tutar (kesintiler düşülmüş)
+                Tutar = netOdemeTutari, // Net tutar
                 Aciklama = aciklamaBuilder,
                 IslemKaynak = IslemKaynak.Butce,
                 CreatedAt = DateTime.UtcNow
@@ -277,6 +296,50 @@ public class BudgetService : IBudgetService
         odeme.FaturaId = faturaId;
         odeme.FaturaIleKapatildi = true;
         odeme.Durum = OdemeDurum.Odendi;
+        odeme.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return odeme;
+    }
+
+    /// <summary>
+    /// Ödeme geri alma - Ödeme durumunu Bekliyor yapar ve ilişkili BankaKasaHareket kaydını siler
+    /// </summary>
+    public async Task<BudgetOdeme> OdemeGeriAlAsync(int odemeId)
+    {
+        var odeme = await _context.BudgetOdemeler.FindAsync(odemeId);
+        if (odeme == null)
+            throw new Exception("Odeme bulunamadi");
+
+        // İlişkili BankaKasaHareket kaydını sil
+        if (odeme.BankaKasaHareketId.HasValue)
+        {
+            var hareket = await _context.BankaKasaHareketleri
+                .Include(h => h.OdemeEslestirmeleri)
+                .FirstOrDefaultAsync(h => h.Id == odeme.BankaKasaHareketId.Value);
+
+            if (hareket != null)
+            {
+                // Önce ilişkili OdemeEslestirmeleri sil
+                if (hareket.OdemeEslestirmeleri.Any())
+                {
+                    _context.OdemeEslestirmeleri.RemoveRange(hareket.OdemeEslestirmeleri);
+                }
+                _context.BankaKasaHareketleri.Remove(hareket); // Hard delete
+            }
+        }
+
+        // Ödeme durumunu geri al
+        odeme.Durum = OdemeDurum.Bekliyor;
+        odeme.GercekOdemeTarihi = null;
+        odeme.OdenenTutar = null;
+        odeme.BankaKasaHareketId = null;
+        odeme.OdemeYapildigiHesapId = null;
+        odeme.OdemeNotu = null;
+        odeme.MasrafKesintisi = 0;
+        odeme.CezaKesintisi = 0;
+        odeme.DigerKesinti = 0;
+        odeme.KesintiAciklamasi = null;
         odeme.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

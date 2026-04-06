@@ -16,6 +16,7 @@ public interface IBudgetService
     Task DeleteOdemeAsync(int id); // Soft delete
     Task HardDeleteOdemeAsync(int id); // Kalici silme
     Task<BudgetOdeme> OdemeYapAsync(int odemeId, OdemeYapRequest request); // Kasa=Borc, Odeme=Alacak
+    Task<BudgetOdeme> OdemeGeriAlAsync(int odemeId); // Odeme geri alma - hareket siler
 
     // Fatura ile kapatma
     Task<BudgetOdeme> FaturaIleKapatAsync(int odemeId, int faturaId);
