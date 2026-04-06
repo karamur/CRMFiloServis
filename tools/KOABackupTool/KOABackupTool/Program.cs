@@ -180,12 +180,55 @@ class Program
         catch (Exception ex) { AnsiConsole.MarkupLine("[red]" + ex.Message + "[/]"); }
     }
 
+    static async Task EnsureDatabaseExistsAsync()
+    {
+        // postgres veritabanına bağlan ve hedef veritabanını kontrol et/oluştur
+        var masterConnStr = $"Host={_host};Port={_port};Database=postgres;Username={_username};Password={_password}";
+
+        try
+        {
+            using var conn = new NpgsqlConnection(masterConnStr);
+            await conn.OpenAsync();
+
+            // Veritabanı var mı kontrol et
+            using var checkCmd = new NpgsqlCommand($"SELECT 1 FROM pg_database WHERE datname = '{_database}'", conn);
+            var exists = await checkCmd.ExecuteScalarAsync();
+
+            if (exists == null)
+            {
+                AnsiConsole.MarkupLine($"[yellow]Veritabani '{_database}' bulunamadi, olusturuluyor...[/]");
+                using var createCmd = new NpgsqlCommand($"CREATE DATABASE \"{_database}\" ENCODING 'UTF8'", conn);
+                await createCmd.ExecuteNonQueryAsync();
+                AnsiConsole.MarkupLine($"[green]Veritabani '{_database}' olusturuldu![/]");
+            }
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Veritabani kontrol hatasi: {ex.Message}[/]");
+            throw;
+        }
+    }
+
+    static async Task EnsureMigrationTableExistsAsync(NpgsqlConnection conn)
+    {
+        // EF Core migration tablosunu oluştur
+        var createTableSql = @"
+            CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                ""MigrationId"" character varying(150) NOT NULL,
+                ""ProductVersion"" character varying(32) NOT NULL,
+                CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
+            );";
+
+        using var cmd = new NpgsqlCommand(createTableSql, conn);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     static async Task RestoreBackupAsync()
     {
         if (!Directory.Exists(_backupFolder)) { AnsiConsole.MarkupLine("[red]Klasor yok[/]"); return; }
         var files = Directory.GetFiles(_backupFolder, "*.sql.gz").Concat(Directory.GetFiles(_backupFolder, "*.sql")).OrderByDescending(File.GetCreationTime).ToList();
         if (!files.Any()) { AnsiConsole.MarkupLine("[yellow]Yedek yok[/]"); return; }
-        
+
         var sel = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[green]Sec:[/]").AddChoices(files.Select(Path.GetFileName).Append("Geri")));
         if (sel == "Geri") return;
         var file = files.First(f => Path.GetFileName(f) == sel);
@@ -194,15 +237,35 @@ class Program
 
         try
         {
+            // Veritabanı yoksa oluştur
+            await EnsureDatabaseExistsAsync();
+
             string sql;
             if (file.EndsWith(".gz")) { await using var fs = File.OpenRead(file); await using var gz = new GZipStream(fs, CompressionMode.Decompress); using var sr = new StreamReader(gz); sql = await sr.ReadToEndAsync(); }
             else sql = await File.ReadAllTextAsync(file);
-            
+
             using var conn = new NpgsqlConnection(GetConnectionString());
             await conn.OpenAsync();
-            foreach (var stmt in sql.Split(';').Where(s => !string.IsNullOrWhiteSpace(s) && !s.TrimStart().StartsWith("--")))
-                try { using var cmd = new NpgsqlCommand(stmt.Trim(), conn); await cmd.ExecuteNonQueryAsync(); } catch { }
-            AnsiConsole.MarkupLine("[green]Yuklendi![/]");
+
+            // Migration tablosunu oluştur
+            await EnsureMigrationTableExistsAsync(conn);
+
+            AnsiConsole.MarkupLine("[grey]SQL komutlari calistiriliyor...[/]");
+            var statements = sql.Split(';').Where(s => !string.IsNullOrWhiteSpace(s) && !s.TrimStart().StartsWith("--")).ToList();
+            int success = 0, failed = 0;
+
+            foreach (var stmt in statements)
+            {
+                try 
+                { 
+                    using var cmd = new NpgsqlCommand(stmt.Trim(), conn); 
+                    await cmd.ExecuteNonQueryAsync();
+                    success++;
+                } 
+                catch { failed++; }
+            }
+
+            AnsiConsole.MarkupLine($"[green]Yuklendi! ({success} basarili, {failed} atlandi)[/]");
         }
         catch (Exception ex) { AnsiConsole.MarkupLine("[red]" + ex.Message + "[/]"); }
     }
