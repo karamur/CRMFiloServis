@@ -884,7 +884,11 @@ public class AracService : IAracService
                 catch (Exception ex)
                 {
                     _context.ChangeTracker.Clear();
-                    result.Errors.Add($"Satır {row}: {ex.Message}");
+                    // Daha açıklayıcı hata mesajı
+                    var saseNoHata = ws.Cell(row, saseNoKolon.Value).GetString()?.Trim() ?? "?";
+                    var plakaHata = GetCellValue(ws, row, kolonlar, "PLAKA") ?? "";
+                    var hataMesaji = ex.InnerException?.Message ?? ex.Message;
+                    result.Errors.Add($"Satır {row} ({saseNoHata} / {plakaHata}): {hataMesaji}");
                     result.ErrorCount++;
                 }
             }

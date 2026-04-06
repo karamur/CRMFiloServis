@@ -490,7 +490,9 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Firma *</label>
-                            <select class="form-select @(importFirmaId == 0 ? "border-danger" : "")" @bind="importFirmaId">
+                            <select class="form-select @(importFirmaId == 0 ? "border-danger" : "")" 
+                                    value="@importFirmaId" 
+                                    @onchange="@(e => importFirmaId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0)">
                                 <option value="0">-- Firma Seçin --</option>
                                 @if (firmalar != null)
                                 {
