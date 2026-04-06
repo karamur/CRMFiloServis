@@ -30,24 +30,38 @@ class Program
         LoadSettings();
 
         AnsiConsole.Write(new FigletText("KOA Backup").Centered().Color(Color.Blue));
-        AnsiConsole.MarkupLine("[grey]PostgreSQL Yedekleme Araci v1.1[/]");
+        AnsiConsole.MarkupLine("[grey]PostgreSQL Yedekleme Araci v1.2[/]");
         if (File.Exists(ConfigFile))
             AnsiConsole.MarkupLine($"[grey]Ayarlar yuklendi: {_host}:{_port}/{_database}[/]");
         AnsiConsole.WriteLine();
 
         while (true)
         {
-            var choice = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[green]Ne yapmak istiyorsunuz?[/]").PageSize(10)
-                .AddChoices(new[] { "1. Yedek Al", "2. Yedek Yukle", "3. PostgreSQL -> SQLite", "4. Ayarlar", "5. Klasor Ac", "6. Listele", "7. Cikis" }));
+            var choice = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[green]Ne yapmak istiyorsunuz?[/]").PageSize(12)
+                .AddChoices(new[] { 
+                    "1. Yedek Al (PostgreSQL)", 
+                    "2. Yedek Yukle (PostgreSQL)", 
+                    "3. PostgreSQL -> SQLite (Yedekten)", 
+                    "4. PostgreSQL -> SQLite (Canli DB)",
+                    "5. SQLite -> PostgreSQL",
+                    "6. Yedek Sil",
+                    "7. Ayarlar", 
+                    "8. Klasor Ac", 
+                    "9. Listele", 
+                    "0. Cikis" 
+                }));
             switch (choice[0])
             {
                 case '1': await CreateBackupAsync(); break;
                 case '2': await RestoreBackupAsync(); break;
                 case '3': await ConvertToSqliteAsync(); break;
-                case '4': ConfigureConnection(); break;
-                case '5': OpenBackupFolder(); break;
-                case '6': ListBackups(); break;
-                case '7': return;
+                case '4': await DirectPgToSqliteAsync(); break;
+                case '5': await ConvertSqliteToPostgreSqlAsync(); break;
+                case '6': await DeleteBackupsAsync(); break;
+                case '7': ConfigureConnection(); break;
+                case '8': OpenBackupFolder(); break;
+                case '9': ListBackups(); break;
+                case '0': return;
             }
             AnsiConsole.WriteLine();
         }
@@ -859,6 +873,437 @@ class Program
         result = Regex.Replace(result, @"E'([^']*)'", "'$1'");
 
         return result.TrimEnd(';') + ";";
+    }
+
+    #endregion
+
+    #region Doğrudan PostgreSQL -> SQLite (Canlı DB)
+
+    static async Task DirectPgToSqliteAsync()
+    {
+        if (string.IsNullOrEmpty(_password)) 
+            _password = AnsiConsole.Prompt(new TextPrompt<string>("[yellow]Password:[/]").Secret('*'));
+
+        Directory.CreateDirectory(_backupFolder);
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+        var sqliteFile = Path.Combine(_backupFolder, $"{_database}_sqlite_{timestamp}.db");
+
+        try
+        {
+            // Önce bağlantıyı test et
+            using var testConn = new NpgsqlConnection(GetConnectionString());
+            await testConn.OpenAsync();
+            testConn.Close();
+
+            await AnsiConsole.Progress().StartAsync(async ctx =>
+            {
+                var task = ctx.AddTask("[green]PostgreSQL -> SQLite aktariliyor[/]", maxValue: 100);
+
+                await using var pgConn = new NpgsqlConnection(GetConnectionString());
+                await pgConn.OpenAsync();
+                task.Increment(5);
+
+                await using var sqliteConn = new SqliteConnection($"Data Source={sqliteFile}");
+                await sqliteConn.OpenAsync();
+                task.Increment(5);
+
+                // Tabloları listele
+                var tables = new List<(string name, long rowCount)>();
+                using (var cmd = new NpgsqlCommand(@"
+                    SELECT t.tablename, 
+                           COALESCE((SELECT reltuples::bigint FROM pg_class WHERE relname = t.tablename), 0) as rows
+                    FROM pg_tables t 
+                    WHERE schemaname = 'public' 
+                    ORDER BY tablename", pgConn))
+                using (var r = await cmd.ExecuteReaderAsync())
+                {
+                    while (await r.ReadAsync())
+                        tables.Add((r.GetString(0), r.GetInt64(1)));
+                }
+                task.Increment(5);
+
+                // Migration tablosunu oluştur
+                await CreateSqliteMigrationTableAsync(sqliteConn);
+
+                int successTables = 0, failedTables = 0;
+                var errors = new List<string>();
+                var increment = 80.0 / Math.Max(tables.Count, 1);
+
+                foreach (var (tableName, rowCount) in tables)
+                {
+                    task.Description = $"[grey]Tablo: {tableName} ({rowCount} satir)[/]";
+                    try
+                    {
+                        await TransferTableDirectAsync(pgConn, sqliteConn, tableName);
+                        successTables++;
+                    }
+                    catch (Exception ex)
+                    {
+                        failedTables++;
+                        if (errors.Count < 10) errors.Add($"{tableName}: {ex.Message.Split('\n')[0]}");
+                    }
+                    task.Increment(increment);
+                }
+
+                task.Increment(5);
+                task.Description = "[green]Tamamlandi![/]";
+
+                AnsiConsole.MarkupLine($"\n[green]SQLite veritabani olusturuldu: {sqliteFile}[/]");
+                AnsiConsole.MarkupLine($"[grey]Tablolar: {successTables} basarili, {failedTables} hatali[/]");
+
+                if (errors.Any())
+                {
+                    AnsiConsole.MarkupLine("[yellow]Hatalar:[/]");
+                    foreach (var e in errors) AnsiConsole.MarkupLine($"[grey]  - {e}[/]");
+                }
+
+                var fileInfo = new FileInfo(sqliteFile);
+                AnsiConsole.MarkupLine($"[grey]Boyut: {FormatSize(fileInfo.Length)}[/]");
+            });
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Hata: {ex.Message}[/]");
+        }
+    }
+
+    static async Task TransferTableDirectAsync(NpgsqlConnection pgConn, SqliteConnection sqliteConn, string tableName)
+    {
+        // 1. Tablo yapısını al
+        var columns = new List<(string name, string pgType)>();
+        using (var cmd = new NpgsqlCommand($@"
+            SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod)
+            FROM pg_attribute a
+            WHERE a.attrelid = '{tableName}'::regclass 
+            AND a.attnum > 0 
+            AND NOT a.attisdropped
+            ORDER BY a.attnum", pgConn))
+        using (var r = await cmd.ExecuteReaderAsync())
+        {
+            while (await r.ReadAsync())
+                columns.Add((r.GetString(0), r.GetString(1)));
+        }
+
+        if (!columns.Any()) return;
+
+        // 2. SQLite tablo oluştur
+        var sqliteColumns = columns.Select(c => $"\"{c.name}\" {ConvertPgTypeToSqlite(c.pgType)}");
+        var createSql = $"DROP TABLE IF EXISTS \"{tableName}\"; CREATE TABLE \"{tableName}\" ({string.Join(", ", sqliteColumns)});";
+
+        await using (var createCmd = new SqliteCommand(createSql, sqliteConn))
+            await createCmd.ExecuteNonQueryAsync();
+
+        // 3. Verileri aktar
+        using var selectCmd = new NpgsqlCommand($"SELECT * FROM \"{tableName}\"", pgConn);
+        using var reader = await selectCmd.ExecuteReaderAsync();
+
+        if (!reader.HasRows) return;
+
+        await using var transaction = await sqliteConn.BeginTransactionAsync();
+        try
+        {
+            var colNames = string.Join(", ", columns.Select(c => $"\"{c.name}\""));
+            var paramNames = string.Join(", ", columns.Select((_, i) => $"@p{i}"));
+            var insertSql = $"INSERT INTO \"{tableName}\" ({colNames}) VALUES ({paramNames});";
+
+            while (await reader.ReadAsync())
+            {
+                await using var insertCmd = new SqliteCommand(insertSql, sqliteConn, (SqliteTransaction)transaction);
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    var value = reader.IsDBNull(i) ? DBNull.Value : ConvertPgValueToSqlite(reader.GetValue(i));
+                    insertCmd.Parameters.AddWithValue($"@p{i}", value);
+                }
+                await insertCmd.ExecuteNonQueryAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    static string ConvertPgTypeToSqlite(string pgType)
+    {
+        var lower = pgType.ToLowerInvariant();
+        if (lower.Contains("int") || lower.Contains("serial")) return "INTEGER";
+        if (lower.Contains("bool")) return "INTEGER";
+        if (lower.Contains("float") || lower.Contains("double") || lower.Contains("numeric") || lower.Contains("decimal") || lower.Contains("real")) return "REAL";
+        if (lower.Contains("bytea")) return "BLOB";
+        return "TEXT";
+    }
+
+    static object ConvertPgValueToSqlite(object value)
+    {
+        return value switch
+        {
+            bool b => b ? 1 : 0,
+            DateTime dt => dt.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+            DateTimeOffset dto => dto.ToString("yyyy-MM-dd HH:mm:ss.fffzzz"),
+            TimeSpan ts => ts.ToString(),
+            Guid g => g.ToString(),
+            byte[] bytes => bytes,
+            null => DBNull.Value,
+            _ => value.ToString() ?? string.Empty
+        };
+    }
+
+    #endregion
+
+    #region SQLite -> PostgreSQL Dönüştürme
+
+    static async Task ConvertSqliteToPostgreSqlAsync()
+    {
+        if (!Directory.Exists(_backupFolder)) { AnsiConsole.MarkupLine("[red]Yedek klasoru yok[/]"); return; }
+
+        var files = Directory.GetFiles(_backupFolder, "*.db")
+            .Concat(Directory.GetFiles(_backupFolder, "*.sqlite"))
+            .Concat(Directory.GetFiles(_backupFolder, "*.sqlite3"))
+            .OrderByDescending(File.GetCreationTime).ToList();
+
+        if (!files.Any()) { AnsiConsole.MarkupLine("[yellow]SQLite dosyasi yok[/]"); return; }
+
+        var sel = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("[green]PostgreSQL'e aktarilacak SQLite veritabanini secin:[/]")
+            .AddChoices(files.Select(Path.GetFileName).Append("Geri")!));
+
+        if (sel == "Geri") return;
+
+        var sourceFile = files.First(f => Path.GetFileName(f) == sel);
+
+        AnsiConsole.MarkupLine($"[yellow]Hedef PostgreSQL: {_host}:{_port}/{_database}[/]");
+        if (!AnsiConsole.Confirm("Devam edilsin mi? (Mevcut tablolar silinecek!)", false)) return;
+
+        if (string.IsNullOrEmpty(_password))
+            _password = AnsiConsole.Prompt(new TextPrompt<string>("[yellow]Password:[/]").Secret('*'));
+
+        try
+        {
+            // Veritabanı yoksa oluştur
+            await EnsureDatabaseExistsAsync();
+
+            await AnsiConsole.Progress().StartAsync(async ctx =>
+            {
+                var task = ctx.AddTask("[green]SQLite -> PostgreSQL aktariliyor[/]", maxValue: 100);
+
+                await using var sqliteConn = new SqliteConnection($"Data Source={sourceFile};Mode=ReadOnly");
+                await sqliteConn.OpenAsync();
+                task.Increment(5);
+
+                await using var pgConn = new NpgsqlConnection(GetConnectionString());
+                await pgConn.OpenAsync();
+                task.Increment(5);
+
+                // SQLite tabloları listele
+                var tables = new List<string>();
+                using (var cmd = new SqliteCommand("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name", sqliteConn))
+                using (var r = await cmd.ExecuteReaderAsync())
+                {
+                    while (await r.ReadAsync())
+                        tables.Add(r.GetString(0));
+                }
+                task.Increment(5);
+
+                // Mevcut PostgreSQL tablolarını sil
+                task.Description = "[grey]Mevcut tablolar siliniyor...[/]";
+                using (var dropCmd = new NpgsqlCommand(@"
+                    DO $$ DECLARE r RECORD;
+                    BEGIN
+                        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+                            EXECUTE 'DROP TABLE IF EXISTS ""' || r.tablename || '"" CASCADE';
+                        END LOOP;
+                    END $$;", pgConn))
+                {
+                    await dropCmd.ExecuteNonQueryAsync();
+                }
+                task.Increment(5);
+
+                // Migration tablosunu oluştur
+                await EnsureMigrationTableExistsAsync(pgConn);
+
+                int successTables = 0, failedTables = 0;
+                var errors = new List<string>();
+                var increment = 75.0 / Math.Max(tables.Count, 1);
+
+                foreach (var tableName in tables)
+                {
+                    task.Description = $"[grey]Tablo: {tableName}[/]";
+                    try
+                    {
+                        await TransferSqliteTableToPostgreSqlAsync(sqliteConn, pgConn, tableName);
+                        successTables++;
+                    }
+                    catch (Exception ex)
+                    {
+                        failedTables++;
+                        if (errors.Count < 10) errors.Add($"{tableName}: {ex.Message.Split('\n')[0]}");
+                    }
+                    task.Increment(increment);
+                }
+
+                task.Increment(5);
+                task.Description = "[green]Tamamlandi![/]";
+
+                AnsiConsole.MarkupLine($"\n[green]PostgreSQL veritabanina aktarildi: {_database}[/]");
+                AnsiConsole.MarkupLine($"[grey]Tablolar: {successTables} basarili, {failedTables} hatali[/]");
+
+                if (errors.Any())
+                {
+                    AnsiConsole.MarkupLine("[yellow]Hatalar:[/]");
+                    foreach (var e in errors) AnsiConsole.MarkupLine($"[grey]  - {e}[/]");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Hata: {ex.Message}[/]");
+        }
+    }
+
+    static async Task TransferSqliteTableToPostgreSqlAsync(SqliteConnection sqliteConn, NpgsqlConnection pgConn, string tableName)
+    {
+        // 1. SQLite tablo yapısını al
+        var columns = new List<(string name, string type)>();
+        using (var cmd = new SqliteCommand($"PRAGMA table_info(\"{tableName}\")", sqliteConn))
+        using (var r = await cmd.ExecuteReaderAsync())
+        {
+            while (await r.ReadAsync())
+            {
+                var name = r.GetString(1);
+                var type = r.GetString(2);
+                columns.Add((name, type));
+            }
+        }
+
+        if (!columns.Any()) return;
+
+        // 2. PostgreSQL tablo oluştur
+        var pgColumns = columns.Select(c => $"\"{c.name}\" {ConvertSqliteTypeToPg(c.type)}");
+
+        // Primary key'i bul
+        string? pkColumn = null;
+        using (var pkCmd = new SqliteCommand($"PRAGMA table_info(\"{tableName}\")", sqliteConn))
+        using (var pkReader = await pkCmd.ExecuteReaderAsync())
+        {
+            while (await pkReader.ReadAsync())
+            {
+                if (pkReader.GetInt32(5) == 1) // pk column
+                {
+                    pkColumn = pkReader.GetString(1);
+                    break;
+                }
+            }
+        }
+
+        var createSql = $"CREATE TABLE \"{tableName}\" ({string.Join(", ", pgColumns)}";
+        if (pkColumn != null)
+            createSql += $", PRIMARY KEY (\"{pkColumn}\")";
+        createSql += ");";
+
+        await using (var createCmd = new NpgsqlCommand(createSql, pgConn))
+            await createCmd.ExecuteNonQueryAsync();
+
+        // 3. Verileri aktar
+        using var selectCmd = new SqliteCommand($"SELECT * FROM \"{tableName}\"", sqliteConn);
+        using var reader = await selectCmd.ExecuteReaderAsync();
+
+        if (!reader.HasRows) return;
+
+        var colNames = string.Join(", ", columns.Select(c => $"\"{c.name}\""));
+        var paramNames = string.Join(", ", columns.Select((_, i) => $"@p{i}"));
+        var insertSql = $"INSERT INTO \"{tableName}\" ({colNames}) VALUES ({paramNames});";
+
+        while (await reader.ReadAsync())
+        {
+            await using var insertCmd = new NpgsqlCommand(insertSql, pgConn);
+            for (int i = 0; i < columns.Count; i++)
+            {
+                var value = reader.IsDBNull(i) ? DBNull.Value : ConvertSqliteValueToPg(reader.GetValue(i), columns[i].type);
+                insertCmd.Parameters.AddWithValue($"@p{i}", value ?? DBNull.Value);
+            }
+            await insertCmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    static string ConvertSqliteTypeToPg(string sqliteType)
+    {
+        var upper = sqliteType.ToUpperInvariant();
+        if (upper.Contains("INT")) return "INTEGER";
+        if (upper.Contains("REAL") || upper.Contains("FLOA") || upper.Contains("DOUB")) return "DOUBLE PRECISION";
+        if (upper.Contains("BLOB")) return "BYTEA";
+        if (upper.Contains("BOOL")) return "BOOLEAN";
+        return "TEXT";
+    }
+
+    static object? ConvertSqliteValueToPg(object value, string sqliteType)
+    {
+        if (value == null || value == DBNull.Value) return DBNull.Value;
+
+        var upper = sqliteType.ToUpperInvariant();
+
+        // Boolean dönüşümü (SQLite'ta 0/1 olarak saklanır)
+        if (upper.Contains("BOOL") && value is long l)
+            return l != 0;
+
+        return value;
+    }
+
+    #endregion
+
+    #region Yedek Silme
+
+    static async Task DeleteBackupsAsync()
+    {
+        if (!Directory.Exists(_backupFolder)) { AnsiConsole.MarkupLine("[red]Yedek klasoru yok[/]"); return; }
+
+        var files = Directory.GetFiles(_backupFolder)
+            .Where(f => f.EndsWith(".sql") || f.EndsWith(".sql.gz") || f.EndsWith(".db") || f.EndsWith(".sqlite") || f.EndsWith(".sqlite3"))
+            .Select(f => new FileInfo(f))
+            .OrderByDescending(f => f.CreationTime)
+            .ToList();
+
+        if (!files.Any()) { AnsiConsole.MarkupLine("[yellow]Silinecek dosya yok[/]"); return; }
+
+        var choices = files.Select(f => $"{f.Name} ({FormatSize(f.Length)}) - {f.CreationTime:dd.MM.yyyy HH:mm}").ToList();
+        choices.Add("[red]Tum yedekleri sil[/]");
+        choices.Add("Geri");
+
+        var selected = AnsiConsole.Prompt(new MultiSelectionPrompt<string>()
+            .Title("[green]Silinecek dosyalari secin (Space ile sec, Enter ile onayla):[/]")
+            .PageSize(15)
+            .AddChoices(choices));
+
+        if (selected.Contains("Geri") || !selected.Any()) return;
+
+        if (selected.Contains("[red]Tum yedekleri sil[/]"))
+        {
+            if (!AnsiConsole.Confirm("[red]TUM YEDEKLER SILINECEK! Emin misiniz?[/]", false)) return;
+
+            foreach (var file in files)
+            {
+                try { file.Delete(); } catch { }
+            }
+            AnsiConsole.MarkupLine($"[green]{files.Count} dosya silindi.[/]");
+            return;
+        }
+
+        int deleted = 0;
+        foreach (var selection in selected)
+        {
+            var fileName = selection.Split(" (")[0];
+            var file = files.FirstOrDefault(f => f.Name == fileName);
+            if (file != null)
+            {
+                try { file.Delete(); deleted++; } 
+                catch (Exception ex) { AnsiConsole.MarkupLine($"[red]{file.Name} silinemedi: {ex.Message}[/]"); }
+            }
+        }
+
+        AnsiConsole.MarkupLine($"[green]{deleted} dosya silindi.[/]");
+        await Task.CompletedTask;
     }
 
     #endregion
