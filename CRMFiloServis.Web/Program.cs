@@ -174,6 +174,9 @@ builder.Services.AddScoped<IFiloOperasyonService, FiloOperasyonService>(); // Fi
 builder.Services.AddScoped<IIlanYayinService, IlanYayinService>(); // Araç İlan Yayın ve Kullanıcı Tercihleri
 builder.Services.AddScoped<IHakedisService, HakedisService>(); // Hakedis/Puantaj Excel Import ve Takip
 builder.Services.AddScoped<UpdateService>(); // Güncelleme Yönetimi Servisi
+builder.Services.AddScoped<IEmailService, EmailService>(); // E-posta Bildirim Servisi
+builder.Services.AddScoped<ISystemHealthService, SystemHealthService>(); // Sistem Sağlık Kontrolü
+builder.Services.AddHostedService<DatabaseBackupService>(); // Otomatik Veritabanı Yedekleme
 builder.Services.AddHttpClient("OpenAI"); // OpenAI icin HttpClient
 builder.Services.AddHttpClient("Scraper"); // Scraper icin HttpClient
 builder.Services.AddHostedService<AutoBackupService>();
