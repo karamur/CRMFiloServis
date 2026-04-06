@@ -129,6 +129,117 @@ class Program
         var backupFile = Path.Combine(_backupFolder, $"{_database}_backup_{timestamp}.sql");
         var compressedFile = backupFile + ".gz";
 
+        // pg_dump yolunu bul
+        var pgDumpPath = FindPgDump();
+
+        if (pgDumpPath != null)
+        {
+            // pg_dump ile tam yedek al
+            await CreateFullDumpAsync(pgDumpPath, backupFile, compressedFile);
+        }
+        else
+        {
+            // pg_dump bulunamazsa basit yedek al
+            AnsiConsole.MarkupLine("[yellow]pg_dump bulunamadi, basit yedek alinacak...[/]");
+            await CreateSimpleBackupAsync(backupFile, compressedFile);
+        }
+    }
+
+    static string? FindPgDump()
+    {
+        // Olası pg_dump konumları
+        var possiblePaths = new[]
+        {
+            @"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe",
+            @"C:\Program Files\PostgreSQL\16\bin\pg_dump.exe",
+            @"C:\Program Files\PostgreSQL\15\bin\pg_dump.exe",
+            @"C:\Program Files\PostgreSQL\14\bin\pg_dump.exe",
+            @"C:\Program Files (x86)\PostgreSQL\17\bin\pg_dump.exe",
+            @"C:\Program Files (x86)\PostgreSQL\16\bin\pg_dump.exe",
+            "pg_dump.exe", // PATH'te varsa
+            "pg_dump"
+        };
+
+        foreach (var path in possiblePaths)
+        {
+            if (File.Exists(path)) return path;
+        }
+
+        // PATH'te ara
+        try
+        {
+            var result = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "where",
+                Arguments = "pg_dump",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            result?.WaitForExit();
+            var output = result?.StandardOutput.ReadToEnd()?.Trim();
+            if (!string.IsNullOrEmpty(output) && File.Exists(output.Split('\n')[0]))
+                return output.Split('\n')[0].Trim();
+        }
+        catch { }
+
+        return null;
+    }
+
+    static async Task CreateFullDumpAsync(string pgDumpPath, string backupFile, string compressedFile)
+    {
+        try
+        {
+            await AnsiConsole.Status().Spinner(Spinner.Known.Dots).StartAsync("pg_dump ile tam yedek aliniyor...", async ctx =>
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = pgDumpPath,
+                    Arguments = $"-h {_host} -p {_port} -U {_username} -d {_database} -F p -b -v --no-owner --no-acl -f \"{backupFile}\"",
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                psi.Environment["PGPASSWORD"] = _password;
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                if (process == null) throw new Exception("pg_dump baslatilamadi");
+
+                var errorTask = process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0)
+                {
+                    var error = await errorTask;
+                    throw new Exception($"pg_dump hatasi: {error}");
+                }
+
+                ctx.Status("Sikistiriliyor...");
+
+                // Gzip sıkıştır
+                await using (var fs = File.OpenRead(backupFile))
+                await using (var cs = File.Create(compressedFile))
+                await using (var gz = new GZipStream(cs, CompressionLevel.Optimal))
+                    await fs.CopyToAsync(gz);
+
+                File.Delete(backupFile);
+            });
+
+            var fileInfo = new FileInfo(compressedFile);
+            AnsiConsole.MarkupLine($"[green]Tam yedek olusturuldu: {compressedFile}[/]");
+            AnsiConsole.MarkupLine($"[grey]Boyut: {FormatSize(fileInfo.Length)}[/]");
+        }
+        catch (Exception ex) 
+        { 
+            AnsiConsole.MarkupLine($"[red]pg_dump hatasi: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]Basit yedek deneniyor...[/]");
+            await CreateSimpleBackupAsync(backupFile, compressedFile);
+        }
+    }
+
+    static async Task CreateSimpleBackupAsync(string backupFile, string compressedFile)
+    {
         try
         {
             await AnsiConsole.Progress().StartAsync(async ctx => {
@@ -268,11 +379,115 @@ class Program
         if (!AnsiConsole.Confirm("Devam?", false)) return;
         if (string.IsNullOrEmpty(_password)) _password = AnsiConsole.Prompt(new TextPrompt<string>("[yellow]Password:[/]").Secret('*'));
 
+        // Veritabanı yoksa oluştur
+        await EnsureDatabaseExistsAsync();
+
+        // psql yolunu bul ve kullan
+        var psqlPath = FindPsql();
+        if (psqlPath != null)
+        {
+            await RestoreWithPsqlAsync(psqlPath, file);
+        }
+        else
+        {
+            await RestoreWithNpgsqlAsync(file);
+        }
+    }
+
+    static string? FindPsql()
+    {
+        var possiblePaths = new[]
+        {
+            @"C:\Program Files\PostgreSQL\17\bin\psql.exe",
+            @"C:\Program Files\PostgreSQL\16\bin\psql.exe",
+            @"C:\Program Files\PostgreSQL\15\bin\psql.exe",
+            @"C:\Program Files\PostgreSQL\14\bin\psql.exe",
+            "psql.exe",
+            "psql"
+        };
+
+        foreach (var path in possiblePaths)
+        {
+            if (File.Exists(path)) return path;
+        }
+        return null;
+    }
+
+    static async Task RestoreWithPsqlAsync(string psqlPath, string file)
+    {
         try
         {
-            // Veritabanı yoksa oluştur
-            await EnsureDatabaseExistsAsync();
+            await AnsiConsole.Status().Spinner(Spinner.Known.Dots).StartAsync("psql ile geri yukleniyor...", async ctx =>
+            {
+                // Önce gz dosyasını aç
+                string sqlFile = file;
+                bool tempFile = false;
 
+                if (file.EndsWith(".gz"))
+                {
+                    ctx.Status("Dosya aciliyor...");
+                    sqlFile = Path.GetTempFileName();
+                    tempFile = true;
+                    await using var fs = File.OpenRead(file);
+                    await using var gz = new GZipStream(fs, CompressionMode.Decompress);
+                    await using var output = File.Create(sqlFile);
+                    await gz.CopyToAsync(output);
+                }
+
+                ctx.Status("Veritabani hazirlaniyor...");
+
+                // Önce mevcut tabloları sil
+                var dropPsi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = psqlPath,
+                    Arguments = $"-h {_host} -p {_port} -U {_username} -d {_database} -c \"DO $$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP EXECUTE 'DROP TABLE IF EXISTS \\\"' || r.tablename || '\\\" CASCADE'; END LOOP; END $$;\"",
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                dropPsi.Environment["PGPASSWORD"] = _password;
+
+                using (var dropProcess = System.Diagnostics.Process.Start(dropPsi))
+                {
+                    if (dropProcess != null) await dropProcess.WaitForExitAsync();
+                }
+
+                ctx.Status("SQL yukleniyor...");
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = psqlPath,
+                    Arguments = $"-h {_host} -p {_port} -U {_username} -d {_database} -f \"{sqlFile}\" -v ON_ERROR_STOP=0",
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                psi.Environment["PGPASSWORD"] = _password;
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                if (process == null) throw new Exception("psql baslatilamadi");
+
+                await process.WaitForExitAsync();
+
+                if (tempFile && File.Exists(sqlFile))
+                    File.Delete(sqlFile);
+            });
+
+            AnsiConsole.MarkupLine("[green]Yedek basariyla yuklendi![/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]psql hatasi: {ex.Message}[/]");
+            AnsiConsole.MarkupLine("[yellow]Alternatif yontem deneniyor...[/]");
+            await RestoreWithNpgsqlAsync(file);
+        }
+    }
+
+    static async Task RestoreWithNpgsqlAsync(string file)
+    {
+        try
+        {
             string sql;
             if (file.EndsWith(".gz")) { await using var fs = File.OpenRead(file); await using var gz = new GZipStream(fs, CompressionMode.Decompress); using var sr = new StreamReader(gz); sql = await sr.ReadToEndAsync(); }
             else sql = await File.ReadAllTextAsync(file);
