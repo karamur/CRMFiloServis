@@ -1,6 +1,9 @@
-﻿using System.IO.Compression;
+﻿using System.Diagnostics;
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.Data.Sqlite;
 using Npgsql;
 using Spectre.Console;
 
@@ -27,7 +30,7 @@ class Program
         LoadSettings();
 
         AnsiConsole.Write(new FigletText("KOA Backup").Centered().Color(Color.Blue));
-        AnsiConsole.MarkupLine("[grey]PostgreSQL Yedekleme Araci v1.0[/]");
+        AnsiConsole.MarkupLine("[grey]PostgreSQL Yedekleme Araci v1.1[/]");
         if (File.Exists(ConfigFile))
             AnsiConsole.MarkupLine($"[grey]Ayarlar yuklendi: {_host}:{_port}/{_database}[/]");
         AnsiConsole.WriteLine();
@@ -35,15 +38,16 @@ class Program
         while (true)
         {
             var choice = AnsiConsole.Prompt(new SelectionPrompt<string>().Title("[green]Ne yapmak istiyorsunuz?[/]").PageSize(10)
-                .AddChoices(new[] { "1. Yedek Al", "2. Yedek Yukle", "3. Ayarlar", "4. Klasor Ac", "5. Listele", "6. Cikis" }));
+                .AddChoices(new[] { "1. Yedek Al", "2. Yedek Yukle", "3. PostgreSQL -> SQLite", "4. Ayarlar", "5. Klasor Ac", "6. Listele", "7. Cikis" }));
             switch (choice[0])
             {
                 case '1': await CreateBackupAsync(); break;
                 case '2': await RestoreBackupAsync(); break;
-                case '3': ConfigureConnection(); break;
-                case '4': OpenBackupFolder(); break;
-                case '5': ListBackups(); break;
-                case '6': return;
+                case '3': await ConvertToSqliteAsync(); break;
+                case '4': ConfigureConnection(); break;
+                case '5': OpenBackupFolder(); break;
+                case '6': ListBackups(); break;
+                case '7': return;
             }
             AnsiConsole.WriteLine();
         }
@@ -563,6 +567,307 @@ class Program
 
     static string FormatValue(object v) => v switch { string s => $"'{s.Replace("'", "''")}'", DateTime d => $"'{d:yyyy-MM-dd HH:mm:ss}'", bool b => b ? "TRUE" : "FALSE", _ => v?.ToString() ?? "NULL" };
     static string FormatSize(long b) { var s = new[] { "B", "KB", "MB", "GB" }; var i = 0; double d = b; while (d >= 1024 && i < 3) { d /= 1024; i++; } return $"{d:0.#} {s[i]}"; }
+
+    #region PostgreSQL -> SQLite Dönüştürme
+
+    static async Task ConvertToSqliteAsync()
+    {
+        if (!Directory.Exists(_backupFolder)) { AnsiConsole.MarkupLine("[red]Yedek klasoru yok[/]"); return; }
+
+        var files = Directory.GetFiles(_backupFolder, "*.sql.gz")
+            .Concat(Directory.GetFiles(_backupFolder, "*.sql"))
+            .OrderByDescending(File.GetCreationTime).ToList();
+
+        if (!files.Any()) { AnsiConsole.MarkupLine("[yellow]Yedek dosyasi yok[/]"); return; }
+
+        var sel = AnsiConsole.Prompt(new SelectionPrompt<string>()
+            .Title("[green]Donusturulecek PostgreSQL yedegini secin:[/]")
+            .AddChoices(files.Select(Path.GetFileName).Append("Geri")!));
+
+        if (sel == "Geri") return;
+
+        var sourceFile = files.First(f => Path.GetFileName(f) == sel);
+        var sqliteFile = Path.Combine(_backupFolder, 
+            Path.GetFileNameWithoutExtension(sourceFile).Replace(".sql", "") + "_sqlite.db");
+
+        if (File.Exists(sqliteFile))
+        {
+            if (!AnsiConsole.Confirm($"[yellow]{Path.GetFileName(sqliteFile)} zaten var. Uzerine yazilsin mi?[/]", false))
+                return;
+            File.Delete(sqliteFile);
+        }
+
+        try
+        {
+            await AnsiConsole.Progress().StartAsync(async ctx =>
+            {
+                var task = ctx.AddTask("[green]PostgreSQL -> SQLite donusturuluyor[/]", maxValue: 100);
+
+                // 1. SQL dosyasını oku
+                task.Description = "[grey]Yedek dosyasi okunuyor...[/]";
+                string sql;
+                if (sourceFile.EndsWith(".gz"))
+                {
+                    await using var fs = File.OpenRead(sourceFile);
+                    await using var gz = new GZipStream(fs, CompressionMode.Decompress);
+                    using var sr = new StreamReader(gz);
+                    sql = await sr.ReadToEndAsync();
+                }
+                else
+                {
+                    sql = await File.ReadAllTextAsync(sourceFile);
+                }
+                task.Increment(10);
+
+                // 2. SQLite veritabanı oluştur
+                task.Description = "[grey]SQLite veritabani olusturuluyor...[/]";
+                await using var conn = new SqliteConnection($"Data Source={sqliteFile}");
+                await conn.OpenAsync();
+                task.Increment(5);
+
+                // 3. SQL'i ayrıştır ve tablolara böl
+                task.Description = "[grey]SQL ifadeleri ayristiriliyor...[/]";
+                var tableData = ParsePostgreSqlDump(sql);
+                task.Increment(10);
+
+                // 4. Migration tablosunu oluştur
+                await CreateSqliteMigrationTableAsync(conn);
+                task.Increment(5);
+
+                // 5. Her tablo için dönüştürme yap
+                var increment = 60.0 / Math.Max(tableData.Count, 1);
+                int successTables = 0, failedTables = 0;
+                var errors = new List<string>();
+
+                foreach (var (tableName, tableInfo) in tableData)
+                {
+                    task.Description = $"[grey]Tablo: {tableName}[/]";
+                    try
+                    {
+                        await ConvertTableToSqliteAsync(conn, tableName, tableInfo);
+                        successTables++;
+                    }
+                    catch (Exception ex)
+                    {
+                        failedTables++;
+                        if (errors.Count < 10) errors.Add($"{tableName}: {ex.Message.Split('\n')[0]}");
+                    }
+                    task.Increment(increment);
+                }
+
+                task.Increment(10);
+                task.Description = "[green]Tamamlandi![/]";
+
+                AnsiConsole.MarkupLine($"\n[green]SQLite veritabani olusturuldu: {sqliteFile}[/]");
+                AnsiConsole.MarkupLine($"[grey]Tablolar: {successTables} basarili, {failedTables} hatali[/]");
+
+                if (errors.Any())
+                {
+                    AnsiConsole.MarkupLine("[yellow]Hatalar:[/]");
+                    foreach (var e in errors) AnsiConsole.MarkupLine($"[grey]  - {e}[/]");
+                }
+
+                var fileInfo = new FileInfo(sqliteFile);
+                AnsiConsole.MarkupLine($"[grey]Boyut: {FormatSize(fileInfo.Length)}[/]");
+            });
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Donusturme hatasi: {ex.Message}[/]");
+        }
+    }
+
+    static Dictionary<string, TableInfo> ParsePostgreSqlDump(string sql)
+    {
+        var tables = new Dictionary<string, TableInfo>(StringComparer.OrdinalIgnoreCase);
+        var lines = sql.Split('\n');
+
+        string? currentTable = null;
+        var createBuffer = new StringBuilder();
+        bool inCreateTable = false;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+            if (string.IsNullOrEmpty(line) || line.StartsWith("--")) continue;
+
+            // CREATE TABLE tespit
+            var createMatch = Regex.Match(line, @"CREATE TABLE\s+(?:IF NOT EXISTS\s+)?""?(\w+)""?\s*\(", RegexOptions.IgnoreCase);
+            if (createMatch.Success)
+            {
+                currentTable = createMatch.Groups[1].Value;
+                if (!tables.ContainsKey(currentTable))
+                    tables[currentTable] = new TableInfo();
+                inCreateTable = true;
+                createBuffer.Clear();
+                createBuffer.AppendLine(line);
+                continue;
+            }
+
+            // CREATE TABLE devam
+            if (inCreateTable && currentTable != null)
+            {
+                createBuffer.AppendLine(line);
+                if (line.Contains(");") || (line.EndsWith(")") && !line.Contains("(")))
+                {
+                    tables[currentTable].CreateStatement = createBuffer.ToString();
+                    inCreateTable = false;
+                }
+                continue;
+            }
+
+            // INSERT INTO tespit
+            var insertMatch = Regex.Match(line, @"INSERT INTO\s+""?(\w+)""?\s*\(", RegexOptions.IgnoreCase);
+            if (insertMatch.Success)
+            {
+                var tableName = insertMatch.Groups[1].Value;
+                if (!tables.ContainsKey(tableName))
+                    tables[tableName] = new TableInfo();
+                tables[tableName].InsertStatements.Add(line);
+            }
+        }
+
+        return tables;
+    }
+
+    static async Task CreateSqliteMigrationTableAsync(SqliteConnection conn)
+    {
+        var sql = @"CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+            ""MigrationId"" TEXT NOT NULL PRIMARY KEY,
+            ""ProductVersion"" TEXT NOT NULL
+        );";
+        await using var cmd = new SqliteCommand(sql, conn);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    static async Task ConvertTableToSqliteAsync(SqliteConnection conn, string tableName, TableInfo tableInfo)
+    {
+        // 1. CREATE TABLE'ı SQLite formatına çevir
+        if (!string.IsNullOrEmpty(tableInfo.CreateStatement))
+        {
+            var sqliteCreate = ConvertCreateTableToSqlite(tableName, tableInfo.CreateStatement);
+            try
+            {
+                await using var createCmd = new SqliteCommand(sqliteCreate, conn);
+                await createCmd.ExecuteNonQueryAsync();
+            }
+            catch (SqliteException ex) when (ex.SqliteErrorCode == 1) // Table exists
+            {
+                // Tablo zaten var, devam et
+            }
+        }
+
+        // 2. INSERT'leri çevir ve çalıştır
+        if (tableInfo.InsertStatements.Any())
+        {
+            await using var transaction = await conn.BeginTransactionAsync();
+            try
+            {
+                foreach (var insert in tableInfo.InsertStatements)
+                {
+                    var sqliteInsert = ConvertInsertToSqlite(insert);
+                    try
+                    {
+                        await using var insertCmd = new SqliteCommand(sqliteInsert, conn, (SqliteTransaction)transaction);
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+                    catch { /* Tek satır hatası, devam et */ }
+                }
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+    }
+
+    static string ConvertCreateTableToSqlite(string tableName, string pgCreate)
+    {
+        var result = pgCreate;
+
+        // DROP TABLE ekle
+        var dropTable = $"DROP TABLE IF EXISTS \"{tableName}\";\n";
+
+        // PostgreSQL -> SQLite veri tipi dönüşümleri
+        result = Regex.Replace(result, @"\bSERIAL\b", "INTEGER", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bBIGSERIAL\b", "INTEGER", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bSMALLSERIAL\b", "INTEGER", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bcharacter varying\s*\(\d+\)", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bVARCHAR\s*\(\d+\)", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bCHAR\s*\(\d+\)", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bTEXT\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bTIMESTAMP\s*(WITHOUT TIME ZONE|WITH TIME ZONE)?\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bTIMESTAMPTZ\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bDATE\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bTIME\s*(WITHOUT TIME ZONE|WITH TIME ZONE)?\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bBOOLEAN\b", "INTEGER", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bBYTEA\b", "BLOB", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bUUID\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bJSON\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bJSONB\b", "TEXT", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bINTEGER\b", "INTEGER", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bBIGINT\b", "INTEGER", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bSMALLINT\b", "INTEGER", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bDOUBLE PRECISION\b", "REAL", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bREAL\b", "REAL", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bNUMERIC\s*(\(\d+(,\s*\d+)?\))?", "REAL", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bDECIMAL\s*(\(\d+(,\s*\d+)?\))?", "REAL", RegexOptions.IgnoreCase);
+
+        // PostgreSQL spesifik ifadeleri kaldır
+        result = Regex.Replace(result, @"\bDEFAULT\s+nextval\([^)]+\)", "", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bDEFAULT\s+now\(\)", "DEFAULT CURRENT_TIMESTAMP", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bDEFAULT\s+CURRENT_TIMESTAMP", "DEFAULT CURRENT_TIMESTAMP", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bDEFAULT\s+'[^']*'::[\w\s]+", match => 
+        {
+            var val = Regex.Match(match.Value, @"'[^']*'").Value;
+            return $"DEFAULT {val}";
+        }, RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"::\w+(\[\])?", "", RegexOptions.IgnoreCase); // Type casts
+
+        // CONSTRAINT isimlerini koru ama formatı düzelt
+        result = Regex.Replace(result, @"CONSTRAINT\s+""(\w+)""\s+PRIMARY KEY", "PRIMARY KEY", RegexOptions.IgnoreCase);
+
+        // ON CONFLICT, DEFERRABLE vb. kaldır
+        result = Regex.Replace(result, @"\bON CONFLICT[^,)]*", "", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bDEFERRABLE[^,)]*", "", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bINITIALLY[^,)]*", "", RegexOptions.IgnoreCase);
+
+        // Boş satırları ve fazla virgülleri temizle
+        result = Regex.Replace(result, @",\s*,", ",");
+        result = Regex.Replace(result, @",\s*\)", ")");
+
+        return dropTable + result;
+    }
+
+    static string ConvertInsertToSqlite(string pgInsert)
+    {
+        var result = pgInsert;
+
+        // TRUE/FALSE -> 1/0
+        result = Regex.Replace(result, @"\bTRUE\b", "1", RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\bFALSE\b", "0", RegexOptions.IgnoreCase);
+
+        // Type casts kaldır
+        result = Regex.Replace(result, @"::\w+(\[\])?", "", RegexOptions.IgnoreCase);
+
+        // ON CONFLICT kaldır
+        result = Regex.Replace(result, @"\bON CONFLICT[^;]*", "", RegexOptions.IgnoreCase);
+
+        // E'...' escape syntax -> normal string
+        result = Regex.Replace(result, @"E'([^']*)'", "'$1'");
+
+        return result.TrimEnd(';') + ";";
+    }
+
+    #endregion
+}
+
+class TableInfo
+{
+    public string? CreateStatement { get; set; }
+    public List<string> InsertStatements { get; } = new();
 }
 
 class BackupSettings
