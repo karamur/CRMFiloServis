@@ -1,0 +1,512 @@
+﻿@page "/personel/banka-odeme-listesi"
+@using CRMFiloServis.Shared.Entities
+@using CRMFiloServis.Web.Services
+@using CRMFiloServis.Web.Services.Interfaces
+@inject ISoforService SoforService
+@inject IPersonelFinansService FinansService
+@inject IToastService ToastService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Personel Banka Ödeme Listesi</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3><i class="bi bi-bank me-2"></i>Personel Banka Ödeme Listesi</h3>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/personel">Personel</a></li>
+                    <li class="breadcrumb-item active">Banka Ödeme Listesi</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" style="width: 120px;" @bind="secilenYil" @bind:after="YenileData">
+                @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 3; y--)
+                {
+                    <option value="@y">@y</option>
+                }
+            </select>
+            <select class="form-select form-select-sm" style="width: 150px;" @bind="secilenAy" @bind:after="YenileData">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    <option value="@m">@(new DateTime(2024, m, 1).ToString("MMMM"))</option>
+                }
+            </select>
+            <select class="form-select form-select-sm" style="width: 180px;" @bind="secilenGorev" @bind:after="YenileData">
+                <option value="">Tüm Görevler</option>
+                @foreach (PersonelGorev gorev in Enum.GetValues(typeof(PersonelGorev)))
+                {
+                    <option value="@gorev">@GetGorevAdi(gorev)</option>
+                }
+            </select>
+            <button class="btn btn-outline-success btn-sm" @onclick="ExcelAktar" disabled="@(personelListesi == null || !personelListesi.Any())">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </button>
+            <button class="btn btn-outline-primary btn-sm" @onclick="Yazdir" disabled="@(personelListesi == null || !personelListesi.Any())">
+                <i class="bi bi-printer me-1"></i>Yazdır
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else if (personelListesi != null && personelListesi.Any())
+    {
+        <!-- Ana Tablo -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul me-2"></i>
+                        @(new DateTime(secilenYil, secilenAy, 1).ToString("MMMM yyyy")) Banka Ödeme Listesi
+                    </h5>
+                    <span class="badge bg-light text-primary">@personelListesi.Count personel</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0" id="bankaOdemeTablosu">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width: 40px;" class="text-center">Sıra</th>
+                                <th>Ad Soyad</th>
+                                <th>Görev</th>
+                                <th>Banka / IBAN</th>
+                                <th class="text-end" style="width: 120px;">Resmi Maaş</th>
+                                <th class="text-end" style="width: 100px;">Avans</th>
+                                <th class="text-end" style="width: 100px;">Kesinti</th>
+                                <th class="text-end" style="width: 100px;">Alacak</th>
+                                <th class="text-end bg-success bg-opacity-10" style="width: 130px;"><strong>Ödenecek</strong></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int siraNo = 0; }
+                            @foreach (var item in personelListesi)
+                            {
+                                siraNo++;
+                                <tr>
+                                    <td class="text-center">@(item.SiralamaNo > 0 ? item.SiralamaNo : siraNo)</td>
+                                    <td>
+                                        <strong>@item.Personel.TamAd</strong>
+                                        <br />
+                                        <small class="text-muted">@item.Personel.SoforKodu</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetGorevBadgeClass(item.Personel.Gorev)">
+                                            @GetGorevAdi(item.Personel.Gorev)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(item.Personel.BankaAdi) || !string.IsNullOrWhiteSpace(item.Personel.IBAN))
+                                        {
+                                            <small>@(item.Personel.BankaAdi ?? "")</small>
+                                            <br />
+                                            <small class="text-muted font-monospace">@FormatIBAN(item.Personel.IBAN)</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">@FormatPara(item.ResmiMaas)</td>
+                                    <td class="text-end text-warning">
+                                        @if (item.Avans > 0)
+                                        {
+                                            <span>-@FormatPara(item.Avans)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end text-danger">
+                                        @if (item.Kesinti > 0)
+                                        {
+                                            <span>-@FormatPara(item.Kesinti)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end text-success">
+                                        @if (item.Alacak > 0)
+                                        {
+                                            <span>+@FormatPara(item.Alacak)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end bg-success bg-opacity-10">
+                                        <strong>@FormatPara(item.Odenecek)</strong>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-dark">
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>GENEL TOPLAM</strong></td>
+                                <td class="text-end"><strong>@FormatPara(personelListesi.Sum(p => p.ResmiMaas))</strong></td>
+                                <td class="text-end text-warning"><strong>-@FormatPara(personelListesi.Sum(p => p.Avans))</strong></td>
+                                <td class="text-end text-danger"><strong>-@FormatPara(personelListesi.Sum(p => p.Kesinti))</strong></td>
+                                <td class="text-end text-success"><strong>+@FormatPara(personelListesi.Sum(p => p.Alacak))</strong></td>
+                                <td class="text-end bg-success"><strong>@FormatPara(personelListesi.Sum(p => p.Odenecek))</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Görev Dağılımı Özet Tablosu -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white py-2">
+                        <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Görev Dağılımına Göre Ödemeler</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Görev</th>
+                                    <th class="text-center">Kişi</th>
+                                    <th class="text-end">Resmi Maaş</th>
+                                    <th class="text-end">Kesintiler</th>
+                                    <th class="text-end">Ödenecek</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var ozet in gorevOzetleri)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge @ozet.BadgeClass">@ozet.GorevAdi</span>
+                                        </td>
+                                        <td class="text-center">@ozet.KisiSayisi</td>
+                                        <td class="text-end">@FormatPara(ozet.ToplamResmiMaas)</td>
+                                        <td class="text-end text-danger">@FormatPara(ozet.ToplamKesinti)</td>
+                                        <td class="text-end"><strong>@FormatPara(ozet.ToplamOdenecek)</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-dark">
+                                <tr>
+                                    <td><strong>TOPLAM</strong></td>
+                                    <td class="text-center"><strong>@gorevOzetleri.Sum(g => g.KisiSayisi)</strong></td>
+                                    <td class="text-end"><strong>@FormatPara(gorevOzetleri.Sum(g => g.ToplamResmiMaas))</strong></td>
+                                    <td class="text-end"><strong>@FormatPara(gorevOzetleri.Sum(g => g.ToplamKesinti))</strong></td>
+                                    <td class="text-end"><strong>@FormatPara(gorevOzetleri.Sum(g => g.ToplamOdenecek))</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white py-2">
+                        <h6 class="mb-0"><i class="bi bi-calculator me-2"></i>Ödeme Özeti</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm mb-0">
+                            <tr>
+                                <td><i class="bi bi-cash-stack text-primary me-2"></i>Toplam Resmi Maaş</td>
+                                <td class="text-end"><strong>@FormatPara(personelListesi.Sum(p => p.ResmiMaas))</strong></td>
+                            </tr>
+                            <tr>
+                                <td><i class="bi bi-dash-circle text-warning me-2"></i>Toplam Avans Kesintisi</td>
+                                <td class="text-end text-warning">- @FormatPara(personelListesi.Sum(p => p.Avans))</td>
+                            </tr>
+                            <tr>
+                                <td><i class="bi bi-dash-circle text-danger me-2"></i>Toplam Kesinti</td>
+                                <td class="text-end text-danger">- @FormatPara(personelListesi.Sum(p => p.Kesinti))</td>
+                            </tr>
+                            <tr>
+                                <td><i class="bi bi-plus-circle text-success me-2"></i>Toplam Alacak</td>
+                                <td class="text-end text-success">+ @FormatPara(personelListesi.Sum(p => p.Alacak))</td>
+                            </tr>
+                            <tr class="table-success">
+                                <td><strong><i class="bi bi-bank me-2"></i>Net Ödenecek Tutar</strong></td>
+                                <td class="text-end"><strong class="fs-5">@FormatPara(personelListesi.Sum(p => p.Odenecek))</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Seçilen dönem için aktif personel bulunamadı.
+        </div>
+    }
+</div>
+
+@code {
+    private int secilenYil = DateTime.Now.Year;
+    private int secilenAy = DateTime.Now.Month;
+    private string secilenGorev = "";
+    private bool isLoading = false;
+
+    private List<PersonelOdemeKalemi>? personelListesi;
+    private List<GorevOzet> gorevOzetleri = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await YenileData();
+    }
+
+    private async Task YenileData()
+    {
+        isLoading = true;
+        try
+        {
+            // Aktif personelleri al
+            var tumPersoneller = await SoforService.GetAllAsync();
+            var aktifPersoneller = tumPersoneller
+                .Where(p => p.Aktif && p.SGKBordroDahilMi)
+                .OrderBy(p => p.SiralamaNo == 0 ? int.MaxValue : p.SiralamaNo)
+                .ThenBy(p => p.Ad)
+                .ToList();
+
+            // Görev filtresi
+            if (!string.IsNullOrEmpty(secilenGorev) && Enum.TryParse<PersonelGorev>(secilenGorev, out var gorev))
+            {
+                aktifPersoneller = aktifPersoneller.Where(p => p.Gorev == gorev).ToList();
+            }
+
+            // Her personel için avans ve borç bilgilerini al
+            personelListesi = new List<PersonelOdemeKalemi>();
+
+            foreach (var personel in aktifPersoneller)
+            {
+                var finansOzet = await FinansService.GetPersonelFinansOzetAsync(personel.Id);
+
+                var item = new PersonelOdemeKalemi
+                {
+                    Personel = personel,
+                    SiralamaNo = personel.SiralamaNo,
+                    ResmiMaas = personel.ResmiNetMaas,
+                    Avans = finansOzet?.KalanAvans ?? 0, // Açık avanslar
+                    Kesinti = finansOzet?.KalanBorc > 0 ? finansOzet.KalanBorc : 0, // Personelden alınacak borçlar
+                    Alacak = finansOzet?.KalanBorc < 0 ? Math.Abs(finansOzet.KalanBorc) : 0 // Personele ödenecek (negatif borç = alacak)
+                };
+
+                // Ödenecek = Resmi Maaş - Avans - Kesinti + Alacak
+                item.Odenecek = item.ResmiMaas - item.Avans - item.Kesinti + item.Alacak;
+
+                personelListesi.Add(item);
+            }
+
+            // Görev özetlerini hesapla
+            gorevOzetleri = personelListesi
+                .GroupBy(p => p.Personel.Gorev)
+                .Select(g => new GorevOzet
+                {
+                    Gorev = g.Key,
+                    GorevAdi = GetGorevAdi(g.Key),
+                    BadgeClass = GetGorevBadgeClass(g.Key),
+                    KisiSayisi = g.Count(),
+                    ToplamResmiMaas = g.Sum(x => x.ResmiMaas),
+                    ToplamAvans = g.Sum(x => x.Avans),
+                    ToplamKesinti = g.Sum(x => x.Avans + x.Kesinti),
+                    ToplamAlacak = g.Sum(x => x.Alacak),
+                    ToplamOdenecek = g.Sum(x => x.Odenecek)
+                })
+                .OrderBy(g => g.Gorev)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Veri yüklenirken hata: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ExcelAktar()
+    {
+        try
+        {
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Banka Ödeme Listesi");
+
+            // Başlık
+            worksheet.Cell("A1").Value = $"Personel Banka Ödeme Listesi - {new DateTime(secilenYil, secilenAy, 1):MMMM yyyy}";
+            worksheet.Range("A1:I1").Merge().Style.Font.Bold = true;
+            worksheet.Range("A1:I1").Style.Font.FontSize = 14;
+
+            // Sütun başlıkları
+            var header = worksheet.Row(3);
+            header.Cell(1).Value = "Sıra";
+            header.Cell(2).Value = "Personel Kodu";
+            header.Cell(3).Value = "Ad Soyad";
+            header.Cell(4).Value = "Görev";
+            header.Cell(5).Value = "IBAN";
+            header.Cell(6).Value = "Resmi Maaş";
+            header.Cell(7).Value = "Avans";
+            header.Cell(8).Value = "Kesinti";
+            header.Cell(9).Value = "Alacak";
+            header.Cell(10).Value = "Ödenecek";
+            header.Style.Font.Bold = true;
+            header.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+
+            // Veriler
+            int row = 4;
+            int sira = 0;
+            foreach (var item in personelListesi!)
+            {
+                sira++;
+                worksheet.Cell(row, 1).Value = item.SiralamaNo > 0 ? item.SiralamaNo : sira;
+                worksheet.Cell(row, 2).Value = item.Personel.SoforKodu;
+                worksheet.Cell(row, 3).Value = item.Personel.TamAd;
+                worksheet.Cell(row, 4).Value = GetGorevAdi(item.Personel.Gorev);
+                worksheet.Cell(row, 5).Value = item.Personel.IBAN ?? "";
+                worksheet.Cell(row, 6).Value = item.ResmiMaas;
+                worksheet.Cell(row, 7).Value = item.Avans;
+                worksheet.Cell(row, 8).Value = item.Kesinti;
+                worksheet.Cell(row, 9).Value = item.Alacak;
+                worksheet.Cell(row, 10).Value = item.Odenecek;
+                row++;
+            }
+
+            // Toplam satırı
+            worksheet.Cell(row, 5).Value = "TOPLAM:";
+            worksheet.Cell(row, 6).Value = personelListesi.Sum(p => p.ResmiMaas);
+            worksheet.Cell(row, 7).Value = personelListesi.Sum(p => p.Avans);
+            worksheet.Cell(row, 8).Value = personelListesi.Sum(p => p.Kesinti);
+            worksheet.Cell(row, 9).Value = personelListesi.Sum(p => p.Alacak);
+            worksheet.Cell(row, 10).Value = personelListesi.Sum(p => p.Odenecek);
+            worksheet.Range(row, 5, row, 10).Style.Font.Bold = true;
+            worksheet.Range(row, 5, row, 10).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightYellow;
+
+            // Para formatı
+            worksheet.Range(4, 6, row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+            // Görev Özeti Tablosu
+            row += 3;
+            worksheet.Cell(row, 1).Value = "Görev Dağılımı Özeti";
+            worksheet.Range(row, 1, row, 5).Merge().Style.Font.Bold = true;
+            row++;
+
+            worksheet.Cell(row, 1).Value = "Görev";
+            worksheet.Cell(row, 2).Value = "Kişi Sayısı";
+            worksheet.Cell(row, 3).Value = "Resmi Maaş";
+            worksheet.Cell(row, 4).Value = "Kesinti";
+            worksheet.Cell(row, 5).Value = "Ödenecek";
+            worksheet.Row(row).Style.Font.Bold = true;
+            row++;
+
+            foreach (var ozet in gorevOzetleri)
+            {
+                worksheet.Cell(row, 1).Value = ozet.GorevAdi;
+                worksheet.Cell(row, 2).Value = ozet.KisiSayisi;
+                worksheet.Cell(row, 3).Value = ozet.ToplamResmiMaas;
+                worksheet.Cell(row, 4).Value = ozet.ToplamKesinti;
+                worksheet.Cell(row, 5).Value = ozet.ToplamOdenecek;
+                row++;
+            }
+
+            worksheet.Range(row - gorevOzetleri.Count, 3, row - 1, 5).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+            worksheet.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            var bytes = stream.ToArray();
+
+            var dosyaAdi = $"banka_odeme_listesi_{secilenYil}_{secilenAy:00}.xlsx";
+            await JS.InvokeVoidAsync("downloadFileFromBase64", dosyaAdi, Convert.ToBase64String(bytes));
+            ToastService.ShowSuccess("Excel dosyası indirildi.");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Excel oluşturulurken hata: {ex.Message}");
+        }
+    }
+
+    private async Task Yazdir()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    private static string FormatPara(decimal tutar)
+        => tutar.ToString("N2") + " ₺";
+
+    private static string FormatIBAN(string? iban)
+    {
+        if (string.IsNullOrWhiteSpace(iban)) return "";
+        // TR00 0000 0000 0000 0000 0000 00 formatı
+        var clean = iban.Replace(" ", "");
+        if (clean.Length >= 26)
+        {
+            return $"{clean[..4]} {clean[4..8]} {clean[8..12]} {clean[12..16]} {clean[16..20]} {clean[20..24]} {clean[24..]}";
+        }
+        return iban;
+    }
+
+    private static string GetGorevAdi(PersonelGorev gorev)
+    {
+        return gorev switch
+        {
+            PersonelGorev.Sofor => "Şoför",
+            PersonelGorev.OfisCalisani => "Ofis Çalışanı",
+            PersonelGorev.Muhasebe => "Muhasebe",
+            PersonelGorev.Yonetici => "Yönetici",
+            PersonelGorev.Teknik => "Teknik",
+            PersonelGorev.Diger => "Diğer",
+            _ => gorev.ToString()
+        };
+    }
+
+    private static string GetGorevBadgeClass(PersonelGorev gorev)
+    {
+        return gorev switch
+        {
+            PersonelGorev.Sofor => "bg-primary",
+            PersonelGorev.OfisCalisani => "bg-info",
+            PersonelGorev.Muhasebe => "bg-success",
+            PersonelGorev.Yonetici => "bg-warning text-dark",
+            PersonelGorev.Teknik => "bg-secondary",
+            _ => "bg-dark"
+        };
+    }
+
+    // Model sınıfları
+    private class PersonelOdemeKalemi
+    {
+        public Sofor Personel { get; set; } = null!;
+        public int SiralamaNo { get; set; }
+        public decimal ResmiMaas { get; set; }
+        public decimal Avans { get; set; }
+        public decimal Kesinti { get; set; }
+        public decimal Alacak { get; set; }
+        public decimal Odenecek { get; set; }
+    }
+
+    private class GorevOzet
+    {
+        public PersonelGorev Gorev { get; set; }
+        public string GorevAdi { get; set; } = string.Empty;
+        public string BadgeClass { get; set; } = string.Empty;
+        public int KisiSayisi { get; set; }
+        public decimal ToplamResmiMaas { get; set; }
+        public decimal ToplamAvans { get; set; }
+        public decimal ToplamKesinti { get; set; }
+        public decimal ToplamAlacak { get; set; }
+        public decimal ToplamOdenecek { get; set; }
+    }
+}
