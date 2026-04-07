@@ -66,6 +66,39 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 **Durum:** Tamamlandı
 
+### Kayıt 025 - Araç Karlılık Raporu
+**Talep:** Araç bazlı karlılık analizi raporu - gelir/gider/kar hesaplama, masraf dağılımı, aylık trend grafiği.
+
+**Yapılanlar:**
+- `AracKarlilikRaporModels.cs`: Yeni rapor modelleri oluşturuldu (AracKarlilikOzet, AracMasrafDetay, AracAylikKarlilik, AracGuzergahPerformansi, AracKarsilastirmaOzeti)
+- `IRaporService.cs`: 2 yeni metod eklendi (GetAracKarlilikAsync, GetAracKarsilastirmaAsync)
+- `RaporService.cs`: Araç karlılık metodları implementasyonu eklendi
+  - Gelir hesaplama: ServisCalisma.HesaplananFiyat
+  - Gider hesaplama: AracMasraf.Tutar + KiraBedeli + Komisyon
+  - Kiralık araçlar için aylık kira bedeli hesaplama
+  - Komisyonlu araçlar için oran veya sabit komisyon hesaplama
+- `AracKarlilikRapor.razor`: Araç karlılık raporu sayfası oluşturuldu
+  - Tekil araç detaylı karlılık analizi
+  - Tüm araçlar karşılaştırma tablosu
+  - Özet kartları (gelir, gider, net kar, arıza oranı)
+  - Aylık karlılık grafiği (multi-bar chart - gelir/gider/kar)
+  - Masraf dağılımı doughnut chart
+  - Güzergah bazlı performans tablosu
+  - Masraf detay tablosu
+  - Excel export desteği
+- `NavMenu.razor`: Raporlar menüsüne "Araç Karlılık" linki eklendi
+- `dashboard-charts.js`: createMultiBarChart fonksiyonu eklendi
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Models/AracKarlilikRaporModels.cs` (yeni)
+- `CRMFiloServis.Web/Services/Interfaces/IRaporService.cs`
+- `CRMFiloServis.Web/Services/RaporService.cs`
+- `CRMFiloServis.Web/Components/Pages/Raporlar/AracKarlilikRapor.razor` (yeni)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor`
+- `CRMFiloServis.Web/wwwroot/js/dashboard-charts.js`
+
+**Durum:** Tamamlandı
+
 ### Kayıt 023 - Dashboard Grafikleri (Chart.js)
 **Talep:** Dashboard'a görsel grafikler eklenmesi - Aylık gelir/gider, masraf dağılımı, bütçe takibi.
 
@@ -515,6 +548,8 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 | 010 | Çalışma zamanı dosya disiplini | Tamamlandı | Düşük | Upload, backup, log ve deploy runtime klasörleri ignore edildi |
 | 011 | Servis refaktörlerinin sınıflandırılması | Tamamlandı | Orta | AsNoTracking, UTC ve soft delete audit tutarlılığı tamamlandı |
 | 012 | Sayfalama altyapısı | Tamamlandı | Yüksek | CariList, FaturaList, BankaHareketList sayfalama destekli |
+| 013 | Şoför Performans Raporu | Tamamlandı | Orta | Bireysel/karşılaştırma, grafik, Excel export |
+| 014 | Araç Karlılık Raporu | Tamamlandı | Orta | Gelir/gider/kar analizi, masraf dağılımı, trend grafikleri |
 
 ---
 

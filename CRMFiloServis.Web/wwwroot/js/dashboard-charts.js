@@ -1,4 +1,4 @@
-// Dashboard Chart Functions
+﻿// Dashboard Chart Functions
 let charts = {};
 
 window.createBarChart = function (canvasId, labels, data1, data2, label1, label2) {
@@ -160,6 +160,58 @@ window.createDoughnutChart = function (canvasId, labels, data, colors) {
                             return context.label + ': ' + context.raw.toLocaleString('tr-TR') + ' TL (' + pct + '%)';
                         }
                     }
+                }
+            }
+        }
+    });
+};
+
+// Multi-dataset bar chart for comparison views
+window.createMultiBarChart = function (canvasId, labels, datasetLabels, datasets, colors) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Destroy existing chart
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    const chartDatasets = datasets.map((data, index) => ({
+        label: datasetLabels[index],
+        data: data,
+        backgroundColor: colors[index] + '99',
+        borderColor: colors[index],
+        borderWidth: 1
+    }));
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: chartDatasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 10 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw.toLocaleString('tr-TR') + ' ₺';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value >= 1000 ? (value/1000) + 'K' : value;
+                        },
+                        font: { size: 10 }
+                    }
+                },
+                x: {
+                    ticks: { font: { size: 9 } }
                 }
             }
         }

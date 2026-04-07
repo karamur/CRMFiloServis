@@ -37,4 +37,14 @@ public interface IRaporService
     Task<List<SoforKarsilastirmaOzeti>> GetSoforKarsilastirmaAsync(
         DateTime startDate,
         DateTime endDate);
+
+    // Araç Karlılık Raporu
+    Task<AracKarlilikOzet> GetAracKarlilikAsync(
+        int aracId,
+        DateTime startDate,
+        DateTime endDate);
+
+    Task<List<AracKarsilastirmaOzeti>> GetAracKarsilastirmaAsync(
+        DateTime startDate,
+        DateTime endDate);
 }

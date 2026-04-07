@@ -324,4 +324,227 @@ public class RaporService : IRaporService
             .OrderByDescending(s => s.ToplamKazanc)
             .ToList();
     }
+
+    public async Task<AracKarlilikOzet> GetAracKarlilikAsync(
+        int aracId,
+        DateTime startDate,
+        DateTime endDate)
+    {
+        var arac = await _context.Araclar
+            .Include(a => a.KiralikCari)
+            .FirstOrDefaultAsync(a => a.Id == aracId);
+
+        if (arac == null)
+            throw new ArgumentException("Araç bulunamadı", nameof(aracId));
+
+        // Servis çalışmalarını getir (gelir)
+        var calismalar = await _context.ServisCalismalari
+            .Include(s => s.Guzergah)
+                .ThenInclude(g => g.Cari)
+            .Where(s => s.AracId == aracId)
+            .Where(s => s.CalismaTarihi >= startDate && s.CalismaTarihi <= endDate)
+            .Where(s => s.Durum == CalismaDurum.Tamamlandi)
+            .AsNoTracking()
+            .ToListAsync();
+
+        // Masrafları getir (gider)
+        var masraflar = await _context.AracMasraflari
+            .Include(m => m.MasrafKalemi)
+            .Where(m => m.AracId == aracId)
+            .Where(m => m.MasrafTarihi >= startDate && m.MasrafTarihi <= endDate)
+            .Where(m => !m.IsDeleted)
+            .AsNoTracking()
+            .ToListAsync();
+
+        // Dönem içindeki ay sayısı (kira hesaplama için)
+        var aylikKiraBedeli = arac.AylikKiraBedeli ?? 0;
+        var aySayisi = ((endDate.Year - startDate.Year) * 12) + endDate.Month - startDate.Month + 1;
+        var toplamKiraBedeli = arac.SahiplikTipi == AracSahiplikTipi.Kiralik ? aylikKiraBedeli * aySayisi : 0;
+
+        // Komisyon hesaplama
+        decimal toplamKomisyon = 0;
+        if (arac.KomisyonVar && arac.KomisyonOrani.HasValue)
+        {
+            var toplamGelir = calismalar.Sum(c => c.Fiyat ?? c.Guzergah.BirimFiyat);
+            toplamKomisyon = toplamGelir * arac.KomisyonOrani.Value / 100;
+        }
+        else if (arac.KomisyonVar && arac.SabitKomisyonTutari.HasValue)
+        {
+            toplamKomisyon = calismalar.Count * arac.SabitKomisyonTutari.Value;
+        }
+
+        var ozet = new AracKarlilikOzet
+        {
+            AracId = arac.Id,
+            Plaka = arac.AktifPlaka ?? "-",
+            Marka = arac.Marka,
+            Model = arac.Model,
+            SahiplikTipi = arac.SahiplikTipi == AracSahiplikTipi.Ozmal ? "Özmal" : "Kiralık",
+            ToplamSeferSayisi = calismalar.Count,
+            ToplamGelir = calismalar.Sum(c => c.Fiyat ?? c.Guzergah.BirimFiyat),
+            ToplamMasraf = masraflar.Sum(m => m.Tutar),
+            KiraBedeli = toplamKiraBedeli,
+            KomisyonTutari = toplamKomisyon,
+            ArizaSayisi = calismalar.Count(c => c.ArizaOlduMu),
+            CalismaGunSayisi = calismalar.Select(c => c.CalismaTarihi.Date).Distinct().Count(),
+            SonCalismaTarihi = calismalar.MaxBy(c => c.CalismaTarihi)?.CalismaTarihi
+        };
+
+        // Masraf detayları (kategori bazlı)
+        var toplamMasraf = masraflar.Sum(m => m.Tutar);
+        ozet.MasrafDetaylari = masraflar
+            .GroupBy(m => new { m.MasrafKalemiId, m.MasrafKalemi.MasrafAdi })
+            .Select(g => new AracMasrafDetay
+            {
+                MasrafKalemiId = g.Key.MasrafKalemiId,
+                MasrafKalemiAdi = g.Key.MasrafAdi,
+                ToplamTutar = g.Sum(m => m.Tutar),
+                Adet = g.Count(),
+                Oran = toplamMasraf > 0 ? g.Sum(m => m.Tutar) / toplamMasraf * 100 : 0
+            })
+            .OrderByDescending(d => d.ToplamTutar)
+            .ToList();
+
+        // Güzergah performansları
+        ozet.GuzergahPerformanslari = calismalar
+            .GroupBy(c => new { c.GuzergahId, c.Guzergah.GuzergahAdi, FirmaAdi = c.Guzergah.Cari.Unvan })
+            .Select(g => new AracGuzergahPerformansi
+            {
+                GuzergahId = g.Key.GuzergahId,
+                GuzergahAdi = g.Key.GuzergahAdi,
+                FirmaAdi = g.Key.FirmaAdi,
+                SeferSayisi = g.Count(),
+                ToplamGelir = g.Sum(c => c.Fiyat ?? c.Guzergah.BirimFiyat)
+            })
+            .OrderByDescending(g => g.ToplamGelir)
+            .ToList();
+
+        // Aylık karlılık (grafik için)
+        var aylar = calismalar
+            .GroupBy(c => new { c.CalismaTarihi.Year, c.CalismaTarihi.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month })
+            .Union(masraflar
+                .GroupBy(m => new { m.MasrafTarihi.Year, m.MasrafTarihi.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month }))
+            .Distinct()
+            .OrderBy(a => a.Year).ThenBy(a => a.Month)
+            .ToList();
+
+        ozet.AylikKarlilik = aylar.Select(ay =>
+        {
+            var ayGelir = calismalar
+                .Where(c => c.CalismaTarihi.Year == ay.Year && c.CalismaTarihi.Month == ay.Month)
+                .Sum(c => c.Fiyat ?? c.Guzergah.BirimFiyat);
+
+            var ayMasraf = masraflar
+                .Where(m => m.MasrafTarihi.Year == ay.Year && m.MasrafTarihi.Month == ay.Month)
+                .Sum(m => m.Tutar);
+
+            var ayKira = arac.SahiplikTipi == AracSahiplikTipi.Kiralik ? aylikKiraBedeli : 0;
+
+            decimal ayKomisyon = 0;
+            if (arac.KomisyonVar && arac.KomisyonOrani.HasValue)
+                ayKomisyon = ayGelir * arac.KomisyonOrani.Value / 100;
+            else if (arac.KomisyonVar && arac.SabitKomisyonTutari.HasValue)
+            {
+                var aySeferSayisi = calismalar.Count(c => c.CalismaTarihi.Year == ay.Year && c.CalismaTarihi.Month == ay.Month);
+                ayKomisyon = aySeferSayisi * arac.SabitKomisyonTutari.Value;
+            }
+
+            return new AracAylikKarlilik
+            {
+                Yil = ay.Year,
+                Ay = ay.Month,
+                AyAdi = new DateTime(ay.Year, ay.Month, 1).ToString("MMM yyyy", new System.Globalization.CultureInfo("tr-TR")),
+                SeferSayisi = calismalar.Count(c => c.CalismaTarihi.Year == ay.Year && c.CalismaTarihi.Month == ay.Month),
+                Gelir = ayGelir,
+                Masraf = ayMasraf,
+                KiraBedeli = ayKira,
+                Komisyon = ayKomisyon
+            };
+        }).ToList();
+
+        return ozet;
+    }
+
+    public async Task<List<AracKarsilastirmaOzeti>> GetAracKarsilastirmaAsync(
+        DateTime startDate,
+        DateTime endDate)
+    {
+        // Tüm aktif araçları getir
+        var araclar = await _context.Araclar
+            .Where(a => a.Aktif && !a.IsDeleted)
+            .AsNoTracking()
+            .ToListAsync();
+
+        // Servis çalışmalarını getir
+        var calismalar = await _context.ServisCalismalari
+            .Include(s => s.Guzergah)
+            .Where(s => s.CalismaTarihi >= startDate && s.CalismaTarihi <= endDate)
+            .Where(s => s.Durum == CalismaDurum.Tamamlandi)
+            .AsNoTracking()
+            .ToListAsync();
+
+        // Masrafları getir
+        var masraflar = await _context.AracMasraflari
+            .Where(m => m.MasrafTarihi >= startDate && m.MasrafTarihi <= endDate)
+            .Where(m => !m.IsDeleted)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var aySayisi = ((endDate.Year - startDate.Year) * 12) + endDate.Month - startDate.Month + 1;
+
+        var sonuclar = araclar.Select(arac =>
+        {
+            var aracCalismalari = calismalar.Where(c => c.AracId == arac.Id).ToList();
+            var aracMasraflari = masraflar.Where(m => m.AracId == arac.Id).ToList();
+
+            var toplamGelir = aracCalismalari.Sum(c => c.Fiyat ?? c.Guzergah.BirimFiyat);
+            var toplamMasraf = aracMasraflari.Sum(m => m.Tutar);
+            var kiraBedeli = arac.SahiplikTipi == AracSahiplikTipi.Kiralik ? (arac.AylikKiraBedeli ?? 0) * aySayisi : 0;
+
+            decimal komisyon = 0;
+            if (arac.KomisyonVar && arac.KomisyonOrani.HasValue)
+                komisyon = toplamGelir * arac.KomisyonOrani.Value / 100;
+            else if (arac.KomisyonVar && arac.SabitKomisyonTutari.HasValue)
+                komisyon = aracCalismalari.Count * arac.SabitKomisyonTutari.Value;
+
+            var toplamGider = toplamMasraf + kiraBedeli + komisyon;
+            var netKar = toplamGelir - toplamGider;
+
+            return new AracKarsilastirmaOzeti
+            {
+                AracId = arac.Id,
+                Plaka = arac.AktifPlaka ?? "-",
+                MarkaModel = $"{arac.Marka} {arac.Model}".Trim(),
+                SahiplikTipi = arac.SahiplikTipi == AracSahiplikTipi.Ozmal ? "Özmal" : "Kiralık",
+                SeferSayisi = aracCalismalari.Count,
+                ToplamGelir = toplamGelir,
+                ToplamGider = toplamGider,
+                NetKar = netKar,
+                KarMarji = toplamGelir > 0 ? netKar / toplamGelir * 100 : 0,
+                ArizaSayisi = aracCalismalari.Count(c => c.ArizaOlduMu),
+                ArizaOrani = aracCalismalari.Count > 0 ? (decimal)aracCalismalari.Count(c => c.ArizaOlduMu) / aracCalismalari.Count * 100 : 0
+            };
+        })
+        .Where(a => a.SeferSayisi > 0) // En az 1 sefer yapmış araçlar
+        .OrderByDescending(a => a.NetKar)
+        .ToList();
+
+        // Sıralama bilgilerini ekle
+        for (int i = 0; i < sonuclar.Count; i++)
+        {
+            sonuclar[i].KarlilikSirasi = i + 1;
+        }
+
+        var verimlilikSirali = sonuclar
+            .OrderByDescending(a => a.SeferSayisi > 0 ? a.NetKar / a.SeferSayisi : 0)
+            .ToList();
+        for (int i = 0; i < verimlilikSirali.Count; i++)
+        {
+            verimlilikSirali[i].VerimlilikSirasi = i + 1;
+        }
+
+        return sonuclar;
+    }
 }
