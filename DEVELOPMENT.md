@@ -41,6 +41,26 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 045 - Personel Düzenleme BUG Fix
+**Talep:** Personel düzenleme işlemi veritabanına kaydedilmiyor hatası.
+
+**Yapılanlar:**
+- **Sorun Tespit:**
+  - `Program.cs` satır 93: `options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);` global ayar
+  - Bu ayar nedeniyle Entity Framework değişiklikleri takip etmiyordu
+  - `SoforService.UpdateAsync` metodu `FindAsync` ile entity alıyordu ama NoTracking nedeniyle değişiklikler kaydedilmiyordu
+- **Çözüm:**
+  - `SoforService.UpdateAsync` metodu düzeltildi:
+    - `FindAsync` yerine `FirstOrDefaultAsync` kullanıldı
+    - Tüm alan güncellemeleri sonrası `_context.Soforler.Update(existing)` çağrısı eklendi
+    - Bu sayede global NoTracking ayarına rağmen entity explicit olarak güncelleniyor
+  - `SoforService.DeleteAsync` metodu da aynı şekilde düzeltildi
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Services/SoforService.cs` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 044 - Cari Risk Analizi Modülü (AI Destekli Tahsilat Risk Takibi)
 **Talep:** Cari hesap bazlı risk analizi: vadesi geçmiş alacak takibi, yaşlandırma analizi (0-30, 31-60, 61-90, 90+ gün), risk skorlaması, AI destekli tahsilat stratejisi önerileri.
 

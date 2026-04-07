@@ -69,13 +69,15 @@ public class SoforService : ISoforService
 
     public async Task<Sofor> UpdateAsync(Sofor sofor)
     {
-        var existing = await _context.Soforler.FindAsync(sofor.Id);
+        // Global NoTracking ayarı nedeniyle explicit tracking kullan
+        var existing = await _context.Soforler
+            .FirstOrDefaultAsync(s => s.Id == sofor.Id);
+
         if (existing == null)
             throw new InvalidOperationException($"Şoför bulunamadı. Id: {sofor.Id}");
 
-        // Sıralama No güncelleme
+        // Tüm alanları güncelle
         existing.SiralamaNo = sofor.SiralamaNo;
-
         existing.SoforKodu = sofor.SoforKodu;
         existing.Ad = sofor.Ad;
         existing.Soyad = sofor.Soyad;
@@ -111,17 +113,20 @@ public class SoforService : ISoforService
         existing.IsDeleted = sofor.IsDeleted;
         existing.UpdatedAt = DateTime.UtcNow;
 
+        // Entity'yi explicit olarak güncelle (global NoTracking olduğu için)
+        _context.Soforler.Update(existing);
         await _context.SaveChangesAsync();
         return existing;
     }
 
     public async Task DeleteAsync(int id)
     {
-        var sofor = await _context.Soforler.FindAsync(id);
+        var sofor = await _context.Soforler.FirstOrDefaultAsync(s => s.Id == id);
         if (sofor != null)
         {
             sofor.IsDeleted = true;
             sofor.UpdatedAt = DateTime.UtcNow;
+            _context.Soforler.Update(sofor);
             await _context.SaveChangesAsync();
         }
     }

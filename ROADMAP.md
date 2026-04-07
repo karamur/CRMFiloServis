@@ -110,7 +110,7 @@
 ### 5.1 Kritik Bug Fix'ler
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Personel düzenleme DB'ye kaydetmiyor - BUG | 🔴 Yüksek | 1 gün | ❌ |
+| Personel düzenleme DB'ye kaydetmiyor - BUG | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
 | Maaş yönetimi "Ödeme Yap" butonu pasif - BUG | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
 
 ### 5.2 Maaş Yönetimi İyileştirmeleri
