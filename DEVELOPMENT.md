@@ -300,8 +300,9 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 - güzergah için yeni alanlar eklendi
 - sefer tipi ve personel sayısı alanları genişletildi
 - önizleme ve oluşturma akışı başlatıldı
+- CariId düzeltildi, doğrulama ve benzersizlik kontrolü eklendi (Kayıt 015)
 
-**Durum:** Devam ediyor
+**Durum:** Tamamlandı
 
 ### Kayıt 010 - Repo temizliği ve uploads takibinin kapatılması
 **Talep:** Çalışma zamanında oluşan yükleme dosyalarının tekrar git takibine girmesinin engellenmesi.
@@ -356,8 +357,10 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 **Yapılanlar:**
 - `FiloGuzergahEslestirme` ve `FiloGunlukPuantaj` yapıları devreye alındı
 - puantaj ekranı için temel sayfa oluşturuldu
+- Firma filtresi düzeltildi, toplu kayıt akışı tamamlandı (Kayıt 017)
+- Excel export özelliği eklendi (Kayıt 013)
 
-**Durum:** Devam ediyor
+**Durum:** Tamamlandı
 
 ### Kayıt 004 - Mahsup işlemleri
 **Talep:** Kasa / banka / kredi kartı ve cari hesaplar arası mahsup işlemleri.
@@ -366,8 +369,9 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 - hesaplar arası transfer mantığı geliştirildi
 - cari mahsup yapısı eklendi
 - mahsup ekranı oluşturuldu
+- Fiş üretimi ve iptal kaydı eklendi (Kayıt 014)
 
-**Durum:** Kısmen tamamlandı
+**Durum:** Tamamlandı
 
 ### Kayıt 005 - Muhasebe eşleştirme kodları
 **Talep:** Girilen banka hareketlerinde kullanıcı tarafından muhasebe eşleştirme kodlarının girilebilmesi.
@@ -389,8 +393,10 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 - kesinti alanları eklendi
 - net ödeme hesabı eklendi
 - ödeme tipi alanları genişletildi
+- CariMahsup entegrasyonu ve muhasebe fişi zinciri eklendi (Kayıt 016)
+- Net tutar hesaplama düzeltildi, bekleyen ödemeler listesinden kaldırma eklendi (Kayıt 012)
 
-**Durum:** Kısmen tamamlandı
+**Durum:** Tamamlandı
 
 ### Kayıt 007 - Login ekranı sorunları
 **Talep:** Şifre göster, beni hatırla ve giriş yap butonunun çalışmaması sorunlarının giderilmesi.
@@ -400,8 +406,9 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 - route çakışması giderildi
 - input binding ve giriş akışı üzerinde düzeltmeler yapıldı
 - sayfa yeniden yapılandırıldı
+- forceLoad düzeltildi, input trim eklendi, delay artırıldı (Kayıt 013)
 
-**Durum:** Tekrar doğrulanmalı
+**Durum:** Tamamlandı
 
 ### Kayıt 008 - Marka adı güncellemesi
 **Talep:** Proje görünen adının `Koa Filo Servis` olarak düzenlenmesi.
@@ -410,8 +417,9 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 - login ekranı başlığı güncellendi
 - menü marka adı güncellendi
 - bazı görünür başlıklarda düzenleme yapıldı
+- Görünür marka metinleri ve doküman başlıkları güncellendi (Kayıt 009, 019)
 
-**Durum:** Kısmen tamamlandı
+**Durum:** Tamamlandı
 
 ---
 
