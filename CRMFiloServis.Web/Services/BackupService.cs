@@ -1,9 +1,12 @@
-﻿using System.Text.Json;
+﻿using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using CRMFiloServis.Web.Helpers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -1071,15 +1074,22 @@ public class BackupService : IBackupService
         {
             var settings = GetSettings();
             var backupFolder = GetBackupFolderPath(settings);
-            var backupFilePath = Path.Combine(backupFolder, backupFileName);
+            var backupFilePath = FindBackupFilePath(backupFolder, backupFileName);
 
-            if (!File.Exists(backupFilePath))
+            if (string.IsNullOrWhiteSpace(backupFilePath) || !File.Exists(backupFilePath))
             {
                 _logger.LogError("Yedek dosyasi bulunamadi: {FileName}", backupFileName);
                 return false;
             }
 
             _logger.LogInformation("Veritabani donusumu baslatiliyor: {Source} -> {Target}", sourceProvider, targetProvider);
+
+            if (sourceProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase) &&
+                targetProvider.Equals("SQLite", StringComparison.OrdinalIgnoreCase) &&
+                backupFilePath.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
+            {
+                return await ImportPostgreSqlDumpToSqliteAsync(backupFilePath);
+            }
 
             // Kaynak veritabanından JSON olarak oku
             var jsonData = await ReadBackupToJsonAsync(backupFilePath, sourceProvider);
@@ -1104,6 +1114,309 @@ public class BackupService : IBackupService
             _logger.LogError(ex, "Veritabani donusum hatasi");
             return false;
         }
+    }
+
+    private async Task<bool> ImportPostgreSqlDumpToSqliteAsync(string backupFilePath)
+    {
+        try
+        {
+            var copyBlocks = await ParsePostgreSqlCopyBlocksAsync(backupFilePath);
+            if (copyBlocks.Count == 0)
+            {
+                _logger.LogError("PostgreSQL dump icinde aktarilacak COPY blogu bulunamadi: {Path}", backupFilePath);
+                return false;
+            }
+
+            using var scope = _serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            if (!context.Database.IsSqlite())
+            {
+                _logger.LogError("PostgreSQL -> SQLite donusumu sadece SQLite hedef veritabani icin destekleniyor.");
+                return false;
+            }
+
+            await context.Database.OpenConnectionAsync();
+            await SetSqliteForeignKeysAsync(context, enabled: false);
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var targetTables = await GetSqliteUserTablesAsync(context);
+                await ClearSqliteTablesAsync(context, targetTables);
+
+                foreach (var block in copyBlocks)
+                {
+                    if (!targetTables.Contains(block.TableName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        _logger.LogDebug("Hedef SQLite veritabaninda olmayan tablo atlandi: {TableName}", block.TableName);
+                        continue;
+                    }
+
+                    await InsertCopyBlockIntoSqliteAsync(context, block);
+                }
+
+                await transaction.CommitAsync();
+                await SetSqliteForeignKeysAsync(context, enabled: true);
+                _logger.LogInformation("PostgreSQL dump SQLite veritabanina basariyla aktarildi: {Path}", backupFilePath);
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                await SetSqliteForeignKeysAsync(context, enabled: true);
+                throw;
+            }
+            finally
+            {
+                await context.Database.CloseConnectionAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PostgreSQL dump SQLite aktarim hatasi");
+            return false;
+        }
+    }
+
+    private static async Task SetSqliteForeignKeysAsync(ApplicationDbContext context, bool enabled)
+    {
+        var connection = context.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA foreign_keys = {(enabled ? 1 : 0)};";
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task ClearSqliteTablesAsync(ApplicationDbContext context, List<string> targetTables)
+    {
+        var orderedTables = new[]
+        {
+            "MuhasebeFisKalemleri",
+            "MuhasebeFisleri",
+            "BankaKasaHareketleri",
+            "FaturaKalemleri",
+            "Faturalar",
+            "ServisCalismalari",
+            "AracMasraflari",
+            "StokKartlari",
+            "StokKategoriler",
+            "BankaHesaplari",
+            "Kullanicilar",
+            "Personeller",
+            "Soforler",
+            "Guzergahlar",
+            "Araclar",
+            "Cariler",
+            "MuhasebeHesaplari",
+            "Roller",
+            "Firmalar"
+        };
+
+        foreach (var tableName in orderedTables.Where(targetTables.Contains))
+        {
+            await context.Database.ExecuteSqlRawAsync($"DELETE FROM {EscapeSqliteIdentifier(tableName)};");
+        }
+
+        foreach (var tableName in targetTables.Except(orderedTables, StringComparer.OrdinalIgnoreCase))
+        {
+            await context.Database.ExecuteSqlRawAsync($"DELETE FROM {EscapeSqliteIdentifier(tableName)};");
+        }
+
+        await context.Database.ExecuteSqlRawAsync("DELETE FROM sqlite_sequence;");
+    }
+
+    private async Task<List<PostgreSqlCopyBlock>> ParsePostgreSqlCopyBlocksAsync(string backupFilePath)
+    {
+        var blocks = new List<PostgreSqlCopyBlock>();
+        PostgreSqlCopyBlock? currentBlock = null;
+
+        await using var stream = File.OpenRead(backupFilePath);
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            var trimmedLine = line.Trim();
+
+            if (currentBlock == null)
+            {
+                if (!trimmedLine.StartsWith("COPY ", StringComparison.OrdinalIgnoreCase) ||
+                    !trimmedLine.EndsWith("FROM stdin;", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var openParenIndex = trimmedLine.IndexOf('(');
+                var closeParenIndex = trimmedLine.LastIndexOf(") FROM stdin;", StringComparison.OrdinalIgnoreCase);
+                if (openParenIndex < 0 || closeParenIndex <= openParenIndex)
+                    continue;
+
+                var targetPart = trimmedLine[5..openParenIndex].Trim();
+                if (targetPart.StartsWith("public.", StringComparison.OrdinalIgnoreCase))
+                {
+                    targetPart = targetPart[7..];
+                }
+
+                var tableName = targetPart.Trim().Trim('"');
+                var columnPart = trimmedLine[(openParenIndex + 1)..closeParenIndex];
+
+                currentBlock = new PostgreSqlCopyBlock(
+                    tableName,
+                    columnPart
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(static c => c.Trim().Trim('"'))
+                        .ToList());
+
+                continue;
+            }
+
+            if (trimmedLine == @"\.")
+            {
+                blocks.Add(currentBlock);
+                currentBlock = null;
+                continue;
+            }
+
+            currentBlock.Rows.Add(line.Split('\t').Select(ParsePostgreSqlCopyValue).ToList());
+        }
+
+        return blocks;
+    }
+
+    private async Task<List<string>> GetSqliteUserTablesAsync(ApplicationDbContext context)
+    {
+        var result = new List<string>();
+        var connection = context.Database.GetDbConnection();
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText = @"
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name NOT LIKE 'sqlite_%'
+              AND name <> '__EFMigrationsHistory';";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            result.Add(reader.GetString(0));
+        }
+
+        return result;
+    }
+
+    private async Task<HashSet<string>> GetSqliteTableColumnsAsync(ApplicationDbContext context, string tableName)
+    {
+        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var connection = context.Database.GetDbConnection();
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText = $"PRAGMA table_info({EscapeSqliteIdentifier(tableName)});";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            result.Add(reader.GetString(1));
+        }
+
+        return result;
+    }
+
+    private async Task InsertCopyBlockIntoSqliteAsync(ApplicationDbContext context, PostgreSqlCopyBlock block)
+    {
+        var targetColumns = await GetSqliteTableColumnsAsync(context, block.TableName);
+        var mappedColumns = block.Columns
+            .Select((columnName, index) => new { columnName, index })
+            .Where(x => targetColumns.Contains(x.columnName))
+            .ToList();
+
+        if (mappedColumns.Count == 0)
+        {
+            _logger.LogWarning("SQLite hedefinde eslesen kolon bulunamadi, tablo atlandi: {TableName}", block.TableName);
+            return;
+        }
+
+        var columnList = string.Join(", ", mappedColumns.Select(x => EscapeSqliteIdentifier(x.columnName)));
+        var parameterList = string.Join(", ", Enumerable.Range(0, mappedColumns.Count).Select(i => $"@p{i}"));
+        var insertSql = $"INSERT INTO {EscapeSqliteIdentifier(block.TableName)} ({columnList}) VALUES ({parameterList});";
+        var connection = context.Database.GetDbConnection();
+
+        foreach (var row in block.Rows)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
+            command.CommandText = insertSql;
+
+            for (var i = 0; i < mappedColumns.Count; i++)
+            {
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = $"@p{i}";
+
+                var valueIndex = mappedColumns[i].index;
+                var value = valueIndex < row.Count ? row[valueIndex] : null;
+                parameter.Value = value ?? DBNull.Value;
+                command.Parameters.Add(parameter);
+            }
+
+            await command.ExecuteNonQueryAsync();
+        }
+    }
+
+    private static object? ParsePostgreSqlCopyValue(string rawValue)
+    {
+        if (rawValue == @"\N")
+            return null;
+
+        if (rawValue.StartsWith(@"\x", StringComparison.OrdinalIgnoreCase) && rawValue.Length > 2)
+        {
+            try
+            {
+                return Convert.FromHexString(rawValue[2..]);
+            }
+            catch
+            {
+            }
+        }
+
+        var builder = new StringBuilder(rawValue.Length);
+        for (var i = 0; i < rawValue.Length; i++)
+        {
+            if (rawValue[i] != '\\' || i == rawValue.Length - 1)
+            {
+                builder.Append(rawValue[i]);
+                continue;
+            }
+
+            i++;
+            builder.Append(rawValue[i] switch
+            {
+                't' => '\t',
+                'n' => '\n',
+                'r' => '\r',
+                'b' => '\b',
+                'f' => '\f',
+                'v' => '\v',
+                '\\' => '\\',
+                _ => rawValue[i]
+            });
+        }
+
+        var value = builder.ToString();
+        return value switch
+        {
+            "t" => 1,
+            "f" => 0,
+            _ => value
+        };
+    }
+
+    private static string EscapeSqliteIdentifier(string identifier)
+        => $"\"{identifier.Replace("\"", "\"\"")}\"";
+
+    private sealed class PostgreSqlCopyBlock(string tableName, List<string> columns)
+    {
+        public string TableName { get; } = tableName;
+        public List<string> Columns { get; } = columns;
+        public List<List<object?>> Rows { get; } = new();
     }
 
     private async Task<Dictionary<string, object>?> ReadBackupToJsonAsync(string backupFilePath, string sourceProvider)

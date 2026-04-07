@@ -177,6 +177,7 @@ builder.Services.AddScoped<UpdateService>(); // Güncelleme Yönetimi Servisi
 builder.Services.AddScoped<IEmailService, EmailService>(); // E-posta Bildirim Servisi
 builder.Services.AddScoped<ISystemHealthService, SystemHealthService>(); // Sistem Sağlık Kontrolü
 builder.Services.AddHostedService<DatabaseBackupService>(); // Otomatik Veritabanı Yedekleme
+builder.Services.AddHostedService<BelgeUyariBackgroundService>(); // Belge Süresi Email Uyarı
 builder.Services.AddHttpClient("OpenAI"); // OpenAI icin HttpClient
 builder.Services.AddHttpClient("Scraper"); // Scraper icin HttpClient
 builder.Services.AddHostedService<AutoBackupService>();

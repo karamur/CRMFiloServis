@@ -1,4 +1,4 @@
-@page "/ayarlar/guncelleme"
+﻿@page "/ayarlar/uygulama-guncelleme"
 @using CRMFiloServis.Web.Services
 @using Microsoft.AspNetCore.Components.Forms
 @inject IToastService ToastService
@@ -73,7 +73,7 @@
             {
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
-                    <h5>Guncelleme uygulan�yor...</h5>
+                    <h5>Guncelleme uygulanıyor...</h5>
                     <p class="text-muted">@guncellemeDurumu</p>
                     <div class="progress mx-auto" style="max-width: 400px;">
                         <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: @ilerlemeYuzde%">@ilerlemeYuzde%</div>

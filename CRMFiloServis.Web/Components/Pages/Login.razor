@@ -9,7 +9,6 @@
 @inject ILisansService LisansService
 @inject IPortalProjectCatalogService PortalProjectCatalogService
 @inject NavigationManager Navigation
-@inject AppAuthenticationStateProvider AuthProvider
 @inject ProtectedLocalStorage LocalStorage
 
 <PageTitle>Giris - @(selectedProject?.Name ?? "Koa Filo Servis")</PageTitle>
@@ -425,11 +424,6 @@
 
             if (sonuc.Basarili)
             {
-                if (sonuc.Kullanici != null)
-                {
-                    await AuthProvider.GirisYapAsync(sonuc.Kullanici);
-                }
-
                 // "Beni Hatirla" tercihini kaydet
                 try
                 {
@@ -446,13 +440,16 @@
                 {
                     // Local storage hatasi - kritik degil
                 }
-                
+
                 successMessage = "Giris basarili! Yonlendiriliyorsunuz...";
                 StateHasChanged();
 
-                // Dashboard'a yonlendir
-                await Task.Delay(300);
-                Navigation.NavigateTo("/dashboard", false);
+                // Kisa bir bekleme ile authentication state'in yayilmasini sagla
+                await Task.Delay(100);
+
+                // Dashboard'a yonlendir - forceLoad: false ile ayni circuit icinde
+                // navigation yaparak authentication state'in korunmasini sagliyoruz
+                Navigation.NavigateTo("/dashboard", forceLoad: false);
             }
             else
             {

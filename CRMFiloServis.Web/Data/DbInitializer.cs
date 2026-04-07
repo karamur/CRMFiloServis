@@ -1,6 +1,7 @@
 ﻿using CRMFiloServis.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Data;
 
 namespace CRMFiloServis.Web.Data;
 
@@ -23,7 +24,13 @@ public static class DbInitializer
             }
 
             // Bekleyen migration'lari uygula (yeni tablolar icin)
-            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            var pendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToList();
+            if (context.Database.IsSqlite() && pendingMigrations.Any())
+            {
+                await EnsureSqliteMigrationHistoryAsync(context, pendingMigrations);
+                pendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToList();
+            }
+
             if (pendingMigrations.Any())
             {
                 Console.WriteLine($"Bekleyen migration sayisi: {pendingMigrations.Count()}");
@@ -291,6 +298,82 @@ public static class DbInitializer
         catch (Exception ex)
         {
             Console.WriteLine($"Roller Renk kolonu ekleme hatası: {ex.Message}");
+        }
+    }
+
+    private static async Task EnsureSqliteMigrationHistoryAsync(ApplicationDbContext context, List<string> pendingMigrations)
+    {
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
+
+        try
+        {
+            await using var tableCheck = connection.CreateCommand();
+            tableCheck.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name <> '__EFMigrationsHistory' AND name NOT LIKE 'sqlite_%' LIMIT 1";
+            var hasUserTables = await tableCheck.ExecuteScalarAsync() is not null;
+            if (!hasUserTables)
+            {
+                return;
+            }
+
+            await using var historyCreate = connection.CreateCommand();
+            historyCreate.CommandText = @"
+                CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                    ""MigrationId"" TEXT NOT NULL CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY,
+                    ""ProductVersion"" TEXT NOT NULL
+                );";
+            await historyCreate.ExecuteNonQueryAsync();
+
+            await using var historyCount = connection.CreateCommand();
+            historyCount.CommandText = "SELECT COUNT(1) FROM \"__EFMigrationsHistory\"";
+            var hasHistory = Convert.ToInt32(await historyCount.ExecuteScalarAsync() ?? 0) > 0;
+            if (hasHistory)
+            {
+                return;
+            }
+
+            var allMigrations = context.Database.GetMigrations().ToList();
+            var migrationsToBaseline = allMigrations
+                .Where(pendingMigrations.Contains)
+                .ToList();
+
+            if (migrationsToBaseline.Count == 0)
+            {
+                return;
+            }
+
+            await using var insertHistory = connection.CreateCommand();
+            insertHistory.CommandText = "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ($id, $version)";
+
+            var idParameter = insertHistory.CreateParameter();
+            idParameter.ParameterName = "$id";
+            idParameter.Value = string.Empty;
+            insertHistory.Parameters.Add(idParameter);
+
+            var versionParameter = insertHistory.CreateParameter();
+            versionParameter.ParameterName = "$version";
+            versionParameter.Value = "10.0.5";
+            insertHistory.Parameters.Add(versionParameter);
+
+            foreach (var migrationId in migrationsToBaseline)
+            {
+                idParameter.Value = migrationId;
+                await insertHistory.ExecuteNonQueryAsync();
+            }
+
+            Console.WriteLine($"SQLite migration history baselined: {migrationsToBaseline.Count} migration");
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
         }
     }
 

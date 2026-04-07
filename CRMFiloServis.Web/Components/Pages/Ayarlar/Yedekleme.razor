@@ -1,7 +1,9 @@
 ﻿@page "/ayarlar/yedekleme"
+@using CRMFiloServis.Web.Helpers
 @using CRMFiloServis.Web.Services
 @using Microsoft.AspNetCore.Components.Forms
 @inject IBackupService BackupService
+@inject IWebHostEnvironment Environment
 @inject IToastService ToastService
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -626,7 +628,17 @@
 
         try
         {
-            var backupFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, settings.BackupFolder ?? "Backups");
+            var backupFolder = settings.BackupFolder;
+            if (string.IsNullOrWhiteSpace(backupFolder))
+            {
+                backupFolder = "database";
+            }
+
+            if (!Path.IsPathRooted(backupFolder))
+            {
+                backupFolder = Path.Combine(AppStoragePaths.GetStorageRoot(Environment.ContentRootPath), backupFolder);
+            }
+
             Directory.CreateDirectory(backupFolder);
 
             var fileName = $"uploaded_{DateTime.Now:yyyyMMdd_HHmmss}_{yuklenecekDosya.Name}";
