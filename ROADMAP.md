@@ -300,8 +300,9 @@ FAZ 7 (5-6 Hafta)
 
 ### 🔴 Modül Geliştirmeleri (Öncelik 3)
 12. ~~**Bütçe Analiz Geliştirme**~~ - ✅ Kategori bazlı analiz, trend grafikleri, AI rapor yorumlama tamamlandı
-13. **Cari Geliştirme** - Risk analizi kartları, iletişim geçmişi, otomatik hatırlatmalar
-14. **Fatura Geliştirme** - Toplu fatura oluşturma, fatura şablonları, e-fatura hazırlık
+13. ~~**Cari Geliştirme**~~ - ✅ İletişim geçmişi, hatırlatıcılar, vade uyarıları, AI fatura import
+14. ~~**AI Fatura Import**~~ - ✅ XML e-fatura yükleme, AI ile cari eşleştirme/oluşturma, kalem sınıflandırma (hizmet/mal/kiralama), güzergah-firma eşleştirme, stok kartı kontrolü, puantaj entegrasyonu
+15. **Fatura Geliştirme** - Toplu fatura oluşturma, fatura şablonları, e-fatura hazırlık
 
 ### 🟡 Maaş İyileştirmeleri (Öncelik 4)
 15. ~~**Maaş yönetimine yol parası**~~ - ✅ Eklendi

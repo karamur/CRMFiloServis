@@ -41,6 +41,48 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 042 - AI Destekli Fatura Import ve Cari Geliştirme
+**Talep:** Cari modülden kesilen/gelen faturaları XML yüklerken yapay zeka ile cari kart kontrolü, güzergah eşleştirme, stok kartı kontrolü, kalem sınıflandırma ve puantaj entegrasyonu.
+
+**Yapılanlar:**
+- `FaturaAIImportModels.cs` oluşturuldu - AI fatura import DTO'ları:
+  - `FaturaAIAnalizSonuc`: Fatura bilgileri, satıcı/alıcı, cari eşleşme, kalemler, AI yorum
+  - `FaturaAICariBilgi`: Unvan, VergiNo, TcKimlikNo, VergiDairesi, Adres, İl/İlçe
+  - `CariEslesmeSonuc`: Mevcut/yeni cari, eşleşme yöntemi (VergiNo/TcKimlikNo/Unvan)
+  - `FaturaAIKalem`: AI kalem tipi, alt tipi, güven skoru, kullanıcı düzeltme, güzergah/stok eşleşme
+  - `GuzergahEslesmeSonuc`, `StokEslesmeSonuc`: Benzer kayıtlar, otomatik eşleşme
+- `IFaturaAIImportService.cs` oluşturuldu - 7 metot interface
+- `FaturaAIImportService.cs` oluşturuldu (~550 satır):
+  - **XML Parse**: UBL 2.1 e-fatura formatı (cbc/cac namespace), satıcı/alıcı party, kalemler, tevkifat, vade
+  - **Cari Eşleştirme**: VergiNo → TcKimlikNo → Unvan tam → Unvan kısmi → yeni oluştur
+  - **AI Kalem Sınıflandırma**: Ollama ile JSON format sınıflandırma (Hizmet/Mal/Kiralama/Servis)
+  - **Güzergah Eşleştirme**: Kelime benzerlik skoru, cari bonus +20%, >70% otomatik eşleşme
+  - **Stok Eşleştirme**: Ürün kodu tam eşleşme, açıklama benzerlik
+  - **Kaydet**: Transaction (cari → güzergah → fatura+kalemler → güzergah FaturaKalemId güncelle)
+  - UBL birim kodları normalizasyonu (C62→Adet, KGM→Kg, LTR→Lt, HUR→Saat vb.)
+- `FaturaAIImport.razor` oluşturuldu (~550 satır) - 4 adımlı wizard:
+  - Adım 1: XML dosya yükleme (boyut kontrolü, AI bağlantı uyarısı)
+  - Adım 2: Cari kontrol (mevcut eşleşme/yeni oluşturma/farklı cari seçme)
+  - Adım 3: Kalem analizi tablosu (AI tipi, kullanıcı düzeltme, güzergah/stok eşleşme dropdown)
+  - Adım 4: Kaydet sonucu ve yönlendirme
+- `CariService.cs` güncellendi - İletişim notu, hatırlatıcı ve vade uyarı implementasyonları:
+  - `GetIletisimNotlariAsync`, `AddIletisimNotuAsync`, `UpdateIletisimNotuAsync`, `DeleteIletisimNotuAsync`
+  - `GetCariHatirlaticilariAsync`, `AddCariHatirlaticiAsync`
+  - `GetVadeUyarilariAsync` (kritik/gecikmiş/bugün/yaklaşan vade sınıflandırma)
+- `NavMenu.razor` güncellendi - Fatura menüsüne "AI Fatura Import" linki eklendi
+- `Program.cs` güncellendi - `IFaturaAIImportService` DI kaydı eklendi
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Models/FaturaAIImportModels.cs` (yeni)
+- `CRMFiloServis.Web/Services/Interfaces/IFaturaAIImportService.cs` (yeni)
+- `CRMFiloServis.Web/Services/FaturaAIImportService.cs` (yeni)
+- `CRMFiloServis.Web/Components/Pages/Cariler/FaturaAIImport.razor` (yeni)
+- `CRMFiloServis.Web/Services/CariService.cs` (güncellendi)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncellendi)
+- `CRMFiloServis.Web/Program.cs` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 040 - AI Destekli Muhasebeleştirme ve Puantaj Analizi
 **Talep:** Muhasebeleştirme ve puantaj kısımlarında yapay zeka desteği ile öneri, tahmin, kontrol bulguları sunma ve kullanıcıya aksiyon alma imkanı.
 

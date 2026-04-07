@@ -289,3 +289,56 @@ public class GenelAylikTrend
     public int OdemeSayisi { get; set; }
     public decimal TahsilatOrani => ToplamBorc != 0 ? (ToplamAlacak / ToplamBorc) * 100 : 0;
 }
+
+/// <summary>
+/// Cari vade uyarısı
+/// </summary>
+public class CariVadeUyari
+{
+    public int CariId { get; set; }
+    public string CariKodu { get; set; } = string.Empty;
+    public string CariUnvan { get; set; } = string.Empty;
+    public int FaturaId { get; set; }
+    public string FaturaNo { get; set; } = string.Empty;
+    public DateTime FaturaTarihi { get; set; }
+    public DateTime? VadeTarihi { get; set; }
+    public decimal FaturaTutari { get; set; }
+    public decimal KalanTutar { get; set; }
+    public int KalanGun { get; set; }
+    public VadeUyariSeviye Seviye { get; set; }
+
+    public string SeviyeRengi => Seviye switch
+    {
+        VadeUyariSeviye.VadesiGecmisKritik => "danger",
+        VadeUyariSeviye.VadesiGecmis => "warning",
+        VadeUyariSeviye.BugunVadeli => "info",
+        VadeUyariSeviye.YaklasanVade => "primary",
+        _ => "secondary"
+    };
+
+    public string SeviyeIkon => Seviye switch
+    {
+        VadeUyariSeviye.VadesiGecmisKritik => "bi-exclamation-triangle-fill",
+        VadeUyariSeviye.VadesiGecmis => "bi-exclamation-circle-fill",
+        VadeUyariSeviye.BugunVadeli => "bi-clock-fill",
+        VadeUyariSeviye.YaklasanVade => "bi-bell-fill",
+        _ => "bi-info-circle"
+    };
+
+    public string SeviyeMetin => Seviye switch
+    {
+        VadeUyariSeviye.VadesiGecmisKritik => $"{Math.Abs(KalanGun)} gün gecikmiş (KRİTİK)",
+        VadeUyariSeviye.VadesiGecmis => $"{Math.Abs(KalanGun)} gün gecikmiş",
+        VadeUyariSeviye.BugunVadeli => "Bugün vadeli",
+        VadeUyariSeviye.YaklasanVade => $"{KalanGun} gün kaldı",
+        _ => ""
+    };
+}
+
+public enum VadeUyariSeviye
+{
+    YaklasanVade = 0,
+    BugunVadeli = 1,
+    VadesiGecmis = 2,
+    VadesiGecmisKritik = 3
+}

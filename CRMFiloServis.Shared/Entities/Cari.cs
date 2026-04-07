@@ -45,6 +45,8 @@ public class Cari : BaseEntity
     public virtual ICollection<Guzergah> Guzergahlar { get; set; } = new List<Guzergah>();
     public virtual ICollection<BankaKasaHareket> BankaKasaHareketler { get; set; } = new List<BankaKasaHareket>();
     public virtual ICollection<KullaniciCari> KullaniciEslestirmeleri { get; set; } = new List<KullaniciCari>();
+    public virtual ICollection<CariIletisimNot> IletisimNotlari { get; set; } = new List<CariIletisimNot>();
+    public virtual ICollection<Hatirlatici> Hatirlaticilar { get; set; } = new List<Hatirlatici>();
 }
 
 public enum CariTipi

@@ -1,11 +1,11 @@
-using System.ComponentModel.DataAnnotations;
+ï»¿using System.ComponentModel.DataAnnotations;
 
 namespace CRMFiloServis.Shared.Entities;
 
-#region Bildirim/Uyarı Sistemi
+#region Bildirim/UyarÄ± Sistemi
 
 /// <summary>
-/// Kullanıcı bildirimleri - uyarı sistemi
+/// KullanÄ±cÄ± bildirimleri - uyarÄ± sistemi
 /// </summary>
 public class Bildirim : BaseEntity
 {
@@ -25,10 +25,10 @@ public class Bildirim : BaseEntity
     public bool Okundu { get; set; } = false;
     public DateTime? OkunmaTarihi { get; set; }
 
-    // İlişkili kayıt bilgisi
+    // Ä°liÅŸkili kayÄ±t bilgisi
     public string? IliskiliTablo { get; set; } // "Cari", "Fatura", "Arac" vs.
     public int? IliskiliKayitId { get; set; }
-    public string? Link { get; set; } // Yönlendirilecek sayfa
+    public string? Link { get; set; } // YÃ¶nlendirilecek sayfa
 
     // Zamanlama
     public DateTime? SonGosterimTarihi { get; set; }
@@ -57,17 +57,17 @@ public enum BildirimOncelik
 
 #endregion
 
-#region Mesajlaşma Sistemi
+#region MesajlaÅŸma Sistemi
 
 /// <summary>
-/// Dahili mesajlaşma sistemi
+/// Dahili mesajlaÅŸma sistemi
 /// </summary>
 public class Mesaj : BaseEntity
 {
     public int GonderenId { get; set; }
     public virtual Kullanici Gonderen { get; set; } = null!;
 
-    public int? AliciId { get; set; } // null ise tüm kullanıcılara
+    public int? AliciId { get; set; } // null ise tÃ¼m kullanÄ±cÄ±lara
     public virtual Kullanici? Alici { get; set; }
 
     [Required]
@@ -83,11 +83,11 @@ public class Mesaj : BaseEntity
     public bool Okundu { get; set; } = false;
     public DateTime? OkunmaTarihi { get; set; }
 
-    // Dış sistemler için
+    // DÄ±ÅŸ sistemler iÃ§in
     public string? DisAlici { get; set; } // Telefon veya email
     public string? DisGonderimId { get; set; } // WhatsApp/SMS ID
 
-    // Yanıt zinciri
+    // YanÄ±t zinciri
     public int? UstMesajId { get; set; }
     public virtual Mesaj? UstMesaj { get; set; }
     public virtual ICollection<Mesaj> Yanitlar { get; set; } = new List<Mesaj>();
@@ -111,7 +111,7 @@ public enum MesajDurum
 }
 
 /// <summary>
-/// Email ayarları
+/// Email ayarlarÄ±
 /// </summary>
 public class EmailAyar : BaseEntity
 {
@@ -149,7 +149,7 @@ public class EmailAyar : BaseEntity
 }
 
 /// <summary>
-/// WhatsApp ayarları
+/// WhatsApp ayarlarÄ±
 /// </summary>
 public class WhatsAppAyar : BaseEntity
 {
@@ -172,10 +172,10 @@ public class WhatsAppAyar : BaseEntity
 
 #endregion
 
-#region Hatırlatıcı/Randevu Sistemi
+#region HatÄ±rlatÄ±cÄ±/Randevu Sistemi
 
 /// <summary>
-/// Kullanıcı hatırlatıcıları ve randevuları
+/// KullanÄ±cÄ± hatÄ±rlatÄ±cÄ±larÄ± ve randevularÄ±
 /// </summary>
 public class Hatirlatici : BaseEntity
 {
@@ -195,9 +195,9 @@ public class Hatirlatici : BaseEntity
     public DateTime? BitisTarihi { get; set; }
     public bool TumGun { get; set; } = false;
 
-    // Tekrar ayarları
+    // Tekrar ayarlarÄ±
     public TekrarTipi TekrarTipi { get; set; } = TekrarTipi.Yok;
-    public int TekrarAraligi { get; set; } = 1; // Her X gün/hafta/ay
+    public int TekrarAraligi { get; set; } = 1; // Her X gÃ¼n/hafta/ay
     public DateTime? TekrarBitisTarihi { get; set; }
 
     // Bildirim
@@ -205,7 +205,7 @@ public class Hatirlatici : BaseEntity
     public bool EmailBildirim { get; set; } = false;
     public bool PushBildirim { get; set; } = true;
 
-    // İlişkili kayıt
+    // Ä°liÅŸkili kayÄ±t
     public string? IliskiliTablo { get; set; }
     public int? IliskiliKayitId { get; set; }
 
@@ -213,7 +213,7 @@ public class Hatirlatici : BaseEntity
     public HatirlaticiDurum Durum { get; set; } = HatirlaticiDurum.Bekliyor;
     public string? Renk { get; set; } = "#0d6efd";
 
-    // Cari/Kişi bağlantısı
+    // Cari/KiÅŸi baÄŸlantÄ±sÄ±
     public int? CariId { get; set; }
     public virtual Cari? Cari { get; set; }
 }
@@ -247,10 +247,10 @@ public enum HatirlaticiDurum
 
 #endregion
 
-#region Kullanıcı-Cari Eşleştirme
+#region KullanÄ±cÄ±-Cari EÅŸleÅŸtirme
 
 /// <summary>
-/// Kullanıcıya bağlı cariler
+/// KullanÄ±cÄ±ya baÄŸlÄ± cariler
 /// </summary>
 public class KullaniciCari : BaseEntity
 {
@@ -260,7 +260,7 @@ public class KullaniciCari : BaseEntity
     public int CariId { get; set; }
     public virtual Cari Cari { get; set; } = null!;
 
-    // İzinler
+    // Ä°zinler
     public bool EkstreGorebilir { get; set; } = true;
     public bool FaturaGorebilir { get; set; } = true;
     public bool OdemeYapabilir { get; set; } = false;
@@ -274,10 +274,60 @@ public class KullaniciCari : BaseEntity
 
 public enum KullaniciCariTip
 {
-    Musteri = 0,      // Müşteri carisi
-    Tedarikci = 1,    // Tedarikçi/Satıcı
+    Musteri = 0,      // MÃ¼ÅŸteri carisi
+    Tedarikci = 1,    // TedarikÃ§i/SatÄ±cÄ±
     Personel = 2,     // Personel carisi
-    Ozel = 3          // Özel tanımlı
+    Ozel = 3          // Ã–zel tanÄ±mlÄ±
+}
+
+#endregion
+
+#region Cari Ä°letiÅŸim GeÃ§miÅŸi
+
+/// <summary>
+/// Cari iletiÅŸim geÃ§miÅŸi - arama, email, ziyaret, not kayÄ±tlarÄ±
+/// </summary>
+public class CariIletisimNot : BaseEntity
+{
+    public int CariId { get; set; }
+    public virtual Cari Cari { get; set; } = null!;
+
+    public int? KullaniciId { get; set; }
+    public virtual Kullanici? Kullanici { get; set; }
+
+    [Required]
+    [StringLength(200)]
+    public string Konu { get; set; } = string.Empty;
+
+    [StringLength(2000)]
+    public string? Notlar { get; set; }
+
+    public IletisimTipi IletisimTipi { get; set; } = IletisimTipi.Not;
+
+    public DateTime IletisimTarihi { get; set; } = DateTime.Now;
+
+    [StringLength(100)]
+    public string? IletisimYapanKisi { get; set; }
+
+    [StringLength(100)]
+    public string? MuhatapKisi { get; set; }
+
+    // Sonraki aksiyon
+    [StringLength(500)]
+    public string? SonrakiAksiyon { get; set; }
+    public DateTime? SonrakiAksiyonTarihi { get; set; }
+    public bool AksiyonTamamlandi { get; set; } = false;
+}
+
+public enum IletisimTipi
+{
+    Not = 0,
+    TelefonArama = 1,
+    Email = 2,
+    Ziyaret = 3,
+    Toplanti = 4,
+    WhatsApp = 5,
+    Teklif = 6
 }
 
 #endregion
@@ -285,7 +335,7 @@ public enum KullaniciCariTip
 #region Dashboard Widget
 
 /// <summary>
-/// Kullanıcı dashboard widget ayarları
+/// KullanÄ±cÄ± dashboard widget ayarlarÄ±
 /// </summary>
 public class DashboardWidget : BaseEntity
 {
@@ -297,13 +347,13 @@ public class DashboardWidget : BaseEntity
     public string WidgetKodu { get; set; } = string.Empty; // "bildirimler", "mesajlar", "randevular" vs.
 
     public int Sira { get; set; } = 0;
-    public int Kolon { get; set; } = 0; // 0-11 (12 sütunlu grid)
+    public int Kolon { get; set; } = 0; // 0-11 (12 sÃ¼tunlu grid)
     public int Genislik { get; set; } = 4; // col-md-X
 
     public bool Gorunur { get; set; } = true;
     public bool Kucultulmus { get; set; } = false;
 
-    public string? Ayarlar { get; set; } // JSON formatında widget ayarları
+    public string? Ayarlar { get; set; } // JSON formatÄ±nda widget ayarlarÄ±
 }
 
 #endregion

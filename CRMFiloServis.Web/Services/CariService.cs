@@ -699,4 +699,127 @@ public class CariService : ICariService
                 kod.StartsWith("320.", StringComparison.OrdinalIgnoreCase) ||
                 kod.StartsWith("335.", StringComparison.OrdinalIgnoreCase));
     }
+
+    // ===== İletişim Geçmişi =====
+
+    public async Task<List<CariIletisimNot>> GetIletisimNotlariAsync(int cariId, int? adet = null)
+    {
+        var query = _context.CariIletisimNotlar
+            .Where(n => n.CariId == cariId && !n.IsDeleted)
+            .OrderByDescending(n => n.IletisimTarihi)
+            .AsQueryable();
+
+        if (adet.HasValue)
+            query = query.Take(adet.Value);
+
+        return await query.ToListAsync();
+    }
+
+    public async Task<CariIletisimNot> AddIletisimNotuAsync(CariIletisimNot not)
+    {
+        _context.CariIletisimNotlar.Add(not);
+        await _context.SaveChangesAsync();
+        return not;
+    }
+
+    public async Task<CariIletisimNot> UpdateIletisimNotuAsync(CariIletisimNot not)
+    {
+        var mevcut = await _context.CariIletisimNotlar.FindAsync(not.Id);
+        if (mevcut == null) throw new Exception("İletişim notu bulunamadı.");
+
+        mevcut.Konu = not.Konu;
+        mevcut.Notlar = not.Notlar;
+        mevcut.IletisimTipi = not.IletisimTipi;
+        mevcut.IletisimTarihi = not.IletisimTarihi;
+        mevcut.SonrakiAksiyon = not.SonrakiAksiyon;
+        mevcut.SonrakiAksiyonTarihi = not.SonrakiAksiyonTarihi;
+        mevcut.AksiyonTamamlandi = not.AksiyonTamamlandi;
+        mevcut.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return mevcut;
+    }
+
+    public async Task<bool> DeleteIletisimNotuAsync(int notId)
+    {
+        var not = await _context.CariIletisimNotlar.FindAsync(notId);
+        if (not == null) return false;
+
+        not.IsDeleted = true;
+        not.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    // ===== Hatırlatıcılar =====
+
+    public async Task<List<Hatirlatici>> GetCariHatirlaticilariAsync(int cariId)
+    {
+        return await _context.Hatirlaticilar
+            .Where(h => h.CariId == cariId && !h.IsDeleted)
+            .OrderByDescending(h => h.BaslangicTarihi)
+            .ToListAsync();
+    }
+
+    public async Task<Hatirlatici> AddCariHatirlaticiAsync(Hatirlatici hatirlatici)
+    {
+        _context.Hatirlaticilar.Add(hatirlatici);
+        await _context.SaveChangesAsync();
+        return hatirlatici;
+    }
+
+    // ===== Vade Uyarıları =====
+
+    public async Task<List<CariVadeUyari>> GetVadeUyarilariAsync(int? cariId = null, int yaklasmaSuresiGun = 7)
+    {
+        var bugun = DateTime.Today;
+        var uyarilar = new List<CariVadeUyari>();
+
+        var query = _context.Faturalar
+            .Include(f => f.Cari)
+            .Where(f => !f.IsDeleted && f.VadeTarihi.HasValue && f.Durum != FaturaDurum.Odendi && f.Durum != FaturaDurum.IptalEdildi);
+
+        if (cariId.HasValue)
+            query = query.Where(f => f.CariId == cariId.Value);
+
+        var faturalar = await query.ToListAsync();
+
+        foreach (var f in faturalar)
+        {
+            var kalanTutar = f.GenelToplam - f.OdenenTutar;
+            if (kalanTutar <= 0) continue;
+
+            var vade = f.VadeTarihi!.Value;
+            var kalanGun = (vade - bugun).Days;
+
+            // Kritik: 30+ gün gecikmiş, Gecikmiş: vadesi geçmiş, Bugün: bugün vadeli, Yaklaşan: yaklasmaSuresiGun içinde
+            VadeUyariSeviye seviye;
+            if (kalanGun < -30)
+                seviye = VadeUyariSeviye.VadesiGecmisKritik;
+            else if (kalanGun < 0)
+                seviye = VadeUyariSeviye.VadesiGecmis;
+            else if (kalanGun == 0)
+                seviye = VadeUyariSeviye.BugunVadeli;
+            else if (kalanGun <= yaklasmaSuresiGun)
+                seviye = VadeUyariSeviye.YaklasanVade;
+            else
+                continue;
+
+            uyarilar.Add(new CariVadeUyari
+            {
+                CariId = f.CariId,
+                CariUnvan = f.Cari?.Unvan ?? "",
+                CariKodu = f.Cari?.CariKodu ?? "",
+                FaturaId = f.Id,
+                FaturaNo = f.FaturaNo,
+                FaturaTarihi = f.FaturaTarihi,
+                VadeTarihi = vade,
+                KalanGun = kalanGun,
+                KalanTutar = kalanTutar,
+                Seviye = seviye
+            });
+        }
+
+        return uyarilar.OrderBy(u => u.KalanGun).ToList();
+    }
 }

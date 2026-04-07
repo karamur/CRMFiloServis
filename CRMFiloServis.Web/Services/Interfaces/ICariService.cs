@@ -18,6 +18,19 @@ public interface ICariService
     Task<Cari> EnsureMuhasebeHesapAsync(int cariId);
     Task<bool> DeleteAsync(int id);
     Task<string> GenerateNextKodAsync();
+
+    // İletişim Geçmişi
+    Task<List<CariIletisimNot>> GetIletisimNotlariAsync(int cariId, int? adet = null);
+    Task<CariIletisimNot> AddIletisimNotuAsync(CariIletisimNot not);
+    Task<CariIletisimNot> UpdateIletisimNotuAsync(CariIletisimNot not);
+    Task<bool> DeleteIletisimNotuAsync(int notId);
+
+    // Hatırlatıcılar
+    Task<List<Hatirlatici>> GetCariHatirlaticilariAsync(int cariId);
+    Task<Hatirlatici> AddCariHatirlaticiAsync(Hatirlatici hatirlatici);
+
+    // Vade Uyarıları
+    Task<List<CariVadeUyari>> GetVadeUyarilariAsync(int? cariId = null, int yaklasmaSuresiGun = 7);
 }
 
 /// <summary>
