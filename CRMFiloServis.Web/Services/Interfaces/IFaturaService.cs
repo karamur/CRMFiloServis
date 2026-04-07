@@ -45,6 +45,11 @@ public interface IFaturaService
     Task<List<FaturaKalem>> GetEslesmisKalemleriAsync(DateTime? baslangic = null, DateTime? bitis = null);
     Task<StokKartiOlusturSonuc> UpdateFaturaKalemleriVeStokKartiOlusturAsync(List<FaturaKalem> kalemler, bool stokKartiOlustur = true);
     Task UpdateFaturaKalemleriAsync(List<FaturaKalem> kalemler);
+
+    // Firmalar Arası Fatura - Mahsup İşlemleri
+    Task<bool> MahsupKapatAsync(int faturaId);
+    Task<List<Fatura>> GetFirmalarArasiEslesmemisFaturalarAsync(int? firmaId = null);
+    Task<bool> FaturalariEslestirAsync(int fatura1Id, int fatura2Id);
 }
 
 public class StokKartiOlusturSonuc

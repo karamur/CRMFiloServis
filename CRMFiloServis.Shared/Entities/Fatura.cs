@@ -32,6 +32,12 @@ public class Fatura : BaseEntity
     public int? KarsiFirmaId { get; set; } // Gelen faturada satıcı firma, Giden faturada alıcı firma
     public virtual Firma? KarsiFirma { get; set; }
 
+    // Firmalar arası fatura eşleştirme (Kesilen fatura = Karşı firmanın gelen faturası)
+    public int? EslesenFaturaId { get; set; } // Karşı firmadaki eşleşen fatura
+    public virtual Fatura? EslesenFatura { get; set; }
+    public bool MahsupKapatildi { get; set; } = false; // Mahsup ile kapatıldı mı?
+    public DateTime? MahsupTarihi { get; set; }
+
     // Tutarlar
     public decimal AraToplam { get; set; }
     public decimal IskontoTutar { get; set; } = 0;

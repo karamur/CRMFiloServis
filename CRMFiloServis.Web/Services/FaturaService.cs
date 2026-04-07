@@ -117,6 +117,12 @@ public class FaturaService : IFaturaService
         _context.Faturalar.Add(fatura);
         await _context.SaveChangesAsync();
 
+        // Firmalar arası fatura ise karşı firmada eşleşen fatura oluştur
+        if (fatura.FirmalarArasiFatura && fatura.KarsiFirmaId.HasValue)
+        {
+            await CreateKarsiFirmaFaturasiAsync(fatura);
+        }
+
         // Otomatik muhasebe fişi oluştur (ayarlara göre)
         await TryCreateMuhasebeFisiAsync(fatura);
 
@@ -2760,5 +2766,260 @@ public class FaturaService : IFaturaService
             System.Diagnostics.Debug.WriteLine($"Muhasebe kaydı oluşturma hatası: {ex.Message}");
         }
     }
+    #endregion
+
+    #region Firmalar Arası Fatura
+
+    /// <summary>
+    /// Firmalar arası fatura için karşı firmada eşleşen fatura oluşturur
+    /// Giden fatura = Karşı firmanın gelen faturası
+    /// Gelen fatura = Karşı firmanın giden faturası
+    /// </summary>
+    private async Task CreateKarsiFirmaFaturasiAsync(Fatura anaFatura)
+    {
+        try
+        {
+            // Karşı firma için cari var mı kontrol et (ana firmanın karşı firmadaki carisi)
+            var anaFirma = await _context.Firmalar.FirstOrDefaultAsync(f => f.Id == anaFatura.FirmaId);
+            var karsiFirma = await _context.Firmalar.FirstOrDefaultAsync(f => f.Id == anaFatura.KarsiFirmaId);
+
+            if (anaFirma == null || karsiFirma == null) return;
+
+            // Karşı firmada ana firmayı temsil eden cari bul veya oluştur
+            var karsiFirmadakiCari = await _context.Cariler
+                .FirstOrDefaultAsync(c => c.VergiNo == anaFirma.VergiNo && !c.IsDeleted);
+
+            if (karsiFirmadakiCari == null)
+            {
+                // Cari yoksa oluştur
+                var cariKodu = await GetUniqueCariCodeAsync(await GetNextCariNumAsync());
+                karsiFirmadakiCari = new Cari
+                {
+                    CariKodu = cariKodu,
+                    Unvan = anaFirma.FirmaAdi,
+                    VergiNo = anaFirma.VergiNo ?? string.Empty,
+                    VergiDairesi = anaFirma.VergiDairesi,
+                    Adres = anaFirma.Adres,
+                    Il = anaFirma.Il,
+                    Ilce = anaFirma.Ilce,
+                    Telefon = anaFirma.Telefon,
+                    Email = anaFirma.Email,
+                    CariTipi = anaFatura.FaturaYonu == FaturaYonu.Giden ? CariTipi.Tedarikci : CariTipi.Musteri,
+                    Aktif = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Cariler.Add(karsiFirmadakiCari);
+                await _context.SaveChangesAsync();
+            }
+
+            // Karşı firmada eşleşen fatura oluştur
+            var karsiFatura = new Fatura
+            {
+                FaturaNo = anaFatura.FaturaNo, // Aynı fatura numarası
+                FaturaTarihi = anaFatura.FaturaTarihi,
+                VadeTarihi = anaFatura.VadeTarihi,
+                FaturaTipi = anaFatura.FaturaYonu == FaturaYonu.Giden ? FaturaTipi.AlisFaturasi : FaturaTipi.SatisFaturasi,
+                FaturaYonu = anaFatura.FaturaYonu == FaturaYonu.Giden ? FaturaYonu.Gelen : FaturaYonu.Giden,
+                EFaturaTipi = anaFatura.EFaturaTipi,
+                EttnNo = anaFatura.EttnNo,
+                FirmaId = anaFatura.KarsiFirmaId, // Karşı firma
+                CariId = karsiFirmadakiCari.Id,
+                FirmalarArasiFatura = true,
+                KarsiFirmaId = anaFatura.FirmaId, // Ana firma karşı firma oluyor
+                EslesenFaturaId = anaFatura.Id, // Ana fatura ile eşleş
+                AraToplam = anaFatura.AraToplam,
+                IskontoTutar = anaFatura.IskontoTutar,
+                KdvOrani = anaFatura.KdvOrani,
+                KdvTutar = anaFatura.KdvTutar,
+                GenelToplam = anaFatura.GenelToplam,
+                TevkifatliMi = anaFatura.TevkifatliMi,
+                TevkifatOrani = anaFatura.TevkifatOrani,
+                TevkifatKodu = anaFatura.TevkifatKodu,
+                TevkifatTutar = anaFatura.TevkifatTutar,
+                XmlDosyaYolu = anaFatura.XmlDosyaYolu,
+                PdfDosyaYolu = anaFatura.PdfDosyaYolu,
+                ImportKaynak = "FirmalarArasi",
+                Durum = FaturaDurum.Beklemede,
+                Aciklama = $"Firmalar arası fatura - {anaFirma.FirmaAdi}",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Fatura kalemlerini kopyala
+            if (anaFatura.FaturaKalemleri != null)
+            {
+                foreach (var kalem in anaFatura.FaturaKalemleri)
+                {
+                    karsiFatura.FaturaKalemleri.Add(new FaturaKalem
+                    {
+                        SiraNo = kalem.SiraNo,
+                        UrunKodu = kalem.UrunKodu,
+                        Aciklama = kalem.Aciklama,
+                        Birim = kalem.Birim,
+                        Miktar = kalem.Miktar,
+                        BirimFiyat = kalem.BirimFiyat,
+                        IskontoOrani = kalem.IskontoOrani,
+                        IskontoTutar = kalem.IskontoTutar,
+                        KdvOrani = kalem.KdvOrani,
+                        KdvTutar = kalem.KdvTutar,
+                        ToplamTutar = kalem.ToplamTutar,
+                        KalemTipi = kalem.KalemTipi,
+                        AltTipi = kalem.AltTipi,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            _context.Faturalar.Add(karsiFatura);
+            await _context.SaveChangesAsync();
+
+            // Ana faturayı karşı fatura ile eşleştir
+            anaFatura.EslesenFaturaId = karsiFatura.Id;
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Karşı firma faturası oluşturma hatası: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Firmalar arası faturaları mahsup ile kapatır
+    /// </summary>
+    public async Task<bool> MahsupKapatAsync(int faturaId)
+    {
+        var fatura = await _context.Faturalar
+            .Include(f => f.EslesenFatura)
+            .FirstOrDefaultAsync(f => f.Id == faturaId);
+
+        if (fatura == null || !fatura.FirmalarArasiFatura || fatura.EslesenFaturaId == null)
+            return false;
+
+        var eslesenFatura = fatura.EslesenFatura;
+        if (eslesenFatura == null) return false;
+
+        // Her iki faturayı da ödenmiş olarak işaretle
+        var mahsupTarihi = DateTime.UtcNow;
+
+        fatura.OdenenTutar = fatura.GenelToplam;
+        fatura.Durum = FaturaDurum.Odendi;
+        fatura.MahsupKapatildi = true;
+        fatura.MahsupTarihi = mahsupTarihi;
+        fatura.UpdatedAt = mahsupTarihi;
+
+        eslesenFatura.OdenenTutar = eslesenFatura.GenelToplam;
+        eslesenFatura.Durum = FaturaDurum.Odendi;
+        eslesenFatura.MahsupKapatildi = true;
+        eslesenFatura.MahsupTarihi = mahsupTarihi;
+        eslesenFatura.UpdatedAt = mahsupTarihi;
+
+        await _context.SaveChangesAsync();
+
+        // Mahsup muhasebe fişi oluştur
+        await CreateMahsupMuhasebeFisiAsync(fatura, eslesenFatura);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Mahsup için muhasebe fişi oluşturur
+    /// </summary>
+    private async Task CreateMahsupMuhasebeFisiAsync(Fatura fatura1, Fatura fatura2)
+    {
+        try
+        {
+            var fisNo = await GenerateNextFisNoAsync();
+
+            var fis = new MuhasebeFis
+            {
+                FisNo = fisNo,
+                FisTarihi = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
+                FisTipi = FisTipi.Mahsup,
+                Aciklama = $"Firmalar Arası Fatura Mahsubu - {fatura1.FaturaNo}",
+                ToplamBorc = fatura1.GenelToplam,
+                ToplamAlacak = fatura1.GenelToplam,
+                Durum = FisDurum.Onaylandi,
+                Kaynak = FisKaynak.Fatura,
+                KaynakId = fatura1.Id,
+                KaynakTip = "FirmalarArasiMahsup",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Alıcılar hesabı (120) - Giden fatura için borç
+            // Satıcılar hesabı (320) - Gelen fatura için alacak
+            var alicilarHesap = await _context.MuhasebeHesaplari.FirstOrDefaultAsync(h => h.HesapKodu == "120");
+            var saticilarHesap = await _context.MuhasebeHesaplari.FirstOrDefaultAsync(h => h.HesapKodu == "320");
+
+            if (alicilarHesap != null && saticilarHesap != null)
+            {
+                fis.Kalemler.Add(new MuhasebeFisKalem
+                {
+                    HesapId = saticilarHesap.Id,
+                    SiraNo = 1,
+                    Borc = fatura1.GenelToplam,
+                    Alacak = 0,
+                    Tarih = fis.FisTarihi,
+                    Aciklama = $"Satıcı Mahsup - {fatura1.FaturaNo}",
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                fis.Kalemler.Add(new MuhasebeFisKalem
+                {
+                    HesapId = alicilarHesap.Id,
+                    SiraNo = 2,
+                    Borc = 0,
+                    Alacak = fatura1.GenelToplam,
+                    Tarih = fis.FisTarihi,
+                    Aciklama = $"Alıcı Mahsup - {fatura1.FaturaNo}",
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                _context.MuhasebeFisleri.Add(fis);
+                await _context.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Mahsup muhasebe fişi hatası: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Firmalar arası eşleşmemiş faturaları getirir
+    /// </summary>
+    public async Task<List<Fatura>> GetFirmalarArasiEslesmemisFaturalarAsync(int? firmaId = null)
+    {
+        var query = _context.Faturalar
+            .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
+            .Where(f => f.FirmalarArasiFatura && !f.MahsupKapatildi && f.EslesenFaturaId == null);
+
+        if (firmaId.HasValue)
+            query = query.Where(f => f.FirmaId == firmaId);
+
+        return await query.OrderByDescending(f => f.FaturaTarihi).ToListAsync();
+    }
+
+    /// <summary>
+    /// Firmalar arası faturaları manuel eşleştirir
+    /// </summary>
+    public async Task<bool> FaturalariEslestirAsync(int fatura1Id, int fatura2Id)
+    {
+        var fatura1 = await _context.Faturalar.FindAsync(fatura1Id);
+        var fatura2 = await _context.Faturalar.FindAsync(fatura2Id);
+
+        if (fatura1 == null || fatura2 == null) return false;
+        if (!fatura1.FirmalarArasiFatura || !fatura2.FirmalarArasiFatura) return false;
+        if (fatura1.FaturaYonu == fatura2.FaturaYonu) return false; // Biri gelen, biri giden olmalı
+
+        // Eşleştir
+        fatura1.EslesenFaturaId = fatura2.Id;
+        fatura2.EslesenFaturaId = fatura1.Id;
+        fatura1.UpdatedAt = DateTime.UtcNow;
+        fatura2.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     #endregion
 }
