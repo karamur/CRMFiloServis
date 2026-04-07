@@ -108,3 +108,23 @@ public class MuhasbelestirilmisKayit
     public string? Aciklama { get; set; }
     public bool Secildi { get; set; }
 }
+
+/// <summary>
+/// AI analiz aksiyonu
+/// </summary>
+public class AIAksiyon
+{
+    public string Aciklama { get; set; } = "";
+    public string Oncelik { get; set; } = "ORTA";
+    public bool Secildi { get; set; }
+}
+
+/// <summary>
+/// Puantaj AI analiz aksiyonu
+/// </summary>
+public class PuantajAIAksiyon
+{
+    public string Aciklama { get; set; } = "";
+    public string Oncelik { get; set; } = "ORTA";
+    public bool Secildi { get; set; }
+}

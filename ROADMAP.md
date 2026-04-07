@@ -323,6 +323,8 @@ FAZ 7 (5-6 Hafta)
 25. ~~**Local LLM Entegrasyonu (Ollama)**~~ - ✅ Ollama servisi entegre edildi, internetsiz çalışıyor
 26. ~~**AI ile Muhasebe Analizi**~~ - ✅ Bütçe trend/anomali/kategori analizi Ollama ile tamamlandı
 27. ~~**Akıllı Rapor Önerileri**~~ - ✅ AI destekli bütçe rapor yorumlama tamamlandı
+28. ~~**AI Muhasebeleştirme Analizi**~~ - ✅ Fatura/masraf kontrol bulguları + tutarlılık + vergisel risk AI analizi
+29. ~~**AI Puantaj Analizi**~~ - ✅ Devamsızlık pattern, fazla mesai, anomali tespiti, gelecek ay tahmini
 
 ---
 

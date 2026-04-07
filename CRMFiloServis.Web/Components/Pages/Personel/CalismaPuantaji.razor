@@ -1,9 +1,11 @@
 ﻿@page "/personel/puantaj"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
+@using CRMFiloServis.Web.Models
 @inject IPuantajService PuantajService
 @inject ISoforService SoforService
 @inject IFirmaService FirmaService
+@inject IOllamaService OllamaService
 @inject IToastService ToastService
 @inject IJSRuntime JS
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
@@ -19,6 +21,14 @@
             <small class="text-muted">Personel bazlı günlük çalışma takibi, izin ve mazeret yönetimi</small>
         </div>
         <div class="d-flex gap-2">
+            <button class="btn btn-sm" @onclick="PuantajAIAnaliz" disabled="@(isLoading || !puantajListesi.Any() || aiAnalizing)"
+                    style="border-color: #6f42c1; color: #6f42c1; background: white;">
+                @if (aiAnalizing)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                <i class="bi bi-robot me-1"></i>AI Analiz
+            </button>
             <button class="btn btn-success btn-sm" @onclick="TopluPuantajOlustur" disabled="@isLoading">
                 <i class="bi bi-calendar-plus me-1"></i>Ay Puantajı Oluştur
             </button>
@@ -375,6 +385,79 @@
     </div>
 }
 
+<!-- AI Puantaj Analiz Modalı -->
+@if (aiModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #4a1f9e); color: white;">
+                    <h5 class="modal-title">
+                        <i class="bi bi-robot me-2"></i>AI Puantaj Analizi - @GetAyAdi(filtreAy) @filtreYil
+                        <small class="ms-2 opacity-75">(@OllamaService.ModelAdi)</small>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => aiModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (aiAnalizing)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border" style="color: #6f42c1;" role="status"></div>
+                            <p class="mt-3 text-muted">AI puantaj analizi yapılıyor, lütfen bekleyin...</p>
+                            <small class="text-muted">Devamsızlık, fazla mesai, anomali tespiti çalışıyor...</small>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(aiSonuc))
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge px-3 py-2" style="background-color: #6f42c1;">
+                                <i class="bi bi-clock me-1"></i>Analiz süresi: @aiSure
+                            </span>
+                            <div>
+                                <span class="badge bg-info me-1">@puantajListesi.Count personel</span>
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="AISonucTemizle">
+                                    <i class="bi bi-trash me-1"></i>Temizle
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                                <div style="white-space: pre-wrap; line-height: 1.6;">@aiSonuc</div>
+                            </div>
+                        </div>
+
+                        @if (aiAksiyonlar.Count > 0)
+                        {
+                            <div class="card mt-3 border-warning">
+                                <div class="card-header bg-warning bg-opacity-10 py-2">
+                                    <strong><i class="bi bi-lightning-charge me-1"></i>Önerilen Aksiyonlar</strong>
+                                </div>
+                                <div class="card-body py-2">
+                                    @foreach (var aksiyon in aiAksiyonlar)
+                                    {
+                                        <div class="form-check mb-1">
+                                            <input type="checkbox" class="form-check-input" id="@($"paksiyon_{aiAksiyonlar.IndexOf(aksiyon)}")"
+                                                   checked="@aksiyon.Secildi" @onchange="() => aksiyon.Secildi = !aksiyon.Secildi" />
+                                            <label class="form-check-label small" for="@($"paksiyon_{aiAksiyonlar.IndexOf(aksiyon)}")">
+                                                <span class="badge @GetAksiyonBadge(aksiyon.Oncelik) me-1">@aksiyon.Oncelik</span>
+                                                @aksiyon.Aciklama
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => aiModal = false">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <!-- Bildirim Toast -->
 @if (showToast)
 {
@@ -417,6 +500,13 @@
     private string toastClass = "";
     private string toastIcon = "";
     private System.Timers.Timer? toastTimer;
+
+    // AI Analiz
+    private bool aiModal = false;
+    private bool aiAnalizing = false;
+    private string? aiSonuc;
+    private string aiSure = "";
+    private List<PuantajAIAksiyon> aiAksiyonlar = new();
 
     private System.Globalization.CultureInfo turkce = new("tr-TR");
 
@@ -799,6 +889,200 @@
         toastTimer.AutoReset = false;
         toastTimer.Start();
     }
+
+    // --- AI Puantaj Analiz Metotları ---
+
+    private async Task PuantajAIAnaliz()
+    {
+        if (!puantajListesi.Any()) return;
+
+        aiAnalizing = true;
+        aiModal = true;
+        aiSonuc = null;
+        aiAksiyonlar.Clear();
+        StateHasChanged();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var prompt = BuildPuantajAIPrompt();
+            var sistemPrompt = @"Sen deneyimli bir Türk insan kaynakları uzmanı ve iş hukuku danışmanısın.
+Personel puantaj verilerini analiz edip Türkçe rapor yazıyorsun.
+Devamsızlık pattern'larını, fazla mesai trendlerini ve anomalileri tespit et.
+İş Kanunu'na uygunluk kontrol et (haftalık 45 saat, fazla mesai limitleri vb.).
+Tahminlerde bulun ve verimlilik önerileri sun.
+Önerilerini somut ve aksiyona yönelik yaz. Madde işaretleri kullan.
+Emoji kullanma. Tutarları TL olarak göster.
+Sonunda 'AKSIYONLAR:' başlığı altında öncelikli yapılması gerekenleri listele.
+Her aksiyonu '[YÜKSEK]', '[ORTA]' veya '[DÜŞÜK]' öncelik etiketiyle başlat.";
+
+            aiSonuc = await OllamaService.AnalizYapAsync(prompt, sistemPrompt);
+            ParsePuantajAIAksiyonlar(aiSonuc);
+        }
+        catch (Exception ex)
+        {
+            aiSonuc = $"AI analiz hatası: {ex.Message}";
+        }
+        finally
+        {
+            sw.Stop();
+            aiSure = $"{sw.Elapsed.TotalSeconds:F1} sn";
+            aiAnalizing = false;
+            StateHasChanged();
+        }
+    }
+
+    private string BuildPuantajAIPrompt()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"## Personel Puantaj Analizi - {GetAyAdi(filtreAy)} {filtreYil}");
+        sb.AppendLine($"Toplam Personel: {puantajListesi.Count}");
+
+        var ayGun = AyGunSayisi;
+        var toplamCalisan = puantajListesi.Sum(p => p.CalisilanGun);
+        var toplamIzin = puantajListesi.Sum(p => p.IzinGunu);
+        var toplamMazeret = puantajListesi.Sum(p => p.MazeretGunu);
+        var toplamFM = puantajListesi.Sum(p => p.FazlaMesaiSaat);
+        var ortCalisan = puantajListesi.Average(p => (double)p.CalisilanGun);
+        var toplamNet = puantajListesi.Sum(p => p.NetOdeme);
+
+        sb.AppendLine($"Ay Gün Sayısı: {ayGun}");
+        sb.AppendLine($"Toplam Çalışılan Gün: {toplamCalisan} (Ortalama: {ortCalisan:F1})");
+        sb.AppendLine($"Toplam İzin: {toplamIzin} gün");
+        sb.AppendLine($"Toplam Mazeret/Rapor: {toplamMazeret} gün");
+        sb.AppendLine($"Toplam Fazla Mesai: {toplamFM:F1} saat");
+        sb.AppendLine($"Toplam Net Ödeme: {toplamNet:N2} TL");
+        sb.AppendLine();
+
+        // Personel bazlı detay
+        sb.AppendLine("### Personel Bazlı Detay:");
+        foreach (var p in puantajListesi.OrderByDescending(x => x.FazlaMesaiSaat))
+        {
+            var ad = p.Personel != null ? $"{p.Personel.Ad} {p.Personel.Soyad}" : $"ID:{p.PersonelId}";
+            var devamsizlik = ayGun - p.CalisilanGun - p.IzinGunu - p.MazeretGunu;
+            sb.AppendLine($"- {ad}: Çalışma={p.CalisilanGun}g, İzin={p.IzinGunu}g, Mazeret={p.MazeretGunu}g, Boş={devamsizlik}g, FM={p.FazlaMesaiSaat:F1}s, Net={p.NetOdeme:N2} TL");
+        }
+
+        // Günlük detay - anomali tespiti için
+        sb.AppendLine();
+        sb.AppendLine("### Günlük Dağılım Özeti:");
+        for (int gun = 1; gun <= ayGun; gun++)
+        {
+            var tarih = new DateTime(filtreYil, filtreAy, gun);
+            var calisan = 0;
+            var izinli = 0;
+            var mazeretli = 0;
+            foreach (var p in puantajListesi)
+            {
+                if (gunlukPuantajMap.ContainsKey(p.Id))
+                {
+                    var g = gunlukPuantajMap[p.Id].FirstOrDefault(x => x.Tarih.Date == tarih.Date);
+                    if (g != null)
+                    {
+                        if (g.Calisti) calisan++;
+                        if (g.Izinli) izinli++;
+                        if (g.Mazeret) mazeretli++;
+                    }
+                }
+            }
+            var gunAdi = tarih.ToString("ddd", turkce);
+            var haftalik = tarih.DayOfWeek == DayOfWeek.Sunday ? " [PAZAR]" : tarih.DayOfWeek == DayOfWeek.Saturday ? " [CUMARTESİ]" : "";
+            sb.AppendLine($"  {gun:D2} {gunAdi}{haftalik}: Çalışan={calisan}, İzinli={izinli}, Mazeret={mazeretli}");
+        }
+
+        // Fazla mesai detayı
+        var fmPersoneller = puantajListesi.Where(p => p.FazlaMesaiSaat > 0).OrderByDescending(p => p.FazlaMesaiSaat).ToList();
+        if (fmPersoneller.Any())
+        {
+            sb.AppendLine();
+            sb.AppendLine("### Fazla Mesai Yapan Personeller:");
+            foreach (var p in fmPersoneller)
+            {
+                var ad = p.Personel != null ? $"{p.Personel.Ad} {p.Personel.Soyad}" : $"ID:{p.PersonelId}";
+                sb.AppendLine($"- {ad}: {p.FazlaMesaiSaat:F1} saat (aylık ~{p.FazlaMesaiSaat * 4.33m:F0} saat)");
+            }
+        }
+
+        // İzinli/mazeretli olanlar
+        var izinliler = puantajListesi.Where(p => p.IzinGunu > 2 || p.MazeretGunu > 2).ToList();
+        if (izinliler.Any())
+        {
+            sb.AppendLine();
+            sb.AppendLine("### Yüksek İzin/Mazeret Kullanan Personeller:");
+            foreach (var p in izinliler)
+            {
+                var ad = p.Personel != null ? $"{p.Personel.Ad} {p.Personel.Soyad}" : $"ID:{p.PersonelId}";
+                sb.AppendLine($"- {ad}: İzin={p.IzinGunu}g, Mazeret={p.MazeretGunu}g");
+            }
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Lütfen analiz et:");
+        sb.AppendLine("1. Devamsızlık pattern analizi - sık izin/mazeret alan personeller, ardışık günler");
+        sb.AppendLine("2. Fazla mesai analizi - İş Kanunu uygunluğu (haftalık 45 saat, aylık 270 saat)");
+        sb.AppendLine("3. Anomali tespiti - belirli günlerde toplu izin, olağandışı çalışma düzeni");
+        sb.AppendLine("4. Verimlilik değerlendirmesi ve öneriler");
+        sb.AppendLine("5. Gelecek ay tahmini - mevcut trende göre beklenen devamsızlık/fazla mesai");
+
+        return sb.ToString();
+    }
+
+    private void ParsePuantajAIAksiyonlar(string? sonuc)
+    {
+        aiAksiyonlar.Clear();
+        if (string.IsNullOrEmpty(sonuc)) return;
+
+        var lines = sonuc.Split('\n');
+        bool aksiyonBasladi = false;
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Contains("AKSIYONLAR:") || trimmed.Contains("AKSİYONLAR:"))
+            {
+                aksiyonBasladi = true;
+                continue;
+            }
+            if (aksiyonBasladi && trimmed.Length > 5)
+            {
+                var oncelik = "ORTA";
+                var aciklama = trimmed.TrimStart('-', '*', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.');
+
+                if (aciklama.Contains("[YÜKSEK]") || aciklama.Contains("[YUKSEK]"))
+                {
+                    oncelik = "YÜKSEK";
+                    aciklama = aciklama.Replace("[YÜKSEK]", "").Replace("[YUKSEK]", "").Trim();
+                }
+                else if (aciklama.Contains("[ORTA]"))
+                {
+                    oncelik = "ORTA";
+                    aciklama = aciklama.Replace("[ORTA]", "").Trim();
+                }
+                else if (aciklama.Contains("[DÜŞÜK]") || aciklama.Contains("[DUSUK]"))
+                {
+                    oncelik = "DÜŞÜK";
+                    aciklama = aciklama.Replace("[DÜŞÜK]", "").Replace("[DUSUK]", "").Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(aciklama))
+                {
+                    aiAksiyonlar.Add(new PuantajAIAksiyon { Aciklama = aciklama, Oncelik = oncelik });
+                }
+            }
+        }
+    }
+
+    private void AISonucTemizle()
+    {
+        aiSonuc = null;
+        aiAksiyonlar.Clear();
+    }
+
+    private static string GetAksiyonBadge(string oncelik) => oncelik switch
+    {
+        "YÜKSEK" => "bg-danger",
+        "DÜŞÜK" => "bg-secondary",
+        _ => "bg-warning text-dark"
+    };
 
     public void Dispose()
     {

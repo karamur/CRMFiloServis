@@ -41,6 +41,49 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 040 - AI Destekli Muhasebeleştirme ve Puantaj Analizi
+**Talep:** Muhasebeleştirme ve puantaj kısımlarında yapay zeka desteği ile öneri, tahmin, kontrol bulguları sunma ve kullanıcıya aksiyon alma imkanı.
+
+**Yapılanlar:**
+- `OllamaService.cs` güncellendi - `AnalizYapAsync(prompt, sistemPrompt)` metodu eklendi:
+  - Özelleştirilebilir sistem prompt desteği
+  - 2048 token yanıt limiti (rapor yorumlamadan daha uzun)
+  - `IOllamaService` interface'e yeni metot eklendi
+- `MuhasebeleştirmeModels.cs` güncellendi - `AIAksiyon` ve `PuantajAIAksiyon` sınıfları eklendi
+- `Muhasbelestirme.razor` - AI muhasebe analizi eklendi:
+  - **AI Analiz butonu** fatura ve masraf sekmelerinde (mor renkli, robot ikonu)
+  - **AI Analiz Modalı**: Ollama model adı göstergesi, analiz süresi, temizleme
+  - **Fatura AI Analizi**: Kontrol bulgularını + fatura detaylarını AI'ya gönderir
+    - Tutarlılık analizi (aynı cariye birden fazla fatura, olağandışı tutarlar)
+    - KDV ve tevkifat doğruluğu kontrolü
+    - Vergisel risk uyarıları
+    - Muhasebe kaydı oluşturma önerileri
+  - **Masraf AI Analizi**: Kategori dağılımı + araç bazlı dağılım + kontrol bulgularını AI'ya gönderir
+    - Anomali tespiti (olağandışı tutarlar, sık tekrarlar)
+    - Gider hesap eşleştirme önerileri (770.06, 770.07 vb.)
+    - Maliyet optimizasyonu önerileri
+  - **Aksiyon Listesi**: AI yanıtından otomatik parse edilen YÜKSEK/ORTA/DÜŞÜK öncelikli aksiyonlar
+    - Checkbox ile seçilebilir aksiyonlar
+    - Renkli öncelik badge'leri
+- `CalismaPuantaji.razor` - AI puantaj analizi eklendi:
+  - **AI Analiz butonu** toolbar'da (mor renkli)
+  - **AI Puantaj Analiz Modalı**: Ay/yıl bilgisi, personel sayısı göstergesi
+  - **Puantaj AI Analizi**: Personel bazlı detay + günlük dağılım + fazla mesai detayı gönderir
+    - Devamsızlık pattern analizi (sık izin/mazeret, ardışık günler)
+    - Fazla mesai analizi (İş Kanunu uygunluğu: haftalık 45 saat, aylık 270 saat)
+    - Anomali tespiti (belirli günlerde toplu izin, olağandışı çalışma düzeni)
+    - Verimlilik değerlendirmesi
+    - Gelecek ay tahmini (trend bazlı devamsızlık/fazla mesai beklentisi)
+  - **Aksiyon Listesi**: Aynı parse mekanizması ile öncelikli aksiyonlar
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Services/OllamaService.cs` (güncellendi - AnalizYapAsync eklendi)
+- `CRMFiloServis.Web/Models/MuhasebeleştirmeModels.cs` (güncellendi - AIAksiyon, PuantajAIAksiyon)
+- `CRMFiloServis.Web/Components/Pages/Muhasebe/Muhasbelestirme.razor` (güncellendi)
+- `CRMFiloServis.Web/Components/Pages/Personel/CalismaPuantaji.razor` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 039 - Fatura/Masraf Muhasebeleştirme Geliştirme
 **Talep:** Fatura ve masraf muhasebeleştirme sayfasına kontrol listesi, işlenmiş kayıtlar görüntüleme, geri alma ve Excel export özellikleri ekle.
 

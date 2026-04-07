@@ -7,6 +7,7 @@ namespace CRMFiloServis.Web.Services;
 public interface IOllamaService
 {
     Task<string> RaporYorumlaAsync(string prompt);
+    Task<string> AnalizYapAsync(string prompt, string sistemPrompt);
     Task<bool> BaglantiKontrolAsync();
     string ModelAdi { get; }
 }
@@ -95,23 +96,81 @@ Emoji kullanma. Tutarları TL olarak göster.
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
 
-            return result?.Response?.Trim() ?? "AI yanıt alınamadı.";
-        }
-        catch (TaskCanceledException)
-        {
-            return "AI analiz zaman aşımına uğradı. Ollama sunucusunun çalıştığından emin olun.";
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Ollama bağlantı hatası");
-            return $"Ollama sunucusuna bağlanılamadı ({_baseUrl}). Lütfen Ollama'nın çalıştığından emin olun.";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Ollama rapor yorumlama hatası");
-            return $"AI analiz hatası: {ex.Message}";
-        }
-    }
+                return result?.Response?.Trim() ?? "AI yanıt alınamadı.";
+                }
+                catch (TaskCanceledException)
+                {
+                    return "AI analiz zaman aşımına uğradı. Ollama sunucusunun çalıştığından emin olun.";
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "Ollama bağlantı hatası");
+                    return $"Ollama sunucusuna bağlanılamadı ({_baseUrl}). Lütfen Ollama'nın çalıştığından emin olun.";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ollama rapor yorumlama hatası");
+                    return $"AI analiz hatası: {ex.Message}";
+                }
+            }
+
+            public async Task<string> AnalizYapAsync(string prompt, string sistemPrompt)
+            {
+                try
+                {
+                    var request = new OllamaGenerateRequest
+                    {
+                        Model = _model,
+                        Prompt = prompt,
+                        System = sistemPrompt,
+                        Stream = false,
+                        Options = new OllamaOptions
+                        {
+                            Temperature = 0.3,
+                            TopP = 0.9,
+                            NumPredict = 2048
+                        }
+                    };
+
+                    var json = JsonSerializer.Serialize(request, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                    });
+
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var response = await _httpClient.PostAsync("/api/generate", content);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorBody = await response.Content.ReadAsStringAsync();
+                        _logger.LogError("Ollama API hatası: {Status} - {Body}", response.StatusCode, errorBody);
+                        return $"AI analiz yapılamadı. Ollama yanıt kodu: {response.StatusCode}";
+                    }
+
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<OllamaGenerateResponse>(responseBody, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+
+                    return result?.Response?.Trim() ?? "AI yanıt alınamadı.";
+                }
+                catch (TaskCanceledException)
+                {
+                    return "AI analiz zaman aşımına uğradı. Ollama sunucusunun çalıştığından emin olun.";
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "Ollama bağlantı hatası");
+                    return $"Ollama sunucusuna bağlanılamadı ({_baseUrl}). Lütfen Ollama'nın çalıştığından emin olun.";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ollama analiz hatası");
+                    return $"AI analiz hatası: {ex.Message}";
+                }
+            }
 }
 
 // Ollama API Request/Response modelleri
