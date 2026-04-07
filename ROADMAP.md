@@ -306,7 +306,7 @@ FAZ 7 (5-6 Hafta)
 ### 🟡 Maaş İyileştirmeleri (Öncelik 4)
 15. ~~**Maaş yönetimine yol parası**~~ - ✅ Eklendi
 16. ~~**Maaş hareket listesi**~~ - ✅ Ödeme geçmişi görüntüleme tamamlandı
-17. **Toplu ödeme listesi** - Banka formatında export
+17. ~~**Toplu ödeme listesi**~~ - ✅ Banka EFT formatında export eklendi
 
 ### 🟡 Önemli Geliştirmeler (Öncelik 5)
 18. **Bordro personel bazlı düzenleme** - Normal + AR-GE ayrımı

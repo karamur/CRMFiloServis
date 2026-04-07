@@ -41,6 +41,22 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 034 - Toplu Ödeme Listesi Banka EFT Export
+**Talep:** Banka ödeme listesine banka portalına yüklenebilir toplu ödeme (EFT/Havale) dosyası export özelliği.
+
+**Yapılanlar:**
+- `BankaOdemeListesi.razor`: Mevcut sayfaya "EFT Dosyası" butonu eklendi
+  - Semicolon-delimited CSV formatı (Türk bankaları genel uyumu)
+  - Header satırı: Tarih, toplam adet, toplam tutar, para birimi, açıklama
+  - Veri satırları: IBAN, Ad Soyad, Tutar, Açıklama, Personel Kodu
+  - IBAN’sız personel uyarısı (eksik IBAN bildirimi)
+  - UTF-8 BOM encoding (Türkçe karakter desteği)
+- ROADMAP: #17 tamamlandı olarak işaretlendi
+
+**Durum:** ✅ Tamamlandı
+
+---
+
 ### Kayıt 033 - Maaş Hareket Listesi
 **Talep:** Personel maaş ödeme geçmişi görüntüleme sayfası. Tüm aylara ait maaş kayıtlarının filtrelenerek listelenmesi, detay görüntüleme ve Excel export.
 
