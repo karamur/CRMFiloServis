@@ -58,6 +58,30 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 **Durum:** ✅ Tamamlandı
 
+### Kayıt 036 - Bordro Hesap Pusulası
+**Talep:** Bordro hesap pusulası - Personel bazlı yazdırılabilir maaş makbuzu (pay slip).
+
+**Yapılanlar:**
+- `HesapPusulasi.razor` oluşturuldu (`/personel/bordro/hesap-pusulasi`)
+  - Filtre: Yıl, Firma, Bordro Tipi (Normal/AR-GE), Dönem seçimi
+  - Personel listesi tablosu: checkbox seçim, maaş özet bilgileri
+  - Tek personel / seçili personeller / tüm personeller yazdırma
+  - A4 print-ready pusula formatı (CSS @media print):
+    - Firma bilgileri (ünvan, adres, vergi dairesi/no)
+    - Personel bilgileri (sicil no, TC, görev/departman, işe başlama, banka/IBAN)
+    - Kazançlar: Brüt maaş, SGK matrah, net maaş, toplu maaş, ek ödeme farkı
+    - Kesintiler: SGK+İşsizlik, gelir vergisi, damga vergisi, toplam
+    - Ek ödemeler: Yemek, yol, prim, diğer, toplam
+    - Ödeme durumu: Banka/Ek ödeme yapıldı/bekliyor
+    - Toplam ödenecek tutar (büyük font, vurgulu)
+    - İmza alanları (İşveren + Personel)
+    - Onay bilgisi ve düzenlenme tarihi
+  - Her personel ayrı sayfada (page-break-after) - toplu yazdırmada
+- NavMenu'ya "Hesap Pusulası" linki eklendi (Bordro altına)
+- ROADMAP: #19 tamamlandı olarak işaretlendi
+
+**Durum:** ✅ Tamamlandı
+
 ---
 
 ### Kayıt 034 - Toplu Ödeme Listesi Banka EFT Export
