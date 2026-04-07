@@ -182,6 +182,8 @@ builder.Services.AddHostedService<DatabaseBackupService>(); // Otomatik Veritaba
 builder.Services.AddHostedService<BelgeUyariBackgroundService>(); // Belge Süresi Email Uyarı
 builder.Services.AddHttpClient("OpenAI"); // OpenAI icin HttpClient
 builder.Services.AddHttpClient("Scraper"); // Scraper icin HttpClient
+builder.Services.AddHttpClient("Ollama"); // Ollama Local LLM icin HttpClient
+builder.Services.AddScoped<IOllamaService, OllamaService>(); // Ollama AI Rapor Yorumlama
 builder.Services.AddHostedService<AutoBackupService>();
 builder.Services.AddHttpContextAccessor();
 

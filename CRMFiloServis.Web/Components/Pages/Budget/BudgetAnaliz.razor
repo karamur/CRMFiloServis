@@ -8,6 +8,7 @@
 @inject IFirmaService FirmaService
 @inject IToastService ToastService
 @inject IJSRuntime JS
+@inject IOllamaService OllamaService
 @rendermode InteractiveServer
 
 <PageTitle>Butce Analiz</PageTitle>
@@ -482,6 +483,209 @@
                         </div>
                     }
                 }
+            </div>
+        </div>
+
+        <!-- Kategori Bazlı Analiz -->
+        <div class="row g-3 mt-1">
+            <div class="col-md-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-pie-chart me-2 text-primary"></i>Kategori Dağılımı</h6>
+                        <button class="btn btn-outline-primary btn-sm py-0" @onclick="KategoriAnalizYukle" title="Yenile">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-2">
+                        @if (kategoriOzetleri.Count > 0)
+                        {
+                            @foreach (var kat in kategoriOzetleri.Take(10))
+                            {
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-truncate" style="max-width: 55%;">
+                                            <i class="bi bi-circle-fill me-1" style="color: @(kat.Renk ?? "#6c757d"); font-size: 0.5rem;"></i>
+                                            @kat.MasrafKalemi
+                                        </small>
+                                        <small class="text-end">
+                                            <strong>@FormatPara(kat.Toplam)</strong>
+                                            <span class="text-muted ms-1">(%@kat.Yuzde.ToString("N1"))</span>
+                                        </small>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar" style="width: @kat.Yuzde.ToString("N1", System.Globalization.CultureInfo.InvariantCulture)%; background-color: @(kat.Renk ?? "#0d6efd");" role="progressbar"></div>
+                                    </div>
+                                </div>
+                            }
+                            <hr class="my-2" />
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">Toplam @kategoriOzetleri.Count kategori</small>
+                                <strong class="text-primary">@FormatPara(kategoriOzetleri.Sum(k => k.Toplam))</strong>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-pie-chart" style="font-size: 2rem;"></i>
+                                <p class="mb-0 mt-1"><small>Kategori verisi yok</small></p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-graph-up me-2 text-success"></i>Aylık Harcama Trendi</h6>
+                        <button class="btn btn-outline-success btn-sm py-0" @onclick="TrendAnalizYukle" title="Yenile">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-2">
+                        @if (trendData.Count > 0)
+                        {
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th>Dönem</th>
+                                            <th class="text-end">Toplam</th>
+                                            <th class="text-end">Ödenen</th>
+                                            <th class="text-end">Bekleyen</th>
+                                            <th style="width: 30%;">Oran</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{ var maxToplam = trendData.Max(t => t.Toplam); }
+                                        @foreach (var trend in trendData)
+                                        {
+                                            var odenmeOrani = trend.Toplam > 0 ? (trend.Odenen / trend.Toplam * 100) : 0;
+                                            var barWidth = maxToplam > 0 ? (trend.Toplam / maxToplam * 100) : 0;
+                                            <tr>
+                                                <td><small class="fw-bold">@trend.Etiket</small></td>
+                                                <td class="text-end"><small>@FormatPara(trend.Toplam)</small></td>
+                                                <td class="text-end"><small class="text-success">@FormatPara(trend.Odenen)</small></td>
+                                                <td class="text-end"><small class="text-warning">@FormatPara(trend.Bekleyen)</small></td>
+                                                <td>
+                                                    <div class="progress" style="height: 12px;">
+                                                        <div class="progress-bar bg-success" style="width: @odenmeOrani.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)%;"
+                                                             title="Ödenen: %@odenmeOrani.ToString("N0")">
+                                                        </div>
+                                                        <div class="progress-bar bg-warning" style="width: @((100 - odenmeOrani).ToString("N0", System.Globalization.CultureInfo.InvariantCulture))%;">
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <hr class="my-2" />
+                            <div class="row g-1 text-center">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Ortalama</small>
+                                    <small class="fw-bold text-primary">@FormatPara(trendData.Average(t => t.Toplam))</small>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">En Yüksek</small>
+                                    <small class="fw-bold text-danger">@trendData.OrderByDescending(t => t.Toplam).First().Etiket</small>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">En Düşük</small>
+                                    <small class="fw-bold text-success">@trendData.OrderBy(t => t.Toplam).First().Etiket</small>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                                <p class="mb-0 mt-1"><small>Trend verisi yok</small></p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Rapor Yorumlama -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card shadow-sm border-info">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center bg-info bg-opacity-10">
+                        <h6 class="mb-0">
+                            <i class="bi bi-robot me-2 text-info"></i>AI Bütçe Analizi
+                            <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">Ollama - @ollamaModelAdi</span>
+                            @if (ollamaBagli)
+                            {
+                                <span class="badge bg-success ms-1" style="font-size: 0.6rem;">● Bağlı</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">● Bağlantı Yok</span>
+                            }
+                        </h6>
+                        <div class="d-flex gap-1">
+                            <select class="form-select form-select-sm" style="width: 160px;" @bind="aiAnalizTuru">
+                                <option value="genel">Genel Bütçe Analizi</option>
+                                <option value="kategori">Kategori Analizi</option>
+                                <option value="trend">Trend Analizi</option>
+                                <option value="tasarruf">Tasarruf Önerileri</option>
+                                <option value="anomali">Anomali Tespiti</option>
+                            </select>
+                            <button class="btn btn-info btn-sm" @onclick="AiAnalizBaslat" disabled="@(aiYukleniyor || !ollamaBagli)">
+                                @if (aiYukleniyor)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    <span>Analiz ediliyor...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-lightning-charge me-1"></i>
+                                    <span>Analiz Et</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (!ollamaBagli)
+                        {
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Ollama bağlantısı kurulamadı.</strong>
+                                <br /><small>
+                                    AI analiz için Ollama'nın bilgisayarınızda çalışıyor olması gerekir.
+                                    <br />Kurulum: <code>curl -fsSL https://ollama.com/install.sh | sh</code>
+                                    <br />Model indirme: <code>ollama pull @ollamaModelAdi</code>
+                                    <br />Başlatma: <code>ollama serve</code>
+                                </small>
+                            </div>
+                        }
+                        else if (string.IsNullOrEmpty(aiSonuc))
+                        {
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-robot" style="font-size: 2.5rem;"></i>
+                                <p class="mb-0 mt-2">Analiz türünü seçip <strong>"Analiz Et"</strong> butonuna tıklayın.</p>
+                                <small>Verileriniz cihazınızda işlenir, internete gönderilmez.</small>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="ai-sonuc">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock me-1"></i>@aiAnalizSuresi
+                                    </small>
+                                    <button class="btn btn-outline-secondary btn-sm py-0" @onclick="AiSonucTemizle">
+                                        <i class="bi bi-x-lg me-1"></i>Temizle
+                                    </button>
+                                </div>
+                                <div class="border rounded p-3 bg-light" style="white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6; max-height: 400px; overflow-y: auto;">@aiSonuc</div>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -1378,6 +1582,18 @@
     private List<TekrarlayanOdeme>? tekrarlayanOdemeler;
     private TekrarlayanOdeme editTekrarlayan = new();
 
+    // Kategori & Trend Analiz
+    private List<BudgetKategoriOzet> kategoriOzetleri = new();
+    private List<BudgetTrendData> trendData = new();
+
+    // AI Ollama
+    private bool ollamaBagli = false;
+    private string ollamaModelAdi = "";
+    private string aiAnalizTuru = "genel";
+    private string aiSonuc = "";
+    private string aiAnalizSuresi = "";
+    private bool aiYukleniyor = false;
+
     private static readonly string[] AyAdlari = { "", "Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran", 
                                                    "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik" };
 
@@ -1406,6 +1622,18 @@
         cariler = await CariService.GetAllAsync();
         tekrarlayanOdemeler = await BudgetService.GetTekrarlayanOdemelerAsync(secilenFirmaId > 0 ? secilenFirmaId : null);
         await YenileDataAsync();
+
+        // Kategori ve trend verilerini yükle
+        await KategoriAnalizYukle();
+        await TrendAnalizYukle();
+
+        // Ollama bağlantı kontrolü (arka planda)
+        ollamaModelAdi = OllamaService.ModelAdi;
+        _ = Task.Run(async () =>
+        {
+            ollamaBagli = await OllamaService.BaglantiKontrolAsync();
+            await InvokeAsync(StateHasChanged);
+        });
     }
 
     private async Task YenileDataAsync()
@@ -1481,6 +1709,10 @@
                 secilenGun = null;
                 secilenGunOdemeleri.Clear();
             }
+
+            // Kategori ve trend verilerini de güncelle
+            await KategoriAnalizYukle();
+            await TrendAnalizYukle();
         }
         finally
         {
@@ -2151,5 +2383,144 @@
             return "#ffc107"; // Bugun - sari
         else
             return "#198754"; // Gelecek (1+ gun) - yesil
+    }
+
+    // Kategori Analiz
+    private async Task KategoriAnalizYukle()
+    {
+        try
+        {
+            kategoriOzetleri = await BudgetService.GetKategoriOzetAsync(secilenYil, secilenAy > 0 ? secilenAy : null);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Kategori analiz hatası: " + ex.Message);
+        }
+    }
+
+    // Trend Analiz
+    private async Task TrendAnalizYukle()
+    {
+        try
+        {
+            var baslangic = new DateTime(secilenYil, 1, 1);
+            var bitis = new DateTime(secilenYil, 12, 31);
+            trendData = await BudgetService.GetTrendDataAsync(baslangic, bitis, "aylik");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Trend analiz hatası: " + ex.Message);
+        }
+    }
+
+    // AI Ollama Analiz
+    private async Task AiAnalizBaslat()
+    {
+        if (!ollamaBagli) return;
+
+        aiYukleniyor = true;
+        aiSonuc = "";
+        StateHasChanged();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            var prompt = OlusturAiPrompt();
+            aiSonuc = await OllamaService.RaporYorumlaAsync(prompt);
+        }
+        catch (Exception ex)
+        {
+            aiSonuc = $"AI analiz hatası: {ex.Message}";
+        }
+        finally
+        {
+            sw.Stop();
+            aiAnalizSuresi = sw.Elapsed.TotalSeconds < 60
+                ? $"{sw.Elapsed.TotalSeconds:N1} saniye"
+                : $"{sw.Elapsed.TotalMinutes:N1} dakika";
+            aiYukleniyor = false;
+            StateHasChanged();
+        }
+    }
+
+    private void AiSonucTemizle()
+    {
+        aiSonuc = "";
+        aiAnalizSuresi = "";
+    }
+
+    private string OlusturAiPrompt()
+    {
+        var sb = new System.Text.StringBuilder();
+
+        // Dönem bilgisi
+        var donem = secilenAy > 0
+            ? $"{GetAyAdi(secilenAy)} {secilenYil}"
+            : $"{secilenYil} Yılı";
+
+        sb.AppendLine($"DÖNEM: {donem}");
+        sb.AppendLine();
+
+        // Özet bilgiler
+        if (ozet != null)
+        {
+            sb.AppendLine("BÜTÇE ÖZETİ:");
+            sb.AppendLine($"- Toplam Harcama: {ozet.ToplamOdeme:N2} TL ({ozet.ToplamKayit} kayıt)");
+            sb.AppendLine($"- Ödenen: {ozet.OdenenToplam:N2} TL ({ozet.OdenenKayit} kayıt)");
+            sb.AppendLine($"- Bekleyen: {ozet.BekleyenToplam:N2} TL ({ozet.BekleyenKayit} kayıt)");
+            if (ozet.ToplamOdeme > 0)
+                sb.AppendLine($"- Ödeme Oranı: %{(ozet.OdenenToplam / ozet.ToplamOdeme * 100):N1}");
+            sb.AppendLine();
+        }
+
+        // Kategori verileri
+        if (kategoriOzetleri.Count > 0)
+        {
+            sb.AppendLine("KATEGORİ DAĞILIMI:");
+            foreach (var kat in kategoriOzetleri.OrderByDescending(k => k.Toplam).Take(15))
+            {
+                sb.AppendLine($"- {kat.MasrafKalemi}: {kat.Toplam:N2} TL (%{kat.Yuzde:N1}, {kat.Adet} adet)");
+            }
+            sb.AppendLine();
+        }
+
+        // Trend verileri
+        if (trendData.Count > 0)
+        {
+            sb.AppendLine("AYLIK TREND:");
+            foreach (var trend in trendData)
+            {
+                sb.AppendLine($"- {trend.Etiket}: Toplam {trend.Toplam:N2} TL, Ödenen {trend.Odenen:N2} TL, Bekleyen {trend.Bekleyen:N2} TL ({trend.OdemeSayisi} adet)");
+            }
+            sb.AppendLine();
+        }
+
+        // Kredi/taksit bilgisi
+        if (krediTaksitAdet > 0)
+        {
+            sb.AppendLine($"KREDİ/TAKSİT: {krediTaksitAdet} adet bekleyen taksit, toplam {krediTaksitToplam:N2} TL");
+            sb.AppendLine();
+        }
+
+        // Devir ödenmeyenler
+        if (devirBekleyenOdemeler.Count > 0)
+        {
+            sb.AppendLine($"GECİKMİŞ ÖDEMELER: {devirBekleyenOdemeler.Count} adet önceki dönemlerden devir, toplam {devirBekleyenOdemeler.Sum(o => o.Miktar):N2} TL");
+            sb.AppendLine();
+        }
+
+        // Analiz türüne göre talimat
+        sb.AppendLine("---");
+        sb.AppendLine(aiAnalizTuru switch
+        {
+            "kategori" => "Yukarıdaki kategori dağılımını analiz et. En yüksek harcama kalemlerini belirle, oransal dağılımı değerlendir, anormal yüksek kalemler varsa uyar. Optimizasyon önerileri sun.",
+            "trend" => "Aylık harcama trendini analiz et. Artış/azalış eğilimlerini belirle, mevsimsel örüntüleri tespit et, gelecek aylar için tahmin yap. Ödeme oranlarını değerlendir.",
+            "tasarruf" => "Bu bütçe verilerine göre tasarruf önerileri sun. Gereksiz olabilecek harcamaları belirle, alternatif çözümler öner, toplam tasarruf potansiyelini hesapla.",
+            "anomali" => "Bu verilerde anomali veya olağandışı durumları tespit et. Normalden sapan harcamaları, gecikmiş ödemeleri, düzensiz kalıpları belirle. Risk değerlendirmesi yap.",
+            _ => "Bu bütçe verilerinin genel bir analizini yap. Güçlü ve zayıf yönleri belirle, riskleri değerlendir, iyileştirme önerileri sun. Özet bir mali durum raporu hazırla."
+        });
+
+        return sb.ToString();
     }
 }

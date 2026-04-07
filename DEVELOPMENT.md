@@ -82,6 +82,30 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 **Durum:** ✅ Tamamlandı
 
+### Kayıt 037 - Bütçe Analiz Geliştirme + AI Rapor Yorumlama (Ollama)
+**Talep:** Bütçe Analiz sayfasına kategori bazlı analiz, aylık trend grafikleri ve Ollama (internetsiz AI) ile akıllı rapor yorumlama ekle.
+
+**Yapılanlar:**
+- `OllamaService.cs` oluşturuldu - Local LLM entegrasyonu (Ollama REST API)
+  - `IOllamaService` interface: `RaporYorumlaAsync`, `BaglantiKontrolAsync`
+  - Ollama `/api/generate` endpoint kullanımı
+  - Configurable model (appsettings: `Ollama:Model`, default: `llama3.2`)
+  - Configurable base URL (default: `http://localhost:11434`)
+  - Sistem promptu: Türk mali müşavir rolü, kısa/öz/aksiyona yönelik
+  - 3 dakika timeout, hata yönetimi
+- `appsettings.json`: Ollama konfigürasyonu eklendi
+- `Program.cs`: HttpClient("Ollama") + IOllamaService DI kaydı
+- `BudgetAnaliz.razor` güncellemeleri:
+  - **Kategori Dağılımı paneli**: Progress bar'lı kategori listesi, yüzde oranları, toplam
+  - **Aylık Harcama Trendi paneli**: Tablo + stacked progress bar (ödenen/bekleyen oranı), ortalama/en yüksek/en düşük ay istatistikleri
+  - **AI Bütçe Analizi paneli**: Ollama bağlantı durumu göstergesi, 5 analiz türü (Genel/Kategori/Trend/Tasarruf/Anomali), analiz süresi göstergesi, sonuç temizleme
+  - Dinamik prompt oluşturma: Bütçe özeti + Kategori dağılımı + Aylık trend + Kredi/taksit + Gecikmiş ödemeler otomatik derleniyor
+  - OnInitializedAsync'te kategori/trend/Ollama bağlantı kontrolü
+  - YenileDataAsync'te kategori/trend otomatik güncelleme
+- ROADMAP: #12, #25, #26, #27 tamamlandı olarak işaretlendi
+
+**Durum:** ✅ Tamamlandı
+
 ---
 
 ### Kayıt 034 - Toplu Ödeme Listesi Banka EFT Export
