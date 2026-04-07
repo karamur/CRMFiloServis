@@ -75,6 +75,12 @@ public interface IMuhasebeService
     Task<List<MuhasebeMasrafOzet>> GetMuhasbelestirilmemisMasraflarAsync(DateTime? baslangic = null, DateTime? bitis = null);
     Task<MuhasbelestirmeSonuc> TopluFaturaMuhasbelestirAsync(List<int> faturaIdleri);
     Task<MuhasbelestirmeSonuc> TopluMasrafMuhasbelestirAsync(List<int> masrafIdleri);
+
+    // Muhasebeleştirme Kontrol & Gelişmiş
+    Task<MuhasbelestirmeKontrol> KontrolYapAsync(List<int>? faturaIdleri = null, List<int>? masrafIdleri = null);
+    Task<List<MuhasbelestirilmisKayit>> GetMuhasbelestirilmisKayitlarAsync(DateTime? baslangic = null, DateTime? bitis = null, string? kaynakTip = null);
+    Task<MuhasbelestirmeSonuc> TopluGeriAlAsync(List<int> fisIdleri);
+    Task<byte[]> ExportMuhasbelestirmeKontrolExcelAsync(List<int>? faturaIdleri = null, List<int>? masrafIdleri = null);
 }
 
 // Hesap Plani Import Result

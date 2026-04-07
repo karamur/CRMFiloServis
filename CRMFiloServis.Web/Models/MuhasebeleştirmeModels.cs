@@ -63,3 +63,48 @@ public class MuhasbelestirmeDurum
     public int BekleyenMasraf { get; set; }
     public decimal BekleyenMasrafTutar { get; set; }
 }
+
+/// <summary>
+/// Muhasebeleştirme öncesi kontrol sonucu
+/// </summary>
+public class MuhasbelestirmeKontrol
+{
+    public bool HazirMi { get; set; } = true;
+    public List<KontrolMaddesi> Maddeler { get; set; } = new();
+    public int UyariSayisi => Maddeler.Count(m => m.Seviye == KontrolSeviye.Uyari);
+    public int HataSayisi => Maddeler.Count(m => m.Seviye == KontrolSeviye.Hata);
+    public int BilgiSayisi => Maddeler.Count(m => m.Seviye == KontrolSeviye.Bilgi);
+}
+
+public class KontrolMaddesi
+{
+    public string Baslik { get; set; } = string.Empty;
+    public string Aciklama { get; set; } = string.Empty;
+    public KontrolSeviye Seviye { get; set; }
+    public string? IlgiliKayit { get; set; }
+}
+
+public enum KontrolSeviye
+{
+    Bilgi,
+    Uyari,
+    Hata
+}
+
+/// <summary>
+/// Muhasebeleştirilmiş fatura/masraf özet bilgileri
+/// </summary>
+public class MuhasbelestirilmisKayit
+{
+    public int KaynakId { get; set; }
+    public string KaynakTip { get; set; } = string.Empty; // Fatura / AracMasraf
+    public string KaynakNo { get; set; } = string.Empty;
+    public DateTime KaynakTarih { get; set; }
+    public string? CariUnvan { get; set; }
+    public decimal Tutar { get; set; }
+    public int FisId { get; set; }
+    public string FisNo { get; set; } = string.Empty;
+    public DateTime FisTarihi { get; set; }
+    public string? Aciklama { get; set; }
+    public bool Secildi { get; set; }
+}

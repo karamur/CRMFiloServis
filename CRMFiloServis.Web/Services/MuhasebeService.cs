@@ -1,6 +1,7 @@
 ﻿using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using CRMFiloServis.Web.Models;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRMFiloServis.Web.Services;
@@ -2396,6 +2397,448 @@ public class MuhasebeService : IMuhasebeService
         await _context.SaveChangesAsync();
 
         return fis;
+    }
+
+    public async Task<MuhasbelestirmeKontrol> KontrolYapAsync(List<int>? faturaIdleri = null, List<int>? masrafIdleri = null)
+    {
+        var kontrol = new MuhasbelestirmeKontrol();
+
+        // Hesap planı kontrol
+        var hesapSayisi = await _context.MuhasebeHesaplari.CountAsync();
+        if (hesapSayisi == 0)
+        {
+            kontrol.HazirMi = false;
+            kontrol.Maddeler.Add(new KontrolMaddesi
+            {
+                Baslik = "Hesap Planı Boş",
+                Aciklama = "Muhasebe hesap planı tanımlanmamış. Önce hesap planı oluşturun.",
+                Seviye = KontrolSeviye.Hata
+            });
+        }
+
+        // Muhasebe ayarları kontrol
+        var ayar = await _context.MuhasebeAyarlari.FirstOrDefaultAsync();
+        if (ayar == null)
+        {
+            kontrol.Maddeler.Add(new KontrolMaddesi
+            {
+                Baslik = "Muhasebe Ayarları",
+                Aciklama = "Varsayılan muhasebe ayarları tanımlanmamış.",
+                Seviye = KontrolSeviye.Uyari
+            });
+        }
+
+        // Aktif dönem kontrol
+        var aktifDonem = await GetAktifDonemAsync();
+        if (aktifDonem == null)
+        {
+            kontrol.Maddeler.Add(new KontrolMaddesi
+            {
+                Baslik = "Aktif Dönem",
+                Aciklama = "Aktif muhasebe dönemi bulunamadı. Dönem kaydı oluşturulacak.",
+                Seviye = KontrolSeviye.Bilgi
+            });
+        }
+
+        // Fatura kontrolleri
+        if (faturaIdleri?.Count > 0)
+        {
+            var faturalar = await _context.Faturalar
+                .Include(f => f.Cari)
+                .Where(f => faturaIdleri.Contains(f.Id) && !f.IsDeleted)
+                .ToListAsync();
+
+            var zatenIslenmis = faturalar.Count(f => f.MuhasebeFisiOlusturuldu);
+            if (zatenIslenmis > 0)
+            {
+                kontrol.Maddeler.Add(new KontrolMaddesi
+                {
+                    Baslik = "Zaten İşlenmiş Fatura",
+                    Aciklama = $"{zatenIslenmis} fatura zaten muhasebeleştirilmiş, atlanacak.",
+                    Seviye = KontrolSeviye.Uyari
+                });
+            }
+
+            var cariEksik = faturalar.Where(f => f.CariId == null || f.CariId == 0).ToList();
+            if (cariEksik.Count > 0)
+            {
+                kontrol.Maddeler.Add(new KontrolMaddesi
+                {
+                    Baslik = "Cari Hesap Eksik",
+                    Aciklama = $"{cariEksik.Count} faturada cari hesap tanımlanmamış.",
+                    Seviye = KontrolSeviye.Uyari,
+                    IlgiliKayit = string.Join(", ", cariEksik.Select(f => f.FaturaNo))
+                });
+            }
+
+            var tevkifatli = faturalar.Count(f => f.TevkifatliMi);
+            if (tevkifatli > 0)
+            {
+                kontrol.Maddeler.Add(new KontrolMaddesi
+                {
+                    Baslik = "Tevkifatlı Fatura",
+                    Aciklama = $"{tevkifatli} tevkifatlı fatura var. KDV tevkifat hesabı kontrol edilmeli.",
+                    Seviye = KontrolSeviye.Bilgi
+                });
+            }
+
+            var islenecek = faturalar.Count(f => !f.MuhasebeFisiOlusturuldu);
+            kontrol.Maddeler.Add(new KontrolMaddesi
+            {
+                Baslik = "İşlenecek Fatura",
+                Aciklama = $"{islenecek} fatura muhasebeleştirilecek. Toplam: {faturalar.Where(f => !f.MuhasebeFisiOlusturuldu).Sum(f => f.GenelToplam):N2} ₺",
+                Seviye = KontrolSeviye.Bilgi
+            });
+
+            // Temel hesap kontrolleri
+            var aliciHesap = await GetHesapByKodAsync("120");
+            var saticiHesap = await GetHesapByKodAsync("320");
+            if (aliciHesap == null && faturalar.Any(f => f.FaturaYonu == FaturaYonu.Giden && !f.MuhasebeFisiOlusturuldu))
+            {
+                kontrol.HazirMi = false;
+                kontrol.Maddeler.Add(new KontrolMaddesi
+                {
+                    Baslik = "Alıcılar Hesabı (120)",
+                    Aciklama = "Giden fatura için 120 - Alıcılar hesabı bulunamadı.",
+                    Seviye = KontrolSeviye.Hata
+                });
+            }
+            if (saticiHesap == null && faturalar.Any(f => f.FaturaYonu == FaturaYonu.Gelen && !f.MuhasebeFisiOlusturuldu))
+            {
+                kontrol.HazirMi = false;
+                kontrol.Maddeler.Add(new KontrolMaddesi
+                {
+                    Baslik = "Satıcılar Hesabı (320)",
+                    Aciklama = "Gelen fatura için 320 - Satıcılar hesabı bulunamadı.",
+                    Seviye = KontrolSeviye.Hata
+                });
+            }
+        }
+
+        // Masraf kontrolleri
+        if (masrafIdleri?.Count > 0)
+        {
+            var masraflar = await _context.AracMasraflari
+                .Include(m => m.MasrafKalemi)
+                .Include(m => m.Arac)
+                .Where(m => masrafIdleri.Contains(m.Id) && !m.IsDeleted)
+                .ToListAsync();
+
+            var zatenIslenmis = masraflar.Count(m => m.MuhasebeFisId != null);
+            if (zatenIslenmis > 0)
+            {
+                kontrol.Maddeler.Add(new KontrolMaddesi
+                {
+                    Baslik = "Zaten İşlenmiş Masraf",
+                    Aciklama = $"{zatenIslenmis} masraf zaten muhasebeleştirilmiş, atlanacak.",
+                    Seviye = KontrolSeviye.Uyari
+                });
+            }
+
+            var giderHesap = await GetHesapByKodAsync("770");
+            if (giderHesap == null)
+            {
+                kontrol.HazirMi = false;
+                kontrol.Maddeler.Add(new KontrolMaddesi
+                {
+                    Baslik = "Gider Hesabı (770)",
+                    Aciklama = "Masraf gider hesabı 770 bulunamadı.",
+                    Seviye = KontrolSeviye.Hata
+                });
+            }
+
+            var islenecek = masraflar.Count(m => m.MuhasebeFisId == null);
+            var kategoriler = masraflar
+                .Where(m => m.MuhasebeFisId == null && m.MasrafKalemi != null)
+                .GroupBy(m => m.MasrafKalemi!.Kategori)
+                .Select(g => $"{g.Key}: {g.Count()} adet / {g.Sum(m => m.Tutar):N2} ₺");
+
+            kontrol.Maddeler.Add(new KontrolMaddesi
+            {
+                Baslik = "İşlenecek Masraf",
+                Aciklama = $"{islenecek} masraf muhasebeleştirilecek. Toplam: {masraflar.Where(m => m.MuhasebeFisId == null).Sum(m => m.Tutar):N2} ₺",
+                Seviye = KontrolSeviye.Bilgi,
+                IlgiliKayit = string.Join(" | ", kategoriler)
+            });
+        }
+
+        if (kontrol.Maddeler.Count == 0)
+        {
+            kontrol.Maddeler.Add(new KontrolMaddesi
+            {
+                Baslik = "Sistem Hazır",
+                Aciklama = "Muhasebeleştirme için sistem hazır.",
+                Seviye = KontrolSeviye.Bilgi
+            });
+        }
+
+        return kontrol;
+    }
+
+    public async Task<List<MuhasbelestirilmisKayit>> GetMuhasbelestirilmisKayitlarAsync(
+        DateTime? baslangic = null, DateTime? bitis = null, string? kaynakTip = null)
+    {
+        var kayitlar = new List<MuhasbelestirilmisKayit>();
+
+        // Muhasebeleştirilmiş faturalar
+        if (kaynakTip == null || kaynakTip == "Fatura")
+        {
+            var faturaQuery = _context.Faturalar
+                .Include(f => f.Cari)
+                .Where(f => !f.IsDeleted && f.MuhasebeFisiOlusturuldu && f.MuhasebeFisId != null)
+                .AsQueryable();
+
+            if (baslangic.HasValue)
+                faturaQuery = faturaQuery.Where(f => f.FaturaTarihi >= baslangic.Value);
+            if (bitis.HasValue)
+                faturaQuery = faturaQuery.Where(f => f.FaturaTarihi <= bitis.Value);
+
+            var faturalar = await faturaQuery.OrderByDescending(f => f.FaturaTarihi).ToListAsync();
+
+            foreach (var f in faturalar)
+            {
+                var fis = f.MuhasebeFisId.HasValue
+                    ? await _context.MuhasebeFisleri.AsNoTracking().FirstOrDefaultAsync(fi => fi.Id == f.MuhasebeFisId.Value)
+                    : null;
+
+                kayitlar.Add(new MuhasbelestirilmisKayit
+                {
+                    KaynakId = f.Id,
+                    KaynakTip = "Fatura",
+                    KaynakNo = f.FaturaNo,
+                    KaynakTarih = f.FaturaTarihi,
+                    CariUnvan = f.Cari?.Unvan,
+                    Tutar = f.GenelToplam,
+                    FisId = f.MuhasebeFisId ?? 0,
+                    FisNo = fis?.FisNo ?? "-",
+                    FisTarihi = fis?.FisTarihi ?? DateTime.MinValue,
+                    Aciklama = $"{f.FaturaYonu} - {f.FaturaTipi}"
+                });
+            }
+        }
+
+        // Muhasebeleştirilmiş masraflar
+        if (kaynakTip == null || kaynakTip == "Masraf")
+        {
+            var masrafQuery = _context.AracMasraflari
+                .Include(m => m.Arac)
+                .Include(m => m.MasrafKalemi)
+                .Include(m => m.Cari)
+                .Where(m => !m.IsDeleted && m.MuhasebeFisId != null)
+                .AsQueryable();
+
+            if (baslangic.HasValue)
+                masrafQuery = masrafQuery.Where(m => m.MasrafTarihi >= baslangic.Value);
+            if (bitis.HasValue)
+                masrafQuery = masrafQuery.Where(m => m.MasrafTarihi <= bitis.Value);
+
+            var masraflar = await masrafQuery.OrderByDescending(m => m.MasrafTarihi).ToListAsync();
+
+            foreach (var m in masraflar)
+            {
+                var fis = m.MuhasebeFisId.HasValue
+                    ? await _context.MuhasebeFisleri.AsNoTracking().FirstOrDefaultAsync(fi => fi.Id == m.MuhasebeFisId.Value)
+                    : null;
+
+                kayitlar.Add(new MuhasbelestirilmisKayit
+                {
+                    KaynakId = m.Id,
+                    KaynakTip = "Masraf",
+                    KaynakNo = m.BelgeNo ?? $"M-{m.Id}",
+                    KaynakTarih = m.MasrafTarihi,
+                    CariUnvan = m.Cari?.Unvan ?? (m.Arac != null ? m.Arac.AktifPlaka : null),
+                    Tutar = m.Tutar,
+                    FisId = m.MuhasebeFisId ?? 0,
+                    FisNo = fis?.FisNo ?? "-",
+                    FisTarihi = fis?.FisTarihi ?? DateTime.MinValue,
+                    Aciklama = $"{m.MasrafKalemi?.MasrafAdi} - {m.Arac?.AktifPlaka}"
+                });
+            }
+        }
+
+        return kayitlar.OrderByDescending(k => k.KaynakTarih).ToList();
+    }
+
+    public async Task<MuhasbelestirmeSonuc> TopluGeriAlAsync(List<int> fisIdleri)
+    {
+        var sonuc = new MuhasbelestirmeSonuc();
+
+        foreach (var fisId in fisIdleri)
+        {
+            try
+            {
+                var fis = await _context.MuhasebeFisleri
+                    .Include(f => f.Kalemler)
+                    .FirstOrDefaultAsync(f => f.Id == fisId);
+
+                if (fis == null)
+                {
+                    sonuc.HataliSayisi++;
+                    sonuc.Hatalar.Add($"Fiş #{fisId} bulunamadı.");
+                    continue;
+                }
+
+                // İlişkili faturayı bul ve geri al
+                var fatura = await _context.Faturalar
+                    .FirstOrDefaultAsync(f => f.MuhasebeFisId == fisId && !f.IsDeleted);
+                if (fatura != null)
+                {
+                    fatura.MuhasebeFisiOlusturuldu = false;
+                    fatura.MuhasebeFisId = null;
+                }
+
+                // İlişkili masrafı bul ve geri al
+                var masraf = await _context.AracMasraflari
+                    .FirstOrDefaultAsync(m => m.MuhasebeFisId == fisId && !m.IsDeleted);
+                if (masraf != null)
+                {
+                    masraf.MuhasebeFisId = null;
+                }
+
+                // Fişi sil
+                _context.MuhasebeFisKalemleri.RemoveRange(fis.Kalemler);
+                _context.MuhasebeFisleri.Remove(fis);
+
+                await _context.SaveChangesAsync();
+                sonuc.BasariliSayisi++;
+            }
+            catch (Exception ex)
+            {
+                sonuc.HataliSayisi++;
+                sonuc.Hatalar.Add($"Fiş #{fisId}: {ex.Message}");
+            }
+        }
+
+        return sonuc;
+    }
+
+    public async Task<byte[]> ExportMuhasbelestirmeKontrolExcelAsync(List<int>? faturaIdleri = null, List<int>? masrafIdleri = null)
+    {
+        using var workbook = new XLWorkbook();
+
+        // Fatura sayfası
+        if (faturaIdleri?.Count > 0)
+        {
+            var faturalar = await _context.Faturalar
+                .Include(f => f.Cari)
+                .Where(f => faturaIdleri.Contains(f.Id) && !f.IsDeleted)
+                .OrderBy(f => f.FaturaTarihi)
+                .ToListAsync();
+
+            var ws = workbook.Worksheets.Add("Faturalar");
+            var basliklar = new[] { "Fatura No", "Tarih", "Cari", "Yön", "Ara Toplam", "KDV", "Genel Toplam", "Tevkifat", "Durum" };
+            for (int i = 0; i < basliklar.Length; i++)
+            {
+                ws.Cell(1, i + 1).Value = basliklar[i];
+                ws.Cell(1, i + 1).Style.Font.Bold = true;
+                ws.Cell(1, i + 1).Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
+            }
+
+            var row = 2;
+            foreach (var f in faturalar)
+            {
+                ws.Cell(row, 1).Value = f.FaturaNo;
+                ws.Cell(row, 2).Value = f.FaturaTarihi.ToString("dd.MM.yyyy");
+                ws.Cell(row, 3).Value = f.Cari?.Unvan ?? "";
+                ws.Cell(row, 4).Value = f.FaturaYonu.ToString();
+                ws.Cell(row, 5).Value = f.AraToplam;
+                ws.Cell(row, 6).Value = f.KdvTutar;
+                ws.Cell(row, 7).Value = f.GenelToplam;
+                ws.Cell(row, 8).Value = f.TevkifatliMi ? f.TevkifatTutar : 0;
+                ws.Cell(row, 9).Value = f.MuhasebeFisiOlusturuldu ? "İşlenmiş" : "Bekleyen";
+                row++;
+            }
+
+            // Toplam satırı
+            ws.Cell(row, 4).Value = "TOPLAM";
+            ws.Cell(row, 4).Style.Font.Bold = true;
+            ws.Cell(row, 5).Value = faturalar.Sum(f => f.AraToplam);
+            ws.Cell(row, 6).Value = faturalar.Sum(f => f.KdvTutar);
+            ws.Cell(row, 7).Value = faturalar.Sum(f => f.GenelToplam);
+            ws.Cell(row, 7).Style.Font.Bold = true;
+
+            ws.Columns().AdjustToContents();
+        }
+
+        // Masraf sayfası
+        if (masrafIdleri?.Count > 0)
+        {
+            var masraflar = await _context.AracMasraflari
+                .Include(m => m.Arac)
+                .Include(m => m.MasrafKalemi)
+                .Include(m => m.Cari)
+                .Where(m => masrafIdleri.Contains(m.Id) && !m.IsDeleted)
+                .OrderBy(m => m.MasrafTarihi)
+                .ToListAsync();
+
+            var ws = workbook.Worksheets.Add("Masraflar");
+            var basliklar = new[] { "Tarih", "Araç", "Masraf Kalemi", "Kategori", "Tutar", "Belge No", "Muhatap", "Durum" };
+            for (int i = 0; i < basliklar.Length; i++)
+            {
+                ws.Cell(1, i + 1).Value = basliklar[i];
+                ws.Cell(1, i + 1).Style.Font.Bold = true;
+                ws.Cell(1, i + 1).Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
+            }
+
+            var row = 2;
+            foreach (var m in masraflar)
+            {
+                ws.Cell(row, 1).Value = m.MasrafTarihi.ToString("dd.MM.yyyy");
+                ws.Cell(row, 2).Value = m.Arac?.AktifPlaka ?? "";
+                ws.Cell(row, 3).Value = m.MasrafKalemi?.MasrafAdi ?? "";
+                ws.Cell(row, 4).Value = m.MasrafKalemi?.Kategori.ToString() ?? "";
+                ws.Cell(row, 5).Value = m.Tutar;
+                ws.Cell(row, 6).Value = m.BelgeNo ?? "";
+                ws.Cell(row, 7).Value = m.Cari?.Unvan ?? "";
+                ws.Cell(row, 8).Value = m.MuhasebeFisId != null ? "İşlenmiş" : "Bekleyen";
+                row++;
+            }
+
+            ws.Cell(row, 4).Value = "TOPLAM";
+            ws.Cell(row, 4).Style.Font.Bold = true;
+            ws.Cell(row, 5).Value = masraflar.Sum(m => m.Tutar);
+            ws.Cell(row, 5).Style.Font.Bold = true;
+
+            ws.Columns().AdjustToContents();
+        }
+
+        // Kontrol sayfası
+        var kontrol = await KontrolYapAsync(faturaIdleri, masrafIdleri);
+        var kontrolWs = workbook.Worksheets.Add("Kontrol Listesi");
+        kontrolWs.Cell(1, 1).Value = "Seviye";
+        kontrolWs.Cell(1, 2).Value = "Başlık";
+        kontrolWs.Cell(1, 3).Value = "Açıklama";
+        kontrolWs.Cell(1, 4).Value = "İlgili Kayıt";
+        for (int i = 1; i <= 4; i++)
+        {
+            kontrolWs.Cell(1, i).Style.Font.Bold = true;
+            kontrolWs.Cell(1, i).Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
+        }
+
+        var kRow = 2;
+        foreach (var madde in kontrol.Maddeler)
+        {
+            kontrolWs.Cell(kRow, 1).Value = madde.Seviye.ToString();
+            kontrolWs.Cell(kRow, 2).Value = madde.Baslik;
+            kontrolWs.Cell(kRow, 3).Value = madde.Aciklama;
+            kontrolWs.Cell(kRow, 4).Value = madde.IlgiliKayit ?? "";
+
+            if (madde.Seviye == KontrolSeviye.Hata)
+                kontrolWs.Row(kRow).Style.Fill.BackgroundColor = XLColor.LightPink;
+            else if (madde.Seviye == KontrolSeviye.Uyari)
+                kontrolWs.Row(kRow).Style.Fill.BackgroundColor = XLColor.LightYellow;
+
+            kRow++;
+        }
+
+        kontrolWs.Columns().AdjustToContents();
+
+        if (workbook.Worksheets.Count == 0)
+            workbook.Worksheets.Add("Boş");
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
     }
 
     #endregion

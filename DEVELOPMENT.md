@@ -41,6 +41,41 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 039 - Fatura/Masraf Muhasebeleştirme Geliştirme
+**Talep:** Fatura ve masraf muhasebeleştirme sayfasına kontrol listesi, işlenmiş kayıtlar görüntüleme, geri alma ve Excel export özellikleri ekle.
+
+**Yapılanlar:**
+- `MuhasebeleştirmeModels.cs` güncellendi - 3 yeni model + 1 enum eklendi:
+  - `MuhasbelestirmeKontrol`: Kontrol sonucu (HazirMi, Maddeler, UyariSayisi, HataSayisi, BilgiSayisi)
+  - `KontrolMaddesi`: Kontrol maddesi detayı (Baslik, Aciklama, Seviye, IlgiliKayit)
+  - `KontrolSeviye` enum: Bilgi, Uyari, Hata
+  - `MuhasbelestirilmisKayit`: İşlenmiş kayıt DTO (KaynakId, KaynakTip, Tutar, FisId, FisNo, Secildi)
+- `IMuhasebeService.cs` güncellendi - 4 yeni metot:
+  - `KontrolYapAsync`: Muhasebeleştirme öncesi kontrol (hesap planı, ayarlar, dönem, cari, tevkifat, hesap eşleşme)
+  - `GetMuhasbelestirilmisKayitlarAsync`: İşlenmiş fatura+masraf birleşik liste (fiş bilgileriyle)
+  - `TopluGeriAlAsync`: Fiş silme + fatura/masraf muhasebeleştirme durumu geri alma
+  - `ExportMuhasbelestirmeKontrolExcelAsync`: 3 sayfalı Excel export (Faturalar/Masraflar/Kontrol Listesi)
+- `MuhasebeService.cs` güncellendi (~300 satır yeni kod):
+  - `KontrolYapAsync`: Hesap planı boş mu, muhasebe ayarları var mı, aktif dönem var mı, fatura cari eksik mi, tevkifatlı fatura var mı, 120/320/770 hesapları tanımlı mı
+  - `GetMuhasbelestirilmisKayitlarAsync`: Fatura (MuhasebeFisiOlusturuldu=true) ve masraf (MuhasebeFisId!=null) birleşik listesi, fiş numaraları dahil
+  - `TopluGeriAlAsync`: Fiş kalemleri + fiş silme, ilişkili fatura/masraf muhasebe bağlantısı temizleme
+  - `ExportMuhasbelestirmeKontrolExcelAsync`: ClosedXML ile 3 sayfalı Excel (koşullu renklendirme)
+- `Muhasbelestirme.razor` tamamen güncellendi:
+  - **İşlenmiş Kayıtlar Sekmesi** (yeni): Fatura/Masraf filtre, fiş detayına link, toplu geri alma
+  - **Kontrol Listesi Modalı** (yeni): Hata/Uyarı/Bilgi kartları, madde listesi, kontrol sonrası muhasebeleştirmeye devam
+  - **Excel Export butonları**: Fatura/masraf kontrol listesi Excel indirme
+  - **Geri Alma**: Seçili işlenmiş kayıtların muhasebe fişlerini silip durumu geri alma
+  - **Gelişmiş buton grubu**: "Kontrol Et", "Excel", "Muhasebeleştir" butonları her sekmede
+- ROADMAP: #10 ve #11 tamamlandı olarak işaretlendi
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Models/MuhasebeleştirmeModels.cs` (güncellendi)
+- `CRMFiloServis.Web/Services/Interfaces/IMuhasebeService.cs` (güncellendi)
+- `CRMFiloServis.Web/Services/MuhasebeService.cs` (güncellendi)
+- `CRMFiloServis.Web/Components/Pages/Muhasebe/Muhasbelestirme.razor` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 035 - Bordro Personel Bazlı Düzenleme
 **Talep:** Bordro detaylarında personel bazlı maaş/kesinti/ek ödeme düzenleme özelliği. Normal ve AR-GE bordrolarda ayrı ayrı.
 

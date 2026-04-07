@@ -143,9 +143,9 @@
 |---------|---------|------|-------|
 | Tarih bazlı Yevmiye Kayıtları Yazdır | 🔴 Yüksek | 2 gün | ❌ |
 | Yevmiye Kayıtları Excel Export | 🔴 Yüksek | 1 gün | ❌ |
-| Fatura Toplu Muhasebeleştirme | 🔴 Yüksek | 2 gün | ❌ |
-| Masraf Muhasebeleştirme | 🔴 Yüksek | 2 gün | ❌ |
-| Muhasebe Kontrol Listesi | 🟡 Orta | 1 gün | ❌ |
+| Fatura Toplu Muhasebeleştirme | 🔴 Yüksek | 2 gün | ✅ |
+| Masraf Muhasebeleştirme | 🔴 Yüksek | 2 gün | ✅ |
+| Muhasebe Kontrol Listesi | 🟡 Orta | 1 gün | ✅ |
 
 ### 5.6 Modül Geliştirmeleri (YENİ - ÖNCELİKLİ)
 | Özellik | Öncelik | Süre | Durum |
@@ -295,8 +295,8 @@ FAZ 7 (5-6 Hafta)
 
 ### 🔴 Muhasebe & Raporlama (Öncelik 2)
 9. ~~**Tarih bazlı Yevmiye Kayıtları Yazdır/Excel**~~ - ✅ Tamamlandı
-10. **Fatura Muhasebeleştirme Geliştirme** - Toplu muhasebeleştirme, kontrol listesi
-11. **Masraf Muhasebeleştirme Geliştirme** - Araç masrafları yevmiye kaydı
+10. ~~**Fatura Muhasebeleştirme Geliştirme** - Toplu muhasebeleştirme, kontrol listesi~~ ✅
+11. ~~**Masraf Muhasebeleştirme Geliştirme** - Araç masrafları yevmiye kaydı~~ ✅
 
 ### 🔴 Modül Geliştirmeleri (Öncelik 3)
 12. ~~**Bütçe Analiz Geliştirme**~~ - ✅ Kategori bazlı analiz, trend grafikleri, AI rapor yorumlama tamamlandı
