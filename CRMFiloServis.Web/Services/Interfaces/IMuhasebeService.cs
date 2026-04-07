@@ -1,4 +1,5 @@
 ﻿using CRMFiloServis.Shared.Entities;
+using CRMFiloServis.Web.Models;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -67,6 +68,15 @@ public interface IMuhasebeService
     // Hesap Bakiyeleri
     Task<decimal> GetHesapBakiyeAsync(string hesapKodu, DateTime? tarih = null);
     Task<List<HesapBakiye>> GetHesapBakiyeleriAsync(HesapGrubu grup, DateTime? tarih = null);
+
+    // Muhasebeleştirme Yönetimi
+    Task<MuhasebeleştirmeOzet> GetMuhasebeleştirmeOzetAsync(int yil, int ay);
+    Task<List<MuhasebeleştirmeFaturaItem>> GetMuhasebeleşmemişFaturalarAsync(DateTime? baslangic = null, DateTime? bitis = null);
+    Task<List<MuhasebeleştirmeMasrafItem>> GetMuhasebeleşmemişMasraflarAsync(DateTime? baslangic = null, DateTime? bitis = null);
+    Task<MuhasebeFis> CreateMasrafFisiAsync(AracMasraf masraf);
+    Task<TopluMuhasebeleştirmeSonuc> TopluFaturaMuhasebeleştirAsync(List<int> faturaIdler);
+    Task<TopluMuhasebeleştirmeSonuc> TopluMasrafMuhasebeleştirAsync(List<int> masrafIdler);
+    Task<byte[]> ExportMuhasebeleştirmeKontrolListesiAsync(DateTime baslangic, DateTime bitis);
 }
 
 // Hesap Plani Import Result
