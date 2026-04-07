@@ -291,7 +291,7 @@ FAZ 7 (5-6 Hafta)
 5. ~~**Muhasebe Fişleri Yazdır/Excel** - Hata yapmamak için kontrol listesi~~ ✅
 6. ~~**Proforma Fatura Sistemi** - Fatura kesilmeden önce proforma oluşturma~~ ✅
 7. **Personel Servis Çalışma Puantajı** - Günlük/aylık puantaj takibi 🆕
-8. **Cari Borç/Alacak Detaylı Takip** - Borç alacak analizi ve raporlama 🆕
+8. ~~**Cari Borç/Alacak Detaylı Takip** - Borç alacak analizi ve raporlama~~ ✅
 
 ### 🔴 Muhasebe & Raporlama (Öncelik 2)
 9. ~~**Tarih bazlı Yevmiye Kayıtları Yazdır/Excel**~~ - ✅ Tamamlandı

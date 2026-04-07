@@ -174,6 +174,7 @@ builder.Services.AddScoped<IFiloOperasyonService, FiloOperasyonService>(); // Fi
 builder.Services.AddScoped<IIlanYayinService, IlanYayinService>(); // Araç İlan Yayın ve Kullanıcı Tercihleri
 builder.Services.AddScoped<IHakedisService, HakedisService>(); // Hakedis/Puantaj Excel Import ve Takip
 builder.Services.AddScoped<IProformaFaturaService, ProformaFaturaService>(); // Proforma Fatura Servisi
+builder.Services.AddScoped<ICariHareketTakipService, CariHareketTakipService>(); // Cari Borç/Alacak Takip Servisi
 builder.Services.AddScoped<UpdateService>(); // Güncelleme Yönetimi Servisi
 builder.Services.AddScoped<IEmailService, EmailService>(); // E-posta Bildirim Servisi
 builder.Services.AddScoped<ISystemHealthService, SystemHealthService>(); // Sistem Sağlık Kontrolü

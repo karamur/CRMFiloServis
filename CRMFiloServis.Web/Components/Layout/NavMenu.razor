@@ -137,15 +137,23 @@
                             </div>
                         }
                         @if (HasYetki("gelenfatura.oku") || HasYetki("kesilenfatura.oku"))
-                        {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="efatura/stok-turu-eslestir">
-                                    <i class="bi bi-tags me-2 text-info"></i> Stok Türü Eşleştir
-                                </NavLink>
-                            </div>
-                        }
-                    </div>
-                }
+                                        {
+                                            <div class="nav-item px-3">
+                                                <NavLink class="nav-link" href="efatura/stok-turu-eslestir">
+                                                    <i class="bi bi-tags me-2 text-info"></i> Stok Türü Eşleştir
+                                                </NavLink>
+                                            </div>
+                                        }
+                                        @if (HasYetki("cariler.oku"))
+                                        {
+                                            <div class="nav-item px-3">
+                                                <NavLink class="nav-link" href="cari-hareket-takip">
+                                                    <i class="bi bi-cash-stack me-2 text-warning"></i> Borç/Alacak Takip
+                                                </NavLink>
+                                            </div>
+                                        }
+                                    </div>
+                                }
             </div>
         }
 

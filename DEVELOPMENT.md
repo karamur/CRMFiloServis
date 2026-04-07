@@ -41,6 +41,51 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 029 - Cari Borç/Alacak Detaylı Takip
+**Talep:** Cari hesaplar için detaylı borç/alacak analizi, risk skorlaması ve tahsilat planlaması.
+
+**Yapılanlar:**
+- `CariHareketTakipModels.cs`: Yeni modeller oluşturuldu
+  - `CariHareketTakipRapor`: Tek cari detaylı rapor (bakiye, vade analizi, risk skoru, trend)
+  - `CariHareketDetay`: Hareket listesi (fatura + ödeme birleşik)
+  - `CariAcikFatura`: Açık fatura detayı (vade durumu, öncelik)
+  - `CariAylikTrend`: Aylık trend verisi
+  - `TahsilatPlanItem`: Tahsilat planı öğesi
+  - `CariBorcAlacakOzet`: Tüm cariler özet raporu
+  - `CariHareketTakipOzet`: Cari özet satırı
+  - `CariTipiBakiyeDagilimi`, `GenelAylikTrend`
+- `ICariHareketTakipService.cs`: Interface oluşturuldu
+  - GetBorcAlacakOzetAsync: Tüm cariler özet
+  - GetCariDetayAsync: Tek cari detay
+  - GetCariHareketlerAsync: Hareket listesi
+  - GetAcikFaturalarAsync: Açık faturalar
+  - GetAylikTrendAsync: Aylık trend
+  - HesaplaRiskSkoruAsync: Risk skoru hesaplama
+  - OlusturTahsilatPlaniAsync: Tahsilat planı
+  - ExportToExcelAsync: Excel export
+- `CariHareketTakipService.cs`: Tam implementasyon
+  - Risk skoru hesaplama (0-100 arası)
+  - Vade analizi (0-30, 31-60, 61-90, 90+ gün)
+  - Ortalama ödeme süresi hesaplama
+  - Tahsilat planı öneri sistemi
+- `CariHareketTakip.razor`: Ana sayfa oluşturuldu
+  - Tüm cariler özet görünümü (filtreler, vade analizi, cari tipi dağılımı)
+  - Tek cari detay görünümü (bilgiler, bakiye, risk, hareket listesi, açık faturalar, tahsilat planı)
+  - Hareket detay modal
+  - Excel export
+- `Program.cs`: Servis DI kaydı eklendi
+- `NavMenu.razor`: "Borç/Alacak Takip" linki eklendi (Cari Modülü altına)
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Models/CariHareketTakipModels.cs` (yeni)
+- `CRMFiloServis.Web/Services/Interfaces/ICariHareketTakipService.cs` (yeni)
+- `CRMFiloServis.Web/Services/CariHareketTakipService.cs` (yeni)
+- `CRMFiloServis.Web/Components/Pages/Cariler/CariHareketTakip.razor` (yeni)
+- `CRMFiloServis.Web/Program.cs`
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor`
+
+**Durum:** Tamamlandı
+
 ### Kayıt 028 - Proforma Fatura Sistemi
 **Talep:** Fatura kesilmeden önce müşteriye proforma fatura gönderme sistemi.
 
@@ -634,6 +679,7 @@ BudgetAnaliz → OdemeTipi.CariMahsup seç → OdemeYapAsync
 | 010 | Çalışma zamanı dosya disiplini | Tamamlandı | Düşük | Upload, backup, log ve deploy runtime klasörleri ignore edildi |
 | 011 | Servis refaktörlerinin sınıflandırılması | Tamamlandı | Orta | AsNoTracking, UTC ve soft delete audit tutarlılığı tamamlandı |
 | 015 | Proforma Fatura Sistemi | Tamamlandı | Yüksek | Entity, servis, 3 sayfa, faturaya dönüştürme, Excel export |
+| 016 | Cari Borç/Alacak Takip | Tamamlandı | Yüksek | Risk skorlama, vade analizi, tahsilat planı, detaylı rapor |
 | 012 | Sayfalama altyapısı | Tamamlandı | Yüksek | CariList, FaturaList, BankaHareketList sayfalama destekli |
 | 013 | Şoför Performans Raporu | Tamamlandı | Orta | Bireysel/karşılaştırma, grafik, Excel export |
 | 014 | Araç Karlılık Raporu | Tamamlandı | Orta | Gelir/gider/kar analizi, masraf dağılımı, trend grafikleri |
