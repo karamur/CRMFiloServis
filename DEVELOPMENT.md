@@ -41,6 +41,45 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 032 - Personel Servis Çalışma Puantajı
+**Talep:** Personel bazlı günlük/aylık çalışma puantaj takibi sayfası. Hangi gün çalıştı, izinli, mazeretli olduğu takip edilecek.
+
+**Yapılanlar:**
+- `CalismaPuantaji.razor`: Tam sayfa oluşturuldu (`/personel/puantaj`)
+  - Firma + Yıl + Ay filtreleri
+  - Personel arama (ad soyad / şoför kodu)
+  - Özet kartlar: Personel sayısı, Ort. çalışılan gün, Toplam izin/mazeret, F. mesai, Net ödeme
+  - Takvim grid tablosu (personel × gün matrisi):
+    - Satırlar: Personel adı ve kodu
+    - Sütunlar: Ayın günleri (1-28/30/31) + Ç/İ/M/FM özet sütunları
+    - Haftasonu renklendirme (Cumartesi sarı, Pazar kırmızı)
+    - Durum badge'leri: Ç (Çalıştı), İ (İzinli), M (Mazeret), FM (Fazla Mesai)
+    - Sticky header ve sol sütun (kaydırma desteği)
+  - Footer toplam satırı (günlük çalışan personel sayısı)
+  - Hücre tıklama ile günlük düzenleme modalı:
+    - Çalıştı/İzinli/Mazeret toggle (karşılıklı exclusive)
+    - Fazla mesai saat girişi
+    - Not alanı
+  - "Ay Puantajı Oluştur" butonu (aktif şoförlere otomatik puantaj ve günlük kayıt oluşturma)
+  - Günlük verilerden aylık özet otomatik hesaplama
+  - "Hesapla" butonu (maaş kesintileri hesaplama)
+  - Excel export (mevcut PuantajService.ExportPuantajListesiAsync kullanarak)
+  - Toast bildirim sistemi, IDisposable implementasyonu
+- `NavMenu.razor`: "Çalışma Puantajı" linki eklendi (Personel menüsü altına, İzin Yönetimi sonrası)
+- `ROADMAP.md`: "Personel Servis Çalışma Puantajı" tamamlandı olarak işaretlendi
+
+**Mevcut Altyapı Kullanımı:**
+- `PersonelPuantaj` entity: Aylık özet (CalisilanGun, IzinGunu, MazeretGunu, FazlaMesaiSaat, maaş alanları)
+- `GunlukPuantaj` entity: Günlük detay (Calisti, Izinli, Mazeret, FazlaMesaiSaat, ServisCalismaId)
+- `IPuantajService / PuantajService`: CRUD, günlük puantaj, otomatik oluşturma, hesaplama, Excel export
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Components/Pages/Personel/CalismaPuantaji.razor` (yeni)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncelleme)
+- `ROADMAP.md` (güncelleme)
+
+**Durum:** Tamamlandı
+
 ### Kayıt 031 - Fatura/Masraf Resmi Muhasebe Kaydı (Toplu Muhasebeleştirme)
 **Talep:** Girilen fatura ve masrafların toplu olarak resmi yevmiye kaydı (muhasebe fişi) oluşturulması.
 
