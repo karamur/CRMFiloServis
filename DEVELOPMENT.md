@@ -99,6 +99,48 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 **Durum:** Tamamlandı
 
+### Kayıt 026 - Cari Bakiye Yaşlandırma Raporu
+**Talep:** Cari bakiyelerin vade tarihine göre yaşlandırma analizi - 0-30, 31-60, 61-90, 90+ gün bantları.
+
+**Yapılanlar:**
+- `CariYaslandirmaRaporModels.cs`: Yeni rapor modelleri oluşturuldu
+  - `CariYaslandirmaRapor`: Genel rapor özeti (toplam bakiye, bant toplamları, cari sayıları)
+  - `CariYaslandirmaOzet`: Cari bazlı yaşlandırma özeti (bakiye bantları, risk seviyesi)
+  - `YaslandirmaBandi`: Yaşlandırma bandı özeti (tutar, fatura/cari sayısı, oran)
+  - `CariTipiDagilimi`: Cari tipi bazlı dağılım
+  - `YaslandirmaFaturaDetay`: Fatura bazlı yaşlandırma detayı
+- `IRaporService.cs`: 2 yeni metod eklendi
+  - `GetCariYaslandirmaAsync`: Genel yaşlandırma raporu
+  - `GetCariYaslandirmaDetayAsync`: Tek cari detaylı yaşlandırma
+- `RaporService.cs`: Yaşlandırma metodları implementasyonu eklendi
+  - Vade tarihine göre gecikme günü hesaplama
+  - Yaşlandırma bantlarına dağıtım (0-30, 31-60, 61-90, 90+ gün)
+  - Risk seviyesi hesaplama (Normal, Düşük, Orta, Yüksek)
+  - Cari tipi ve fatura bazlı gruplama
+- `CariYaslandirmaRapor.razor`: Cari yaşlandırma raporu sayfası oluşturuldu
+  - Filtre alanı (rapor tarihi, cari tipi, cari seçimi, sadece borçlu cariler)
+  - Özet kartları (toplam bakiye, güncel, vadesi geçmiş, kritik)
+  - Pie chart: Yaşlandırma dağılımı
+  - Horizontal bar chart: Yaşlandırma bantları
+  - Bant özet tablosu (tutar, fatura/cari sayısı, oran, progress bar)
+  - Cari bazlı detay tablosu (risk seviyesi renklendirmeli)
+  - Fatura detay modal (cari tıklandığında)
+  - Excel export desteği
+- `NavMenu.razor`: Raporlar menüsüne "Cari Yaşlandırma" linki eklendi
+- `dashboard-charts.js`: 2 yeni fonksiyon eklendi
+  - `createPieChart`: Pasta grafik
+  - `createYaslandirmaBarChart`: Horizontal bar chart
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Models/CariYaslandirmaRaporModels.cs` (yeni)
+- `CRMFiloServis.Web/Services/Interfaces/IRaporService.cs`
+- `CRMFiloServis.Web/Services/RaporService.cs`
+- `CRMFiloServis.Web/Components/Pages/Raporlar/CariYaslandirmaRapor.razor` (yeni)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor`
+- `CRMFiloServis.Web/wwwroot/js/dashboard-charts.js`
+
+**Durum:** Tamamlandı
+
 ### Kayıt 023 - Dashboard Grafikleri (Chart.js)
 **Talep:** Dashboard'a görsel grafikler eklenmesi - Aylık gelir/gider, masraf dağılımı, bütçe takibi.
 

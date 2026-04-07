@@ -66,7 +66,7 @@
 | Dashboard grafikleri (Chart.js) | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | Şoför performans raporu | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | Araç karlılık analizi | 🟡 Orta | 2 gün | ✅ Tamamlandı |
-| Cari bakiye yaşlandırma raporu | 🟡 Orta | 2 gün | ❌ |
+| Cari bakiye yaşlandırma raporu | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | Aylık/Yıllık karşılaştırmalı raporlar | 🟢 Düşük | 2 gün | ❌ |
 
 ### 3.3 Mobil Uygulama

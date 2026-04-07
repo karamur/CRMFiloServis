@@ -547,4 +547,225 @@ public class RaporService : IRaporService
 
         return sonuclar;
     }
+
+    /// <summary>
+    /// Cari bakiye yaşlandırma raporu
+    /// </summary>
+    public async Task<CariYaslandirmaRapor> GetCariYaslandirmaAsync(
+        DateTime? raporTarihi = null,
+        int? cariId = null,
+        CariTipi? cariTipi = null,
+        bool sadeceBorcluCariler = false)
+    {
+        var bugun = raporTarihi?.Date ?? DateTime.Today;
+
+        // Tüm carileri al
+        var carilerQuery = _context.Cariler
+            .Include(c => c.Faturalar.Where(f => !f.IsDeleted))
+            .Where(c => !c.IsDeleted && c.Aktif);
+
+        if (cariId.HasValue)
+            carilerQuery = carilerQuery.Where(c => c.Id == cariId.Value);
+
+        if (cariTipi.HasValue)
+            carilerQuery = carilerQuery.Where(c => c.CariTipi == cariTipi.Value);
+
+        var cariler = await carilerQuery.AsNoTracking().ToListAsync();
+
+        // Cari bazlı yaşlandırma hesapla
+        var cariOzetler = new List<CariYaslandirmaOzet>();
+
+        foreach (var cari in cariler)
+        {
+            var ozet = HesaplaCariYaslandirma(cari, bugun);
+            if (sadeceBorcluCariler && ozet.ToplamBakiye <= 0)
+                continue;
+
+            cariOzetler.Add(ozet);
+        }
+
+        // Toplam değerleri hesapla
+        var rapor = new CariYaslandirmaRapor
+        {
+            Cariler = cariOzetler.OrderByDescending(c => c.ToplamBakiye).ToList(),
+            ToplamBakiye = cariOzetler.Sum(c => c.ToplamBakiye),
+            Guncel = cariOzetler.Sum(c => c.Guncel),
+            Vadesi30_60 = cariOzetler.Sum(c => c.Vadesi30_60),
+            Vadesi60_90 = cariOzetler.Sum(c => c.Vadesi60_90),
+            Vadesi90Plus = cariOzetler.Sum(c => c.Vadesi90Plus),
+            ToplamCariSayisi = cariOzetler.Count,
+            BorcluCariSayisi = cariOzetler.Count(c => c.ToplamBakiye > 0),
+            AlacakliCariSayisi = cariOzetler.Count(c => c.ToplamBakiye < 0)
+        };
+
+        // Yaşlandırma bantları özeti
+        var toplamBakiye = Math.Abs(rapor.ToplamBakiye);
+        rapor.YaslandirmaBantlari =
+        [
+            new YaslandirmaBandi
+            {
+                BantAdi = "Güncel (0-30 Gün)",
+                MinGun = 0,
+                MaxGun = 30,
+                Tutar = rapor.Guncel,
+                FaturaSayisi = cariOzetler.SelectMany(c => c.FaturaDetaylari).Count(f => f.GecikmeGunSayisi <= 30),
+                CariSayisi = cariOzetler.Count(c => c.Guncel > 0),
+                Oran = toplamBakiye > 0 ? rapor.Guncel / toplamBakiye * 100 : 0,
+                Renk = "success"
+            },
+            new YaslandirmaBandi
+            {
+                BantAdi = "31-60 Gün",
+                MinGun = 31,
+                MaxGun = 60,
+                Tutar = rapor.Vadesi30_60,
+                FaturaSayisi = cariOzetler.SelectMany(c => c.FaturaDetaylari).Count(f => f.GecikmeGunSayisi > 30 && f.GecikmeGunSayisi <= 60),
+                CariSayisi = cariOzetler.Count(c => c.Vadesi30_60 > 0),
+                Oran = toplamBakiye > 0 ? rapor.Vadesi30_60 / toplamBakiye * 100 : 0,
+                Renk = "warning"
+            },
+            new YaslandirmaBandi
+            {
+                BantAdi = "61-90 Gün",
+                MinGun = 61,
+                MaxGun = 90,
+                Tutar = rapor.Vadesi60_90,
+                FaturaSayisi = cariOzetler.SelectMany(c => c.FaturaDetaylari).Count(f => f.GecikmeGunSayisi > 60 && f.GecikmeGunSayisi <= 90),
+                CariSayisi = cariOzetler.Count(c => c.Vadesi60_90 > 0),
+                Oran = toplamBakiye > 0 ? rapor.Vadesi60_90 / toplamBakiye * 100 : 0,
+                Renk = "orange"
+            },
+            new YaslandirmaBandi
+            {
+                BantAdi = "90+ Gün",
+                MinGun = 91,
+                MaxGun = int.MaxValue,
+                Tutar = rapor.Vadesi90Plus,
+                FaturaSayisi = cariOzetler.SelectMany(c => c.FaturaDetaylari).Count(f => f.GecikmeGunSayisi > 90),
+                CariSayisi = cariOzetler.Count(c => c.Vadesi90Plus > 0),
+                Oran = toplamBakiye > 0 ? rapor.Vadesi90Plus / toplamBakiye * 100 : 0,
+                Renk = "danger"
+            }
+        ];
+
+        // Cari tipi bazlı dağılım
+        rapor.CariTipiDagilimi = cariOzetler
+            .GroupBy(c => c.CariTipi)
+            .Select(g => new CariTipiDagilimi
+            {
+                CariTipi = g.Key,
+                CariSayisi = g.Count(),
+                ToplamBakiye = g.Sum(c => c.ToplamBakiye),
+                VadesiGecmisBakiye = g.Sum(c => c.VadesiGecmisBakiye),
+                Oran = toplamBakiye > 0 ? g.Sum(c => c.ToplamBakiye) / toplamBakiye * 100 : 0
+            })
+            .OrderByDescending(d => d.ToplamBakiye)
+            .ToList();
+
+        return rapor;
+    }
+
+    /// <summary>
+    /// Tek cari için detaylı yaşlandırma
+    /// </summary>
+    public async Task<CariYaslandirmaOzet> GetCariYaslandirmaDetayAsync(
+        int cariId,
+        DateTime? raporTarihi = null)
+    {
+        var bugun = raporTarihi?.Date ?? DateTime.Today;
+
+        var cari = await _context.Cariler
+            .Include(c => c.Faturalar.Where(f => !f.IsDeleted))
+            .Where(c => c.Id == cariId && !c.IsDeleted)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (cari == null)
+            return new CariYaslandirmaOzet();
+
+        return HesaplaCariYaslandirma(cari, bugun);
+    }
+
+    /// <summary>
+    /// Cari yaşlandırma hesaplaması
+    /// </summary>
+    private CariYaslandirmaOzet HesaplaCariYaslandirma(Cari cari, DateTime bugun)
+    {
+        var ozet = new CariYaslandirmaOzet
+        {
+            CariId = cari.Id,
+            CariKodu = cari.CariKodu,
+            Unvan = cari.Unvan,
+            CariTipi = cari.CariTipi.ToString(),
+            Telefon = cari.Telefon,
+            Email = cari.Email
+        };
+
+        // Sadece ödenmemiş (kalan tutarı > 0) satış faturalarını al
+        var odenmeyen = cari.Faturalar
+            .Where(f => f.FaturaTipi == FaturaTipi.SatisFaturasi 
+                     && f.Durum != FaturaDurum.Odendi 
+                     && f.GenelToplam - f.OdenenTutar > 0)
+            .ToList();
+
+        ozet.ToplamFaturaSayisi = odenmeyen.Count;
+        ozet.SonFaturaTarihi = cari.Faturalar.OrderByDescending(f => f.FaturaTarihi).FirstOrDefault()?.FaturaTarihi;
+
+        foreach (var fatura in odenmeyen)
+        {
+            var kalanTutar = fatura.GenelToplam - fatura.OdenenTutar;
+            var vadeTarihi = fatura.VadeTarihi ?? fatura.FaturaTarihi;
+            var gecikmeGun = (bugun - vadeTarihi).Days;
+
+            var faturaDetay = new YaslandirmaFaturaDetay
+            {
+                FaturaId = fatura.Id,
+                FaturaNo = fatura.FaturaNo,
+                FaturaTarihi = fatura.FaturaTarihi,
+                VadeTarihi = fatura.VadeTarihi,
+                GenelToplam = fatura.GenelToplam,
+                OdenenTutar = fatura.OdenenTutar,
+                KalanTutar = kalanTutar,
+                VadeGunSayisi = -gecikmeGun // Negatif = vadesi geçmiş
+            };
+
+            ozet.FaturaDetaylari.Add(faturaDetay);
+
+            // Yaşlandırma bantlarına dağıt
+            if (gecikmeGun <= 0)
+            {
+                // Vadesi gelmemiş
+                ozet.Guncel += kalanTutar;
+            }
+            else if (gecikmeGun <= 30)
+            {
+                ozet.Guncel += kalanTutar;
+                ozet.VadesiGecmisFaturaSayisi++;
+            }
+            else if (gecikmeGun <= 60)
+            {
+                ozet.Vadesi30_60 += kalanTutar;
+                ozet.VadesiGecmisFaturaSayisi++;
+            }
+            else if (gecikmeGun <= 90)
+            {
+                ozet.Vadesi60_90 += kalanTutar;
+                ozet.VadesiGecmisFaturaSayisi++;
+            }
+            else
+            {
+                ozet.Vadesi90Plus += kalanTutar;
+                ozet.VadesiGecmisFaturaSayisi++;
+            }
+        }
+
+        ozet.ToplamBakiye = ozet.Guncel + ozet.Vadesi30_60 + ozet.Vadesi60_90 + ozet.Vadesi90Plus;
+
+        // Fatura detaylarını vade tarihine göre sırala
+        ozet.FaturaDetaylari = ozet.FaturaDetaylari
+            .OrderBy(f => f.VadeTarihi ?? f.FaturaTarihi)
+            .ToList();
+
+        return ozet;
+    }
 }

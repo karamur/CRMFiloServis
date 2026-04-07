@@ -47,4 +47,15 @@ public interface IRaporService
     Task<List<AracKarsilastirmaOzeti>> GetAracKarsilastirmaAsync(
         DateTime startDate,
         DateTime endDate);
+
+    // Cari Bakiye Yaşlandırma Raporu
+    Task<CariYaslandirmaRapor> GetCariYaslandirmaAsync(
+        DateTime? raporTarihi = null,
+        int? cariId = null,
+        CRMFiloServis.Shared.Entities.CariTipi? cariTipi = null,
+        bool sadeceBorcluCariler = false);
+
+    Task<CariYaslandirmaOzet> GetCariYaslandirmaDetayAsync(
+        int cariId,
+        DateTime? raporTarihi = null);
 }

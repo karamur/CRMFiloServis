@@ -217,3 +217,97 @@ window.createMultiBarChart = function (canvasId, labels, datasetLabels, datasets
         }
     });
 };
+
+// Pie chart for distribution views
+window.createPieChart = function (canvasId, labels, data, colors) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Destroy existing chart
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? Math.round((context.raw / total) * 100) : 0;
+                            return context.label + ': ' + context.raw.toLocaleString('tr-TR') + ' ₺ (' + pct + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+// Bar chart for aging bands (horizontal)
+window.createYaslandirmaBarChart = function (canvasId, labels, data, colors) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Destroy existing chart
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Bakiye',
+                data: data,
+                backgroundColor: colors,
+                borderColor: colors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.raw.toLocaleString('tr-TR') + ' ₺';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value >= 1000 ? (value/1000) + 'K' : value;
+                        },
+                        font: { size: 10 }
+                    }
+                },
+                y: {
+                    ticks: { font: { size: 11 } }
+                }
+            }
+        }
+    });
+};
