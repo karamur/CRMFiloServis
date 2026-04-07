@@ -1776,4 +1776,353 @@ public class MuhasebeService : IMuhasebeService
     }
 
     #endregion
-}
+
+        #region Yevmiye Excel Export
+
+        /// <summary>
+        /// Yevmiye kayıtlarını Excel formatında export eder
+        /// </summary>
+        public async Task<byte[]> ExportYevmiyeToExcelAsync(DateTime baslangic, DateTime bitis)
+        {
+            var rapor = await GetYevmiyeRaporuAsync(baslangic, bitis);
+
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var ws = workbook.Worksheets.Add("Yevmiye Kayitlari");
+
+            // Başlık bilgileri
+            ws.Cell(1, 1).Value = "YEVMİYE KAYITLARI";
+            ws.Cell(1, 1).Style.Font.Bold = true;
+            ws.Cell(1, 1).Style.Font.FontSize = 14;
+            ws.Range(1, 1, 1, 7).Merge();
+
+            ws.Cell(2, 1).Value = $"Tarih Aralığı: {baslangic:dd.MM.yyyy} - {bitis:dd.MM.yyyy}";
+            ws.Range(2, 1, 2, 7).Merge();
+
+            // Tablo başlıkları
+            var headers = new[] { "Sıra", "Tarih", "Fiş No", "Hesap Kodu", "Hesap Adı", "Açıklama", "Borç", "Alacak" };
+            for (int i = 0; i < headers.Length; i++)
+            {
+                ws.Cell(4, i + 1).Value = headers[i];
+                ws.Cell(4, i + 1).Style.Font.Bold = true;
+                ws.Cell(4, i + 1).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightBlue;
+                ws.Cell(4, i + 1).Style.Border.OutsideBorder = ClosedXML.Excel.XLBorderStyleValues.Thin;
+            }
+
+            // Veri satırları
+            int row = 5;
+            foreach (var satir in rapor.Satirlar)
+            {
+                ws.Cell(row, 1).Value = satir.SiraNo;
+                ws.Cell(row, 2).Value = satir.Tarih.ToString("dd.MM.yyyy");
+                ws.Cell(row, 3).Value = satir.FisNo;
+                ws.Cell(row, 4).Value = satir.HesapKodu;
+                ws.Cell(row, 5).Value = satir.HesapAdi;
+                ws.Cell(row, 6).Value = satir.Aciklama;
+                ws.Cell(row, 7).Value = satir.Borc;
+                ws.Cell(row, 8).Value = satir.Alacak;
+
+                // Borç ve Alacak formatı
+                ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00";
+                ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0.00";
+
+                row++;
+            }
+
+            // Toplam satırı
+            ws.Cell(row, 1).Value = "TOPLAM";
+            ws.Cell(row, 1).Style.Font.Bold = true;
+            ws.Range(row, 1, row, 6).Merge();
+            ws.Cell(row, 7).Value = rapor.ToplamBorc;
+            ws.Cell(row, 8).Value = rapor.ToplamAlacak;
+            ws.Cell(row, 7).Style.Font.Bold = true;
+            ws.Cell(row, 8).Style.Font.Bold = true;
+            ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(row, 8).Style.NumberFormat.Format = "#,##0.00";
+            ws.Row(row).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+
+            // Sütun genişlikleri
+            ws.Column(1).Width = 8;
+            ws.Column(2).Width = 12;
+            ws.Column(3).Width = 18;
+            ws.Column(4).Width = 12;
+            ws.Column(5).Width = 30;
+            ws.Column(6).Width = 40;
+            ws.Column(7).Width = 15;
+            ws.Column(8).Width = 15;
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
+        }
+
+        /// <summary>
+        /// Yevmiye kayıtlarını yazdırma için JSON formatında döndürür
+        /// </summary>
+        public async Task<byte[]> GetYevmiyeYazdirDataAsync(DateTime baslangic, DateTime bitis)
+        {
+            var rapor = await GetYevmiyeRaporuAsync(baslangic, bitis);
+            var json = System.Text.Json.JsonSerializer.Serialize(rapor);
+            return System.Text.Encoding.UTF8.GetBytes(json);
+        }
+
+        #endregion
+
+        #region Zirve Muhasebe Programı Export
+
+        /// <summary>
+        /// Yevmiye kayıtlarını Zirve Muhasebe Programı formatında Excel'e export eder
+        /// Zirve formatı: Fiş No, Fiş Tarihi, Hesap Kodu, Hesap Adı, Borç, Alacak, Açıklama
+        /// </summary>
+        public async Task<byte[]> ExportZirveFormatAsync(DateTime baslangic, DateTime bitis)
+        {
+            var rapor = await GetYevmiyeRaporuAsync(baslangic, bitis);
+
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var ws = workbook.Worksheets.Add("Zirve Import");
+
+            // Zirve formatı başlıkları (Zirve programının beklediği sütun sırası)
+            var headers = new[] { "FIS_NO", "FIS_TARIHI", "HESAP_KODU", "HESAP_ADI", "BORC", "ALACAK", "ACIKLAMA", "EVRAK_NO", "VADE_TARIHI" };
+            for (int i = 0; i < headers.Length; i++)
+            {
+                ws.Cell(1, i + 1).Value = headers[i];
+                ws.Cell(1, i + 1).Style.Font.Bold = true;
+                ws.Cell(1, i + 1).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.DarkBlue;
+                ws.Cell(1, i + 1).Style.Font.FontColor = ClosedXML.Excel.XLColor.White;
+                ws.Cell(1, i + 1).Style.Border.OutsideBorder = ClosedXML.Excel.XLBorderStyleValues.Thin;
+            }
+
+            // Fiş bazlı gruplama (Zirve her fişi bir yevmiye maddesi olarak bekler)
+            var fisGruplari = rapor.Satirlar
+                .GroupBy(s => new { s.FisNo, s.Tarih })
+                .OrderBy(g => g.Key.Tarih)
+                .ThenBy(g => g.Key.FisNo);
+
+            int row = 2;
+            int yevmiyeNo = 1;
+            foreach (var fisGrup in fisGruplari)
+            {
+                foreach (var satir in fisGrup.OrderBy(s => s.HesapKodu))
+                {
+                    // FIS_NO - Zirve için yevmiye madde numarası
+                    ws.Cell(row, 1).Value = yevmiyeNo;
+
+                    // FIS_TARIHI - dd.MM.yyyy formatında
+                    ws.Cell(row, 2).Value = satir.Tarih.ToString("dd.MM.yyyy");
+
+                    // HESAP_KODU - Nokta yerine boşluk olabilir bazı Zirve versiyonlarında
+                    ws.Cell(row, 3).Value = satir.HesapKodu;
+
+                    // HESAP_ADI
+                    ws.Cell(row, 4).Value = satir.HesapAdi;
+
+                    // BORC - Sayısal format
+                    ws.Cell(row, 5).Value = satir.Borc;
+                    ws.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00";
+
+                    // ALACAK - Sayısal format
+                    ws.Cell(row, 6).Value = satir.Alacak;
+                    ws.Cell(row, 6).Style.NumberFormat.Format = "#,##0.00";
+
+                    // ACIKLAMA
+                    ws.Cell(row, 7).Value = !string.IsNullOrEmpty(satir.Aciklama) ? satir.Aciklama : satir.FisNo;
+
+                    // EVRAK_NO - Orijinal fiş numarası
+                    ws.Cell(row, 8).Value = satir.FisNo;
+
+                    // VADE_TARIHI - Varsayılan olarak fiş tarihi
+                    ws.Cell(row, 9).Value = satir.Tarih.ToString("dd.MM.yyyy");
+
+                    row++;
+                }
+                yevmiyeNo++;
+            }
+
+            // Sütun genişlikleri (Zirve uyumlu)
+            ws.Column(1).Width = 10;   // FIS_NO
+            ws.Column(2).Width = 12;   // FIS_TARIHI
+            ws.Column(3).Width = 15;   // HESAP_KODU
+            ws.Column(4).Width = 35;   // HESAP_ADI
+            ws.Column(5).Width = 15;   // BORC
+            ws.Column(6).Width = 15;   // ALACAK
+            ws.Column(7).Width = 50;   // ACIKLAMA
+            ws.Column(8).Width = 18;   // EVRAK_NO
+            ws.Column(9).Width = 12;   // VADE_TARIHI
+
+            // Kontrol bilgisi sayfası
+            var wsKontrol = workbook.Worksheets.Add("Kontrol Bilgisi");
+            wsKontrol.Cell(1, 1).Value = "ZIRVE MUHASEBE IMPORT KONTROL";
+            wsKontrol.Cell(1, 1).Style.Font.Bold = true;
+            wsKontrol.Cell(1, 1).Style.Font.FontSize = 14;
+
+            wsKontrol.Cell(3, 1).Value = "Tarih Aralığı:";
+            wsKontrol.Cell(3, 2).Value = $"{baslangic:dd.MM.yyyy} - {bitis:dd.MM.yyyy}";
+
+            wsKontrol.Cell(4, 1).Value = "Toplam Kayıt Sayısı:";
+            wsKontrol.Cell(4, 2).Value = rapor.Satirlar.Count;
+
+            wsKontrol.Cell(5, 1).Value = "Toplam Yevmiye Maddesi:";
+            wsKontrol.Cell(5, 2).Value = yevmiyeNo - 1;
+
+            wsKontrol.Cell(6, 1).Value = "Toplam Borç:";
+            wsKontrol.Cell(6, 2).Value = rapor.ToplamBorc;
+            wsKontrol.Cell(6, 2).Style.NumberFormat.Format = "#,##0.00 TL";
+
+            wsKontrol.Cell(7, 1).Value = "Toplam Alacak:";
+            wsKontrol.Cell(7, 2).Value = rapor.ToplamAlacak;
+            wsKontrol.Cell(7, 2).Style.NumberFormat.Format = "#,##0.00 TL";
+
+            wsKontrol.Cell(8, 1).Value = "Borç-Alacak Farkı:";
+            wsKontrol.Cell(8, 2).Value = rapor.ToplamBorc - rapor.ToplamAlacak;
+            wsKontrol.Cell(8, 2).Style.NumberFormat.Format = "#,##0.00 TL";
+            wsKontrol.Cell(8, 2).Style.Font.Bold = true;
+            wsKontrol.Cell(8, 2).Style.Font.FontColor = Math.Abs(rapor.ToplamBorc - rapor.ToplamAlacak) < 0.01m 
+                ? ClosedXML.Excel.XLColor.Green 
+                : ClosedXML.Excel.XLColor.Red;
+
+            wsKontrol.Cell(10, 1).Value = "⚠️ UYARI:";
+            wsKontrol.Cell(10, 1).Style.Font.Bold = true;
+            wsKontrol.Cell(10, 1).Style.Font.FontColor = ClosedXML.Excel.XLColor.OrangeRed;
+
+            wsKontrol.Cell(11, 1).Value = "1. Zirve'ye aktarmadan önce hesap kodlarının eşleştiğinden emin olun.";
+            wsKontrol.Cell(12, 1).Value = "2. Borç-Alacak farkı 0 (sıfır) olmalıdır.";
+            wsKontrol.Cell(13, 1).Value = "3. Tarih formatı: GG.AA.YYYY";
+            wsKontrol.Cell(14, 1).Value = "4. 'Zirve Import' sayfasını CSV olarak da kaydedebilirsiniz.";
+
+            wsKontrol.Column(1).Width = 25;
+            wsKontrol.Column(2).Width = 30;
+
+            // Oluşturma tarihi
+            wsKontrol.Cell(16, 1).Value = "Oluşturma Tarihi:";
+            wsKontrol.Cell(16, 2).Value = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
+        }
+
+        /// <summary>
+        /// Muhasebe fişlerini detaylı kontrol listesi formatında export eder
+        /// Zirve'ye aktarmadan önce kontrol amaçlı kullanılır
+        /// </summary>
+        public async Task<byte[]> ExportMuhasebeKontrolListesiAsync(DateTime baslangic, DateTime bitis)
+        {
+            var baslangicUtc = DateTime.SpecifyKind(baslangic.Date, DateTimeKind.Utc);
+            var bitisUtc = DateTime.SpecifyKind(bitis.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+
+            var fisler = await _context.MuhasebeFisleri
+                .Include(f => f.Kalemler)
+                    .ThenInclude(k => k.Hesap)
+                .Where(f => f.FisTarihi >= baslangicUtc && f.FisTarihi <= bitisUtc)
+                .OrderBy(f => f.FisTarihi)
+                .ThenBy(f => f.FisNo)
+                .ToListAsync();
+
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+
+            // Özet Sayfa
+            var wsOzet = workbook.Worksheets.Add("Özet");
+            wsOzet.Cell(1, 1).Value = "MUHASEBE FİŞLERİ KONTROL LİSTESİ";
+            wsOzet.Cell(1, 1).Style.Font.Bold = true;
+            wsOzet.Cell(1, 1).Style.Font.FontSize = 16;
+            wsOzet.Range(1, 1, 1, 4).Merge();
+
+            wsOzet.Cell(3, 1).Value = "Tarih Aralığı:";
+            wsOzet.Cell(3, 2).Value = $"{baslangic:dd.MM.yyyy} - {bitis:dd.MM.yyyy}";
+
+            // Fiş tiplerine göre özet
+            var fisTipOzet = fisler.GroupBy(f => f.FisTipi)
+                .Select(g => new { Tip = g.Key, Adet = g.Count(), Borc = g.Sum(f => f.ToplamBorc), Alacak = g.Sum(f => f.ToplamAlacak) })
+                .ToList();
+
+            wsOzet.Cell(5, 1).Value = "Fiş Tipi";
+            wsOzet.Cell(5, 2).Value = "Adet";
+            wsOzet.Cell(5, 3).Value = "Borç";
+            wsOzet.Cell(5, 4).Value = "Alacak";
+            wsOzet.Range(5, 1, 5, 4).Style.Font.Bold = true;
+            wsOzet.Range(5, 1, 5, 4).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightBlue;
+
+            int ozetRow = 6;
+            foreach (var ozet in fisTipOzet)
+            {
+                wsOzet.Cell(ozetRow, 1).Value = ozet.Tip.ToString();
+                wsOzet.Cell(ozetRow, 2).Value = ozet.Adet;
+                wsOzet.Cell(ozetRow, 3).Value = ozet.Borc;
+                wsOzet.Cell(ozetRow, 4).Value = ozet.Alacak;
+                wsOzet.Cell(ozetRow, 3).Style.NumberFormat.Format = "#,##0.00";
+                wsOzet.Cell(ozetRow, 4).Style.NumberFormat.Format = "#,##0.00";
+                ozetRow++;
+            }
+
+            wsOzet.Cell(ozetRow, 1).Value = "TOPLAM";
+            wsOzet.Cell(ozetRow, 1).Style.Font.Bold = true;
+            wsOzet.Cell(ozetRow, 2).Value = fisler.Count;
+            wsOzet.Cell(ozetRow, 3).Value = fisler.Sum(f => f.ToplamBorc);
+            wsOzet.Cell(ozetRow, 4).Value = fisler.Sum(f => f.ToplamAlacak);
+            wsOzet.Range(ozetRow, 1, ozetRow, 4).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+            wsOzet.Range(ozetRow, 1, ozetRow, 4).Style.Font.Bold = true;
+
+            // Durum bazlı özet
+            ozetRow += 2;
+            wsOzet.Cell(ozetRow, 1).Value = "Durum Dağılımı:";
+            wsOzet.Cell(ozetRow, 1).Style.Font.Bold = true;
+            ozetRow++;
+
+            var durumOzet = fisler.GroupBy(f => f.Durum).ToList();
+            foreach (var d in durumOzet)
+            {
+                wsOzet.Cell(ozetRow, 1).Value = d.Key.ToString();
+                wsOzet.Cell(ozetRow, 2).Value = d.Count();
+                ozetRow++;
+            }
+
+            wsOzet.Columns().AdjustToContents();
+
+            // Detay Sayfa - Fiş bazlı
+            var wsDetay = workbook.Worksheets.Add("Detay");
+            var detayHeaders = new[] { "Fiş No", "Tarih", "Tip", "Durum", "Kaynak", "Hesap Kodu", "Hesap Adı", "Borç", "Alacak", "Açıklama" };
+            for (int i = 0; i < detayHeaders.Length; i++)
+            {
+                wsDetay.Cell(1, i + 1).Value = detayHeaders[i];
+                wsDetay.Cell(1, i + 1).Style.Font.Bold = true;
+                wsDetay.Cell(1, i + 1).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.DarkBlue;
+                wsDetay.Cell(1, i + 1).Style.Font.FontColor = ClosedXML.Excel.XLColor.White;
+            }
+
+            int detayRow = 2;
+            foreach (var fis in fisler)
+            {
+                foreach (var kalem in fis.Kalemler.OrderBy(k => k.SiraNo))
+                {
+                    wsDetay.Cell(detayRow, 1).Value = fis.FisNo;
+                    wsDetay.Cell(detayRow, 2).Value = fis.FisTarihi.ToString("dd.MM.yyyy");
+                    wsDetay.Cell(detayRow, 3).Value = fis.FisTipi.ToString();
+                    wsDetay.Cell(detayRow, 4).Value = fis.Durum.ToString();
+                    wsDetay.Cell(detayRow, 5).Value = fis.Kaynak.ToString();
+                    wsDetay.Cell(detayRow, 6).Value = kalem.Hesap?.HesapKodu ?? "";
+                    wsDetay.Cell(detayRow, 7).Value = kalem.Hesap?.HesapAdi ?? "";
+                    wsDetay.Cell(detayRow, 8).Value = kalem.Borc;
+                    wsDetay.Cell(detayRow, 9).Value = kalem.Alacak;
+                    wsDetay.Cell(detayRow, 10).Value = kalem.Aciklama ?? fis.Aciklama ?? "";
+
+                    wsDetay.Cell(detayRow, 8).Style.NumberFormat.Format = "#,##0.00";
+                    wsDetay.Cell(detayRow, 9).Style.NumberFormat.Format = "#,##0.00";
+
+                    // Onaylanmamış fişleri sarı ile işaretle
+                    if (fis.Durum != FisDurum.Onaylandi)
+                    {
+                        wsDetay.Range(detayRow, 1, detayRow, 10).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightYellow;
+                    }
+
+                    detayRow++;
+                }
+            }
+
+            wsDetay.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
+        }
+
+        #endregion
+    }

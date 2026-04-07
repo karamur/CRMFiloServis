@@ -4,6 +4,7 @@
 @inject IMuhasebeService MuhasebeService
 @inject IToastService ToastService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Muhasebe Raporlari</PageTitle>
@@ -68,9 +69,20 @@
                     </div>
                 </div>
                 <div class="card-footer">
-                    <button class="btn btn-success w-100" @onclick="YevmiyeRaporuOlustur">
-                        <i class="bi bi-journal me-1"></i>Rapor Olustur
-                    </button>
+                    <div class="btn-group w-100">
+                        <button class="btn btn-success" @onclick="YevmiyeRaporuOlustur">
+                            <i class="bi bi-journal me-1"></i>Rapor
+                        </button>
+                        <button class="btn btn-outline-success" @onclick="YevmiyeYazdir" title="Yazdir">
+                            <i class="bi bi-printer"></i>
+                        </button>
+                        <button class="btn btn-outline-success" @onclick="YevmiyeExcelExport" title="Excel Aktar">
+                            <i class="bi bi-file-earmark-excel"></i>
+                        </button>
+                        <button class="btn btn-outline-primary" @onclick="ZirveExcelExport" title="Zirve Formatı (Muhasebe Programı)">
+                            <i class="bi bi-building"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -201,6 +213,44 @@
                     <button class="btn btn-dark w-100" @onclick='() => Navigation.NavigateTo("/muhasebe/raporlar/nakit-akis")'>
                         <i class="bi bi-cash-stack me-1"></i>Nakit Akış Raporu
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zirve Muhasebe Export -->
+        <div class="col-md-4">
+            <div class="card h-100 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-building me-2"></i>Zirve Muhasebe Export</h5>
+                    <small class="opacity-75">🆕 YENİ</small>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Muhasebe fişlerini Zirve programına aktarın.</p>
+                    <ul class="list-unstyled small">
+                        <li><i class="bi bi-check text-success me-1"></i>Zirve uyumlu format</li>
+                        <li><i class="bi bi-check text-success me-1"></i>Kontrol listesi</li>
+                        <li><i class="bi bi-check text-success me-1"></i>Borç/Alacak doğrulama</li>
+                    </ul>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label small">Başlangıç</label>
+                            <input type="date" class="form-control form-control-sm" @bind="zirveBaslangic" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Bitiş</label>
+                            <input type="date" class="form-control form-control-sm" @bind="zirveBitis" />
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="btn-group w-100">
+                        <button class="btn btn-primary" @onclick="ZirveFormatExport" title="Zirve Formatında Excel">
+                            <i class="bi bi-building me-1"></i>Zirve Excel
+                        </button>
+                        <button class="btn btn-outline-primary" @onclick="MuhasebeKontrolListesi" title="Kontrol Listesi">
+                            <i class="bi bi-list-check me-1"></i>Kontrol
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -564,6 +614,10 @@
     private BilancoRapor? bilancoRapor;
     private bool showBilancoModal = false;
 
+    // Zirve Muhasebe Export
+    private DateTime zirveBaslangic = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime zirveBitis = DateTime.Today;
+
     private async Task MuavinRaporuOlustur()
     {
         if (string.IsNullOrWhiteSpace(muavinHesapKodu))
@@ -586,6 +640,27 @@
     private void YevmiyeRaporuOlustur()
     {
         Navigation.NavigateTo($"/muhasebe/raporlar/yevmiye?baslangic={yevmiyeBaslangic:yyyy-MM-dd}&bitis={yevmiyeBitis:yyyy-MM-dd}");
+    }
+
+    private async Task YevmiyeYazdir()
+    {
+        Navigation.NavigateTo($"/muhasebe/raporlar/yevmiye?baslangic={yevmiyeBaslangic:yyyy-MM-dd}&bitis={yevmiyeBitis:yyyy-MM-dd}&yazdir=true");
+    }
+
+    private async Task YevmiyeExcelExport()
+    {
+        try
+        {
+            var excelBytes = await MuhasebeService.ExportYevmiyeToExcelAsync(yevmiyeBaslangic, yevmiyeBitis);
+            var fileName = $"Yevmiye_{yevmiyeBaslangic:yyyyMMdd}_{yevmiyeBitis:yyyyMMdd}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBytes);
+            ToastService.ShowSuccess("Excel dosyası indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
     }
 
     private async Task MizanRaporuOlustur()
@@ -644,4 +719,53 @@
     };
 
     private string FormatPara(decimal tutar) => tutar.ToString("N2") + " TL";
+
+    // Zirve Muhasebe Export Metodları
+    private async Task ZirveExcelExport()
+    {
+        try
+        {
+            var excelBytes = await MuhasebeService.ExportZirveFormatAsync(yevmiyeBaslangic, yevmiyeBitis);
+            var fileName = $"Zirve_Import_{yevmiyeBaslangic:yyyyMMdd}_{yevmiyeBitis:yyyyMMdd}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBytes);
+            ToastService.ShowSuccess("Zirve formatında Excel dosyası indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    private async Task ZirveFormatExport()
+    {
+        try
+        {
+            var excelBytes = await MuhasebeService.ExportZirveFormatAsync(zirveBaslangic, zirveBitis);
+            var fileName = $"Zirve_Import_{zirveBaslangic:yyyyMMdd}_{zirveBitis:yyyyMMdd}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBytes);
+            ToastService.ShowSuccess("Zirve formatında Excel dosyası indirildi! Kontrol bilgisi ikinci sayfada.");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
+
+    private async Task MuhasebeKontrolListesi()
+    {
+        try
+        {
+            var excelBytes = await MuhasebeService.ExportMuhasebeKontrolListesiAsync(zirveBaslangic, zirveBitis);
+            var fileName = $"Muhasebe_Kontrol_{zirveBaslangic:yyyyMMdd}_{zirveBitis:yyyyMMdd}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBytes);
+            ToastService.ShowSuccess("Muhasebe kontrol listesi indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Hata: " + ex.Message);
+        }
+    }
 }

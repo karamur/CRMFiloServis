@@ -1,15 +1,15 @@
-@page "/personel/maas"
+ï»¿@page "/personel/maas"
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @inject IPersonelMaasIzinService PersonelService
 @inject ISoforService SoforService
 @rendermode InteractiveServer
 
-<PageTitle>Personel Maaþ Yönetimi</PageTitle>
+<PageTitle>Personel MaaÅŸ YÃ¶netimi</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-cash-stack me-2"></i>Personel Maaþ Yönetimi</h3>
+        <h3><i class="bi bi-cash-stack me-2"></i>Personel MaaÅŸ YÃ¶netimi</h3>
         <div class="d-flex gap-2">
             <select class="form-select" style="width: 120px;" @bind="secilenYil" @bind:after="YenileData">
                 @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
@@ -24,7 +24,7 @@
                 }
             </select>
             <button class="btn btn-success" @onclick="TopluMaasOlustur">
-                <i class="bi bi-plus-circle me-1"></i>Toplu Maaþ Oluþtur
+                <i class="bi bi-plus-circle me-1"></i>Toplu MaaÅŸ OluÅŸtur
             </button>
         </div>
     </div>
@@ -37,7 +37,7 @@
     }
     else if (maasRapor != null)
     {
-        <!-- Özet Kartlarý -->
+        <!-- Ã–zet KartlarÄ± -->
         <div class="row mb-4">
             <div class="col-md-2">
                 <div class="card bg-primary text-white">
@@ -50,7 +50,7 @@
             <div class="col-md-2">
                 <div class="card bg-info text-white">
                     <div class="card-body text-center py-2">
-                        <h6 class="mb-0">Brüt Maaþ</h6>
+                        <h6 class="mb-0">BrÃ¼t MaaÅŸ</h6>
                         <h5 class="mb-0">@maasRapor.ToplamBrutMaas.ToString("N0") ?</h5>
                     </div>
                 </div>
@@ -58,7 +58,7 @@
             <div class="col-md-2">
                 <div class="card bg-success text-white">
                     <div class="card-body text-center py-2">
-                        <h6 class="mb-0">Net Maaþ</h6>
+                        <h6 class="mb-0">Net MaaÅŸ</h6>
                         <h5 class="mb-0">@maasRapor.ToplamNetMaas.ToString("N0") ?</h5>
                     </div>
                 </div>
@@ -66,7 +66,7 @@
             <div class="col-md-2">
                 <div class="card bg-warning text-dark">
                     <div class="card-body text-center py-2">
-                        <h6 class="mb-0">SGK (Ýþçi)</h6>
+                        <h6 class="mb-0">SGK (Ä°ÅŸÃ§i)</h6>
                         <h5 class="mb-0">@maasRapor.ToplamSGKIsci.ToString("N0") ?</h5>
                     </div>
                 </div>
@@ -74,7 +74,7 @@
             <div class="col-md-2">
                 <div class="card bg-danger text-white">
                     <div class="card-body text-center py-2">
-                        <h6 class="mb-0">SGK (Ýþveren)</h6>
+                        <h6 class="mb-0">SGK (Ä°ÅŸveren)</h6>
                         <h5 class="mb-0">@maasRapor.ToplamSGKIsveren.ToString("N0") ?</h5>
                     </div>
                 </div>
@@ -82,14 +82,14 @@
             <div class="col-md-2">
                 <div class="card bg-secondary text-white">
                     <div class="card-body text-center py-2">
-                        <h6 class="mb-0">Toplam Ödeme</h6>
+                        <h6 class="mb-0">Toplam Ã–deme</h6>
                         <h5 class="mb-0">@maasRapor.ToplamOdeme.ToString("N0") ?</h5>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Maaþ Listesi -->
+        <!-- MaaÅŸ Listesi -->
         <div class="card">
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -97,13 +97,13 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Personel</th>
-                                <th class="text-end">Brüt Maaþ</th>
-                                <th class="text-end">Net Maaþ</th>
+                                <th class="text-end">BrÃ¼t MaaÅŸ</th>
+                                <th class="text-end">Net MaaÅŸ</th>
                                 <th class="text-end">Eklemeler</th>
                                 <th class="text-end">Kesintiler</th>
-                                <th class="text-end">Ödenecek</th>
+                                <th class="text-end">Ã–denecek</th>
                                 <th class="text-center">Durum</th>
-                                <th class="text-center">Ýþlem</th>
+                                <th class="text-center">Ä°ÅŸlem</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -120,7 +120,7 @@
                                         @if (maas.OdemeDurum == "Odendi")
                                         {
                                             <span class="badge bg-success">
-                                                <i class="bi bi-check-circle me-1"></i>Ödendi
+                                                <i class="bi bi-check-circle me-1"></i>Ã–dendi
                                             </span>
                                         }
                                         else
@@ -132,12 +132,12 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary" @onclick="() => DuzenleAc(maas.MaasId)" title="Düzenle">
+                                            <button class="btn btn-outline-primary" @onclick="() => DuzenleAc(maas.MaasId)" title="DÃ¼zenle">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             @if (maas.OdemeDurum != "Odendi")
                                             {
-                                                <button class="btn btn-outline-success" @onclick="() => OdemeYap(maas.MaasId)" title="Ödeme Yap">
+                                                <button class="btn btn-outline-success" @onclick="() => OdemeYap(maas.MaasId)" title="Ã–deme Yap">
                                                     <i class="bi bi-cash-coin"></i>
                                                 </button>
                                             }
@@ -153,42 +153,42 @@
     }
 </div>
 
-<!-- Maaþ Düzenleme Modal -->
+<!-- MaaÅŸ DÃ¼zenleme Modal -->
 @if (duzenlenenMaas != null)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Maaþ Düzenle - @duzenlenenMaas.Sofor?.TamAd</h5>
+                    <h5 class="modal-title">MaaÅŸ DÃ¼zenle - @duzenlenenMaas.Sofor?.TamAd</h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h6 class="text-primary">Maaþ Bilgileri</h6>
+                            <h6 class="text-primary">MaaÅŸ Bilgileri</h6>
                             <div class="mb-2">
-                                <label class="form-label small">Brüt Maaþ</label>
+                                <label class="form-label small">BrÃ¼t MaaÅŸ</label>
                                 <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.BrutMaas" />
                             </div>
                             <div class="mb-2">
-                                <label class="form-label small">Net Maaþ</label>
+                                <label class="form-label small">Net MaaÅŸ</label>
                                 <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.NetMaas" />
                             </div>
                             <div class="mb-2">
-                                <label class="form-label small">Çalýþma Günü</label>
+                                <label class="form-label small">Ã‡alÄ±ÅŸma GÃ¼nÃ¼</label>
                                 <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.CalismaGunu" />
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <h6 class="text-success">Ek Ödemeler</h6>
+                            <h6 class="text-success">Ek Ã–demeler</h6>
                             <div class="row">
                                 <div class="col-6 mb-2">
                                     <label class="form-label small">Prim</label>
                                     <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.Prim" />
                                 </div>
                                 <div class="col-6 mb-2">
-                                    <label class="form-label small">Ýkramiye</label>
+                                    <label class="form-label small">Ä°kramiye</label>
                                     <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.Ikramiye" />
                                 </div>
                                 <div class="col-6 mb-2">
@@ -198,6 +198,14 @@
                                 <div class="col-6 mb-2">
                                     <label class="form-label small">Yemek</label>
                                     <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.Yemek" />
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small">Yol ParasÄ±</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.Yol" />
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small">DiÄŸer Eklemeler</label>
+                                    <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.DigerEklemeler" />
                                 </div>
                             </div>
                         </div>
@@ -212,7 +220,7 @@
                                     <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.Avans" />
                                 </div>
                                 <div class="col-6 mb-2">
-                                    <label class="form-label small">Ýcra Takibi</label>
+                                    <label class="form-label small">Ä°cra Takibi</label>
                                     <input type="number" class="form-control form-control-sm" @bind="duzenlenenMaas.IcraTakibi" />
                                 </div>
                             </div>
@@ -221,7 +229,7 @@
                             <h6 class="text-info">Hesaplanan</h6>
                             <table class="table table-sm">
                                 <tr>
-                                    <td>Ödenecek Tutar:</td>
+                                    <td>Ã–denecek Tutar:</td>
                                     <td class="text-end"><strong>@duzenlenenMaas.OdenecekTutar.ToString("N0") ?</strong></td>
                                 </tr>
                             </table>
@@ -229,7 +237,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="ModalKapat">Ýptal</button>
+                    <button class="btn btn-secondary" @onclick="ModalKapat">Ä°ptal</button>
                     <button class="btn btn-primary" @onclick="MaasKaydet">Kaydet</button>
                 </div>
             </div>

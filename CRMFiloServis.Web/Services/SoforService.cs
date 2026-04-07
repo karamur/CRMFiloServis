@@ -73,6 +73,9 @@ public class SoforService : ISoforService
         if (existing == null)
             throw new InvalidOperationException($"Şoför bulunamadı. Id: {sofor.Id}");
 
+        // Sıralama No güncelleme
+        existing.SiralamaNo = sofor.SiralamaNo;
+
         existing.SoforKodu = sofor.SoforKodu;
         existing.Ad = sofor.Ad;
         existing.Soyad = sofor.Soyad;

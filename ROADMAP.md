@@ -98,48 +98,243 @@
 ### 4.3 Performans & Ölçekleme
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Redis cache entegrasyonu | ?? Düşük | 2 gün | ? |
-| Sayfalama (pagination) | ?? Yüksek | 2 gün | ? Tamamlandı |
-| Lazy loading optimizasyonu | ?? Orta | 1 gün | ? |
+| Redis cache entegrasyonu | 🟢 Düşük | 2 gün | ❌ |
+| Sayfalama (pagination) | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Lazy loading optimizasyonu | 🟡 Orta | 1 gün | ❌ |
 
 ---
 
-## ?? Önerilen Uygulama Takvimi
+## 🛠️ FAZ 5 - Bug Fix & Personel/Maaş İyileştirmeleri
+
+### 5.1 Kritik Bug Fix'ler
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Personel düzenleme DB'ye kaydetmiyor - BUG | 🔴 Yüksek | 1 gün | ❌ |
+| Maaş yönetimi "Ödeme Yap" butonu pasif - BUG | 🔴 Yüksek | 1 gün | ❌ |
+
+### 5.2 Maaş Yönetimi İyileştirmeleri
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Yol parası alanı ekleme | 🔴 Yüksek | 1 gün | ❌ |
+| Hareket listesi (ödeme geçmişi) | 🔴 Yüksek | 2 gün | ❌ |
+| Toplu ödeme listesi (banka formatı) | 🔴 Yüksek | 2 gün | ❌ |
+| Tekli ödeme girişi (liste üzerinden) | 🟡 Orta | 1 gün | ❌ |
+| Tüm aylar/yıllar filtreleme | 🟡 Orta | 1 gün | ❌ |
+| Hareket listesi yazdır (ön izleme) | 🟡 Orta | 1 gün | ❌ |
+| Hareket listesi Excel export | 🟡 Orta | 1 gün | ❌ |
+
+### 5.3 Bordro Yönetimi
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Normal bordro (personel bazlı düzenleme) | 🔴 Yüksek | 3 gün | ❌ |
+| AR-GE bordro (personel bazlı düzenleme) | 🔴 Yüksek | 3 gün | ❌ |
+| Bordro hesap pusulası (personel bazlı) | 🔴 Yüksek | 2 gün | ❌ |
+| SGK personel normal/AR-GE ayırma | 🟡 Orta | 1 gün | ❌ |
+
+### 5.4 Personel Excel Import
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Excel'den personel yükleme | 🔴 Yüksek | 2 gün | ❌ |
+| Mevcut personel kontrolü (kaydetmeme) | 🔴 Yüksek | 1 gün | ❌ |
+| SGK'lı normal/AR-GE otomatik ayırma | 🟡 Orta | 1 gün | ❌ |
+
+### 5.5 Muhasebe & Raporlama Geliştirmeleri (YENİ - ÖNCELİKLİ)
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Tarih bazlı Yevmiye Kayıtları Yazdır | 🔴 Yüksek | 2 gün | ❌ |
+| Yevmiye Kayıtları Excel Export | 🔴 Yüksek | 1 gün | ❌ |
+| Fatura Toplu Muhasebeleştirme | 🔴 Yüksek | 2 gün | ❌ |
+| Masraf Muhasebeleştirme | 🔴 Yüksek | 2 gün | ❌ |
+| Muhasebe Kontrol Listesi | 🟡 Orta | 1 gün | ❌ |
+
+### 5.6 Modül Geliştirmeleri (YENİ - ÖNCELİKLİ)
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Bütçe Analiz - Kategori bazlı analiz | 🔴 Yüksek | 2 gün | ❌ |
+| Bütçe Analiz - Trend grafikleri | 🔴 Yüksek | 1 gün | ❌ |
+| Bütçe Analiz - Hedef/Gerçekleşen karşılaştırma | 🟡 Orta | 2 gün | ❌ |
+| Cari - Risk analizi kartları | 🔴 Yüksek | 2 gün | ❌ |
+| Cari - İletişim geçmişi | 🟡 Orta | 1 gün | ❌ |
+| Cari - Otomatik hatırlatmalar | 🟡 Orta | 2 gün | ❌ |
+| Fatura - Toplu fatura oluşturma | 🔴 Yüksek | 2 gün | ❌ |
+| Fatura - Fatura şablonları | 🟡 Orta | 2 gün | ❌ |
+| Fatura - E-fatura hazırlık | 🟡 Orta | 2 gün | ❌ |
+
+---
+
+## 📋 FAZ 6 - Puantaj & Fatura Yönetimi
+
+### 6.1 Puantaj Sistemi
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Puantaj listesi (aylık görünüm) | 🔴 Yüksek | 3 gün | ❌ |
+| Son puantaj tablosu hazırlama | 🔴 Yüksek | 2 gün | ❌ |
+| Puantaj → Bordro otomatik aktarım | 🟡 Orta | 2 gün | ❌ |
+| Puantaj onay sistemi | 🟢 Düşük | 2 gün | ❌ |
+
+### 6.2 Gelecek Fatura Yönetimi
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Kesilecek fatura listesi | 🔴 Yüksek | 2 gün | ❌ |
+| Gelecek fatura listesi | 🔴 Yüksek | 2 gün | ❌ |
+| Proforma fatura oluşturma | 🔴 Yüksek | 2 gün | ❌ |
+| Proforma → Gerçek fatura dönüştürme | 🟡 Orta | 1 gün | ❌ |
+| Kesilen/gelen fatura eşleştirme | 🟡 Orta | 2 gün | ❌ |
+
+### 6.3 Resmi Raporlar
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| SGK bildirge raporu | 🔴 Yüksek | 2 gün | ❌ |
+| Muhtasar beyanname raporu | 🔴 Yüksek | 2 gün | ❌ |
+| Ücret bordro icmal raporu | 🟡 Orta | 2 gün | ❌ |
+| İşe giriş/çıkış bildirge | 🟡 Orta | 1 gün | ❌ |
+| Yıllık izin takip raporu | 🟢 Düşük | 1 gün | ❌ |
+
+---
+
+## 🤖 FAZ 7 - Elektronik Belge Yönetim Sistemi (EBYS)
+
+### 7.1 Temel EBYS Altyapısı
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Belge kategorileri (sözleşme, ehliyet, diploma vb.) | 🔴 Yüksek | 2 gün | ❌ |
+| Dosya yükleme/indirme sistemi | 🔴 Yüksek | 2 gün | ❌ |
+| Belge metadata yönetimi | 🔴 Yüksek | 2 gün | ❌ |
+| Versiyon kontrolü | 🟡 Orta | 2 gün | ❌ |
+| Belge arama (içerik + metadata) | 🟡 Orta | 2 gün | ❌ |
+
+### 7.2 Personel Dosyaları
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Personel özlük dosyası | 🔴 Yüksek | 2 gün | ❌ |
+| Ehliyet/Diploma/Sertifika yükleme | 🔴 Yüksek | 1 gün | ❌ |
+| Sağlık raporu yükleme | 🟡 Orta | 1 gün | ❌ |
+| İş sözleşmesi yönetimi | 🟡 Orta | 1 gün | ❌ |
+| Belge bitiş tarihi uyarıları | 🟡 Orta | 1 gün | ❌ |
+
+### 7.3 Yapay Zeka Desteği (Offline Çalışabilir)
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Local LLM entegrasyonu (Ollama/LLaMA) | 🔴 Yüksek | 3 gün | ❌ |
+| Belge otomatik sınıflandırma | 🔴 Yüksek | 2 gün | ❌ |
+| OCR ile belge içerik çıkarma | 🔴 Yüksek | 2 gün | ❌ |
+| Akıllı belge arama (semantic search) | 🟡 Orta | 3 gün | ❌ |
+| Belge özeti oluşturma | 🟡 Orta | 2 gün | ❌ |
+| Offline mod (internetsiz çalışma) | 🔴 Yüksek | 2 gün | ❌ |
+
+### 7.4 Örnek Veri & Test
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Örnek personel verisi oluşturma | 🟡 Orta | 1 gün | ❌ |
+| Örnek bordro verisi oluşturma | 🟡 Orta | 1 gün | ❌ |
+| Örnek fatura verisi oluşturma | 🟡 Orta | 1 gün | ❌ |
+| Test senaryoları | 🟢 Düşük | 2 gün | ❌ |
+
+---
+
+## 📅 Önerilen Uygulama Takvimi
 
 ```
 FAZ 2 (4-5 Hafta)
-??? Hafta 1-2: Kullanıcı Yönetimi & Yetkilendirme
-??? Hafta 3: Bildirim Sistemi
-??? Hafta 4-5: Doküman Yönetimi
+├── Hafta 1-2: Kullanıcı Yönetimi & Yetkilendirme
+├── Hafta 3: Bildirim Sistemi
+└── Hafta 4-5: Doküman Yönetimi
 
 FAZ 3 (6-8 Hafta)
-??? Hafta 1-2: Dashboard Grafikleri & Gelişmiş Raporlar
-??? Hafta 3-4: E-Fatura Entegrasyonu
-??? Hafta 5-6: SMS & E-posta Entegrasyonu
-??? Hafta 7-8: Mobil Uygulama (opsiyonel)
+├── Hafta 1-2: Dashboard Grafikleri & Gelişmiş Raporlar ✅
+├── Hafta 3-4: E-Fatura Entegrasyonu
+├── Hafta 5-6: SMS & E-posta Entegrasyonu
+└── Hafta 7-8: Mobil Uygulama (opsiyonel)
 
 FAZ 4 (4-6 Hafta)
-??? Hafta 1-2: REST API
-??? Hafta 3-4: Multi-tenant (opsiyonel)
-??? Hafta 5-6: Performans optimizasyonları
+├── Hafta 1-2: REST API
+├── Hafta 3-4: Multi-tenant (opsiyonel)
+└── Hafta 5-6: Performans optimizasyonları
+
+FAZ 5 (3-4 Hafta) - ÖNCELİKLİ
+├── Hafta 1: Bug Fix'ler (Personel düzenleme, Ödeme Yap butonu)
+├── Hafta 2: Maaş Yönetimi İyileştirmeleri
+├── Hafta 3: Bordro Yönetimi (Normal + AR-GE)
+└── Hafta 4: Personel Excel Import
+
+FAZ 6 (4-5 Hafta)
+├── Hafta 1-2: Puantaj Sistemi
+├── Hafta 3: Gelecek/Kesilecek Fatura Yönetimi
+├── Hafta 4: Proforma Fatura
+└── Hafta 5: Resmi Raporlar
+
+FAZ 7 (5-6 Hafta)
+├── Hafta 1-2: EBYS Temel Altyapı
+├── Hafta 3: Personel Dosyaları
+├── Hafta 4-5: AI Entegrasyonu (Local LLM + OCR)
+└── Hafta 6: Örnek Veri & Test
 ```
 
 ---
 
-## ?? Hemen Başlanabilecek Öncelikli İşler
+## 🎯 Hemen Başlanabilecek Öncelikli İşler
 
-1. **Sayfalama (Pagination)** - Büyük veri setlerinde performans
-2. **Dashboard Grafikleri** - Chart.js ile görsel raporlar
-3. **Vade Uyarı Sistemi** - Vadesi geçen/yaklaşan faturalar
-4. **Araç Belge Takibi** - Muayene, sigorta, kasko uyarıları
-5. **Kullanıcı Giriş Sistemi** - Identity entegrasyonu
+### ✅ Tamamlanan
+1. ~~**Sayfalama (Pagination)** - Büyük veri setlerinde performans~~
+2. ~~**Dashboard Grafikleri** - Chart.js ile görsel raporlar~~
+3. ~~**Şoför Performans Raporu** - Detaylı analiz~~
+4. ~~**Araç Karlılık Raporu** - Maliyet/gelir analizi~~
+5. ~~**Cari Bakiye Yaşlandırma Raporu** - Risk analizi~~
+
+### 🔴 Kritik Bug Fix'ler (Öncelik 1)
+1. ~~**Personel düzenleme DB'ye kaydetmiyor**~~ - ✅ Çözüldü (SiralamaNo)
+2. **Maaş yönetimi "Ödeme Yap" butonu pasif** - Buton aktivasyonu
+
+### 🔴🔴 ACİL - Zirve Muhasebe Entegrasyonu (Öncelik 1.5) - YENİ
+3. **Zirve Formatında Yevmiye Export** - Muhasebe fişleri Zirve programı formatında Excel 🆕
+4. **Fatura/Masraf Resmi Muhasebe Kaydı** - Girilen fatura ve masrafların resmi yevmiye kaydı 🆕
+5. **Muhasebe Fişleri Yazdır/Excel** - Hata yapmamak için kontrol listesi 🆕
+6. **Proforma Fatura Sistemi** - Fatura kesilmeden önce proforma oluşturma 🆕
+7. **Personel Servis Çalışma Puantajı** - Günlük/aylık puantaj takibi 🆕
+8. **Cari Borç/Alacak Detaylı Takip** - Borç alacak analizi ve raporlama 🆕
+
+### 🔴 Muhasebe & Raporlama (Öncelik 2)
+9. ~~**Tarih bazlı Yevmiye Kayıtları Yazdır/Excel**~~ - ✅ Tamamlandı
+10. **Fatura Muhasebeleştirme Geliştirme** - Toplu muhasebeleştirme, kontrol listesi
+11. **Masraf Muhasebeleştirme Geliştirme** - Araç masrafları yevmiye kaydı
+
+### 🔴 Modül Geliştirmeleri (Öncelik 3)
+12. **Bütçe Analiz Geliştirme** - Kategori bazlı analiz, trend grafikleri, bütçe hedefleri
+13. **Cari Geliştirme** - Risk analizi kartları, iletişim geçmişi, otomatik hatırlatmalar
+14. **Fatura Geliştirme** - Toplu fatura oluşturma, fatura şablonları, e-fatura hazırlık
+
+### 🟡 Maaş İyileştirmeleri (Öncelik 4)
+15. ~~**Maaş yönetimine yol parası**~~ - ✅ Eklendi
+16. **Maaş hareket listesi** - Ödeme geçmişi görüntüleme
+17. **Toplu ödeme listesi** - Banka formatında export
+
+### 🟡 Önemli Geliştirmeler (Öncelik 5)
+18. **Bordro personel bazlı düzenleme** - Normal + AR-GE ayrımı
+19. **Bordro hesap pusulası** - Personel bazlı yazdırma
+20. **Personel Excel import** - Toplu personel yükleme
+21. ~~**Puantaj listesi**~~ - Acil listeye taşındı (Öncelik 1.5)
+
+### 🟢 Planlanan Geliştirmeler (Öncelik 6)
+22. ~~**Proforma fatura**~~ - Acil listeye taşındı (Öncelik 1.5)
+23. **EBYS sistemi** - AI destekli belge yönetimi
+24. **Resmi raporlar** - SGK, Muhtasar vb.
+
+### 🤖 Yapay Zeka Destekli Raporlama (Öncelik 7) - YENİ
+25. **Local LLM Entegrasyonu (Ollama)** - İnternetsiz çalışan AI raporlama 🆕
+26. **AI ile Muhasebe Analizi** - Borç/alacak trend analizi, anomali tespiti 🆕
+27. **Akıllı Rapor Önerileri** - AI destekli rapor yorumlama 🆕
 
 ---
 
-## ?? Notlar
+## 📝 Notlar
 
-- Öncelik: ?? Yüksek | ?? Orta | ?? Düşük
-- Durum: ? Bekliyor | ?? Devam Ediyor | ? Tamamlandı
+- Öncelik: 🔴🔴 Acil | 🔴 Yüksek | 🟡 Orta | 🟢 Düşük | 🤖 AI
+- Durum: ❌ Bekliyor | 🔄 Devam Ediyor | ✅ Tamamlandı | 🆕 Yeni Eklendi
+- FAZ 5 öncelikli olarak başlanmalı (bug fix'ler kritik)
+- **Zirve Muhasebe Programı entegrasyonu en yüksek öncelikli** (hata yapmamak için)
+- EBYS için Ollama/LLaMA kullanılarak internetsiz çalışabilirlik sağlanacak
+- Personel/Maaş/Bordro modülleri SGK mevzuatına uygun olmalı
+- Local AI (Ollama) ile raporlama özellikleri offline çalışabilecek
 
 ---
 

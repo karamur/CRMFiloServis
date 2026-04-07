@@ -49,6 +49,14 @@ public interface IMuhasebeService
     Task<BilancoRapor> GetBilancoRaporuAsync(DateTime tarih);
     Task<MizanRapor> GetMizanRaporuAsync(DateTime baslangic, DateTime bitis);
 
+    // Yevmiye Excel Export
+    Task<byte[]> ExportYevmiyeToExcelAsync(DateTime baslangic, DateTime bitis);
+    Task<byte[]> GetYevmiyeYazdirDataAsync(DateTime baslangic, DateTime bitis);
+
+    // Zirve Muhasebe Programı Export
+    Task<byte[]> ExportZirveFormatAsync(DateTime baslangic, DateTime bitis);
+    Task<byte[]> ExportMuhasebeKontrolListesiAsync(DateTime baslangic, DateTime bitis);
+
     // KDV Beyanname Raporları
     Task<KdvBeyanRapor> GetKdvBeyanRaporuAsync(int yil, int ay);
     Task<List<KdvAylikOzet>> GetYillikKdvOzetiAsync(int yil);
