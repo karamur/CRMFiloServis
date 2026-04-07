@@ -41,6 +41,25 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 035 - Bordro Personel Bazlı Düzenleme
+**Talep:** Bordro detaylarında personel bazlı maaş/kesinti/ek ödeme düzenleme özelliği. Normal ve AR-GE bordrolarda ayrı ayrı.
+
+**Yapılanlar:**
+- `NormalBordro.razor`: Detay tablosuna "Düzenle" butonu ve tam düzenleme modalı eklendi
+  - Maaş bilgileri: Brüt, Net, SGK Maaşı, Toplu Maaş, Ek Ödeme (fark)
+  - Kesintiler: SGK+İşsizlik, Gelir Vergisi, Damga Vergisi
+  - Ek Ödemeler: Yemek, Yol, Prim, Diğer
+  - Notlar alanı, canlı toplam hesaplama (Toplam Kesinti, Toplam Ek Ödeme, Toplam Ödenecek)
+  - Eski JS `prompt` düzenleme kaldırıldı, modal ile değiştirildi
+  - Kalan Ödeme sekmesindeki düzenleme butonu da modalı kullanıyor
+  - Onaylı bordrolarda düzenleme engellendi
+- `ArgeBordro.razor`: Aynı düzenleme modalı ve buton yapısı eklendi (AR-GE etiketli)
+- ROADMAP: #18 tamamlandı olarak işaretlendi
+
+**Durum:** ✅ Tamamlandı
+
+---
+
 ### Kayıt 034 - Toplu Ödeme Listesi Banka EFT Export
 **Talep:** Banka ödeme listesine banka portalına yüklenebilir toplu ödeme (EFT/Havale) dosyası export özelliği.
 

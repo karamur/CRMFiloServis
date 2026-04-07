@@ -309,7 +309,7 @@ FAZ 7 (5-6 Hafta)
 17. ~~**Toplu ödeme listesi**~~ - ✅ Banka EFT formatında export eklendi
 
 ### 🟡 Önemli Geliştirmeler (Öncelik 5)
-18. **Bordro personel bazlı düzenleme** - Normal + AR-GE ayrımı
+18. ~~**Bordro personel bazlı düzenleme**~~ - ✅ Normal + AR-GE düzenleme modalı eklendi
 19. **Bordro hesap pusulası** - Personel bazlı yazdırma
 20. **Personel Excel import** - Toplu personel yükleme
 21. ~~**Puantaj listesi**~~ - Acil listeye taşındı (Öncelik 1.5)
