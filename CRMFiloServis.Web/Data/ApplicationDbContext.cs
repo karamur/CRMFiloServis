@@ -398,6 +398,11 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.AracId)
                 .OnDelete(DeleteBehavior.SetNull);
+            // Firmalar arası fatura - Karşı firma ilişkisi
+            entity.HasOne(e => e.KarsiFirma)
+                .WithMany()
+                .HasForeignKey(e => e.KarsiFirmaId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 

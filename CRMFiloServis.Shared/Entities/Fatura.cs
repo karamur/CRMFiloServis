@@ -27,6 +27,11 @@ public class Fatura : BaseEntity
     public int? FirmaId { get; set; }
     public virtual Firma? Firma { get; set; }
 
+    // Firmalar Arası Fatura (Kayıtlı firmalar arasında kesilen fatura)
+    public bool FirmalarArasiFatura { get; set; } = false;
+    public int? KarsiFirmaId { get; set; } // Gelen faturada satıcı firma, Giden faturada alıcı firma
+    public virtual Firma? KarsiFirma { get; set; }
+
     // Tutarlar
     public decimal AraToplam { get; set; }
     public decimal IskontoTutar { get; set; } = 0;

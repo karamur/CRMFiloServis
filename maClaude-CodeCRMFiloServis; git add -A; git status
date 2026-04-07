@@ -1,5 +1,0 @@
-[33mae8beb7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix: Bütçe analiz - kredi kartı ödeme ve silme düze ltmeleri - Kredi kartı ödemelerinde kesintiler (masraf/komisyon/faiz) artık net tutara EKLENİYOR - BankaKasaHareket silme işlemi hard delete olarak değiştirildi - MahsupIptal hard delete olarak güncellendi - OdemeGeriAlAsync metodu eklendi - ödeme geri alındığında ilişkili hareket de siliniyor - İlişkili OdemeEslestirme kayıtları da siliniyor (FK constraint hatası önlendi)
-[33m5265721[m feat(backup): v1.2 - SQLite<->PostgreSQL iki yonlu aktarim, canli DB aktarimi, yedek silme
-[33m01a0b14[m feat(backup): PostgreSQL -> SQLite donusturme destegi eklendi
-[33m37178d0[m feat(backup): pg_dump ve psql ile tam yedekleme destegi
-[33m32c81c3[m fix(backup): Foreign key sorunlarini coz, mevcut tablolari sil

@@ -2547,6 +2547,9 @@ namespace CRMFiloServis.Web.Migrations
                     b.Property<int?>("FirmaId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("FirmalarArasiFatura")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("GenelToplam")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -2565,6 +2568,9 @@ namespace CRMFiloServis.Web.Migrations
 
                     b.Property<decimal>("IskontoTutar")
                         .HasColumnType("numeric");
+
+                    b.Property<int?>("KarsiFirmaId")
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("KdvOrani")
                         .HasPrecision(5, 2)
@@ -2624,6 +2630,8 @@ namespace CRMFiloServis.Web.Migrations
                         .IsUnique();
 
                     b.HasIndex("FirmaId");
+
+                    b.HasIndex("KarsiFirmaId");
 
                     b.ToTable("Faturalar");
                 });
@@ -7600,11 +7608,18 @@ namespace CRMFiloServis.Web.Migrations
                         .WithMany()
                         .HasForeignKey("FirmaId");
 
+                    b.HasOne("CRMFiloServis.Shared.Entities.Firma", "KarsiFirma")
+                        .WithMany()
+                        .HasForeignKey("KarsiFirmaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Arac");
 
                     b.Navigation("Cari");
 
                     b.Navigation("Firma");
+
+                    b.Navigation("KarsiFirma");
                 });
 
             modelBuilder.Entity("CRMFiloServis.Shared.Entities.FaturaKalem", b =>

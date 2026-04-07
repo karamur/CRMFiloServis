@@ -187,6 +187,12 @@
                                             @onclick="() => FaturaSecildi(fatura)" style="cursor: pointer;">
                                             <td>
                                                 <strong>@fatura.FaturaNo</strong>
+                                                @if (fatura.FirmalarArasiFatura)
+                                                {
+                                                    <span class="badge bg-info ms-1" title="Firmalar Arası Fatura - @(fatura.KarsiFirma?.FirmaAdi ?? "Karşı Firma")">
+                                                        <i class="bi bi-building"></i>
+                                                    </span>
+                                                }
                                                 @if (!string.IsNullOrEmpty(fatura.PdfDosyaYolu))
                                                 {
                                                     <i class="bi bi-file-pdf text-danger ms-1" title="PDF Mevcut"></i>

@@ -25,6 +25,7 @@ public class FaturaService : IFaturaService
     {
         return await _context.Faturalar
             .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
             .OrderByDescending(f => f.FaturaTarihi)
             .ToListAsync();
     }
@@ -33,6 +34,7 @@ public class FaturaService : IFaturaService
     {
         return await _context.Faturalar
             .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
             .Where(f => f.CariId == cariId)
             .OrderByDescending(f => f.FaturaTarihi)
             .ToListAsync();
@@ -42,6 +44,7 @@ public class FaturaService : IFaturaService
     {
         return await _context.Faturalar
             .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
             .Where(f => f.FaturaTipi == tip)
             .OrderByDescending(f => f.FaturaTarihi)
             .ToListAsync();
@@ -51,6 +54,7 @@ public class FaturaService : IFaturaService
     {
         return await _context.Faturalar
             .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
             .Where(f => f.Durum == durum)
             .OrderByDescending(f => f.FaturaTarihi)
             .ToListAsync();
@@ -60,6 +64,7 @@ public class FaturaService : IFaturaService
     {
         return await _context.Faturalar
             .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
             .Where(f => f.Durum == FaturaDurum.Beklemede || f.Durum == FaturaDurum.KismiOdendi)
             .OrderBy(f => f.VadeTarihi)
             .ToListAsync();
@@ -69,6 +74,7 @@ public class FaturaService : IFaturaService
     {
         return await _context.Faturalar
             .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
             .Where(f => f.Durum == FaturaDurum.Odendi)
             .OrderByDescending(f => f.FaturaTarihi)
             .ToListAsync();
@@ -78,6 +84,7 @@ public class FaturaService : IFaturaService
     {
         return await _context.Faturalar
             .Include(f => f.Cari)
+            .Include(f => f.KarsiFirma)
             .Where(f => f.FaturaTarihi >= startDate && f.FaturaTarihi <= endDate)
             .OrderByDescending(f => f.FaturaTarihi)
             .ToListAsync();
@@ -603,6 +610,9 @@ public class FaturaService : IFaturaService
         var otomatikCariOlustur = ayar?.XmlImportOtomatikCariOlustur ?? true;
         var otomatikHesapKoduOlustur = ayar?.XmlImportOtomatikHesapKoduOlustur ?? true;
 
+        // Kayıtlı firmaları al (firmalar arası fatura kontrolü için)
+        var kayitliFirmalar = await _context.Firmalar.Where(f => !f.IsDeleted && f.Aktif).ToListAsync();
+
         foreach (var file in xmlFiles)
         {
             try
@@ -675,6 +685,53 @@ public class FaturaService : IFaturaService
 
                 System.Xml.Linq.XElement? supplierNode = invoice.Descendants().FirstOrDefault(x => x.Name.LocalName == "AccountingSupplierParty");
                 System.Xml.Linq.XElement? customerNode = invoice.Descendants().FirstOrDefault(x => x.Name.LocalName == "AccountingCustomerParty");
+
+                // Firmalar arası fatura kontrolü: Satıcı ve Alıcı VKN'lerini al
+                string supplierVkn = ExtractVknFromParty(supplierNode?.Descendants().FirstOrDefault(x => x.Name.LocalName == "Party"), GetValue);
+                string customerVkn = ExtractVknFromParty(customerNode?.Descendants().FirstOrDefault(x => x.Name.LocalName == "Party"), GetValue);
+
+                // Satıcı ve alıcı firmayı bul
+                Firma? saticiFirma = null;
+                Firma? aliciFirma = null;
+                bool firmalarArasiFatura = false;
+                int? karsiFirmaId = null;
+
+                if (!string.IsNullOrWhiteSpace(supplierVkn) && supplierVkn.Length >= 10)
+                {
+                    saticiFirma = kayitliFirmalar.FirstOrDefault(f => f.VergiNo == supplierVkn);
+                }
+                if (!string.IsNullOrWhiteSpace(customerVkn) && customerVkn.Length >= 10)
+                {
+                    aliciFirma = kayitliFirmalar.FirstOrDefault(f => f.VergiNo == customerVkn);
+                }
+
+                // Her iki taraf da kayıtlı firma ise, firmalar arası fatura
+                if (saticiFirma != null && aliciFirma != null)
+                {
+                    firmalarArasiFatura = true;
+                    // Gelen fatura: Satıcı = karşı firma, firmaId = alıcı firma
+                    // Giden fatura: Alıcı = karşı firma, firmaId = satıcı firma
+                    if (yon == FaturaYonu.Gelen)
+                    {
+                        karsiFirmaId = saticiFirma.Id;
+                        firmaId = firmaId ?? aliciFirma.Id; // Parametre verilmediyse alıcı firmayı kullan
+                    }
+                    else
+                    {
+                        karsiFirmaId = aliciFirma.Id;
+                        firmaId = firmaId ?? saticiFirma.Id; // Parametre verilmediyse satıcı firmayı kullan
+                    }
+                }
+                // Tek taraf kayıtlı firma ise, onu firmaId olarak kullan (parametre verilmediyse)
+                else if (saticiFirma != null && yon == FaturaYonu.Giden && firmaId == null)
+                {
+                    firmaId = saticiFirma.Id;
+                }
+                else if (aliciFirma != null && yon == FaturaYonu.Gelen && firmaId == null)
+                {
+                    firmaId = aliciFirma.Id;
+                }
+
                 var targetNode = yon == FaturaYonu.Giden ? customerNode : supplierNode;
                 var partyNode = targetNode?.Descendants().FirstOrDefault(x => x.Name.LocalName == "Party");
 
@@ -1064,6 +1121,8 @@ public class FaturaService : IFaturaService
                     TevkifatTutar = tevikifatTutar,
                     Durum = FaturaDurum.Beklemede,
                     ImportKaynak = "XML",
+                    FirmalarArasiFatura = firmalarArasiFatura,
+                    KarsiFirmaId = karsiFirmaId,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -2258,6 +2317,24 @@ public class FaturaService : IFaturaService
     #endregion
 
     #region Helper Methods
+
+    /// <summary>
+    /// XML Party node'undan VKN/TCKN bilgisini çıkarır
+    /// </summary>
+    private static string ExtractVknFromParty(System.Xml.Linq.XElement? partyNode, Func<System.Xml.Linq.XElement?, string, string> getValue)
+    {
+        if (partyNode == null) return string.Empty;
+
+        var partyIdentification = partyNode.Descendants().FirstOrDefault(x => x.Name.LocalName == "PartyIdentification");
+        if (partyIdentification != null)
+        {
+            var vkn = getValue(partyIdentification, "ID").Trim();
+            if (!string.IsNullOrWhiteSpace(vkn) && vkn.Length >= 10)
+                return vkn;
+        }
+
+        return string.Empty;
+    }
 
     private static FaturaKalemTipi DetermineKalemTipi(string? aciklama, string? urunKodu)
     {
