@@ -75,3 +75,4 @@ deploy/Logs/**
 !deploy/Logs/.gitkeep
 deploy/Uploads/**
 !deploy/Uploads/.gitkeep
+publish/
