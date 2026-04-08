@@ -53,6 +53,9 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 - `CariService.FillMuhasebeBilgisiAsync` içinde ünvan-hesap adı eşleştirmesi null/boş değerler için daha güvenli hale getirildi.
 - `DestekTalepleri/BilgiBankasi.razor` geçici örnek veri modelinden çıkarıldı ve gerçek `IDestekTalebiService` bilgi bankası metodlarına bağlandı.
 - `DestekTalepleri/DestekAyarlar.razor` oluşturuldu; NavMenu'deki kırık rota için çalışan destek ayarları sayfası eklendi.
+- Destek modülünde `Destek Ayarları` sol menüden kaldırıldı; ilgili erişimler destek sayfalarının sağ üst aksiyon alanına taşındı.
+- `DestekTalebiList.razor` yeni talep formundaki cari seçimi gerçek cari verisine bağlandı ve seçilen cari müşteri bilgilerini otomatik doldurur hale getirildi.
+- `AIAsistan.razor` ve `OllamaAIChatService` içinde 404/model bulunamadı senaryoları iyileştirildi; yüklü model yoksa daha yönlendirici hata mesajı gösteriliyor ve uygun model otomatik seçiliyor.
 
 **Durum:** 🔄 Devam Ediyor
 

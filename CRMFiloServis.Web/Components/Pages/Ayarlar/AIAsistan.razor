@@ -350,9 +350,19 @@
         }
         catch (Exception ex)
         {
+            var hataMesaji = ex.GetBaseException().Message;
+
+            if (hataMesaji.Contains("404", StringComparison.OrdinalIgnoreCase) ||
+                hataMesaji.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                hataMesaji.Contains("model", StringComparison.OrdinalIgnoreCase))
+            {
+                hataMesaji = $"Seçili Ollama modeli bulunamadı veya endpoint yanıt vermedi. Sağ üstten yüklü modeli seçin ya da `ollama pull {selectedModel}` çalıştırın.";
+                await RefreshModels();
+            }
+
             messages.Add(new ChatMessageDisplay
             {
-                Content = $"❌ Hata: {ex.Message}\n\nOllama'nın çalıştığından emin olun.",
+                Content = $"❌ Hata: {hataMesaji}\n\nOllama'nın çalıştığından emin olun.",
                 IsUser = false,
                 Timestamp = DateTime.Now
             });

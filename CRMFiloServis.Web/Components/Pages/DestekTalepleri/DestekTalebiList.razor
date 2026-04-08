@@ -5,6 +5,7 @@
 @using CRMFiloServis.Web.Models
 @inject IDestekTalebiService DestekService
 @inject IKullaniciService KullaniciService
+@inject ICariService CariService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
@@ -15,7 +16,13 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <h3><i class="bi bi-ticket-detailed-fill text-primary me-2"></i>Destek Talepleri</h3>
-                <div>
+                <div class="d-flex gap-2">
+                    <a href="destek-talepleri/bilgi-bankasi" class="btn btn-outline-info">
+                        <i class="bi bi-book me-1"></i>Bilgi Bankası
+                    </a>
+                    <a href="destek-talepleri/ayarlar" class="btn btn-outline-secondary">
+                        <i class="bi bi-gear me-1"></i>Ayarlar
+                    </a>
                     <button class="btn btn-outline-secondary me-2" @onclick="LoadDashboardStats">
                         <i class="bi bi-graph-up me-1"></i>İstatistikler
                     </button>
@@ -330,9 +337,12 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">İlişkili Cari</label>
-                            <select class="form-select" @bind="yeniTalep.CariId">
+                            <select class="form-select" @bind="yeniTalep.CariId" @bind:after="CariSecildi">
                                 <option value="">Seçiniz...</option>
-                                @* Cari listesi buraya eklenebilir *@
+                                @foreach (var cari in cariler)
+                                {
+                                    <option value="@cari.Id">@cari.Unvan</option>
+                                }
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -476,6 +486,7 @@
     private List<DestekDepartman> departmanlar = new();
     private List<DestekKategori> kategoriler = new();
     private List<Kullanici> kullanicilar = new();
+    private List<Cari> cariler = new();
     
     private bool isLoading = true;
     private bool isSaving = false;
@@ -501,6 +512,7 @@
         departmanlar = await DestekService.GetDepartmanlarAsync();
         kategoriler = await DestekService.GetKategorilerAsync();
         kullanicilar = (await KullaniciService.GetAllAsync()).Where(k => k.Aktif).ToList();
+        cariler = (await CariService.GetAllAsync()).Where(c => c.Aktif).OrderBy(c => c.Unvan).ToList();
     }
 
     private async Task LoadTalepler()
@@ -514,6 +526,26 @@
         {
             isLoading = false;
         }
+    }
+
+    private Task CariSecildi()
+    {
+        if (!yeniTalep.CariId.HasValue)
+        {
+            return Task.CompletedTask;
+        }
+
+        var seciliCari = cariler.FirstOrDefault(c => c.Id == yeniTalep.CariId.Value);
+        if (seciliCari == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        yeniTalep.MusteriAdi = seciliCari.Unvan;
+        yeniTalep.MusteriEmail = seciliCari.Email ?? string.Empty;
+        yeniTalep.MusteriTelefon = seciliCari.Telefon;
+
+        return Task.CompletedTask;
     }
 
     private async Task LoadDashboardStats()

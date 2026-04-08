@@ -85,6 +85,7 @@ public class OllamaAIChatService : IOllamaAIChatService
     {
         try
         {
+            await EnsureValidModelAsync(cancellationToken);
             IChatClient chatClient = new OllamaApiClient(new Uri(_baseUrl), _currentModel);
 
             _chatHistory.Add(new ChatMessage(ChatRole.User, message));
@@ -107,6 +108,7 @@ public class OllamaAIChatService : IOllamaAIChatService
         string message,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        await EnsureValidModelAsync(cancellationToken);
         IChatClient chatClient = new OllamaApiClient(new Uri(_baseUrl), _currentModel);
 
         _chatHistory.Add(new ChatMessage(ChatRole.User, message));
@@ -131,6 +133,7 @@ public class OllamaAIChatService : IOllamaAIChatService
     {
         try
         {
+            await EnsureValidModelAsync(cancellationToken);
             IChatClient chatClient = new OllamaApiClient(new Uri(_baseUrl), _currentModel);
 
             var messages = new List<ChatMessage>(history)
@@ -153,6 +156,7 @@ public class OllamaAIChatService : IOllamaAIChatService
         string message,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        await EnsureValidModelAsync(cancellationToken);
         IChatClient chatClient = new OllamaApiClient(new Uri(_baseUrl), _currentModel);
 
         var messages = new List<ChatMessage>(history)
@@ -167,6 +171,25 @@ public class OllamaAIChatService : IOllamaAIChatService
                 yield return update.Text;
             }
         }
+    }
+
+    private async Task EnsureValidModelAsync(CancellationToken cancellationToken = default)
+    {
+        var models = await GetAvailableModelsAsync();
+
+        if (!models.Any())
+        {
+            throw new InvalidOperationException("Ollama çalışıyor ancak yüklü model bulunamadı. Örn: `ollama pull llama3.2` komutunu çalıştırın.");
+        }
+
+        if (models.Contains(_currentModel, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var eskiModel = _currentModel;
+        _currentModel = models.First();
+        _logger.LogWarning("Seçili Ollama modeli bulunamadı. Model otomatik değiştirildi. Eski: {EskiModel}, Yeni: {YeniModel}", eskiModel, _currentModel);
     }
 }
 
