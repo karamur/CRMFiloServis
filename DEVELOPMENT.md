@@ -41,6 +41,91 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 048 - Kolay Muhasebe Girişi
+**Talep:** Muhasebe bilgisi olmayan kullanıcılar için tek sayfadan gelir-gider fatura, masraf, fiş, tahsilat, ödeme, mahsup, avans girişleri yapılabilecek sayfa. Girilen bilgilere göre altta muhasebe kaydı (borç-alacak) otomatik gösterilecek, kullanıcı manuel düzeltme yapabilecek, "Muhasebeleştir" butonu ile kayıt oluşturulacak.
+
+**Yapılanlar:**
+- `KolayMuhasebeModels.cs` oluşturuldu (~130 satır):
+  - `KolayIslemTuru` enum: GelirFatura, GiderFatura, MasrafGirisi, TahsilatGirisi, OdemeGirisi, MahsupKaydi, AvansGirisi (7 tür)
+  - `KolayMuhasebeGiris`: Form modeli (işlem türü, tarih, belge no, cari, tutar, KDV, tevkifat, banka hesap, masraf kalemi, araç)
+  - `MuhasebeOnizleme`: Fiş önizleme (fiş no, tarih, tür, kalemler, toplam borç/alacak, denge kontrolü)
+  - `MuhasebeKalemOnizleme`: Satır önizleme (hesap kodu/adı, borç/alacak, cari bilgisi, düzenlenme flag'i)
+  - `KolayMuhasebeSonuc`: Kaydetme sonucu (başarı, mesaj, oluşturulan ID'ler, uyarılar)
+  - `MasrafKalemiBasit`, `BankaHesapBasit`: Dropdown için basit modeller
+  - `OdemeYontemi` enum: Nakit, BankaHavalesi, Cek, KrediKarti, Diger
+- `IKolayMuhasebeService.cs` interface oluşturuldu (9 metot):
+  - `OnizlemeOlusturAsync(KolayMuhasebeGiris)` - İşlem türüne göre muhasebe kaydı önizlemesi
+  - `KaydetAsync(KolayMuhasebeGiris, MuhasebeOnizleme?)` - Fatura/Masraf/BankaHareket + Muhasebe fişi kaydetme
+  - `GetCarilerAsync(tip, arama)` - Hızlı cari seçimi
+  - `GetMasrafKalemleriAsync()` - Masraf kalemi listesi
+  - `GetBankaHesaplariAsync()` - Banka/kasa hesapları
+  - `GetAraclarAsync()` - Araç listesi (araç masrafı için)
+  - `HizliCariOlusturAsync(unvan, tip)` - Yeni cari hızlı oluşturma
+  - `GetMuhasebeHesaplariAsync()` - Manuel düzenleme için hesap listesi
+  - `GetMuhasebeAyarAsync()` - Varsayılan hesap kodları
+- `KolayMuhasebeService.cs` implementasyon oluşturuldu (~900 satır):
+  - **Muhasebe Kaydı Oluşturma** (7 işlem türü için):
+    - `OlusturGelirFaturaKalemleri`: 120 Alıcılar BORÇ → 600 Satışlar + 391 KDV ALACAK (tevkifat destekli)
+    - `OlusturGiderFaturaKalemleri`: 770 Gider + 191 KDV BORÇ → 320 Satıcılar ALACAK (tevkifat destekli)
+    - `OlusturMasrafKalemleri`: 7xx Gider + 191 KDV BORÇ → 100/102 Kasa/Banka ALACAK
+    - `OlusturTahsilatKalemleri`: 100/102 BORÇ → 120 Alıcılar ALACAK
+    - `OlusturOdemeKalemleri`: 320 Satıcılar BORÇ → 100/102 ALACAK
+    - `OlusturAvansKalemleri`: 195 Avanslar BORÇ → 100/102 ALACAK
+    - `OlusturMahsupKalemleri`: Kullanıcı manuel düzenleyecek
+  - **Kaydetme İşlemleri** (işlem türüne göre):
+    - `KaydetGelirFatura`: Fatura + MuhasebeFis oluşturma
+    - `KaydetGiderFatura`: Fatura + MuhasebeFis oluşturma
+    - `KaydetMasraf`: AracMasraf + MuhasebeFis + BankaKasaHareket oluşturma
+    - `KaydetTahsilat`: BankaKasaHareket + MuhasebeFis oluşturma
+    - `KaydetOdeme`: BankaKasaHareket + MuhasebeFis oluşturma
+    - `KaydetAvans`: BankaKasaHareket + MuhasebeFis oluşturma
+    - `KaydetMuhasebeFisi`: MuhasebeFis + MuhasebeFisKalem kaydetme
+  - **Yardımcı Metodlar**:
+    - `GetMasrafHesapKodu(MasrafKategori)`: Kategori bazlı muhasebe hesap kodu (Yakıt→770.01, Bakım→770.02, vb.)
+    - `GetBankaHesapKodu(HesapTipi)`: Hesap tipi bazlı muhasebe kodu (Kasa→100.01, Banka→102.01, vb.)
+    - `GenerateFaturaNo(prefix)`: Fatura no oluşturma (SF2025000001, AF2025000001)
+    - `GenerateIslemNo()`: Banka hareket işlem no oluşturma (ISL202506XXXX)
+- `KolayGiris.razor` oluşturuldu (~500 satır):
+  - **Route**: `/muhasebe/kolay-giris`
+  - **Sol Panel - İşlem Formu**:
+    - İşlem türü butonları (7 tür, renkli badge'ler)
+    - Tarih/Belge No/Vade girişleri
+    - Cari seçimi (autocomplete + hızlı ekleme)
+    - Tutar girişleri (ara toplam, KDV oranı/tutar, genel toplam)
+    - Tevkifat seçeneği (oran/kod/tutar)
+    - Banka/Kasa hesap seçimi
+    - Masraf kalemi ve araç seçimi (masraf girişi için)
+    - Açıklama/Notlar
+  - **Sağ Panel - Muhasebe Önizleme**:
+    - Fiş bilgileri (no, tarih, tür)
+    - Muhasebe kalemleri tablosu (hesap kodu/adı, borç, alacak)
+    - Toplam borç/alacak gösterimi
+    - Denge durumu (✅ Dengeli / ⚠️ Dengesiz)
+    - Manuel hesap düzenleme (dropdown ile hesap seçimi)
+  - **Alt Kısım**:
+    - "Muhasebeleştir ve Kaydet" butonu (sadece dengeli ise aktif)
+    - Son girilen işlemler listesi
+- `Program.cs` güncellendi - DI kaydı: `builder.Services.AddScoped<IKolayMuhasebeService, KolayMuhasebeService>();`
+
+**Muhasebe Kuralları:**
+- Satış Faturası: Alıcılar(120) BORÇ → Satışlar(600) + Hesaplanan KDV(391) ALACAK
+- Alış Faturası: Gider(770) + İndirilecek KDV(191) BORÇ → Satıcılar(320) ALACAK
+- Masraf: Gider(7xx) + KDV(191) BORÇ → Kasa/Banka(100/102) ALACAK
+- Tahsilat: Kasa/Banka(100/102) BORÇ → Alıcılar(120) ALACAK
+- Ödeme: Satıcılar(320) BORÇ → Kasa/Banka(100/102) ALACAK
+- Avans: Personel Avansları(195) BORÇ → Kasa/Banka(100/102) ALACAK
+- Tevkifatlı Satış: Tevkifat Alacağı(136) ayrı satır BORÇ
+- Tevkifatlı Alış: Sorumlu KDV(360) ayrı satır ALACAK
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Models/KolayMuhasebeModels.cs` (yeni)
+- `CRMFiloServis.Web/Services/Interfaces/IKolayMuhasebeService.cs` (yeni)
+- `CRMFiloServis.Web/Services/KolayMuhasebeService.cs` (yeni)
+- `CRMFiloServis.Web/Components/Pages/Muhasebe/KolayGiris.razor` (yeni)
+- `CRMFiloServis.Web/Program.cs` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 047 - Excel'den Personel Import
 **Talep:** Excel dosyasından toplu personel yükleme özelliği.
 
