@@ -158,13 +158,15 @@
 | Bütçe Analiz - Hedef/Gerçekleşen karşılaştırma | 🟡 Orta | 2 gün | ❌ |
 | Cari - Risk analizi kartları | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | Cari - İletişim geçmişi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
-| Cari - Otomatik hatırlatmalar | 🟡 Orta | 2 gün | ❌ |
+| Cari - Otomatik hatırlatmalar | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | **Fatura - Toplu fatura oluşturma** | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | **Fatura - E-Fatura XML (GİB UBL-TR)** | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | **Fatura - Luca Portal Entegrasyonu** | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | **Cari - Otomatik hatırlatmalar** | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | **Fatura - Fatura şablonları** | 🟡 Orta | 2 gün | ✅ Tamamlandı |
-| Fatura - E-fatura hazırlık | 🟡 Orta | 2 gün | ❌ |
+| Fatura - E-fatura hazırlık | 🟡 Orta | 2 gün | ✅ Tamamlandı |
+| **Puantaj Excel Import Sistemi** | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| **Puantaj Günlük Kayıt (Gun01-31)** | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
 
 ---
 
@@ -177,6 +179,9 @@
 | Son puantaj tablosu hazırlama | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | Puantaj → Bordro otomatik aktarım | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | Puantaj onay sistemi | 🟢 Düşük | 2 gün | ❌ |
+| **Puantaj Excel şablon indirme** | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| **Puantaj Excel import/önizleme** | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| **Güzergah/Şoför otomatik oluşturma** | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 
 ### 6.2 Gelecek Fatura Yönetimi
 | Özellik | Öncelik | Süre | Durum |
@@ -358,8 +363,19 @@ FAZ 8 (2-3 Hafta) - ✅ TAMAMLANDI
 13. ~~**Cari Geliştirme**~~ - ✅ İletişim geçmişi, hatırlatıcılar, vade uyarıları, AI fatura import
 14. ~~**AI Fatura Import**~~ - ✅ XML e-fatura yükleme, AI ile cari eşleştirme/oluşturma, kalem sınıflandırma (hizmet/mal/kiralama), güzergah-firma eşleştirme, stok kartı kontrolü, puantaj entegrasyonu
 15. ~~**Fatura Geliştirme**~~ - ✅ Toplu fatura oluşturma (puantaj bazlı), cari bazlı gruplama, tevkifat desteği
-16. **Fatura Şablonları** - Tekrarlayan faturalar için şablon sistemi
-17. **E-Fatura Hazırlık** - GİB formatında XML oluşturma
+16. ~~**Fatura Şablonları**~~ - ✅ Özelleştirilebilir fatura şablonları, QuestPDF ile PDF oluşturma
+17. ~~**E-Fatura Hazırlık**~~ - ✅ GİB UBL-TR 1.2 formatında XML oluşturma
+
+### 🔴 Puantaj Excel Import (Öncelik 3.5) - YENİ
+35. ~~**Puantaj Excel Şablon İndirme**~~ - ✅ EPPlus ile hafta sonu renklendirme, formüller, mevcut güzergah doldurma
+36. ~~**Puantaj Excel Önizleme/Import**~~ - ✅ Güzergah/Araç/Şoför otomatik eşleştirme, günlük puantaj (Gun01-31)
+37. ~~**Otomatik Güzergah/Şoför Oluşturma**~~ - ✅ Import sırasında eksik kayıtlar otomatik oluşturulur
+
+### 🔴 Bug Fix'ler (Kayıt 054)
+38. ~~**Dashboard SiralamaNo hatası**~~ - ✅ DbInitializer kolon ekleme
+39. ~~**AI analiz KalanTutar LINQ hatası**~~ - ✅ CariRiskService + CariHareketTakipService sorgu düzeltme
+40. ~~**Bütçe ödeme DB güncelleme hatası**~~ - ✅ ExecuteUpdateAsync + İşlemNo uniqueness
+41. ~~**Kasa/Banka Pagination hatası**~~ - ✅ BankaHareketList PageSizeChanged event düzeltme
 
 ### 🟡 Maaş İyileştirmeleri (Öncelik 4)
 15. ~~**Maaş yönetimine yol parası**~~ - ✅ Eklendi

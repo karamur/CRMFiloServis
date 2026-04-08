@@ -41,6 +41,101 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 054 - Puantaj Excel Import Sistemi + Hata Düzeltmeleri
+**Talep:** Puantaj verilerini Excel şablonundan import etme sistemi. Bölge, sıra no, semt (güzergah), sefer fiyatı, S/A servis tipi, plaka, şoför, telefon, firma adı, günlük puantaj (ayın günleri), sefer günü toplamı, toplam, KDV %20, KDV %10, kesinti, ödenecek. Araç/şoför/güzergah otomatik oluşturma. Ayrıca 5 kritik hata düzeltmesi.
+
+**Yapılanlar:**
+
+#### A) Hata Düzeltmeleri
+
+**1. Dashboard SiralamaNo Hatası:**
+- `DbInitializer.cs` güncellendi - `Soforler` tablosuna `SiralamaNo INTEGER` kolon ekleme
+
+**2. AI Analiz KalanTutar LINQ Hatası:**
+- `CariRiskService.cs` güncellendi - 4 LINQ sorgusu düzeltildi (client-side evaluation hatası)
+- `CariHareketTakipService.cs` güncellendi - 1 LINQ sorgusu düzeltildi
+- PostgreSQL'de çalışmayan `.Sum()` ifadeleri `AsEnumerable()` ile client-side'a taşındı
+
+**3. Bütçe Ödeme DB'de Ödendi Olmuyor:**
+- `BudgetService.cs` güncellendi - `ExecuteUpdateAsync` ile doğrudan DB güncelleme
+- `OdemeYonetimi.razor` güncellendi - İşlemNo'ya milisaniye eklenerek uniqueness sağlandı
+
+**4. Beyaz Ekran Port Çakışması:**
+- Port 5190 çakışması çözüldü (process kill)
+
+**5. Kasa/Banka Hareketler Pagination Hatası:**
+- `BankaHareketList.razor` güncellendi - `OnPageSizeChanged` → `PageSizeChanged` event adı düzeltildi
+
+#### B) Puantaj Excel Import Sistemi
+
+**PuantajKayit Entity Güncellendi** (`CRMFiloServis.Shared/Entities/PuantajKayit.cs`):
+- `Bolge` (string?) - Bölge bilgisi
+- `SiraNo` (int) - Sıra numarası
+- `AitFirmaAdi` (string?) - Ait olduğu firma adı
+- `Gun01`-`Gun31` (int) - 31 günlük puantaj alanları (0/1/2 değer)
+- `SeferGunuToplami` [NotMapped] - Gun01+...+Gun31 computed property
+- `GetGunDeger(int gun)` / `SetGunDeger(int gun, int deger)` - Switch-based accessor metodları
+- `HesaplaPuantajToplam()` - Gun→SeferGunuToplami, ToplamGider, Odenecek hesaplama
+
+**HakedisService Genişletildi** (`CRMFiloServis.Web/Services/HakedisService.cs`):
+- `PuantajSablonSatiri` modeli eklendi:
+  - Bolge, SiraNo, Semt, SeferFiyati, ServisTipi, Plaka, SoforAdi, SoforTelefon, FirmaAdi
+  - Gunler[31] dizisi, SeferGunuToplami, Toplam, Kdv20, Kdv10, Kesinti, Odenecek
+  - Eşleştirme alanları: GuzergahId, AracId, SoforId, KurumCariId, SahiplikTipi
+- `IHakedisService` interface'e 3 yeni metod eklendi:
+  - `PuantajSablonOnizlemeAsync(Stream, yil, ay, baslangicSatiri)` - Excel'den satır okuma
+    - Kolon düzeni: Bölge(1)|SıraNo(2)|Semt(3)|Fiyat(4)|S/A(5)|Plaka(6)|Şoför(7)|Tel(8)|Firma(9)|Gün1-N(10+)|TopSef|Toplam|KDV20|KDV10|Kesinti|Ödenecek
+    - Cache'li Güzergah/Araç/Şoför otomatik eşleştirme
+    - Plaka normalize, SahiplikTipi tespiti (Öz Mal/Kiralama/Komisyon)
+  - `PuantajSablonImportAsync(satirlar, yil, ay, dosyaAdi, kullanici, kurumCariId, otomatikOlustur)` - Kaydetme
+    - Otomatik Güzergah oluşturma (BirimFiyat, SeferTipi eşleştirme)
+    - Otomatik Şoför oluşturma (SGKBordroDahilMi=false, Telefon)
+    - PuantajKayit günlük puantaj kayıt (SetGunDeger loop, BirimGider=SeferFiyati)
+  - `PuantajSablonIndirAsync(yil, ay)` - EPPlus ile şablon Excel oluşturma
+    - Mavi header, hafta sonu kırmızı kolon, SUM formülleri, para formatı
+    - Mevcut güzergah verileri ile ön doldurma
+- `ParseServisTipiToPuantajYon(tip)` ve `ParseServisTipiToSeferTipi(tip)` yardımcı metodlar (S/A/S-A format desteği)
+
+**ApplicationDbContext Güncellendi** (`CRMFiloServis.Web/Data/ApplicationDbContext.cs`):
+- PuantajKayit config'e `Bolge` HasMaxLength(100), `AitFirmaAdi` HasMaxLength(200) eklendi
+
+**DbInitializer Güncellendi** (`CRMFiloServis.Web/Data/DbInitializer.cs`):
+- `EnsurePuantajKayitlarColumnsAsync` metodu eklendi (34 kolon):
+  - Bolge VARCHAR(100) NULL, SiraNo INTEGER DEFAULT 0, AitFirmaAdi VARCHAR(200) NULL
+  - Gun01-Gun31 INTEGER NOT NULL DEFAULT 0
+- `InitializeWithConfigurationAsync`'den çağrı eklendi
+- `BudgetOdemeler` tablosuna 11 kolon ekleme
+- `BankaKasaHareketleri` tablosuna 7 kolon ekleme
+
+**Özellikler:**
+- ✅ Excel'den puantaj şablon okuma (EPPlus ile önizleme)
+- ✅ Güzergah otomatik eşleştirme (isim benzerliği)
+- ✅ Araç otomatik eşleştirme (plaka normalize)
+- ✅ Şoför otomatik eşleştirme (ad-soyad)
+- ✅ SahiplikTipi tespiti (Öz Mal/Kiralama/Komisyon)
+- ✅ Otomatik güzergah oluşturma (BirimFiyat, SeferTipi)
+- ✅ Otomatik şoför oluşturma (SGK'sız)
+- ✅ Günlük puantaj kayıt (Gun01-Gun31)
+- ✅ Şablon Excel indirme (hafta sonu renklendirme, formüller)
+- ✅ S/A servis tipi parse (Sabah/Akşam/SabahAkşam)
+- ✅ Dashboard SiralamaNo hata düzeltmesi
+- ✅ AI analiz LINQ sorgu düzeltmeleri
+- ✅ Bütçe ödeme kayıt düzeltmesi
+- ✅ Pagination event adı düzeltmesi
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/PuantajKayit.cs` (güncellendi - Bolge, SiraNo, AitFirmaAdi, Gun01-31, helper metodlar)
+- `CRMFiloServis.Web/Services/HakedisService.cs` (güncellendi - PuantajSablonSatiri model, 3 yeni metod, 2 helper)
+- `CRMFiloServis.Web/Data/ApplicationDbContext.cs` (güncellendi - PuantajKayit config)
+- `CRMFiloServis.Web/Data/DbInitializer.cs` (güncellendi - EnsurePuantajKayitlarColumnsAsync + BudgetOdemeler + BankaKasaHareketleri kolonlar)
+- `CRMFiloServis.Web/Services/CariRiskService.cs` (güncellendi - 4 LINQ sorgu düzeltmesi)
+- `CRMFiloServis.Web/Services/CariHareketTakipService.cs` (güncellendi - 1 LINQ sorgu düzeltmesi)
+- `CRMFiloServis.Web/Services/BudgetService.cs` (güncellendi - ExecuteUpdateAsync)
+- `CRMFiloServis.Web/Components/Pages/Budget/OdemeYonetimi.razor` (güncellendi - İşlemNo milisaniye)
+- `CRMFiloServis.Web/Components/Pages/BankaHareketleri/BankaHareketList.razor` (güncellendi - PageSizeChanged)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 049 - Toplu Fatura Oluşturma
 **Talep:** Puantaj kayıtlarından toplu fatura kesimi, cari bazlı dönemsel faturalama.
 
