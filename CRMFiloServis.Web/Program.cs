@@ -195,6 +195,7 @@ builder.Services.AddScoped<ILucaPortalService, LucaPortalService>(); // Luca Por
 builder.Services.AddScoped<ICariHatirlatmaService, CariHatirlatmaService>(); // Cari Otomatik Hatırlatma Servisi
 builder.Services.AddHostedService<CariHatirlatmaBackgroundService>(); // Cari Hatırlatma Arka Plan Servisi
 builder.Services.AddScoped<IFaturaSablonService, FaturaSablonService>(); // Fatura Şablon Yönetimi Servisi
+builder.Services.AddScoped<IDestekTalebiService, DestekTalebiService>(); // Destek Talebi (Ticket) Servisi - osTicket benzeri
 builder.Services.AddHostedService<AutoBackupService>();
 builder.Services.AddHttpContextAccessor();
 

@@ -1,0 +1,396 @@
+﻿@page "/destek-talepleri/bilgi-bankasi"
+@rendermode InteractiveServer
+@using CRMFiloServis.Shared.Entities
+@using CRMFiloServis.Web.Services.Interfaces
+@inject IDestekTalebiService DestekService
+@inject IJSRuntime JS
+
+<PageTitle>Bilgi Bankası - Koa Filo Servis</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-book me-2"></i>Bilgi Bankası</h4>
+        <button class="btn btn-primary btn-sm" @onclick="YeniMakale">
+            <i class="bi bi-plus-lg me-1"></i>Yeni Makale
+        </button>
+    </div>
+
+    <!-- Arama ve Filtre -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" @bind="aramaMetni" @bind:event="oninput" @onkeyup="Ara" placeholder="Makale ara..." />
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" @bind="seciliKategori" @bind:after="Filtrele">
+                        <option value="">Tüm Kategoriler</option>
+                        @if (kategoriler != null)
+                        {
+                            @foreach (var k in kategoriler)
+                            {
+                                <option value="@k.Id">@k.Ad</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" @bind="seciliDurum" @bind:after="Filtrele">
+                        <option value="">Tüm Durumlar</option>
+                        <option value="yayinda">Yayında</option>
+                        <option value="taslak">Taslak</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İstatistikler -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center py-2">
+                    <h5 class="mb-0">@makaleler.Count</h5>
+                    <small>Toplam Makale</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center py-2">
+                    <h5 class="mb-0">@makaleler.Count(m => m.Yayinda)</h5>
+                    <small>Yayında</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center py-2">
+                    <h5 class="mb-0">@makaleler.Count(m => !m.Yayinda)</h5>
+                    <small>Taslak</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center py-2">
+                    <h5 class="mb-0">@makaleler.Sum(m => m.GoruntulemeSayisi)</h5>
+                    <small>Toplam Görüntülenme</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Makale Listesi -->
+    <div class="row">
+        @if (filtrelenenMakaleler != null && filtrelenenMakaleler.Any())
+        {
+            @foreach (var makale in filtrelenenMakaleler)
+            {
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100 @(makale.Yayinda ? "" : "border-warning")">
+                        <div class="card-header d-flex justify-content-between align-items-center py-2">
+                            <span class="badge" style="background-color: @(makale.Kategori?.Renk ?? "#6c757d")">
+                                @(makale.Kategori?.Ad ?? "Genel")
+                            </span>
+                            @if (!makale.Yayinda)
+                            {
+                                <span class="badge bg-warning text-dark">Taslak</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="bi @(makale.Simge ?? "bi-file-text") me-1"></i>
+                                @makale.Baslik
+                            </h6>
+                            <p class="card-text text-muted small">
+                                @(makale.Ozet?.Length > 100 ? makale.Ozet.Substring(0, 100) + "..." : makale.Ozet)
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-2">
+                            <small class="text-muted">
+                                <i class="bi bi-eye me-1"></i>@makale.GoruntulemeSayisi
+                                <i class="bi bi-hand-thumbs-up ms-2 me-1"></i>@makale.FaydaliSayisi
+                            </small>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => MakaleDuzenle(makale)" title="Düzenle">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => MakaleSil(makale)" title="Sil">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Henüz bilgi bankası makalesi bulunmuyor. Yeni makale ekleyerek başlayabilirsiniz.
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Makale Modal -->
+<div class="modal fade" id="makaleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-text me-2"></i>@(editMakale.Id > 0 ? "Makale Düzenle" : "Yeni Makale")
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Başlık <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" @bind="editMakale.Baslik" placeholder="Makale başlığı" />
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Kategori</label>
+                            <select class="form-select" @bind="editMakale.KategoriId">
+                                <option value="">-- Seçiniz --</option>
+                                @if (kategoriler != null)
+                                {
+                                    @foreach (var k in kategoriler)
+                                    {
+                                        <option value="@k.Id">@k.Ad</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Simge (Bootstrap Icons)</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi @editMakale.Simge"></i></span>
+                                <input type="text" class="form-control" @bind="editMakale.Simge" placeholder="bi-question-circle" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Özet</label>
+                    <textarea class="form-control" rows="2" @bind="editMakale.Ozet" placeholder="Kısa açıklama..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">İçerik <span class="text-danger">*</span></label>
+                    <textarea class="form-control" rows="10" @bind="editMakale.Icerik" placeholder="Makale içeriği (Markdown desteklenir)"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Anahtar Kelimeler</label>
+                    <input type="text" class="form-control" @bind="editMakale.AnahtarKelimeler" placeholder="anahtar1, anahtar2, anahtar3" />
+                    <small class="text-muted">Virgülle ayırarak yazın</small>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="makaleYayinda" @bind="editMakale.Yayinda" />
+                    <label class="form-check-label" for="makaleYayinda">Yayında (müşteriler görebilir)</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" @onclick="MakaleKaydet" disabled="@islemYapiliyor">
+                    @if (islemYapiliyor)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<BilgiBankasiMakale> makaleler = new();
+    private List<BilgiBankasiMakale> filtrelenenMakaleler = new();
+    private List<DestekKategori>? kategoriler;
+
+    private BilgiBankasiMakale editMakale = new();
+    private bool islemYapiliyor = false;
+
+    private string aramaMetni = "";
+    private string seciliKategori = "";
+    private string seciliDurum = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        kategoriler = await DestekService.GetKategorilerAsync();
+        await MakaleleriYukle();
+    }
+
+    private async Task MakaleleriYukle()
+    {
+        // BilgiBankası makaleleri için şimdilik örnek data
+        // Gerçek implementasyonda DestekService'e metod eklenmeli
+        makaleler = new List<BilgiBankasiMakale>
+        {
+            new BilgiBankasiMakale
+            {
+                Id = 1,
+                Baslik = "Nasıl Destek Talebi Oluşturulur?",
+                Ozet = "Yeni destek talebi oluşturma adımları",
+                Icerik = "1. Ana sayfadan 'Yeni Talep' butonuna tıklayın...",
+                Simge = "bi-question-circle",
+                Yayinda = true,
+                GoruntulemeSayisi = 156,
+                FaydaliSayisi = 42
+            },
+            new BilgiBankasiMakale
+            {
+                Id = 2,
+                Baslik = "Talep Öncelik Seviyeleri",
+                Ozet = "Öncelik seviyelerinin anlamları ve SLA süreleri",
+                Icerik = "Kritik: Sistemin tamamen durması...",
+                Simge = "bi-flag",
+                Yayinda = true,
+                GoruntulemeSayisi = 89,
+                FaydaliSayisi = 28
+            },
+            new BilgiBankasiMakale
+            {
+                Id = 3,
+                Baslik = "Dosya Ekleme Limitleri",
+                Ozet = "Desteklenen dosya türleri ve boyut sınırlamaları",
+                Icerik = "Maksimum dosya boyutu: 10 MB...",
+                Simge = "bi-paperclip",
+                Yayinda = false,
+                GoruntulemeSayisi = 0,
+                FaydaliSayisi = 0
+            }
+        };
+        Filtrele();
+        await Task.CompletedTask;
+    }
+
+    private void Ara()
+    {
+        Filtrele();
+    }
+
+    private void Filtrele()
+    {
+        filtrelenenMakaleler = makaleler;
+
+        if (!string.IsNullOrWhiteSpace(aramaMetni))
+        {
+            var aranan = aramaMetni.ToLower();
+            filtrelenenMakaleler = filtrelenenMakaleler
+                .Where(m => m.Baslik.ToLower().Contains(aranan) ||
+                           (m.Ozet?.ToLower().Contains(aranan) ?? false) ||
+                           (m.AnahtarKelimeler?.ToLower().Contains(aranan) ?? false))
+                .ToList();
+        }
+
+        if (!string.IsNullOrWhiteSpace(seciliKategori) && int.TryParse(seciliKategori, out int katId))
+        {
+            filtrelenenMakaleler = filtrelenenMakaleler.Where(m => m.KategoriId == katId).ToList();
+        }
+
+        if (seciliDurum == "yayinda")
+        {
+            filtrelenenMakaleler = filtrelenenMakaleler.Where(m => m.Yayinda).ToList();
+        }
+        else if (seciliDurum == "taslak")
+        {
+            filtrelenenMakaleler = filtrelenenMakaleler.Where(m => !m.Yayinda).ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task YeniMakale()
+    {
+        editMakale = new BilgiBankasiMakale { Simge = "bi-file-text", Yayinda = false };
+        await JS.InvokeVoidAsync("eval", "new bootstrap.Modal(document.getElementById('makaleModal')).show()");
+    }
+
+    private async Task MakaleDuzenle(BilgiBankasiMakale m)
+    {
+        editMakale = new BilgiBankasiMakale
+        {
+            Id = m.Id,
+            Baslik = m.Baslik,
+            Ozet = m.Ozet,
+            Icerik = m.Icerik,
+            Simge = m.Simge,
+            KategoriId = m.KategoriId,
+            AnahtarKelimeler = m.AnahtarKelimeler,
+            Yayinda = m.Yayinda
+        };
+        await JS.InvokeVoidAsync("eval", "new bootstrap.Modal(document.getElementById('makaleModal')).show()");
+    }
+
+    private async Task MakaleKaydet()
+    {
+        if (string.IsNullOrWhiteSpace(editMakale.Baslik) || string.IsNullOrWhiteSpace(editMakale.Icerik)) return;
+
+        islemYapiliyor = true;
+        try
+        {
+            if (editMakale.Id > 0)
+            {
+                var mevcut = makaleler.FirstOrDefault(m => m.Id == editMakale.Id);
+                if (mevcut != null)
+                {
+                    mevcut.Baslik = editMakale.Baslik;
+                    mevcut.Ozet = editMakale.Ozet;
+                    mevcut.Icerik = editMakale.Icerik;
+                    mevcut.Simge = editMakale.Simge;
+                    mevcut.KategoriId = editMakale.KategoriId;
+                    mevcut.AnahtarKelimeler = editMakale.AnahtarKelimeler;
+                    mevcut.Yayinda = editMakale.Yayinda;
+                }
+            }
+            else
+            {
+                editMakale.Id = makaleler.Any() ? makaleler.Max(m => m.Id) + 1 : 1;
+                makaleler.Add(editMakale);
+            }
+            Filtrele();
+            await JS.InvokeVoidAsync("eval", "bootstrap.Modal.getInstance(document.getElementById('makaleModal')).hide()");
+        }
+        finally
+        {
+            islemYapiliyor = false;
+        }
+    }
+
+    private async Task MakaleSil(BilgiBankasiMakale m)
+    {
+        var onay = await JS.InvokeAsync<bool>("confirm", $"'{m.Baslik}' makalesini silmek istediğinize emin misiniz?");
+        if (onay)
+        {
+            makaleler.Remove(m);
+            Filtrele();
+        }
+    }
+
+    // Geçici model - sonra entity olarak taşınabilir
+    public class BilgiBankasiMakale
+    {
+        public int Id { get; set; }
+        public string Baslik { get; set; } = "";
+        public string? Ozet { get; set; }
+        public string Icerik { get; set; } = "";
+        public string? Simge { get; set; }
+        public int? KategoriId { get; set; }
+        public DestekKategori? Kategori { get; set; }
+        public string? AnahtarKelimeler { get; set; }
+        public bool Yayinda { get; set; }
+        public int GoruntulemeSayisi { get; set; }
+        public int FaydaliSayisi { get; set; }
+    }
+}

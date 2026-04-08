@@ -49,6 +49,18 @@
 | Excel export (mevcut, iyileştirme) | ?? Orta | 1 gün | ? |
 | Dosya yükleme (ruhsat, ehliyet, sözleşme) | ?? Orta | 2 gün | ? |
 
+### 2.4 Destek Talepleri (Biletleme Sistemi)
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Entity ve Service Altyapısı | 🔴 Yüksek | 3 gün | ✅ Tamamlandı |
+| Talep Liste ve Detay Sayfaları | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Departman ve Kategori Yönetimi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| SLA Yönetimi ve Takibi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Hazır Yanıt Şablonları | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Dashboard ve Raporlama | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Dosya Eki Desteği | 🟢 Düşük | 1 gün | ✅ Tamamlandı |
+| E-posta Entegrasyonu | 🟢 Düşük | 2 gün | ❌ |
+
 ---
 
 ## ?? FAZ 3 - İleri Seviye Özellikler

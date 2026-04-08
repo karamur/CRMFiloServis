@@ -41,6 +41,128 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 055 - Destek Talepleri Modülü (osTicket Benzeri)
+**Talep:** Müşteri destek talepleri yönetimi için kapsamlı bir biletleme sistemi. Departman, kategori, öncelik, SLA, hazır yanıtlar, dosya ekleri, aktivite takibi, performans raporlaması özellikleri.
+
+**Yapılanlar:**
+
+#### A) Entity'ler (`CRMFiloServis.Shared/Entities/DestekTalebi.cs`)
+- `DestekTalebi`: Ana talep entity (TalepNo otomatik, Konu, Aciklama, Oncelik, Durum, SLA, Müşteri bilgileri, Etiketler)
+- `DestekTalebiYanit`: Konuşma yanıtları (Icerik, DahiliNot flag, MusteriYaniti flag, HazirYanitId bağlantısı)
+- `DestekTalebiEk`: Dosya ekleri (OrijinalDosyaAdi, DosyaYolu, MimeTipi, DosyaBoyutu)
+- `DestekTalebiAktivite`: Aktivite geçmişi (AktiviteTuru enum, EskiDeger/YeniDeger)
+- `DestekDepartman`: Departman tanımları (Ad, Email, Simge, Aktif, VarsayilanSla)
+- `DestekKategori`: Kategori tanımları (Ad, DepartmanId, UstKategoriId, Renk, Simge, VarsayilanSla)
+- `DestekHazirYanit`: Hazır yanıt şablonları (Ad, Icerik, DepartmanId, KategoriId, KullanimSayisi)
+- `DestekSla`: SLA tanımları (Ad, Oncelik, YanitSuresiSaat, CozumSuresiSaat)
+- `DestekAyar`: Sistem ayarları (Anahtar, Deger, Grup, Aciklama)
+- **Enum'lar**: DestekDurum (Yeni, Acik, Beklemede, YanitBekleniyor, Cozuldu, Kapali), DestekOncelik (Dusuk, Normal, Yuksek, Acil, Kritik), DestekKaynak (Web, Email, Telefon, Canlı Destek, Sosyal Medya, API), YanitTuru (Personel, Musteri, Sistem), AktiviteTuru (12 farklı aktivite tipi)
+
+#### B) Service Interface (`CRMFiloServis.Web/Services/Interfaces/IDestekTalebiService.cs`)
+- 50+ metod tanımı
+- **Talep CRUD**: CreateAsync, UpdateAsync, DeleteAsync, GetByIdAsync, GetByIdWithDetailsAsync, GetAllAsync, GetPagedAsync
+- **Filtreleme**: GetByDurumAsync, GetByOncelikAsync, GetByDepartmanAsync, GetByKullaniciAsync, AramaYapAsync
+- **Durum İşlemleri**: UpdateDurumAsync, UpdateOncelikAsync, AtaAsync, TransferEtAsync, BirleştirAsync, YenidenAcAsync
+- **Yanıt İşlemleri**: AddYanitAsync, UpdateYanitAsync, DeleteYanitAsync, GetYanitlarAsync
+- **Dosya İşlemleri**: AddEkAsync, DeleteEkAsync, GetEkAsync, DosyaIndirAsync
+- **Departman/Kategori CRUD**: 12 metod
+- **Hazır Yanıt CRUD**: 6 metod
+- **SLA Yönetimi**: GetSlaListesiAsync, GetSlaByIdAsync, GetSlaByOncelikAsync, CreateSlaAsync, UpdateSlaAsync, DeleteSlaAsync, CheckAndUpdateSlaViolationsAsync
+- **Dashboard ve Raporlama**: GetDashboardStatsAsync, GetRaporStatsAsync, GetPersonelPerformansRaporuAsync
+- **Ayarlar**: GetAyarAsync, SetAyarAsync, GetAyarlarByGrupAsync
+- **Model Sınıfları** (interface içinde): DestekDashboardStats (13 property), DestekRaporStats (10 property + 2 liste), GunlukTalepTrend, KategoriTalepStats, DestekPerformansRapor (9 property), DestekTalebiFilterParams (13 filtre alanı)
+
+#### C) Service Implementation (`CRMFiloServis.Web/Services/DestekTalebiService.cs`)
+- ~1565 satır tam implementasyon
+- IDbContextFactory pattern ile context yönetimi
+- **Talep Numarası Üretimi**: `GenerateTalepNoAsync()` - YYYY-MMNNNN formatında unique numara
+- **SLA Hesaplama**: Önceliğe göre SLA süresi belirleme, SlaBitisTarihi otomatik set
+- **Dosya Yükleme**: IWebHostEnvironment ile `wwwroot/uploads/destek/{talepId}/` klasör yapısı
+- **Aktivite Loglama**: LogAktiviteInternalAsync ile tüm işlemlerin kaydı
+- **Dashboard Stats**: Toplam/Açık/Bugün/SLA aşımı sayıları, Öncelik/Durum/Departman/Kaynak dağılımları, Ortalama çözüm süresi, Memnuniyet puanı
+- **Rapor Stats**: Tarih aralığı filtreleme, Günlük trend hesaplama, Kategori bazlı istatistikler
+- **Personel Performans**: Kullanıcı bazlı atanan/çözülen talep, SLA aşım, ortalama yanıt/çözüm süreleri, yanıt sayısı
+
+#### D) DbContext Güncellemesi (`CRMFiloServis.Web/Data/ApplicationDbContext.cs`)
+- 9 yeni DbSet eklendi: DestekTalepleri, DestekTalebiYanitlari, DestekTalebiEkleri, DestekTalebiAktiviteleri, DestekDepartmanlari, DestekKategorileri, DestekHazirYanitlari, DestekSlaListesi, DestekAyarlari
+- OnModelCreating'de tam konfigürasyon: Index'ler (TalepNo unique, Durum+Oncelik composite), relationship'ler, enum conversion
+
+#### E) Seed Data (`CRMFiloServis.Web/Data/DbInitializer.cs`)
+- `EnsureDestekModuluSeedDataAsync()` metodu
+- 3 varsayılan departman: Teknik Destek, Satış, Muhasebe
+- 6 varsayılan kategori: Yazılım Hatası, Donanım, Ağ/Bağlantı, Kurulum, Soru, Şikayet
+- 4 SLA tanımı: Kritik (2s yanıt/8s çözüm), Acil (4/24), Yüksek (8/48), Normal (24/72)
+- 5 hazır yanıt şablonu
+
+#### F) Razor Sayfaları
+
+**DestekTalebiList.razor** (`/destek-talepleri`):
+- Dashboard kartları: Toplam, Açık, Bugün Açılan, Bugün Kapanan, SLA Aşımı, Ort. Çözüm Süresi
+- Gelişmiş filtre paneli: Arama, Durum, Öncelik, Departman, Atanan, Sadece Açık, SLA Aşımı
+- Tablo görünümü: Talep No (link), Konu (etiketler), Müşteri, Departman, Öncelik badge, Durum badge, Atanan, SLA durumu (kalan süre), Son Aktivite (relative time)
+- Yeni Talep Modal: Müşteri bilgileri, Departman, Kategori, Öncelik, Kaynak, Konu, Açıklama, Etiketler
+- Atama Modal: Kullanıcı seçimi
+- Durum Değiştir Modal: Durum seçimi
+- Sayfalama: Önceki/Sonraki, sayfa numaraları
+- Helper metodlar: GetDurumText, GetDurumBadgeClass, GetOncelikText, GetOncelikBadgeClass, GetRelativeTime
+
+**DestekTalebiDetay.razor** (`/destek-talepleri/{TalepId:int}`):
+- Üst bar: Geri butonu, Talep No, Durum/Öncelik/SLA badge'leri, Çözüldü/Kapat/Yeniden Aç butonları, İşlemler dropdown
+- Sol panel (col-md-8):
+  - Talep detay kartı: Konu, Açıklama, Etiketler, Oluşturma tarihi
+  - Dosya ekleri kartı: İkon, dosya adı, boyut
+  - Konuşma kartı: Yanıt listesi (müşteri/personel/dahili not renklendirmesi), Yanıt Ekle butonu
+  - Aktivite geçmişi kartı: AktiviteTuru ikonu, açıklama, tarih, kullanıcı
+- Sağ panel (col-md-4):
+  - Müşteri bilgileri: Ad, Email, Telefon, Cari link
+  - Talep bilgileri: Departman, Kategori, Kaynak, Oluşturma/Kapatılma tarihi, Çözüm süresi
+  - Atama kartı: Atanan kullanıcı, düzenleme butonu
+  - SLA kartı: Süre, Bitiş tarihi, Durum (kalan süre/aşıldı)
+  - İlk yanıt süresi kartı
+  - Dahili notlar kartı
+- Modallar: Yanıt Ekle (hazır yanıt seçimi, dahili not, müşteri adına), Atama, Öncelik Değiştir, Departman Transfer
+- Helper metodlar: Tüm badge/ikon/format metodları
+
+#### G) NavMenu Güncellemesi
+- "Destek Talebi" ana başlık (bi-ticket-detailed)
+- Alt linkler: Tüm Talepler, Açık Talepler (filtre ile), Yeni Talep
+
+#### H) Program.cs Service Registration
+- `builder.Services.AddScoped<IDestekTalebiService, DestekTalebiService>();`
+
+**Özellikler:**
+- ✅ osTicket benzeri profesyonel biletleme sistemi
+- ✅ Departman ve kategori bazlı organizasyon
+- ✅ 5 seviyeli öncelik sistemi (Düşük → Kritik)
+- ✅ 6 durum akışı (Yeni → Kapalı)
+- ✅ SLA yönetimi ve aşım takibi
+- ✅ Otomatik talep numarası üretimi (YYYY-MMNNNN)
+- ✅ Hazır yanıt şablonları
+- ✅ Dosya eki desteği
+- ✅ Dahili not özelliği (müşteriye görünmez)
+- ✅ Müşteri adına yanıt yazma
+- ✅ Aktivite geçmişi takibi (12 aktivite türü)
+- ✅ Dashboard istatistikleri
+- ✅ Performans raporlaması (personel bazlı)
+- ✅ Departman transferi
+- ✅ Talep birleştirme altyapısı
+- ✅ Gelişmiş filtreleme ve sayfalama
+- ✅ Relative time gösterimi
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/DestekTalebi.cs` (yeni - tüm entity'ler)
+- `CRMFiloServis.Web/Services/Interfaces/IDestekTalebiService.cs` (yeni - 50+ metod, model sınıfları)
+- `CRMFiloServis.Web/Services/DestekTalebiService.cs` (yeni - 1565 satır implementasyon)
+- `CRMFiloServis.Web/Data/ApplicationDbContext.cs` (güncellendi - 9 DbSet, konfigürasyon)
+- `CRMFiloServis.Web/Data/DbInitializer.cs` (güncellendi - seed data)
+- `CRMFiloServis.Web/Components/Pages/DestekTalepleri/DestekTalebiList.razor` (yeni - 680 satır)
+- `CRMFiloServis.Web/Components/Pages/DestekTalepleri/DestekTalebiDetay.razor` (yeni - 833 satır)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncellendi)
+- `CRMFiloServis.Web/Program.cs` (güncellendi)
+- `CRMFiloServis.Web/Models/PagedResult.cs` (güncellendi - PageNumber property)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 054 - Puantaj Excel Import Sistemi + Hata Düzeltmeleri
 **Talep:** Puantaj verilerini Excel şablonundan import etme sistemi. Bölge, sıra no, semt (güzergah), sefer fiyatı, S/A servis tipi, plaka, şoför, telefon, firma adı, günlük puantaj (ayın günleri), sefer günü toplamı, toplam, KDV %20, KDV %10, kesinti, ödenecek. Araç/şoför/güzergah otomatik oluşturma. Ayrıca 5 kritik hata düzeltmesi.
 

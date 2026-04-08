@@ -174,6 +174,20 @@ public class ApplicationDbContext : DbContext
     public DbSet<IhaleProje> IhaleProjeleri { get; set; }
     public DbSet<IhaleGuzergahKalem> IhaleGuzergahKalemleri { get; set; }
 
+    // Destek Talebi (Ticket) Modülü - osTicket benzeri
+    public DbSet<DestekTalebi> DestekTalepleri { get; set; }
+    public DbSet<DestekTalebiYanit> DestekTalebiYanitlari { get; set; }
+    public DbSet<DestekTalebiEk> DestekTalebiEkleri { get; set; }
+    public DbSet<DestekTalebiAktivite> DestekTalebiAktiviteleri { get; set; }
+    public DbSet<DestekTalebiIliski> DestekTalebiIliskileri { get; set; }
+    public DbSet<DestekDepartman> DestekDepartmanlari { get; set; }
+    public DbSet<DestekDepartmanUye> DestekDepartmanUyeleri { get; set; }
+    public DbSet<DestekKategori> DestekKategorileri { get; set; }
+    public DbSet<DestekHazirYanit> DestekHazirYanitlari { get; set; }
+    public DbSet<DestekBilgiBankasi> DestekBilgiBankasiMakaleleri { get; set; }
+    public DbSet<DestekSla> DestekSlaListesi { get; set; }
+    public DbSet<DestekAyar> DestekAyarlari { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1563,6 +1577,215 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.StokKartiId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // ===== DESTEK TALEBİ (TICKET) MODÜLÜ KONFIGURASYONLARI - osTicket benzeri =====
+
+        // DestekTalebi - Ana ticket tablosu
+        modelBuilder.Entity<DestekTalebi>(entity =>
+        {
+            entity.HasIndex(e => e.TalepNo).IsUnique();
+            entity.HasIndex(e => new { e.DepartmanId, e.Durum });
+            entity.HasIndex(e => new { e.AtananKullaniciId, e.Durum });
+            entity.HasIndex(e => e.SonAktiviteTarihi);
+            entity.Property(e => e.TalepNo).HasMaxLength(50);
+            entity.Property(e => e.Konu).HasMaxLength(500);
+            entity.Property(e => e.MusteriAdi).HasMaxLength(200);
+            entity.Property(e => e.MusteriEmail).HasMaxLength(200);
+            entity.Property(e => e.MusteriTelefon).HasMaxLength(20);
+            entity.Property(e => e.Etiketler).HasMaxLength(500);
+            entity.HasOne(e => e.Departman)
+                .WithMany(d => d.Talepler)
+                .HasForeignKey(e => e.DepartmanId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Kategori)
+                .WithMany(k => k.Talepler)
+                .HasForeignKey(e => e.KategoriId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.AtananKullanici)
+                .WithMany()
+                .HasForeignKey(e => e.AtananKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.OlusturanKullanici)
+                .WithMany()
+                .HasForeignKey(e => e.OlusturanKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Cari)
+                .WithMany()
+                .HasForeignKey(e => e.CariId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekTalebiYanit - Ticket yanıtları/konuşma
+        modelBuilder.Entity<DestekTalebiYanit>(entity =>
+        {
+            entity.HasIndex(e => new { e.DestekTalebiId, e.CreatedAt });
+            entity.Property(e => e.MusteriAdi).HasMaxLength(200);
+            entity.HasOne(e => e.DestekTalebi)
+                .WithMany(t => t.Yanitlar)
+                .HasForeignKey(e => e.DestekTalebiId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekTalebiEk - Dosya ekleri
+        modelBuilder.Entity<DestekTalebiEk>(entity =>
+        {
+            entity.Property(e => e.DosyaAdi).HasMaxLength(255);
+            entity.Property(e => e.OrijinalDosyaAdi).HasMaxLength(255);
+            entity.Property(e => e.DosyaYolu).HasMaxLength(500);
+            entity.Property(e => e.MimeTipi).HasMaxLength(100);
+            entity.HasOne(e => e.DestekTalebi)
+                .WithMany(t => t.Ekler)
+                .HasForeignKey(e => e.DestekTalebiId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Yanit)
+                .WithMany(y => y.Ekler)
+                .HasForeignKey(e => e.YanitId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.YukleyenKullanici)
+                .WithMany()
+                .HasForeignKey(e => e.YukleyenKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekTalebiAktivite - Aktivite/Tarihçe kaydı
+        modelBuilder.Entity<DestekTalebiAktivite>(entity =>
+        {
+            entity.HasIndex(e => new { e.DestekTalebiId, e.CreatedAt });
+            entity.Property(e => e.Aciklama).HasMaxLength(1000);
+            entity.Property(e => e.EskiDeger).HasMaxLength(500);
+            entity.Property(e => e.YeniDeger).HasMaxLength(500);
+            entity.HasOne(e => e.DestekTalebi)
+                .WithMany(t => t.Aktiviteler)
+                .HasForeignKey(e => e.DestekTalebiId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekTalebiIliski - Bağlı ticketlar
+        modelBuilder.Entity<DestekTalebiIliski>(entity =>
+        {
+            entity.HasIndex(e => new { e.AnaTalepId, e.IliskiliTalepId }).IsUnique();
+            entity.HasOne(e => e.AnaTalep)
+                .WithMany(t => t.IliskiliTalepler)
+                .HasForeignKey(e => e.AnaTalepId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.IliskiliTalep)
+                .WithMany()
+                .HasForeignKey(e => e.IliskiliTalepId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekDepartman - Departmanlar
+        modelBuilder.Entity<DestekDepartman>(entity =>
+        {
+            entity.HasIndex(e => e.Ad);
+            entity.Property(e => e.Ad).HasMaxLength(100);
+            entity.Property(e => e.Email).HasMaxLength(200);
+            entity.HasOne(e => e.UstDepartman)
+                .WithMany(d => d.AltDepartmanlar)
+                .HasForeignKey(e => e.UstDepartmanId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekDepartmanUye - Departman üyeleri
+        modelBuilder.Entity<DestekDepartmanUye>(entity =>
+        {
+            entity.HasIndex(e => new { e.DepartmanId, e.KullaniciId }).IsUnique();
+            entity.HasOne(e => e.Departman)
+                .WithMany(d => d.Uyeler)
+                .HasForeignKey(e => e.DepartmanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekKategori - Kategoriler
+        modelBuilder.Entity<DestekKategori>(entity =>
+        {
+            entity.HasIndex(e => e.Ad);
+            entity.Property(e => e.Ad).HasMaxLength(100);
+            entity.Property(e => e.Renk).HasMaxLength(20);
+            entity.Property(e => e.Simge).HasMaxLength(50);
+            entity.HasOne(e => e.Departman)
+                .WithMany(d => d.Kategoriler)
+                .HasForeignKey(e => e.DepartmanId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.UstKategori)
+                .WithMany(k => k.AltKategoriler)
+                .HasForeignKey(e => e.UstKategoriId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekHazirYanit - Hazır yanıt şablonları
+        modelBuilder.Entity<DestekHazirYanit>(entity =>
+        {
+            entity.Property(e => e.Ad).HasMaxLength(200);
+            entity.Property(e => e.KonuSablonu).HasMaxLength(500);
+            entity.HasOne(e => e.Departman)
+                .WithMany()
+                .HasForeignKey(e => e.DepartmanId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Kategori)
+                .WithMany()
+                .HasForeignKey(e => e.KategoriId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekBilgiBankasi - Bilgi bankası makaleleri
+        modelBuilder.Entity<DestekBilgiBankasi>(entity =>
+        {
+            entity.HasIndex(e => e.Slug).IsUnique();
+            entity.HasIndex(e => e.Durum);
+            entity.Property(e => e.Baslik).HasMaxLength(500);
+            entity.Property(e => e.Slug).HasMaxLength(200);
+            entity.Property(e => e.SeoBaslik).HasMaxLength(200);
+            entity.Property(e => e.Etiketler).HasMaxLength(500);
+            entity.HasOne(e => e.Kategori)
+                .WithMany()
+                .HasForeignKey(e => e.KategoriId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Yazar)
+                .WithMany()
+                .HasForeignKey(e => e.YazarKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekSla - SLA tanımları
+        modelBuilder.Entity<DestekSla>(entity =>
+        {
+            entity.HasIndex(e => e.Oncelik);
+            entity.Property(e => e.Ad).HasMaxLength(100);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // DestekAyar - Sistem ayarları
+        modelBuilder.Entity<DestekAyar>(entity =>
+        {
+            entity.HasIndex(e => e.Anahtar).IsUnique();
+            entity.Property(e => e.Anahtar).HasMaxLength(100);
+            entity.Property(e => e.Deger).HasMaxLength(2000);
+            entity.Property(e => e.Grup).HasMaxLength(50);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
     }

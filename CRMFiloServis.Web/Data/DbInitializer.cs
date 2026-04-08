@@ -480,6 +480,111 @@ public static class DbInitializer
         }
 
         await SeedBudgetMasrafKalemleriAsync(context);
+
+        // Destek Talebi seed verilerini ekle
+        await SeedDestekTalebiVerileriAsync(context);
+    }
+
+    private static async Task SeedDestekTalebiVerileriAsync(ApplicationDbContext context)
+    {
+        try
+        {
+            // Varsayılan Departmanlar
+            if (!await context.DestekDepartmanlari.AnyAsync())
+            {
+                var departmanlar = new List<DestekDepartman>
+                {
+                    new() { Ad = "Teknik Destek", Aciklama = "Teknik sorunlar ve sistem hataları", Email = "teknik@firma.com", SiraNo = 1, Aktif = true, VarsayilanSlaSuresi = 24, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Satış", Aciklama = "Satış ve fiyatlandırma soruları", Email = "satis@firma.com", SiraNo = 2, Aktif = true, VarsayilanSlaSuresi = 8, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Muhasebe", Aciklama = "Fatura ve ödeme sorunları", Email = "muhasebe@firma.com", SiraNo = 3, Aktif = true, VarsayilanSlaSuresi = 48, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Genel", Aciklama = "Genel sorular ve öneriler", Email = "destek@firma.com", SiraNo = 4, Aktif = true, VarsayilanSlaSuresi = 72, CreatedAt = DateTime.UtcNow }
+                };
+                context.DestekDepartmanlari.AddRange(departmanlar);
+                await context.SaveChangesAsync();
+                Console.WriteLine("Destek departmanları eklendi.");
+            }
+
+            // Varsayılan Kategoriler
+            if (!await context.DestekKategorileri.AnyAsync())
+            {
+                var teknikDept = await context.DestekDepartmanlari.FirstOrDefaultAsync(d => d.Ad == "Teknik Destek");
+                var satisDept = await context.DestekDepartmanlari.FirstOrDefaultAsync(d => d.Ad == "Satış");
+                var muhasebeDept = await context.DestekDepartmanlari.FirstOrDefaultAsync(d => d.Ad == "Muhasebe");
+
+                var kategoriler = new List<DestekKategori>
+                {
+                    // Teknik Destek kategorileri
+                    new() { Ad = "Sistem Hatası", DepartmanId = teknikDept?.Id, Renk = "#dc3545", Simge = "bi-bug", SiraNo = 1, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Performans Sorunu", DepartmanId = teknikDept?.Id, Renk = "#ffc107", Simge = "bi-speedometer", SiraNo = 2, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Özellik İsteği", DepartmanId = teknikDept?.Id, Renk = "#17a2b8", Simge = "bi-lightbulb", SiraNo = 3, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Kullanım Yardımı", DepartmanId = teknikDept?.Id, Renk = "#28a745", Simge = "bi-question-circle", SiraNo = 4, Aktif = true, CreatedAt = DateTime.UtcNow },
+
+                    // Satış kategorileri
+                    new() { Ad = "Fiyat Teklifi", DepartmanId = satisDept?.Id, Renk = "#007bff", Simge = "bi-currency-dollar", SiraNo = 1, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Lisans/Abonelik", DepartmanId = satisDept?.Id, Renk = "#6f42c1", Simge = "bi-key", SiraNo = 2, Aktif = true, CreatedAt = DateTime.UtcNow },
+
+                    // Muhasebe kategorileri
+                    new() { Ad = "Fatura Sorunu", DepartmanId = muhasebeDept?.Id, Renk = "#fd7e14", Simge = "bi-receipt", SiraNo = 1, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Ödeme Sorunu", DepartmanId = muhasebeDept?.Id, Renk = "#e83e8c", Simge = "bi-credit-card", SiraNo = 2, Aktif = true, CreatedAt = DateTime.UtcNow }
+                };
+                context.DestekKategorileri.AddRange(kategoriler);
+                await context.SaveChangesAsync();
+                Console.WriteLine("Destek kategorileri eklendi.");
+            }
+
+            // Varsayılan SLA Tanımları
+            if (!await context.DestekSlaListesi.AnyAsync())
+            {
+                var slaListesi = new List<DestekSla>
+                {
+                    new() { Ad = "Kritik SLA", Oncelik = DestekOncelik.Kritik, IlkYanitSuresi = 1, CozumSuresi = 4, Aktif = true, SadeceMesaiSaatleri = false, SadeceHaftaIci = false, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Acil SLA", Oncelik = DestekOncelik.Acil, IlkYanitSuresi = 2, CozumSuresi = 8, Aktif = true, SadeceMesaiSaatleri = false, SadeceHaftaIci = false, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Yüksek SLA", Oncelik = DestekOncelik.Yuksek, IlkYanitSuresi = 4, CozumSuresi = 24, Aktif = true, SadeceMesaiSaatleri = true, SadeceHaftaIci = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Normal SLA", Oncelik = DestekOncelik.Normal, IlkYanitSuresi = 8, CozumSuresi = 48, Aktif = true, SadeceMesaiSaatleri = true, SadeceHaftaIci = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Düşük SLA", Oncelik = DestekOncelik.Dusuk, IlkYanitSuresi = 24, CozumSuresi = 72, Aktif = true, SadeceMesaiSaatleri = true, SadeceHaftaIci = true, CreatedAt = DateTime.UtcNow }
+                };
+                context.DestekSlaListesi.AddRange(slaListesi);
+                await context.SaveChangesAsync();
+                Console.WriteLine("SLA tanımları eklendi.");
+            }
+
+            // Varsayılan Hazır Yanıtlar
+            if (!await context.DestekHazirYanitlari.AnyAsync())
+            {
+                var hazirYanitlar = new List<DestekHazirYanit>
+                {
+                    new() { Ad = "Hoş Geldiniz", KonuSablonu = "Talebiniz Alındı", Icerik = "<p>Merhaba,</p><p>Destek talebiniz başarıyla alınmıştır. En kısa sürede size geri dönüş yapacağız.</p><p>Saygılarımızla,<br/>Destek Ekibi</p>", SiraNo = 1, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Ek Bilgi İsteği", Icerik = "<p>Merhaba,</p><p>Talebinizi daha iyi değerlendirebilmemiz için aşağıdaki bilgileri paylaşmanızı rica ederiz:</p><ul><li>Sorunun detaylı açıklaması</li><li>Hangi adımlarda sorun yaşıyorsunuz?</li><li>Varsa ekran görüntüsü</li></ul><p>Teşekkürler.</p>", SiraNo = 2, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Çözüm Bildirimi", KonuSablonu = "Talebiniz Çözüldü", Icerik = "<p>Merhaba,</p><p>Talebiniz incelenmiş ve gerekli işlemler yapılmıştır. Sorununuzun çözüldüğünü düşünüyoruz.</p><p>Başka bir sorunuz olursa bizimle iletişime geçmekten çekinmeyin.</p><p>İyi çalışmalar dileriz.</p>", SiraNo = 3, Aktif = true, CreatedAt = DateTime.UtcNow },
+                    new() { Ad = "Teşekkür", Icerik = "<p>Merhaba,</p><p>Geri bildiriminiz için teşekkür ederiz. Önerileriniz bizim için değerlidir.</p><p>Saygılarımızla.</p>", SiraNo = 4, Aktif = true, CreatedAt = DateTime.UtcNow }
+                };
+                context.DestekHazirYanitlari.AddRange(hazirYanitlar);
+                await context.SaveChangesAsync();
+                Console.WriteLine("Hazır yanıtlar eklendi.");
+            }
+
+            // Varsayılan Sistem Ayarları
+            if (!await context.DestekAyarlari.AnyAsync())
+            {
+                var ayarlar = new List<DestekAyar>
+                {
+                    new() { Anahtar = "SirketAdi", Deger = "Koa Filo Servis", Grup = "Genel", Aciklama = "Şirket adı", CreatedAt = DateTime.UtcNow },
+                    new() { Anahtar = "DestekEmail", Deger = "destek@koafiloservis.com", Grup = "Genel", Aciklama = "Destek e-posta adresi", CreatedAt = DateTime.UtcNow },
+                    new() { Anahtar = "OtomatikAtama", Deger = "false", Grup = "Atama", Aciklama = "Yeni talepleri otomatik ata", CreatedAt = DateTime.UtcNow },
+                    new() { Anahtar = "MusteriPortaliAktif", Deger = "false", Grup = "Portal", Aciklama = "Müşteri self-servis portalı aktif mi", CreatedAt = DateTime.UtcNow },
+                    new() { Anahtar = "MemnuniyetAnketiAktif", Deger = "true", Grup = "Anket", Aciklama = "Talep kapatıldığında memnuniyet anketi gönder", CreatedAt = DateTime.UtcNow },
+                    new() { Anahtar = "MaksimumDosyaBoyutuMB", Deger = "10", Grup = "Dosya", Aciklama = "Maksimum dosya yükleme boyutu (MB)", CreatedAt = DateTime.UtcNow },
+                    new() { Anahtar = "IzinliDosyaTipleri", Deger = ".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip", Grup = "Dosya", Aciklama = "İzin verilen dosya uzantıları", CreatedAt = DateTime.UtcNow }
+                };
+                context.DestekAyarlari.AddRange(ayarlar);
+                await context.SaveChangesAsync();
+                Console.WriteLine("Destek ayarları eklendi.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Destek talebi seed hatası: {ex.Message}");
+        }
     }
 
     private static async Task SeedBudgetMasrafKalemleriAsync(ApplicationDbContext context)
