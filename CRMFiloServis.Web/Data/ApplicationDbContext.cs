@@ -117,6 +117,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<KullaniciCari> KullaniciCariler { get; set; }
     public DbSet<DashboardWidget> DashboardWidgetlar { get; set; }
     public DbSet<CariIletisimNot> CariIletisimNotlar { get; set; }
+    public DbSet<CariHatirlatma> CariHatirlatmalar { get; set; }
 
     // WhatsApp Iletisim Modulu
     public DbSet<WhatsAppKisi> WhatsAppKisiler { get; set; }

@@ -282,6 +282,77 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 **Durum:** ✅ Tamamlandı
 
+### Kayıt 052 - Cari Otomatik Hatırlatmalar
+**Talep:** Cariler için vadesi yaklaşan/geçmiş fatura hatırlatmaları, borç/alacak eşik uyarıları, hareketsiz cari bildirimleri, otomatik e-posta ve sistem bildirimi gönderimi.
+
+**Yapılanlar:**
+- `CariHatirlatmaSettings.cs` entity oluşturuldu (~120 satır):
+  - `CariHatirlatmaSettings`: Hatırlatma ayarları (aktif/pasif, kontrol saati, vade günleri, eşik tutarları, email ayarları)
+  - `CariHatirlatma`: Hatırlatma geçmişi entity (cari, fatura, tip, tutar, gönderim durumu)
+  - `CariHatirlatmaTipi` enum: VadeYaklasan, VadeGecmis, BorcEsikAsildi, AlacakEsikAsildi, TahsilatHatirlatma, HareketsizCari, OdemeAlindi, FaturaOdendi
+  - `CariHatirlatmaRapor`: Kontrol raporu (toplam uyarı, tutarlar, detay listesi)
+  - `CariHatirlatmaDetay`: Uyarı detayı (cari bilgisi, tutar, vade, öncelik)
+- `ICariHatirlatmaService.cs` interface oluşturuldu (12 metot):
+  - **Ayarlar**: `GetAyarlarAsync`, `SaveAyarlarAsync`
+  - **Manuel Kontrol**: `HatirlatmaKontroluYapAsync`
+  - **Vade Kontrolleri**: `VadeYaklasanFaturalariGetirAsync`, `VadeGecmisFaturalariGetirAsync`
+  - **Eşik Kontrolleri**: `BorcEsikAsilanCarileriGetirAsync`, `AlacakEsikAsilanCarileriGetirAsync`
+  - **Hareketsiz Cari**: `HareketsizCarileriGetirAsync`
+  - **Hatırlatma Geçmişi**: `GetHatirlatmaGecmisiAsync`
+  - **Tek Cari**: `TekCariHatirlatmaGonderAsync`
+  - **E-posta**: `VadeHatirlatmaEmailiGonderAsync`, `TopluHatirlatmaEmailiGonderAsync`
+  - **Özet**: `GetHatirlatmaOzetiAsync`
+- `CariHatirlatmaService.cs` implementasyon oluşturuldu (~650 satır):
+  - **Ayar Yönetimi**: JSON dosya ile firma bazlı ayar saklama (`Data/HatirlatmaAyarlari/`)
+  - **Vade Yaklaşan**: Belirlenen günlerde hatırlatma (7, 3, 1 gün önce)
+  - **Vade Geçmiş**: Minimum tutar filtreli geçmiş fatura tespiti
+  - **Borç/Alacak Eşik**: Fatura bazlı bakiye hesaplama, eşik aşımı kontrolü
+  - **Hareketsiz Cari**: Son fatura/hareket tarihine göre tespit
+  - **Bildirim Oluşturma**: Admin kullanıcılara sistem bildirimi
+  - **E-posta Gönderimi**: Tek fatura ve toplu rapor email şablonları
+  - **Özet İstatistikler**: Dashboard için güncel özet bilgileri
+- `CariHatirlatmaBackgroundService.cs` arka plan servisi oluşturuldu (~100 satır):
+  - Belirlenen saatte günlük otomatik kontrol
+  - Firma bazlı ayar kontrolü
+  - Son kontrol tarihi takibi
+- `CariHatirlatmaAyarlari.razor` sayfa oluşturuldu (~350 satır):
+  - **Route**: `/ayarlar/cari-hatirlatma`
+  - **Özet Kartları**: Vadesi geçmiş/yaklaşan sayısı, eşik aşımı, haftalık gönderim
+  - **Genel Ayarlar**: Aktif/pasif, kontrol saati, son kontrol bilgisi
+  - **Vade Hatırlatmaları**: Yaklaşan/geçmiş gün ayarları, minimum tutar
+  - **Eşik Uyarıları**: Borç/alacak eşik tutarları
+  - **Diğer**: Tahsilat özeti, hareketsiz cari kontrolü
+  - **Bildirim Ayarları**: E-posta gönderimi, admin/müşteri, ek adresler
+  - **Manuel Kontrol**: Test butonu, kontrol raporu görüntüleme
+- `ApplicationDbContext.cs` güncellendi - `CariHatirlatmalar` DbSet eklendi
+- `Program.cs` güncellendi - `ICariHatirlatmaService`, `CariHatirlatmaBackgroundService` DI kaydı eklendi
+- `NavMenu.razor` güncellendi - CRM menüsüne "Cari Hatırlatma" linki eklendi
+
+**Özellikler:**
+- ✅ Vadesi yaklaşan fatura hatırlatmaları (özelleştirilebilir gün sayıları)
+- ✅ Vadesi geçmiş fatura hatırlatmaları (minimum tutar filtreli)
+- ✅ Borç/alacak eşik aşımı uyarıları
+- ✅ Hareketsiz cari tespiti (belirlenen gün sonra)
+- ✅ Günlük otomatik kontrol (arka plan servisi)
+- ✅ Sistem bildirimi oluşturma (öncelik seviyeleri)
+- ✅ Toplu e-posta raporu (admin kullanıcılara)
+- ✅ Müşteriye direkt e-posta gönderimi (opsiyonel)
+- ✅ Firma bazlı ayar yönetimi (JSON)
+- ✅ Manuel kontrol ve rapor görüntüleme
+- ✅ Hatırlatma geçmişi kaydı
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/CariHatirlatmaSettings.cs` (yeni)
+- `CRMFiloServis.Web/Services/Interfaces/ICariHatirlatmaService.cs` (yeni)
+- `CRMFiloServis.Web/Services/CariHatirlatmaService.cs` (yeni)
+- `CRMFiloServis.Web/Services/CariHatirlatmaBackgroundService.cs` (yeni)
+- `CRMFiloServis.Web/Components/Pages/Ayarlar/CariHatirlatmaAyarlari.razor` (yeni)
+- `CRMFiloServis.Web/Data/ApplicationDbContext.cs` (güncellendi)
+- `CRMFiloServis.Web/Program.cs` (güncellendi)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 048 - Kolay Muhasebe Girişi
 **Talep:** Muhasebe bilgisi olmayan kullanıcılar için tek sayfadan gelir-gider fatura, masraf, fiş, tahsilat, ödeme, mahsup, avans girişleri yapılabilecek sayfa. Girilen bilgilere göre altta muhasebe kaydı (borç-alacak) otomatik gösterilecek, kullanıcı manuel düzeltme yapabilecek, "Muhasebeleştir" butonu ile kayıt oluşturulacak.
 
