@@ -80,6 +80,24 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ---
 
+### Kayıt 103 - Araç Masraf Servisinde Sahiplik Kurallarının Uygulanması
+**Talep:** `Özmal / Kiralık / Komisyon` sahiplik düzenine göre araç masrafı akışının uygulanması.
+
+**Yapılanlar:**
+- `AracMasrafService` sorgularına `IsDeleted` filtresi eklendi.
+- `Komisyon` sahiplik tipindeki araçlarda masraf kaydı oluşturulurken/güncellenirken:
+  - `SoforId` otomatik temizleniyor
+  - `CariId` komisyoncu cari üzerinden zorunlu hale getiriliyor
+  - muhasebe karşı hesabı komisyoncu cari hesabına yönleniyor
+- muhasebe açıklamaları sahiplik tipini gösterecek şekilde güncellendi.
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Services/AracMasrafService.cs`
+
+**Durum:** ✅ Tamamlandı
+
+---
+
 ### Kayıt 101 - AI Asistan Floating Widget ve İhale Örnek Veri Oluşturma
 **Talep:** AI Asistan'ın her sayfada erişilebilir olması ve İhale Hazırlık modülüne test verisi oluşturma özelliği eklenmesi.
 

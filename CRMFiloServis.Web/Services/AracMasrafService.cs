@@ -24,6 +24,7 @@ public class AracMasrafService : IAracMasrafService
             .Include(m => m.Sofor)
             .Include(m => m.Cari)
             .Include(m => m.MuhasebeFis)
+            .Where(m => !m.IsDeleted)
             .OrderByDescending(m => m.MasrafTarihi)
             .ToListAsync();
     }
@@ -35,7 +36,7 @@ public class AracMasrafService : IAracMasrafService
             .Include(m => m.Guzergah)
             .Include(m => m.Sofor)
             .Include(m => m.Cari)
-            .Where(m => m.AracId == aracId)
+            .Where(m => !m.IsDeleted && m.AracId == aracId)
             .OrderByDescending(m => m.MasrafTarihi)
             .ToListAsync();
     }
@@ -48,7 +49,7 @@ public class AracMasrafService : IAracMasrafService
             .Include(m => m.Guzergah)
             .Include(m => m.Sofor)
             .Include(m => m.Cari)
-            .Where(m => m.MasrafTarihi >= startDate && m.MasrafTarihi <= endDate)
+            .Where(m => !m.IsDeleted && m.MasrafTarihi >= startDate && m.MasrafTarihi <= endDate)
             .OrderByDescending(m => m.MasrafTarihi)
             .ToListAsync();
     }
@@ -60,7 +61,7 @@ public class AracMasrafService : IAracMasrafService
             .Include(m => m.Guzergah)
             .Include(m => m.Sofor)
             .Include(m => m.Cari)
-            .Where(m => m.AracId == aracId && m.MasrafTarihi >= startDate && m.MasrafTarihi <= endDate)
+            .Where(m => !m.IsDeleted && m.AracId == aracId && m.MasrafTarihi >= startDate && m.MasrafTarihi <= endDate)
             .OrderByDescending(m => m.MasrafTarihi)
             .ToListAsync();
     }
@@ -74,7 +75,7 @@ public class AracMasrafService : IAracMasrafService
             .Include(m => m.ServisCalisma)
             .Include(m => m.Sofor)
             .Include(m => m.Cari)
-            .Where(m => m.ArizaKaynaklimi)
+            .Where(m => !m.IsDeleted && m.ArizaKaynaklimi)
             .OrderByDescending(m => m.MasrafTarihi)
             .ToListAsync();
     }
@@ -89,11 +90,12 @@ public class AracMasrafService : IAracMasrafService
             .Include(m => m.Sofor)
             .Include(m => m.Cari)
             .Include(m => m.MuhasebeFis)
-            .FirstOrDefaultAsync(m => m.Id == id);
+            .FirstOrDefaultAsync(m => m.Id == id && !m.IsDeleted);
     }
 
     public async Task<AracMasraf> CreateAsync(AracMasraf aracMasraf)
     {
+        await UygulaSahiplikKurallariAsync(aracMasraf);
         ValidateMuhtapSecimi(aracMasraf);
 
         _context.AracMasraflari.Add(aracMasraf);
@@ -105,10 +107,11 @@ public class AracMasrafService : IAracMasrafService
 
     public async Task<AracMasraf> UpdateAsync(AracMasraf aracMasraf)
     {
+        await UygulaSahiplikKurallariAsync(aracMasraf);
         ValidateMuhtapSecimi(aracMasraf);
 
         var existing = await _context.AracMasraflari
-            .FirstOrDefaultAsync(m => m.Id == aracMasraf.Id);
+            .FirstOrDefaultAsync(m => m.Id == aracMasraf.Id && !m.IsDeleted);
 
         if (existing == null)
             throw new InvalidOperationException("Masraf kaydı bulunamadı.");
@@ -154,6 +157,7 @@ public class AracMasrafService : IAracMasrafService
     public async Task<decimal> GetToplamMasrafByAracAsync(int aracId, DateTime? startDate = null, DateTime? endDate = null)
     {
         var query = _context.AracMasraflari.Where(m => m.AracId == aracId);
+        query = query.Where(m => !m.IsDeleted);
 
         if (startDate.HasValue)
             query = query.Where(m => m.MasrafTarihi >= startDate.Value);
@@ -168,6 +172,25 @@ public class AracMasrafService : IAracMasrafService
     {
         if (aracMasraf.SoforId.HasValue && aracMasraf.CariId.HasValue)
             throw new InvalidOperationException("Aynı masraf kaydı için hem personel hem cari seçilemez.");
+    }
+
+    private async Task UygulaSahiplikKurallariAsync(AracMasraf aracMasraf)
+    {
+        var arac = await _context.Araclar
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == aracMasraf.AracId && !a.IsDeleted);
+
+        if (arac == null)
+            throw new InvalidOperationException("Masraf için seçilen araç bulunamadı.");
+
+        if (arac.SahiplikTipi != AracSahiplikTipi.Komisyon)
+            return;
+
+        aracMasraf.SoforId = null;
+        aracMasraf.CariId ??= arac.KomisyoncuCariId;
+
+        if (!aracMasraf.CariId.HasValue)
+            throw new InvalidOperationException("Komisyon araç masraflarında komisyoncu cari tanımlı olmalı.");
     }
 
     private async Task MuhasebeFisSenkronizeEtAsync(int aracMasrafId)
@@ -254,6 +277,13 @@ public class AracMasrafService : IAracMasrafService
 
     private async Task<MuhasebeHesap> GetKarsiHesapAsync(AracMasraf aracMasraf)
     {
+        if (aracMasraf.Arac?.SahiplikTipi == AracSahiplikTipi.Komisyon)
+        {
+            var komisyonCariId = aracMasraf.CariId ?? aracMasraf.Arac.KomisyoncuCariId;
+            if (komisyonCariId.HasValue)
+                return await GetOrCreateCariHesapAsync(komisyonCariId.Value);
+        }
+
         if (aracMasraf.SoforId.HasValue)
             return await GetOrCreatePersonelHesapAsync(aracMasraf.SoforId.Value);
 
@@ -322,13 +352,23 @@ public class AracMasrafService : IAracMasrafService
 
     private static string BuildFisAciklamasi(AracMasraf aracMasraf)
     {
+        var sahiplik = aracMasraf.Arac?.SahiplikTipi switch
+        {
+            AracSahiplikTipi.Ozmal => "Özmal",
+            AracSahiplikTipi.Kiralik => "Kiralık",
+            AracSahiplikTipi.Komisyon => "Komisyon",
+            _ => "Araç"
+        };
         var muhatap = aracMasraf.Sofor?.TamAd ?? aracMasraf.Cari?.Unvan ?? "Kasa";
         var belge = string.IsNullOrWhiteSpace(aracMasraf.BelgeNo) ? string.Empty : $" / Belge: {aracMasraf.BelgeNo}";
-        return $"Araç masrafı - {aracMasraf.Arac?.AktifPlaka} - {aracMasraf.MasrafKalemi?.MasrafAdi} - {muhatap}{belge}";
+        return $"{sahiplik} araç masrafı - {aracMasraf.Arac?.AktifPlaka} - {aracMasraf.MasrafKalemi?.MasrafAdi} - {muhatap}{belge}";
     }
 
     private static string BuildKarsiHesapAciklamasi(AracMasraf aracMasraf)
     {
+        if (aracMasraf.Arac?.SahiplikTipi == AracSahiplikTipi.Komisyon && aracMasraf.Cari != null)
+            return $"Komisyon araç masrafı: {aracMasraf.Cari.Unvan}";
+
         if (aracMasraf.Sofor != null)
             return $"Personel fişi: {aracMasraf.Sofor.TamAd}";
 
