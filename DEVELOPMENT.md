@@ -41,6 +41,125 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 101 - AI Asistan Floating Widget ve İhale Örnek Veri Oluşturma
+**Talep:** AI Asistan'ın her sayfada erişilebilir olması ve İhale Hazırlık modülüne test verisi oluşturma özelliği eklenmesi.
+
+**Yapılanlar:**
+
+**AI Asistan Floating Widget:**
+- `AIAsistanFloating.razor` bileşeni oluşturuldu
+- Sağ alt köşede yüzen ChatGPT benzeri chat butonu
+- Modal içinde tam AI sohbet arayüzü
+- Ollama API ile streaming yanıt desteği
+- Sistem bağlamını anlayan prompt
+- `MainLayout.razor`'a widget eklendi (tüm sayfalarda erişilebilir)
+- `NavMenu.razor`'dan eski AI Asistan linki kaldırıldı
+- CSS animasyonları (pulse efekti, smooth geçişler)
+
+**İhale Örnek Veri Oluşturma:**
+- `IIhaleHazirlikService` interface'e `OrnekProjeOlusturAsync()` eklendi
+- `IhaleHazirlikService`'e kapsamlı örnek veri metodu yazıldı:
+  - Örnek Güzergah (Merkez - Organize Sanayi, 45km)
+  - Örnek Şoför (32.000 TL brüt maaş)
+  - Örnek Araç (Mercedes Sprinter, 34 ORNEK 001)
+  - İhale Projesi (12 ay süreli, %30 enflasyon, %35 yakıt zam)
+  - Güzergah Kalemi (35 personel, tüm masraf kalemleri dolu)
+  - Puantaj Kaydı (Gun01-31 alanları, hafta içi 2 sefer, hafta sonu 0)
+- `HaftaIciMi()` helper metodu eklendi
+- `IhaleHazirlik.razor`'a "Örnek Veri Oluştur" butonu eklendi
+- Oluşturulan proje detay sayfasına yönlendirme
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Components/Shared/AIAsistanFloating.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Layout/MainLayout.razor` (güncellendi)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncellendi)
+- `CRMFiloServis.Web/Services/Interfaces/IIhaleHazirlikService.cs` (güncellendi)
+- `CRMFiloServis.Web/Services/IhaleHazirlikService.cs` (güncellendi)
+- `CRMFiloServis.Web/Components/Pages/Ihale/IhaleHazirlik.razor` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
+---
+
+### Kayıt 102 - Personel Maaş Yönetimi SGK/Kalan Ayrımı ve Banka Ödeme Listesi Genişletme
+**Talep:** Personel maaş yönetiminde SGK maaş ve kalan maaş ayrımının görünür hale getirilmesi, banka ödeme listesinin genişletilmesi, görev filtreleme ve Excel export'un güncellenmesi.
+
+**Yapılanlar:**
+
+**Banka Ödeme Listesi Genişletme:**
+- `BankaOdemeListesi.razor` tamamen güncellendi
+- Ana tablo kolonları genişletildi:
+  - SGK Maaş (mavi arka plan, tooltip ile açıklama)
+  - Kalan Maaş / Ek Ödeme (sarı arka plan)
+  - Ara Toplam (SGK + Kalan)
+  - Avans, Kesinti, Alacak (mevcut kolonlar)
+  - Ödenecek (yeşil vurgulu)
+- Footer toplam satırı SGK/Kalan ayrımı ile güncellendi
+- Görev Dağılımı Özet Tablosu genişletildi (7 kolon)
+- Ödeme Özeti kartı yeniden düzenlendi:
+  - Toplam SGK Maaş (mavi satır)
+  - Toplam Kalan Maaş / Ek Ödeme (sarı satır)
+  - Ara Toplam (gri satır, formül gösterimi)
+  - Avans/Kesinti/Alacak satırları
+  - Net Ödenecek Tutar
+
+**Excel Export Güncelleme:**
+- Sütun sayısı 10'dan 12'ye genişletildi
+- SGK Maaş ve Kalan Maaş ayrı kolonlarda
+- Ara Toplam kolonu eklendi
+- SGK Maaş (açık mavi) ve Kalan Maaş (açık sarı) header renklendirmesi
+- Görev Özeti tablosu 7 kolona genişletildi
+
+**Model Sınıfları Güncelleme:**
+- `PersonelOdemeKalemi` sınıfına yeni alanlar eklendi:
+  - `SgkMaas`: SGK'ya bildirilen maaş
+  - `KalanMaas`: Ek ödeme (TopluMaaş - SGK Maaş)
+  - `AraToplam`: SGK + Kalan
+- `GorevOzet` sınıfına yeni alanlar eklendi:
+  - `ToplamSgkMaas`
+  - `ToplamKalanMaas`
+  - `ToplamAraToplam`
+
+**Hesaplama Mantığı:**
+```
+SGK Maaş = Personel.SgkMaasi
+Kalan Maaş = Personel.EkOdeme (TopluMaas - SgkMaasi)
+Ara Toplam = SGK Maaş + Kalan Maaş
+Ödenecek = Ara Toplam - Avans - Kesinti + Alacak
+```
+
+**Mevcut Özellikler (Zaten Çalışan):**
+- ✅ SGKBordroDahilMi flag (default false)
+- ✅ Görev filtreleme (PersonelGorev enum)
+- ✅ EFT/Banka ödeme dosyası export
+- ✅ Avans/Borç/Alacak entegrasyonu (PersonelFinansService)
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Web/Components/Pages/Personel/BankaOdemeListesi.razor` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
+---
+
+### Bilinen Sorunlar ve Teknik Borçlar
+
+#### EF Core Global Query Filter Uyarıları
+- `Cari` → `CariHatirlatma` ve `CariIletisimNot` ilişkilerinde global query filter uyumsuzluğu
+- `Firma` → `FaturaSablon` ilişkisinde aynı sorun
+- **Çözüm:** Navigation'ları optional yapma veya ilişkili entity'lere matching query filter ekleme
+
+#### PostgreSQL Migration Sorunu
+- `Hatirlaticilar` tablosu veritabanında mevcut değil
+- Migration, olmayan tabloda constraint silmeye çalışıyor
+- **Geçici Çözüm:** `EnsureCreated` ile tablo oluşturma
+- **Kalıcı Çözüm:** Yeni migration oluşturma:
+  ```bash
+  dotnet ef migrations add FixHatirlaticilarTable -p CRMFiloServis.Web
+  dotnet ef database update -p CRMFiloServis.Web
+  ```
+
+---
+
 ### Kayıt 099 - osTicket Benzeri Destek Talebi Sistemi (Kullanıcı ve Yetkili Arayüzü)
 **Talep:** Destek talebi modülüne osTicket benzeri 2 ana arayüz eklenmesi: kullanıcı talep girişi + yetkili yönetimi (Kanban board).
 

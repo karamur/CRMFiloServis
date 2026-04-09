@@ -779,4 +779,244 @@ public class IhaleHazirlikService : IIhaleHazirlikService
         }
         return 0;
     }
+
+    // ===== Örnek Veri Oluşturma =====
+
+    public async Task<IhaleProje> OrnekProjeOlusturAsync()
+    {
+        // Rastgele değerler için
+        var random = new Random();
+        var simdi = DateTime.Now;
+
+        // Önce örnek güzergah oluştur (veritabanında yoksa)
+        var ornekGuzergah = await _context.Guzergahlar
+            .FirstOrDefaultAsync(g => g.GuzergahAdi == "Merkez - Organize Sanayi (ÖRNEK)" && !g.IsDeleted);
+
+        if (ornekGuzergah == null)
+        {
+            ornekGuzergah = new Guzergah
+            {
+                GuzergahAdi = "Merkez - Organize Sanayi (ÖRNEK)",
+                BaslangicNoktasi = "Şehir Merkezi (Otogar Mevkii)",
+                BitisNoktasi = "ABC Fabrikası - OSB",
+                Mesafe = 45,
+                TahminiSure = 55,
+                SeferTipi = SeferTipi.SabahAksam,
+                PersonelSayisi = 35,
+                Aktif = true,
+                FirmaId = 1
+            };
+            _context.Guzergahlar.Add(ornekGuzergah);
+            await _context.SaveChangesAsync();
+        }
+
+        // Örnek şoför oluştur (veritabanında yoksa)
+        var ornekSofor = await _context.Soforler
+            .FirstOrDefaultAsync(s => s.Ad == "Örnek" && s.Soyad == "Şoför" && !s.IsDeleted);
+
+        if (ornekSofor == null)
+        {
+            ornekSofor = new Sofor
+            {
+                SoforKodu = "ORNEK001",
+                Ad = "Örnek",
+                Soyad = "Şoför",
+                TcKimlikNo = "12345678901",
+                Telefon = "0532 000 0001",
+                Aktif = true,
+                Gorev = PersonelGorev.Sofor,
+                BrutMaas = 32000,
+                NetMaas = 26500,
+                EhliyetNo = "TR123456"
+            };
+            _context.Soforler.Add(ornekSofor);
+            await _context.SaveChangesAsync();
+        }
+
+        // Örnek araç oluştur (veritabanında yoksa)
+        var ornekArac = await _context.Araclar
+            .FirstOrDefaultAsync(a => a.SaseNo == "ORNEK2022001" && !a.IsDeleted);
+
+        if (ornekArac == null)
+        {
+            ornekArac = new Arac
+            {
+                SaseNo = "ORNEK2022001",
+                AktifPlaka = "34 ORNEK 001",
+                Marka = "Mercedes",
+                Model = "Sprinter 516 CDI",
+                ModelYili = 2022,
+                KoltukSayisi = 27,
+                SahiplikTipi = AracSahiplikTipi.Ozmal,
+                Aktif = true
+            };
+            _context.Araclar.Add(ornekArac);
+            await _context.SaveChangesAsync();
+        }
+
+        // Örnek proje oluştur
+        var proje = new IhaleProje
+        {
+            ProjeKodu = await GenerateProjeKoduAsync(),
+            ProjeAdi = "Örnek Personel Servis İhalesi - ABC Fabrikası",
+            Aciklama = "Test amaçlı oluşturulmuş örnek ihale projesi. Tüm maliyet kalemleri ve hesaplamalar otomatik doldurulmuştur.",
+            BaslangicTarihi = new DateTime(simdi.Year, simdi.Month, 1),
+            BitisTarihi = new DateTime(simdi.Year, simdi.Month, 1).AddMonths(12),
+            SozlesmeSuresiAy = 12,
+            Durum = IhaleProjeDurum.Hazirlaniyor,
+            EnflasyonOrani = 30, // Yıllık %30 enflasyon
+            YakitZamOrani = 35, // Yıllık %35 yakıt zamları
+            AylikCalismGunu = 22,
+            GunlukCalismaSaati = 8,
+            Notlar = "Bu örnek proje, ihale hazırlık modülünün test edilmesi için otomatik oluşturulmuştur. Puantaj verileri de dahildir."
+        };
+
+        _context.IhaleProjeleri.Add(proje);
+        await _context.SaveChangesAsync();
+
+        // Örnek güzergah kalemi oluştur
+        var kalem = new IhaleGuzergahKalem
+        {
+            IhaleProjeId = proje.Id,
+            GuzergahId = ornekGuzergah.Id,
+            HatAdi = ornekGuzergah.GuzergahAdi,
+            BaslangicNoktasi = ornekGuzergah.BaslangicNoktasi,
+            BitisNoktasi = ornekGuzergah.BitisNoktasi,
+            MesafeKm = ornekGuzergah.Mesafe ?? 45,
+            TahminiSureDakika = ornekGuzergah.TahminiSure ?? 55,
+            SeferTipi = SeferTipi.SabahAksam,
+            GunlukSeferSayisi = 2, // Sabah gidiş + Akşam dönüş
+            AylikSeferGunu = 22,
+            PersonelSayisi = 35, // 35 personel taşınacak
+
+            // Araç bilgileri
+            AracId = ornekArac.Id,
+            SahiplikDurumu = AracSahiplikKalem.Ozmal,
+            AracModelBilgi = $"{ornekArac.ModelYili} {ornekArac.Marka} {ornekArac.Model}",
+            AracKoltukSayisi = ornekArac.KoltukSayisi,
+            YakitTuketimi = 18,
+            YakitFiyati = 45.50m,
+
+            // Araç masrafları (aylık)
+            AylikBakimMasrafi = 3500,
+            AylikLastikMasrafi = 1800,
+            AylikSigortaMasrafi = 2500,
+            AylikKaskoMasrafi = 4000,
+            AylikMuayeneMasrafi = 250,
+            AylikYedekParcaMasrafi = 1500,
+            AylikDigerMasraf = 1000,
+
+            // Şoför bilgileri
+            SoforId = ornekSofor.Id,
+            SoforBrutMaas = ornekSofor.BrutMaas,
+            SoforNetMaas = ornekSofor.NetMaas,
+            SoforSGKIsverenPay = ornekSofor.BrutMaas * 0.225m,
+            SoforToplamMaliyet = ornekSofor.BrutMaas * 1.225m,
+
+            // Amortisman
+            AracDegeri = 3500000,
+            AmortismanYili = 5,
+
+            // Kâr marjı
+            KarMarjiOrani = 18,
+
+            AITahminiKullanildi = false,
+            AITahminDetay = "Manuel örnek veri girişi"
+        };
+
+        await HesaplaKalemMaliyetAsync(kalem, proje);
+
+        _context.IhaleGuzergahKalemleri.Add(kalem);
+        await _context.SaveChangesAsync();
+
+        // Puantaj kaydı oluştur (mevcut ay için)
+        var puantaj = new PuantajKayit
+        {
+            Yil = simdi.Year,
+            Ay = simdi.Month,
+            Bolge = "Merkez",
+            SiraNo = 1,
+            KurumAdi = "ABC Fabrikası (Örnek)",
+            GuzergahId = ornekGuzergah.Id,
+            GuzergahAdi = ornekGuzergah.GuzergahAdi,
+            Yon = PuantajYon.SabahAksam,
+            AracId = ornekArac.Id,
+            Plaka = ornekArac.AktifPlaka ?? "34 ORNEK 001",
+            SoforId = ornekSofor.Id,
+            SoforAdi = $"{ornekSofor.Ad} {ornekSofor.Soyad}",
+            SoforOdemeTipi = SoforOdemeTipi.Ozmal,
+            Gun = 22, // 22 gün çalışma
+            SeferSayisi = 2, // Sabah + Akşam
+
+            // Gelir bilgileri (örnek)
+            BirimGelir = kalem.SeferBasiTeklifFiyati,
+            GelirKdvOrani = 20,
+
+            // Gider bilgileri (örnek)
+            BirimGider = kalem.SeferBasiMaliyet,
+
+            // Ayın iş günlerini doldur (haftaiçi günler için 2 sefer)
+            Gun01 = HaftaIciMi(simdi.Year, simdi.Month, 1) ? 2 : 0,
+            Gun02 = HaftaIciMi(simdi.Year, simdi.Month, 2) ? 2 : 0,
+            Gun03 = HaftaIciMi(simdi.Year, simdi.Month, 3) ? 2 : 0,
+            Gun04 = HaftaIciMi(simdi.Year, simdi.Month, 4) ? 2 : 0,
+            Gun05 = HaftaIciMi(simdi.Year, simdi.Month, 5) ? 2 : 0,
+            Gun06 = HaftaIciMi(simdi.Year, simdi.Month, 6) ? 2 : 0,
+            Gun07 = HaftaIciMi(simdi.Year, simdi.Month, 7) ? 2 : 0,
+            Gun08 = HaftaIciMi(simdi.Year, simdi.Month, 8) ? 2 : 0,
+            Gun09 = HaftaIciMi(simdi.Year, simdi.Month, 9) ? 2 : 0,
+            Gun10 = HaftaIciMi(simdi.Year, simdi.Month, 10) ? 2 : 0,
+            Gun11 = HaftaIciMi(simdi.Year, simdi.Month, 11) ? 2 : 0,
+            Gun12 = HaftaIciMi(simdi.Year, simdi.Month, 12) ? 2 : 0,
+            Gun13 = HaftaIciMi(simdi.Year, simdi.Month, 13) ? 2 : 0,
+            Gun14 = HaftaIciMi(simdi.Year, simdi.Month, 14) ? 2 : 0,
+            Gun15 = HaftaIciMi(simdi.Year, simdi.Month, 15) ? 2 : 0,
+            Gun16 = HaftaIciMi(simdi.Year, simdi.Month, 16) ? 2 : 0,
+            Gun17 = HaftaIciMi(simdi.Year, simdi.Month, 17) ? 2 : 0,
+            Gun18 = HaftaIciMi(simdi.Year, simdi.Month, 18) ? 2 : 0,
+            Gun19 = HaftaIciMi(simdi.Year, simdi.Month, 19) ? 2 : 0,
+            Gun20 = HaftaIciMi(simdi.Year, simdi.Month, 20) ? 2 : 0,
+            Gun21 = HaftaIciMi(simdi.Year, simdi.Month, 21) ? 2 : 0,
+            Gun22 = HaftaIciMi(simdi.Year, simdi.Month, 22) ? 2 : 0,
+            Gun23 = HaftaIciMi(simdi.Year, simdi.Month, 23) ? 2 : 0,
+            Gun24 = HaftaIciMi(simdi.Year, simdi.Month, 24) ? 2 : 0,
+            Gun25 = HaftaIciMi(simdi.Year, simdi.Month, 25) ? 2 : 0,
+            Gun26 = HaftaIciMi(simdi.Year, simdi.Month, 26) ? 2 : 0,
+            Gun27 = HaftaIciMi(simdi.Year, simdi.Month, 27) ? 2 : 0,
+            Gun28 = HaftaIciMi(simdi.Year, simdi.Month, 28) ? 2 : 0,
+            Gun29 = DateTime.DaysInMonth(simdi.Year, simdi.Month) >= 29 && HaftaIciMi(simdi.Year, simdi.Month, 29) ? 2 : 0,
+            Gun30 = DateTime.DaysInMonth(simdi.Year, simdi.Month) >= 30 && HaftaIciMi(simdi.Year, simdi.Month, 30) ? 2 : 0,
+            Gun31 = DateTime.DaysInMonth(simdi.Year, simdi.Month) >= 31 && HaftaIciMi(simdi.Year, simdi.Month, 31) ? 2 : 0
+        };
+
+        // Toplam gelir ve gider hesapla
+        var toplamSefer = puantaj.SeferGunuToplami;
+        puantaj.ToplamGelir = puantaj.BirimGelir * toplamSefer;
+        puantaj.GelirKdvTutari = puantaj.ToplamGelir * puantaj.GelirKdvOrani / 100;
+        puantaj.GelirToplam = puantaj.ToplamGelir + puantaj.GelirKdvTutari;
+        puantaj.Alinacak = puantaj.GelirToplam;
+
+        puantaj.ToplamGider = puantaj.BirimGider * toplamSefer;
+        puantaj.GiderKdv20Tutari = puantaj.ToplamGider * 20 / 100;
+        puantaj.Odenecek = puantaj.ToplamGider + puantaj.GiderKdv20Tutari;
+
+        _context.PuantajKayitlar.Add(puantaj);
+        await _context.SaveChangesAsync();
+
+        // Güncel proje ile döndür
+        return await GetProjeByIdAsync(proje.Id) ?? proje;
+    }
+
+    private static bool HaftaIciMi(int yil, int ay, int gun)
+    {
+        try
+        {
+            var tarih = new DateTime(yil, ay, gun);
+            return tarih.DayOfWeek != DayOfWeek.Saturday && tarih.DayOfWeek != DayOfWeek.Sunday;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

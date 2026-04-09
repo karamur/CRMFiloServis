@@ -1040,6 +1040,36 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         return cari;
     }
 
+    public async Task<Cari> HizliCariOlusturDetayliAsync(HizliCariModel model)
+    {
+        var cari = new Cari
+        {
+            CariKodu = await _cariService.GenerateNextKodAsync(),
+            Unvan = model.Unvan,
+            CariTipi = model.CariTipi,
+            Aktif = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Personel için TC, diğerleri için Vergi No
+        if (model.CariTipi == CariTipi.Personel)
+        {
+            cari.TcKimlikNo = model.VergiNo;
+        }
+        else
+        {
+            cari.VergiNo = model.VergiNo;
+        }
+
+        cari.Telefon = model.Telefon;
+        cari.Email = model.Email;
+        cari.Adres = model.Adres;
+
+        _context.Cariler.Add(cari);
+        await _context.SaveChangesAsync();
+        return cari;
+    }
+
     public async Task<List<MuhasebeHesap>> GetMuhasebeHesaplariAsync()
     {
         return await _context.MuhasebeHesaplari

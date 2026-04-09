@@ -76,3 +76,4 @@ deploy/Logs/**
 deploy/Uploads/**
 !deploy/Uploads/.gitkeep
 publish/
+CRMFiloServis-Release.zip

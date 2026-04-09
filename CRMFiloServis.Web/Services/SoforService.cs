@@ -8,10 +8,12 @@ namespace CRMFiloServis.Web.Services;
 public class SoforService : ISoforService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IMuhasebeService _muhasebeService;
 
-    public SoforService(ApplicationDbContext context)
+    public SoforService(ApplicationDbContext context, IMuhasebeService muhasebeService)
     {
         _context = context;
+        _muhasebeService = muhasebeService;
     }
 
     public async Task<List<Sofor>> GetAllAsync()
@@ -63,6 +65,10 @@ public class SoforService : ISoforService
     {
         ApplyMaasHesaplama(sofor);
         SyncBordroFlags(sofor);
+
+        // Muhasebe hesabı oluştur veya eşleştir
+        await OtomatikMuhasebeHesabiOlusturAsync(sofor);
+
         _context.Soforler.Add(sofor);
         await _context.SaveChangesAsync();
         return sofor;
@@ -109,6 +115,7 @@ public class SoforService : ISoforService
         SyncBordroFlags(existing);
         existing.BankaAdi = sofor.BankaAdi;
         existing.IBAN = sofor.IBAN;
+        existing.MuhasebeHesapId = sofor.MuhasebeHesapId;
         existing.Notlar = sofor.Notlar;
         existing.Aktif = sofor.Aktif;
         existing.IsDeleted = sofor.IsDeleted;
@@ -648,6 +655,97 @@ public class SoforService : ISoforService
         PersonelBordroTipi.Arge => "AR-GE",
         _ => "Yok"
     };
+
+    #endregion
+
+    #region Muhasebe Hesap Otomasyonu
+
+    /// <summary>
+    /// Personel için otomatik muhasebe hesabı oluşturur veya mevcut hesabı eşleştirir.
+    /// Hesap kodu formatı: 335.XXX (Personele Borçlar alt hesabı)
+    /// </summary>
+    private async Task OtomatikMuhasebeHesabiOlusturAsync(Sofor sofor)
+    {
+        // Kullanıcı zaten bir hesap seçtiyse, oluşturma
+        if (sofor.MuhasebeHesapId.HasValue)
+            return;
+
+        // Personel kodu ile eşleşen hesap var mı kontrol et
+        var hesapKodu = $"335.{sofor.SoforKodu}";
+        var mevcutHesap = await _muhasebeService.GetHesapByKodAsync(hesapKodu);
+
+        if (mevcutHesap != null)
+        {
+            // Mevcut hesabı eşleştir
+            sofor.MuhasebeHesapId = mevcutHesap.Id;
+            return;
+        }
+
+        // Ana hesap 335 var mı kontrol et
+        var anaHesap = await _muhasebeService.GetHesapByKodAsync("335");
+        int? ustHesapId = anaHesap?.Id;
+
+        // Yeni hesap oluştur
+        var yeniHesap = new MuhasebeHesap
+        {
+            HesapKodu = hesapKodu,
+            HesapAdi = $"{sofor.TamAd} - Personele Borçlar",
+            HesapTuru = HesapTuru.Pasif,
+            HesapGrubu = HesapGrubu.KisaVadeliYabanciKaynaklar,
+            UstHesapId = ustHesapId,
+            AltHesapVar = false,
+            Aktif = true,
+            SistemHesabi = false,
+            Aciklama = $"Personel: {sofor.SoforKodu} - {sofor.TamAd} için otomatik oluşturuldu"
+        };
+
+        var olusturulanHesap = await _muhasebeService.CreateHesapAsync(yeniHesap);
+        sofor.MuhasebeHesapId = olusturulanHesap.Id;
+
+        // Ana hesabın AltHesapVar flag'ini güncelle
+        if (anaHesap != null && !anaHesap.AltHesapVar)
+        {
+            anaHesap.AltHesapVar = true;
+            await _muhasebeService.UpdateHesapAsync(anaHesap);
+        }
+    }
+
+    /// <summary>
+    /// Muhasebe hesabı olmayan tüm mevcut personellere toplu hesap oluşturur.
+    /// </summary>
+    public async Task<int> TopluMuhasebeHesabiOlusturAsync()
+    {
+        var hesapsizPersoneller = await _context.Soforler
+            .Where(s => !s.IsDeleted && s.MuhasebeHesapId == null)
+            .ToListAsync();
+
+        var olusturulanSayisi = 0;
+        foreach (var personel in hesapsizPersoneller)
+        {
+            await OtomatikMuhasebeHesabiOlusturAsync(personel);
+            if (personel.MuhasebeHesapId.HasValue)
+            {
+                _context.Entry(personel).State = EntityState.Modified;
+                olusturulanSayisi++;
+            }
+        }
+
+        if (olusturulanSayisi > 0)
+            await _context.SaveChangesAsync();
+
+        return olusturulanSayisi;
+    }
+
+    /// <summary>
+    /// Personelin muhasebe hesaplarını listeler (335 altındaki hesaplar)
+    /// </summary>
+    public async Task<List<MuhasebeHesap>> GetPersonelMuhasebeHesaplariAsync()
+    {
+        return await _context.MuhasebeHesaplari
+            .Where(h => h.HesapKodu.StartsWith("335.") && !h.IsDeleted && h.Aktif)
+            .OrderBy(h => h.HesapKodu)
+            .ToListAsync();
+    }
 
     #endregion
 }

@@ -41,6 +41,11 @@ public interface IKolayMuhasebeService
     Task<Cari> HizliCariOlusturAsync(string unvan, CariTipi tip);
 
     /// <summary>
+    /// Yeni cari oluşturur (detaylı bilgilerle)
+    /// </summary>
+    Task<Cari> HizliCariOlusturDetayliAsync(HizliCariModel model);
+
+    /// <summary>
     /// Muhasebe hesap listesi (manuel düzenleme için)
     /// </summary>
     Task<List<MuhasebeHesap>> GetMuhasebeHesaplariAsync();
@@ -49,4 +54,17 @@ public interface IKolayMuhasebeService
     /// Varsayılan muhasebe ayarlarını getirir
     /// </summary>
     Task<MuhasebeAyar> GetMuhasebeAyarAsync();
+}
+
+/// <summary>
+/// Hızlı cari ekleme modeli
+/// </summary>
+public class HizliCariModel
+{
+    public string Unvan { get; set; } = "";
+    public CariTipi CariTipi { get; set; } = CariTipi.Musteri;
+    public string? VergiNo { get; set; }
+    public string? Telefon { get; set; }
+    public string? Email { get; set; }
+    public string? Adres { get; set; }
 }

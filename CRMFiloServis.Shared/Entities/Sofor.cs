@@ -56,6 +56,10 @@ public class Sofor : BaseEntity
     public string? BankaAdi { get; set; }
     public string? IBAN { get; set; }
 
+    // Muhasebe Hesap Entegrasyonu
+    public int? MuhasebeHesapId { get; set; }
+    public virtual MuhasebeHesap? MuhasebeHesap { get; set; }
+
     public string TamAd => $"{Ad} {Soyad}";
     
     // Şoför mü kontrolü

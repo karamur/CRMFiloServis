@@ -5,6 +5,7 @@
 @using CRMFiloServis.Shared.Entities
 @using CRMFiloServis.Web.Services
 @inject ISoforService SoforService
+@inject IMuhasebeService MuhasebeService
 @inject IToastService ToastService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -264,6 +265,58 @@
                     }
                 </div>
 
+                <!-- Muhasebe Hesap Entegrasyonu -->
+                <hr />
+                <h5 class="text-primary mb-3"><i class="bi bi-calculator me-2"></i>Muhasebe Hesap Entegrasyonu</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Muhasebe Hesabı</label>
+                            <div class="input-group">
+                                <InputSelect @bind-Value="sofor.MuhasebeHesapId" class="form-select">
+                                    <option value="">-- Otomatik Oluşturulsun --</option>
+                                    @foreach (var hesap in muhasebeHesaplari)
+                                    {
+                                        <option value="@hesap.Id">@hesap.HesapKodu - @hesap.HesapAdi</option>
+                                    }
+                                </InputSelect>
+                                <button type="button" class="btn btn-outline-secondary" @onclick="HesaplariYenile" title="Hesapları Yenile">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                @if (!IsEdit || !sofor.MuhasebeHesapId.HasValue)
+                                {
+                                    <text>Boş bırakılırsa "335.@(sofor.SoforKodu)" kodu ile otomatik oluşturulur.</text>
+                                }
+                                else
+                                {
+                                    <text>Personel için muhasebe işlemlerinde bu hesap kullanılır.</text>
+                                }
+                            </small>
+                        </div>
+                    </div>
+                    @if (sofor.MuhasebeHesapId.HasValue)
+                    {
+                        var secilenHesap = muhasebeHesaplari.FirstOrDefault(h => h.Id == sofor.MuhasebeHesapId);
+                        @if (secilenHesap != null)
+                        {
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Hesap Bilgisi</label>
+                                    <div class="alert alert-info py-2 mb-0">
+                                        <small>
+                                            <strong>@secilenHesap.HesapKodu</strong> - @secilenHesap.HesapAdi
+                                            <br />
+                                            <span class="text-muted">@secilenHesap.HesapGrubu</span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
                 @* ARGE Personeli Uyarıları *@
                 @if (sofor.SGKBordroDahilMi && sofor.BordroTipiPersonel == PersonelBordroTipi.Arge)
                 {
@@ -327,9 +380,13 @@
     private Sofor sofor = new();
     private bool IsEdit => Id.HasValue;
     private decimal ToplamNetMaas => sofor.ResmiNetMaas + sofor.DigerMaas;
+    private List<MuhasebeHesap> muhasebeHesaplari = new();
 
     protected override async Task OnInitializedAsync()
     {
+        // Muhasebe hesaplarını yükle
+        await HesaplariYukle();
+
         if (IsEdit)
         {
             var existing = await SoforService.GetByIdAsync(Id!.Value);
@@ -348,6 +405,17 @@
             sofor.Aktif = true;
             sofor.Gorev = PersonelGorev.Sofor;
         }
+    }
+
+    private async Task HesaplariYukle()
+    {
+        muhasebeHesaplari = await SoforService.GetPersonelMuhasebeHesaplariAsync();
+    }
+
+    private async Task HesaplariYenile()
+    {
+        await HesaplariYukle();
+        ToastService.ShowInfo("Muhasebe hesapları yenilendi.");
     }
 
     private async Task Kaydet()

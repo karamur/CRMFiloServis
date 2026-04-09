@@ -36,6 +36,7 @@ public class KolayMuhasebeGiris
     public decimal KdvOrani { get; set; } = 20;
     public decimal KdvTutar { get; set; }
     public decimal GenelToplam { get; set; }
+    public bool KdvDahilMi { get; set; } = false;  // true = KDV Dahil tutar girildi
 
     // Tevkifat (Opsiyonel)
     public bool TevkifatliMi { get; set; } = false;

@@ -17,9 +17,14 @@
     <!-- PROJE LİSTESİ -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4><i class="bi bi-briefcase me-2"></i>İhale Hazırlık Projeleri</h4>
-        <button class="btn btn-primary" @onclick="YeniProjeModal">
-            <i class="bi bi-plus-circle me-1"></i> Yeni Proje
-        </button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-success" @onclick="OrnekVeriOlusturAsync" disabled="@yukleniyor">
+                <i class="bi bi-magic me-1"></i> Örnek Veri Oluştur
+            </button>
+            <button class="btn btn-primary" @onclick="YeniProjeModal">
+                <i class="bi bi-plus-circle me-1"></i> Yeni Proje
+            </button>
+        </div>
     </div>
 
     @if (projeler == null)
@@ -811,6 +816,23 @@ else
             ToastService.ShowSuccess("Proje kopyalandı.");
         }
         catch (Exception ex) { ToastService.ShowError(ex.Message); }
+        finally { yukleniyor = false; }
+    }
+
+    private async Task OrnekVeriOlusturAsync()
+    {
+        yukleniyor = true;
+        StateHasChanged();
+        try
+        {
+            var ornekProje = await IhaleService.OrnekProjeOlusturAsync();
+            await ProjeSecAsync(ornekProje.Id);
+            ToastService.ShowSuccess("Örnek proje ve güzergah oluşturuldu! Rapor butonuna tıklayarak maliyet analizini görüntüleyebilirsiniz.");
+        }
+        catch (Exception ex) 
+        { 
+            ToastService.ShowError($"Örnek veri oluşturma hatası: {ex.Message}"); 
+        }
         finally { yukleniyor = false; }
     }
 

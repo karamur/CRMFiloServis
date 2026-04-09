@@ -138,6 +138,9 @@
 | Tüm aylar/yıllar filtreleme | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 | Hareket listesi yazdır (ön izleme) | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 | Hareket listesi Excel export | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| **SGK Maaş / Kalan Maaş Ayrımı** | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| **Banka Ödeme Listesi SGK/Kalan Gösterimi** | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| **Maaşa Mahsup (Masraf/Ödeme)** | 🟡 Orta | 2 gün | ❌ |
 
 ### 5.3 Bordro Yönetimi
 | Özellik | Öncelik | Süre | Durum |
@@ -254,7 +257,8 @@
 ### 7.4 Yapay Zeka Desteği (Offline Çalışabilir)
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Local LLM entegrasyonu (Ollama/LLaMA) | 🔴 Yüksek | 3 gün | ❌ |
+| Local LLM entegrasyonu (Ollama/LLaMA) | 🔴 Yüksek | 3 gün | ✅ Tamamlandı |
+| **AI Asistan Floating Widget** | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
 | Belge otomatik sınıflandırma | 🔴 Yüksek | 2 gün | ❌ |
 | OCR ile belge içerik çıkarma | 🔴 Yüksek | 2 gün | ❌ |
 | Akıllı belge arama (semantic search) | 🟡 Orta | 3 gün | ❌ |
@@ -311,6 +315,7 @@
 | Kâr/zarar/masraf tablosu | 🔴 Yüksek | 1 gün | ✅ |
 | Kümülatif maliyet/kâr raporu | 🟡 Orta | 1 gün | ✅ |
 | Proje özet kartları | 🟡 Orta | 1 gün | ✅ |
+| **Örnek Veri Oluşturma (Test Data Seeding)** | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 
 ---
 

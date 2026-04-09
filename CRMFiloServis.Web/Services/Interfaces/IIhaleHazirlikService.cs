@@ -32,4 +32,7 @@ public interface IIhaleHazirlikService
     // Veri yardımcıları
     Task<decimal> GetGecmisMasrafOrtalamaAsync(int? aracId, MasrafKategori kategori, int aySayisi = 12);
     Task<decimal> GetGecmisSoforMaasOrtalamaAsync(int aySayisi = 6);
+
+    // Örnek veri oluşturma
+    Task<IhaleProje> OrnekProjeOlusturAsync();
 }

@@ -20,6 +20,10 @@ public interface ISoforService
     Task<List<Sofor>> GetActiveSoforlerAsync(); // Sadece aktif şoförler
     Task<List<Sofor>> GetActiveByGorevAsync(PersonelGorev gorev);
 
+    // Muhasebe Hesap Entegrasyonu
+    Task<int> TopluMuhasebeHesabiOlusturAsync();
+    Task<List<MuhasebeHesap>> GetPersonelMuhasebeHesaplariAsync();
+
     // Excel Import/Export
     Task<byte[]> GetImportSablonAsync();
     Task<PersonelImportSonuc> ImportFromExcelAsync(byte[] excelData, bool mevcutGuncelle = false);

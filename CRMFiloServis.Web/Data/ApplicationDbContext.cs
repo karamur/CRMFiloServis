@@ -265,6 +265,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.SGKBordroDahilMi).HasDefaultValue(false);
             entity.Property(e => e.BordroTipiPersonel).HasDefaultValue(PersonelBordroTipi.Yok);
             entity.Ignore(e => e.EkOdeme);
+
+            // Muhasebe Hesap ilişkisi
+            entity.HasOne(e => e.MuhasebeHesap)
+                .WithMany()
+                .HasForeignKey(e => e.MuhasebeHesapId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 
