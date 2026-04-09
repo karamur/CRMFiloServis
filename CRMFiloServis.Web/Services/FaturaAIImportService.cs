@@ -776,11 +776,15 @@ Her kalemi sınıflandır ve eşleştir.";
     {
         var kaydetSonuc = new FaturaAIKaydetSonuc();
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        // ExecutionStrategy ile transaction sarmalama (NpgsqlRetryingExecutionStrategy uyumluluğu)
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            // 1. Cari oluştur (gerekiyorsa)
-            int cariId;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Cari oluştur (gerekiyorsa)
+                int cariId;
             if (sonuc.CariEslesme.CariMevcut && sonuc.CariEslesme.MevcutCariId.HasValue)
             {
                 cariId = sonuc.CariEslesme.MevcutCariId.Value;
@@ -918,6 +922,7 @@ Her kalemi sınıflandır ve eşleştir.";
         }
 
         return kaydetSonuc;
+        }); // ExecutionStrategy lambda sonu
     }
 
     #endregion

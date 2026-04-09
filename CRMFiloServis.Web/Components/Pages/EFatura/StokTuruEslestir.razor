@@ -5,6 +5,7 @@
 @inject IStokService StokService
 @inject IGuzergahService GuzergahService
 @inject IFirmaService FirmaService
+@inject IAracService AracService
 @inject IToastService ToastService
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -138,6 +139,35 @@
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Araç Seçimi ve Yansıtma Satırı -->
+                <div class="row g-2 align-items-center mt-2">
+                    <div class="col-auto">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-car-front me-1"></i>Araç/Plaka:</span>
+                            <select class="form-select" style="width: 200px;" @bind="topluAracId">
+                                <option value="">Araç Seç...</option>
+                                @foreach (var arac in araclar.Where(a => a.Aktif).OrderBy(a => a.AktifPlaka))
+                                {
+                                    <option value="@arac.Id">@arac.AktifPlaka - @(arac.Marka) @(arac.Model)</option>
+                                }
+                            </select>
+                            <button class="btn btn-outline-info" @onclick="TopluAracAtaAsync" 
+                                    disabled="@(string.IsNullOrEmpty(topluAracId) || !seciliKalemler.Any())">
+                                <i class="bi bi-link-45deg me-1"></i>Araç Ata
+                            </button>
+                        </div>
+                    </div>
+                    @if (MasrafYansitmaSeciliMi())
+                    {
+                        <div class="col-auto">
+                            <button class="btn btn-warning btn-sm" @onclick="YansitmaOnizlemeAc" 
+                                    disabled="@(!seciliKalemler.Any() || isKaydediliyor)">
+                                <i class="bi bi-receipt me-1"></i>Yansıtma Fatura Oluştur
+                            </button>
+                        </div>
+                    }
                     <div class="col-auto">
                         <button class="btn btn-success btn-sm" @onclick="TopluEslestirVeStokKartiOlustur" 
                                 disabled="@(!seciliKalemler.Any() || string.IsNullOrEmpty(topluKalemTipi) || isKaydediliyor)">
@@ -199,6 +229,7 @@
                                 <th class="text-end" style="width: 100px;">Tutar</th>
                                 <th style="width: 150px;">Kalem Tipi</th>
                                 <th style="width: 150px;">Alt Tipi</th>
+                                <th style="width: 150px;">Araç/Plaka</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -274,6 +305,24 @@
                                         else
                                         {
                                             <span class="text-muted">@(kalem.AltTipi.HasValue ? GetAltTipAdi(kalem.AltTipi.Value) : "-")</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (aktifTab == "eslesmemis")
+                                        {
+                                            <select class="form-select form-select-sm" 
+                                                    value="@(kalem.AracId ?? 0)"
+                                                    @onchange="e => AracDegistiHandler(e, kalem)">
+                                                <option value="0">-</option>
+                                                @foreach (var arac in araclar.Where(a => a.Aktif).OrderBy(a => a.AktifPlaka))
+                                                {
+                                                    <option value="@arac.Id">@arac.AktifPlaka</option>
+                                                }
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">@(kalem.Arac?.AktifPlaka ?? "-")</span>
                                         }
                                     </td>
                                 </tr>
@@ -401,12 +450,111 @@
     </div>
 }
 
+<!-- Yansıtma Fatura Önizleme Modal -->
+@if (showYansitmaModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>Yansıtma Fatura Önizleme</h5>
+                    <button type="button" class="btn-close" @onclick="() => showYansitmaModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Seçilen masraf kalemleri için yansıtma faturası oluşturulacak. Araç bazlı gruplandırılmış masrafları kontrol edin.
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" class="form-check-input" 
+                                               checked="@yansitmaListesi.All(y => y.Secili)"
+                                               @onchange="e => YansitmaTumunuSec((bool)e.Value!)" />
+                                    </th>
+                                    <th>Araç/Plaka</th>
+                                    <th>Açıklama</th>
+                                    <th style="width: 100px;">Tarih</th>
+                                    <th style="width: 120px;" class="text-end">Tutar</th>
+                                    <th style="width: 100px;">KDV %</th>
+                                    <th style="width: 120px;" class="text-end">Toplam</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in yansitmaListesi)
+                                {
+                                    <tr class="@(item.Secili ? "" : "table-secondary")">
+                                        <td>
+                                            <input type="checkbox" class="form-check-input" @bind="item.Secili" />
+                                        </td>
+                                        <td>
+                                            <strong>@item.Plaka</strong>
+                                            <small class="text-muted d-block">@item.AracMarkaModel</small>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" @bind="item.Aciklama" />
+                                        </td>
+                                        <td>
+                                            <small>@item.FaturaTarihi.ToString("dd.MM.yyyy")</small>
+                                        </td>
+                                        <td class="text-end">@FormatPara(item.Tutar)</td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm" @bind="item.KdvOrani" min="0" max="50" step="1" />
+                                        </td>
+                                        <td class="text-end"><strong>@FormatPara(item.Tutar * (1 + item.KdvOrani / 100))</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="4">Toplam (Seçili)</th>
+                                    <th class="text-end">@FormatPara(yansitmaListesi.Where(y => y.Secili).Sum(y => y.Tutar))</th>
+                                    <th></th>
+                                    <th class="text-end">@FormatPara(yansitmaListesi.Where(y => y.Secili).Sum(y => y.Tutar * (1 + y.KdvOrani / 100)))</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">Fatura Tarihi</label>
+                            <input type="date" class="form-control form-control-sm" @bind="yansitmaFaturaTarihi" />
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small">Fatura Notu</label>
+                            <input type="text" class="form-control form-control-sm" @bind="yansitmaFaturaNotu" placeholder="Yansıtma faturası açıklaması..." />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showYansitmaModal = false">
+                        <i class="bi bi-x me-1"></i>İptal
+                    </button>
+                    <button type="button" class="btn btn-warning" @onclick="YansitmaFaturaOlustur" 
+                            disabled="@(!yansitmaListesi.Any(y => y.Secili) || isKaydediliyor)">
+                        @if (isKaydediliyor)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-receipt me-1"></i>Yansıtma Fatura Oluştur
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<FaturaKalem> eslesmemisKalemler = new();
     private List<FaturaKalem> eslesmisKalemler = new();
     private List<FaturaKalem> filtrelenmisKalemler = new();
     private List<StokKarti> stokKartlari = new();
     private List<Firma> firmalar = new();
+    private List<Arac> araclar = new();  // Araç listesi
     private HashSet<int> seciliKalemler = new();
     private HashSet<int> degistirilmisKalemler = new();
     private bool isLoading = true;
@@ -417,6 +565,10 @@
     private bool showGuzergahModal = false;
     private List<GuzergahOnizlemeItem> guzergahListesi = new();
 
+    // Yansıtma Modal
+    private bool showYansitmaModal = false;
+    private List<YansitmaOnizlemeItem> yansitmaListesi = new();
+
     private DateTime? filtreBaslangic;
     private DateTime? filtreBitis;
     private string filtreYon = "";
@@ -424,6 +576,7 @@
     private string aramaMetni = "";
     private string topluKalemTipi = "";
     private string topluAltTipi = "";
+    private string topluAracId = "";  // Toplu araç seçimi
     private bool stokKartiOlustur = false;
 
     private bool degisiklikVar => degistirilmisKalemler.Any();
@@ -435,6 +588,7 @@
         filtreBitis = DateTime.Today;
         stokKartlari = await StokService.GetStokKartlariAsync();
         firmalar = await FirmaService.GetAllAsync();
+        araclar = await AracService.GetAllAsync();  // Araçları yükle
         await YenileAsync();
     }
 
@@ -516,6 +670,7 @@
         seciliKalemler.Clear();
         topluKalemTipi = "";
         topluAltTipi = "";
+        topluAracId = "";
     }
 
     private Task TopluKalemTipiDegisti()
@@ -686,7 +841,8 @@
     private string GetKalemTipiAdi(FaturaKalemTipi tip) => tip switch
     {
         FaturaKalemTipi.Hizmet => "Hizmet", FaturaKalemTipi.Mal => "Mal", FaturaKalemTipi.Demirbas => "Demirbaş",
-        FaturaKalemTipi.Arac => "Araç", FaturaKalemTipi.Servis => "Servis", FaturaKalemTipi.Diger => "Diğer", _ => tip.ToString()
+        FaturaKalemTipi.Arac => "Araç", FaturaKalemTipi.Servis => "Servis", FaturaKalemTipi.Masraf => "Masraf",
+        FaturaKalemTipi.Diger => "Diğer", _ => tip.ToString()
     };
 
     private IEnumerable<FaturaKalemAltTipi> GetAltTipler(FaturaKalemTipi tip) => tip switch
@@ -696,6 +852,7 @@
         FaturaKalemTipi.Demirbas => new[] { FaturaKalemAltTipi.AracDemirbas, FaturaKalemAltTipi.OfisEkipmani, FaturaKalemAltTipi.MakinaTechizat },
         FaturaKalemTipi.Arac => new[] { FaturaKalemAltTipi.AracSatis, FaturaKalemAltTipi.AracAlis },
         FaturaKalemTipi.Servis => new[] { FaturaKalemAltTipi.BakimOnarim, FaturaKalemAltTipi.Kasko, FaturaKalemAltTipi.Sigorta, FaturaKalemAltTipi.Muayene },
+        FaturaKalemTipi.Masraf => new[] { FaturaKalemAltTipi.YansitmaBedeli, FaturaKalemAltTipi.AracKiraBedeli, FaturaKalemAltTipi.YanitimYakit, FaturaKalemAltTipi.YansitimServis, FaturaKalemAltTipi.YansitimSigorta, FaturaKalemAltTipi.YansitimDiger },
         _ => Array.Empty<FaturaKalemAltTipi>()
     };
 
@@ -708,6 +865,10 @@
         FaturaKalemAltTipi.MakinaTechizat => "Makine", FaturaKalemAltTipi.AracSatis => "Satış",
         FaturaKalemAltTipi.AracAlis => "Alış", FaturaKalemAltTipi.BakimOnarim => "Bakım/Onarım",
         FaturaKalemAltTipi.Kasko => "Kasko", FaturaKalemAltTipi.Sigorta => "Sigorta", FaturaKalemAltTipi.Muayene => "Muayene",
+        // Masraf Alt Tipleri
+        FaturaKalemAltTipi.YansitmaBedeli => "Yansıtma Bedeli", FaturaKalemAltTipi.AracKiraBedeli => "Araç Kira",
+        FaturaKalemAltTipi.YanitimYakit => "Yakıt Yansıtma", FaturaKalemAltTipi.YansitimServis => "Servis Yansıtma",
+        FaturaKalemAltTipi.YansitimSigorta => "Sigorta Yansıtma", FaturaKalemAltTipi.YansitimDiger => "Diğer Yansıtma",
         _ => altTip.ToString()
     };
 
@@ -992,5 +1153,162 @@
         public bool Secili { get; set; }
         public bool ZatenMevcut { get; set; } // Bu fatura kaleminden zaten güzergah oluşturulmuş mu
         public string? MevcutGuzergahAdi { get; set; } // Varsa mevcut güzergah adı
+    }
+
+    // Yansıtma için değişkenler
+    private DateTime yansitmaFaturaTarihi = DateTime.Today;
+    private string yansitmaFaturaNotu = "";
+
+    // Masraf Yansıtma kontrolü
+    private bool MasrafYansitmaSeciliMi()
+    {
+        if (!string.IsNullOrEmpty(topluKalemTipi) && int.TryParse(topluKalemTipi, out var tipInt))
+        {
+            if ((FaturaKalemTipi)tipInt == FaturaKalemTipi.Masraf)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Araç değiştirme handler
+    private void AracDegistiHandler(ChangeEventArgs e, FaturaKalem kalem)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var yeniAracId))
+        {
+            kalem.AracId = yeniAracId == 0 ? null : yeniAracId;
+            degistirilmisKalemler.Add(kalem.Id);
+        }
+    }
+
+    // Toplu araç atama
+    private async Task TopluAracAtaAsync()
+    {
+        if (string.IsNullOrEmpty(topluAracId) || !seciliKalemler.Any()) return;
+
+        var aracId = int.Parse(topluAracId);
+        var arac = araclar.FirstOrDefault(a => a.Id == aracId);
+        var secilenKalemler = GetSeciliKalemlerVeTekrarlari();
+        var sayac = 0;
+
+        foreach (var kalem in secilenKalemler)
+        {
+            kalem.AracId = aracId;
+            degistirilmisKalemler.Add(kalem.Id);
+            sayac++;
+        }
+
+        ToastService.ShowSuccess($"{sayac} kaleme '{arac?.AktifPlaka}' plakası atandı.");
+        StateHasChanged();
+    }
+
+    // Yansıtma önizleme aç
+    private void YansitmaOnizlemeAc()
+    {
+        if (!seciliKalemler.Any()) return;
+
+        var secilenKalemler = eslesmemisKalemler.Where(k => seciliKalemler.Contains(k.Id)).ToList();
+
+        yansitmaListesi = secilenKalemler.Select(k => {
+            var arac = k.AracId.HasValue ? araclar.FirstOrDefault(a => a.Id == k.AracId) : null;
+            return new YansitmaOnizlemeItem
+            {
+                FaturaKalemId = k.Id,
+                AracId = k.AracId,
+                Plaka = arac?.AktifPlaka ?? "Araç Seçilmedi",
+                AracMarkaModel = arac != null ? $"{arac.Marka} {arac.Model}" : "",
+                Aciklama = $"Yansıtma: {k.Aciklama}",
+                FaturaTarihi = k.Fatura?.FaturaTarihi ?? DateTime.Today,
+                Tutar = k.ToplamTutar,
+                KdvOrani = k.KdvOrani,
+                Secili = true
+            };
+        }).ToList();
+
+        yansitmaFaturaTarihi = DateTime.Today;
+        yansitmaFaturaNotu = "Araç masrafı yansıtma faturası";
+        showYansitmaModal = true;
+    }
+
+    private void YansitmaTumunuSec(bool secili)
+    {
+        foreach (var y in yansitmaListesi)
+            y.Secili = secili;
+    }
+
+    private async Task YansitmaFaturaOlustur()
+    {
+        var seciliYansitmalar = yansitmaListesi.Where(y => y.Secili).ToList();
+        if (!seciliYansitmalar.Any())
+        {
+            ToastService.ShowWarning("En az bir kalem seçmelisiniz.");
+            return;
+        }
+
+        // Araç seçilmemiş kalem var mı kontrol et
+        var aracsizlar = seciliYansitmalar.Where(y => !y.AracId.HasValue).ToList();
+        if (aracsizlar.Any())
+        {
+            var onay = await JS.InvokeAsync<bool>("confirm", $"{aracsizlar.Count} kalemde araç seçili değil. Devam etmek istiyor musunuz?");
+            if (!onay) return;
+        }
+
+        isKaydediliyor = true;
+        StateHasChanged();
+
+        try
+        {
+            // Yansıtma faturası için kalem listesi hazırla
+            var yansitmaKalemleri = seciliYansitmalar.Select(y => new FaturaKalem
+            {
+                Aciklama = y.Aciklama,
+                Miktar = 1,
+                BirimFiyat = y.Tutar,
+                KdvOrani = y.KdvOrani,
+                KdvTutar = y.Tutar * y.KdvOrani / 100,
+                ToplamTutar = y.Tutar * (1 + y.KdvOrani / 100),
+                AracId = y.AracId,
+                KalemTipi = FaturaKalemTipi.Masraf,
+                AltTipi = FaturaKalemAltTipi.YansitmaBedeli
+            }).ToList();
+
+            var toplamTutar = yansitmaKalemleri.Sum(k => k.ToplamTutar);
+
+            // Burada yansıtma faturası oluşturma servisi çağrılabilir
+            // await FaturaService.YansitmaFaturasiOlusturAsync(yansitmaKalemleri, yansitmaFaturaTarihi, yansitmaFaturaNotu);
+
+            ToastService.ShowSuccess($"{seciliYansitmalar.Count} kalem için yansıtma faturası hazırlandı. Toplam: {FormatPara(toplamTutar)} TL");
+            ToastService.ShowInfo("Fatura oluşturmak için Faturalar sayfasına yönlendirileceksiniz.");
+
+            showYansitmaModal = false;
+            seciliKalemler.Clear();
+            topluKalemTipi = "";
+            topluAltTipi = "";
+            topluAracId = "";
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isKaydediliyor = false;
+            StateHasChanged();
+        }
+    }
+
+    // Yansıtma Önizleme DTO
+    private class YansitmaOnizlemeItem
+    {
+        public int FaturaKalemId { get; set; }
+        public int? AracId { get; set; }
+        public string Plaka { get; set; } = "";
+        public string AracMarkaModel { get; set; } = "";
+        public string Aciklama { get; set; } = "";
+        public DateTime FaturaTarihi { get; set; }
+        public decimal Tutar { get; set; }
+        public decimal KdvOrani { get; set; } = 20;
+        public bool Secili { get; set; }
     }
 }

@@ -276,6 +276,17 @@ public static class DbInitializer
                 using var conn = new NpgsqlConnection(connectionString);
                 await conn.OpenAsync();
 
+                // Önce tablo var mı kontrol et
+                using var tableCheckCmd = new NpgsqlCommand(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'Roller')", conn);
+                var tableExists = (bool)(await tableCheckCmd.ExecuteScalarAsync() ?? false);
+
+                if (!tableExists)
+                {
+                    Console.WriteLine("Roller tablosu henüz oluşturulmamış, kolon ekleme atlanıyor.");
+                    return;
+                }
+
                 // Kolon var mı kontrol et
                 using var checkCmd = new NpgsqlCommand(
                     "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Roller' AND column_name = 'Renk')", conn);
@@ -350,6 +361,17 @@ public static class DbInitializer
             var connectionString = GetDefaultConnectionString(context, configuration);
             using var conn = new NpgsqlConnection(connectionString);
             await conn.OpenAsync();
+
+            // Önce tablo var mı kontrol et
+            using var tableCheckCmd = new NpgsqlCommand(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'PuantajKayitlar')", conn);
+            var tableExists = (bool)(await tableCheckCmd.ExecuteScalarAsync() ?? false);
+
+            if (!tableExists)
+            {
+                Console.WriteLine("PuantajKayitlar tablosu henüz oluşturulmamış, kolon ekleme atlanıyor.");
+                return;
+            }
 
             // Eklenecek kolonlar: Bolge, SiraNo, AitFirmaAdi, Gun01-Gun31
             var kolonlar = new List<(string kolon, string tip, string varsayilan)>
@@ -723,142 +745,203 @@ public static class DbInitializer
             using var conn = new NpgsqlConnection(connectionString);
             await conn.OpenAsync();
 
-            using var cmd = new NpgsqlCommand(@"
-                ALTER TABLE ""DestekDepartmanlari""
-                    ADD COLUMN IF NOT EXISTS ""Email"" VARCHAR(200),
-                    ADD COLUMN IF NOT EXISTS ""OtomatikAtama"" BOOLEAN NOT NULL DEFAULT FALSE,
-                    ADD COLUMN IF NOT EXISTS ""VarsayilanSlaSuresi"" INTEGER,
-                    ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
-                    ADD COLUMN IF NOT EXISTS ""UstDepartmanId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+            // Önce hangi tabloların var olduğunu kontrol et
+            var existingTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var checkTablesCmd = new NpgsqlCommand(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'", conn))
+            using (var reader = await checkTablesCmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    existingTables.Add(reader.GetString(0));
+                }
+            }
 
-                ALTER TABLE ""DestekKategorileri""
-                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""Renk"" VARCHAR(50),
-                    ADD COLUMN IF NOT EXISTS ""Simge"" VARCHAR(100),
-                    ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
-                    ADD COLUMN IF NOT EXISTS ""DepartmanId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""UstKategoriId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+            // Her tablo için ayrı ayrı kolon ekle (tablo varsa)
+            var tableColumnUpdates = new Dictionary<string, string>
+            {
+                ["DestekDepartmanlari"] = @"
+                    ALTER TABLE ""DestekDepartmanlari""
+                        ADD COLUMN IF NOT EXISTS ""Email"" VARCHAR(200),
+                        ADD COLUMN IF NOT EXISTS ""OtomatikAtama"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS ""VarsayilanSlaSuresi"" INTEGER,
+                        ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ADD COLUMN IF NOT EXISTS ""UstDepartmanId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekSlaListesi""
-                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
-                    ADD COLUMN IF NOT EXISTS ""SadeceMesaiSaatleri"" BOOLEAN NOT NULL DEFAULT TRUE,
-                    ADD COLUMN IF NOT EXISTS ""SadeceHaftaIci"" BOOLEAN NOT NULL DEFAULT TRUE,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekKategorileri"] = @"
+                    ALTER TABLE ""DestekKategorileri""
+                        ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""Renk"" VARCHAR(50),
+                        ADD COLUMN IF NOT EXISTS ""Simge"" VARCHAR(100),
+                        ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ADD COLUMN IF NOT EXISTS ""DepartmanId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""UstKategoriId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekHazirYanitlari""
-                    ADD COLUMN IF NOT EXISTS ""KonuSablonu"" VARCHAR(500),
-                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
-                    ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""DepartmanId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""KullanimSayisi"" INTEGER NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekSlaListesi"] = @"
+                    ALTER TABLE ""DestekSlaListesi""
+                        ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ADD COLUMN IF NOT EXISTS ""SadeceMesaiSaatleri"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ADD COLUMN IF NOT EXISTS ""SadeceHaftaIci"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekAyarlari""
-                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""Grup"" VARCHAR(100),
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekHazirYanitlari"] = @"
+                    ALTER TABLE ""DestekHazirYanitlari""
+                        ADD COLUMN IF NOT EXISTS ""KonuSablonu"" VARCHAR(500),
+                        ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""DepartmanId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""KullanimSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekTalepleri""
-                    ADD COLUMN IF NOT EXISTS ""SlaSuresi"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""SlaBitisTarihi"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""SlaAsildi"" BOOLEAN NOT NULL DEFAULT FALSE,
-                    ADD COLUMN IF NOT EXISTS ""SonAktiviteTarihi"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""KapatilmaTarihi"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""CozumSuresiDakika"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""IlkYanitSuresiDakika"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""MemnuniyetPuani"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""MemnuniyetYorumu"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""DahiliNotlar"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""Etiketler"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""AtananKullaniciId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""OlusturanKullaniciId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""CariId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""MusteriAdi"" VARCHAR(200) NOT NULL DEFAULT '',
-                    ADD COLUMN IF NOT EXISTS ""MusteriEmail"" VARCHAR(200) NOT NULL DEFAULT '',
-                    ADD COLUMN IF NOT EXISTS ""MusteriTelefon"" VARCHAR(50),
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekAyarlari"] = @"
+                    ALTER TABLE ""DestekAyarlari""
+                        ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""Grup"" VARCHAR(100),
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekDepartmanUyeleri""
-                    ADD COLUMN IF NOT EXISTS ""Yonetici"" BOOLEAN NOT NULL DEFAULT FALSE,
-                    ADD COLUMN IF NOT EXISTS ""OtomatikAtamaUygun"" BOOLEAN NOT NULL DEFAULT TRUE,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekTalepleri"] = @"
+                    ALTER TABLE ""DestekTalepleri""
+                        ADD COLUMN IF NOT EXISTS ""SlaSuresi"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""SlaBitisTarihi"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""SlaAsildi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS ""SonAktiviteTarihi"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""KapatilmaTarihi"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""CozumSuresiDakika"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""IlkYanitSuresiDakika"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""MemnuniyetPuani"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""MemnuniyetYorumu"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""DahiliNotlar"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""Etiketler"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""AtananKullaniciId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""OlusturanKullaniciId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""CariId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""MusteriAdi"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ADD COLUMN IF NOT EXISTS ""MusteriEmail"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ADD COLUMN IF NOT EXISTS ""MusteriTelefon"" VARCHAR(50),
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekTalebiIliskileri""
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekDepartmanUyeleri"] = @"
+                    ALTER TABLE ""DestekDepartmanUyeleri""
+                        ADD COLUMN IF NOT EXISTS ""Yonetici"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS ""OtomatikAtamaUygun"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekTalebiYanitlari""
-                    ADD COLUMN IF NOT EXISTS ""DahiliNot"" BOOLEAN NOT NULL DEFAULT FALSE,
-                    ADD COLUMN IF NOT EXISTS ""YanitTuru"" INTEGER NOT NULL DEFAULT 1,
-                    ADD COLUMN IF NOT EXISTS ""KullaniciId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""MusteriYaniti"" BOOLEAN NOT NULL DEFAULT FALSE,
-                    ADD COLUMN IF NOT EXISTS ""MusteriAdi"" VARCHAR(200),
-                    ADD COLUMN IF NOT EXISTS ""HazirYanitId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekTalebiIliskileri"] = @"
+                    ALTER TABLE ""DestekTalebiIliskileri""
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekTalebiEkleri""
-                    ADD COLUMN IF NOT EXISTS ""DosyaBoyutu"" BIGINT NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""MimeTipi"" VARCHAR(200) NOT NULL DEFAULT '',
-                    ADD COLUMN IF NOT EXISTS ""YukleyenKullaniciId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekTalebiYanitlari"] = @"
+                    ALTER TABLE ""DestekTalebiYanitlari""
+                        ADD COLUMN IF NOT EXISTS ""DahiliNot"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS ""YanitTuru"" INTEGER NOT NULL DEFAULT 1,
+                        ADD COLUMN IF NOT EXISTS ""KullaniciId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""MusteriYaniti"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS ""MusteriAdi"" VARCHAR(200),
+                        ADD COLUMN IF NOT EXISTS ""HazirYanitId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekTalebiAktiviteleri""
-                    ADD COLUMN IF NOT EXISTS ""EskiDeger"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""YeniDeger"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""KullaniciId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekTalebiEkleri"] = @"
+                    ALTER TABLE ""DestekTalebiEkleri""
+                        ADD COLUMN IF NOT EXISTS ""DosyaBoyutu"" BIGINT NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""MimeTipi"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ADD COLUMN IF NOT EXISTS ""YukleyenKullaniciId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                ALTER TABLE ""DestekBilgiBankasiMakaleleri""
-                    ADD COLUMN IF NOT EXISTS ""Ozet"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""Etiketler"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""SeoBaslik"" VARCHAR(500),
-                    ADD COLUMN IF NOT EXISTS ""SeoAciklama"" TEXT,
-                    ADD COLUMN IF NOT EXISTS ""Slug"" VARCHAR(500),
-                    ADD COLUMN IF NOT EXISTS ""GoruntulemeSayisi"" INTEGER NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""YararliBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""YararsizBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS ""Durum"" INTEGER NOT NULL DEFAULT 1,
-                    ADD COLUMN IF NOT EXISTS ""YayinlanmaTarihi"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""YazarKullaniciId"" INTEGER NULL,
-                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
-                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ["DestekTalebiAktiviteleri"] = @"
+                    ALTER TABLE ""DestekTalebiAktiviteleri""
+                        ADD COLUMN IF NOT EXISTS ""EskiDeger"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""YeniDeger"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""KullaniciId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE",
 
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekTalepleri_TalepNo"" ON ""DestekTalepleri"" (""TalepNo"");
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekAyarlari_Anahtar"" ON ""DestekAyarlari"" (""Anahtar"");
-            ", conn);
+                ["DestekBilgiBankasiMakaleleri"] = @"
+                    ALTER TABLE ""DestekBilgiBankasiMakaleleri""
+                        ADD COLUMN IF NOT EXISTS ""Ozet"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""Etiketler"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""SeoBaslik"" VARCHAR(500),
+                        ADD COLUMN IF NOT EXISTS ""SeoAciklama"" TEXT,
+                        ADD COLUMN IF NOT EXISTS ""Slug"" VARCHAR(500),
+                        ADD COLUMN IF NOT EXISTS ""GoruntulemeSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""YararliBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""YararsizBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS ""Durum"" INTEGER NOT NULL DEFAULT 1,
+                        ADD COLUMN IF NOT EXISTS ""YayinlanmaTarihi"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""YazarKullaniciId"" INTEGER NULL,
+                        ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                        ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE"
+            };
 
-            await cmd.ExecuteNonQueryAsync();
+            foreach (var (tableName, sql) in tableColumnUpdates)
+            {
+                if (existingTables.Contains(tableName))
+                {
+                    try
+                    {
+                        using var cmd = new NpgsqlCommand(sql, conn);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"{tableName} kolon güncelleme hatası: {ex.Message}");
+                    }
+                }
+            }
+
+            // İndeksleri oluştur (tablolar varsa)
+            if (existingTables.Contains("DestekTalepleri"))
+            {
+                try
+                {
+                    using var indexCmd = new NpgsqlCommand(
+                        @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekTalepleri_TalepNo"" ON ""DestekTalepleri"" (""TalepNo"")", conn);
+                    await indexCmd.ExecuteNonQueryAsync();
+                }
+                catch { /* İndeks zaten var */ }
+            }
+
+            if (existingTables.Contains("DestekAyarlari"))
+            {
+                try
+                {
+                    using var indexCmd = new NpgsqlCommand(
+                        @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekAyarlari_Anahtar"" ON ""DestekAyarlari"" (""Anahtar"")", conn);
+                    await indexCmd.ExecuteNonQueryAsync();
+                }
+                catch { /* İndeks zaten var */ }
+            }
+
             Console.WriteLine("Destek modulu kolonlari PostgreSQL'de kontrol edildi.");
         }
         catch (Exception ex)
@@ -867,7 +950,7 @@ public static class DbInitializer
         }
     }
 
-    private static async Task SeedDestekTalebiVerileriAsync(ApplicationDbContext context)
+                    private static async Task SeedDestekTalebiVerileriAsync(ApplicationDbContext context)
     {
         try
         {
@@ -998,12 +1081,31 @@ public static class DbInitializer
     }
 
     /// <summary>
-    /// PostgreSQL için eksik kolonları otomatik ekler
+    /// PostgreSQL için eksik tabloları ve kolonları otomatik ekler
     /// </summary>
     private static async Task EnsurePostgreSqlMissingColumnsAsync(ApplicationDbContext context, IConfiguration configuration)
     {
         var connectionString = GetDefaultConnectionString(context, configuration);
 
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        // Önce hangi tabloların var olduğunu kontrol et
+        var existingTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var checkTablesSql = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+        await using (var checkTablesCmd = new NpgsqlCommand(checkTablesSql, connection))
+        await using (var reader = await checkTablesCmd.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                existingTables.Add(reader.GetString(0));
+            }
+        }
+
+        // ========== ADIM 1: Eksik tabloları oluştur ==========
+        await EnsureCriticalTablesAsync(connection, existingTables);
+
+        // ========== ADIM 2: Eksik kolonları ekle ==========
         // Eklenecek kolonlar listesi: (Tablo, Kolon, Tip, Default)
         var missingColumns = new List<(string Table, string Column, string Type, string? Default)>
         {
@@ -1033,8 +1135,25 @@ public static class DbInitializer
             ("BudgetOdemeler", "FaturaId", "INTEGER", null),
             ("BudgetOdemeler", "FaturaIleKapatildi", "BOOLEAN", "FALSE"),
 
-            // Soforlar tablosu - Sıralama
-            ("Soforlar", "SiralamaNo", "INTEGER", "0"),
+            // Personeller tablosu - Sıralama ve diğer alanlar
+            ("Personeller", "SiralamaNo", "INTEGER", "0"),
+            ("Personeller", "Gorev", "INTEGER", "1"),
+            ("Personeller", "Departman", "VARCHAR(100)", null),
+            ("Personeller", "Pozisyon", "VARCHAR(100)", null),
+            ("Personeller", "BrutMaasHesaplamaTipi", "INTEGER", "0"),
+            ("Personeller", "CalismaMiktari", "NUMERIC(18,2)", "0"),
+            ("Personeller", "BirimUcret", "NUMERIC(18,2)", "0"),
+            ("Personeller", "BrutMaas", "NUMERIC(18,2)", "0"),
+            ("Personeller", "ResmiNetMaas", "NUMERIC(18,2)", "0"),
+            ("Personeller", "DigerMaas", "NUMERIC(18,2)", "0"),
+            ("Personeller", "NetMaas", "NUMERIC(18,2)", "0"),
+            ("Personeller", "SGKBordroDahilMi", "BOOLEAN", "FALSE"),
+            ("Personeller", "BordroTipiPersonel", "INTEGER", "0"),
+            ("Personeller", "ArgePersoneli", "BOOLEAN", "FALSE"),
+            ("Personeller", "TopluMaas", "NUMERIC(18,2)", "0"),
+            ("Personeller", "SgkMaasi", "NUMERIC(18,2)", "0"),
+            ("Personeller", "BankaAdi", "VARCHAR(100)", null),
+            ("Personeller", "IBAN", "VARCHAR(50)", null),
 
             // BankaKasaHareketleri tablosu - Mahsup alanları
             ("BankaKasaHareketleri", "MahsupHareketId", "INTEGER", null),
@@ -1048,13 +1167,16 @@ public static class DbInitializer
             ("BankaKasaHareketleri", "MuhasebeAciklama", "TEXT", null),
         };
 
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync();
-
         foreach (var (table, column, type, defaultValue) in missingColumns)
         {
             try
             {
+                // Tablo var mı kontrol et - yoksa atla
+                if (!existingTables.Contains(table))
+                {
+                    continue;
+                }
+
                 // Kolon var mı kontrol et
                 var checkSql = $@"
                     SELECT COUNT(*) FROM information_schema.columns 
@@ -1082,5 +1204,443 @@ public static class DbInitializer
         }
 
         await connection.CloseAsync();
+    }
+
+    /// <summary>
+    /// Kritik tabloları oluşturur (yoksa)
+    /// </summary>
+    private static async Task EnsureCriticalTablesAsync(NpgsqlConnection connection, HashSet<string> existingTables)
+    {
+        // Personeller tablosu
+        if (!existingTables.Contains("Personeller"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""Personeller"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""SoforKodu"" VARCHAR(50) NOT NULL DEFAULT '',
+                        ""Ad"" VARCHAR(100) NOT NULL DEFAULT '',
+                        ""Soyad"" VARCHAR(100) NOT NULL DEFAULT '',
+                        ""TcKimlikNo"" VARCHAR(20),
+                        ""Telefon"" VARCHAR(20),
+                        ""Email"" VARCHAR(200),
+                        ""Adres"" TEXT,
+                        ""SiralamaNo"" INTEGER NOT NULL DEFAULT 0,
+                        ""Gorev"" INTEGER NOT NULL DEFAULT 1,
+                        ""Departman"" VARCHAR(100),
+                        ""Pozisyon"" VARCHAR(100),
+                        ""EhliyetNo"" VARCHAR(50),
+                        ""EhliyetGecerlilikTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""SrcBelgesiGecerlilikTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""PsikoteknikGecerlilikTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""SaglikRaporuGecerlilikTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IseBaslamaTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IstenAyrilmaTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""SgkCikisTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""Notlar"" TEXT,
+                        ""BrutMaasHesaplamaTipi"" INTEGER NOT NULL DEFAULT 0,
+                        ""CalismaMiktari"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""BirimUcret"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""BrutMaas"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""ResmiNetMaas"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""DigerMaas"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""NetMaas"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""SGKBordroDahilMi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""BordroTipiPersonel"" INTEGER NOT NULL DEFAULT 0,
+                        ""ArgePersoneli"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""TopluMaas"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""SgkMaasi"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""BankaAdi"" VARCHAR(100),
+                        ""IBAN"" VARCHAR(50),
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("Personeller");
+                Console.WriteLine("Personeller tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Personeller tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // Faturalar tablosu
+        if (!existingTables.Contains("Faturalar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""Faturalar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""FaturaNo"" VARCHAR(50) NOT NULL DEFAULT '',
+                        ""FaturaTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""VadeTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""FaturaTipi"" INTEGER NOT NULL DEFAULT 1,
+                        ""Durum"" INTEGER NOT NULL DEFAULT 1,
+                        ""EFaturaTipi"" INTEGER NOT NULL DEFAULT 2,
+                        ""FaturaYonu"" INTEGER NOT NULL DEFAULT 1,
+                        ""EttnNo"" VARCHAR(100),
+                        ""GibKodu"" VARCHAR(50),
+                        ""GibOnayTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""ImportKaynak"" VARCHAR(50),
+                        ""XmlDosyaYolu"" TEXT,
+                        ""PdfDosyaYolu"" TEXT,
+                        ""FirmaId"" INTEGER,
+                        ""FirmalarArasiFatura"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""KarsiFirmaId"" INTEGER,
+                        ""EslesenFaturaId"" INTEGER,
+                        ""MahsupKapatildi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""MahsupTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""AraToplam"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""IskontoTutar"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""KdvOrani"" NUMERIC(5,2) NOT NULL DEFAULT 20,
+                        ""KdvTutar"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""GenelToplam"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""OdenenTutar"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""TevkifatliMi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""TevkifatOrani"" NUMERIC(5,2) NOT NULL DEFAULT 0,
+                        ""TevkifatKodu"" VARCHAR(20),
+                        ""TevkifatTutar"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""Aciklama"" TEXT,
+                        ""Notlar"" TEXT,
+                        ""MuhasebeFisiOlusturuldu"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""MuhasebeFisId"" INTEGER,
+                        ""AracId"" INTEGER,
+                        ""AracFaturasi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""CariId"" INTEGER NOT NULL,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("Faturalar");
+                Console.WriteLine("Faturalar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Faturalar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // BudgetOdemeler tablosu
+        if (!existingTables.Contains("BudgetOdemeler"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""BudgetOdemeler"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""OdemeTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""OdemeAy"" INTEGER NOT NULL DEFAULT 1,
+                        ""OdemeYil"" INTEGER NOT NULL DEFAULT 2024,
+                        ""MasrafKalemi"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ""Aciklama"" TEXT,
+                        ""Miktar"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""FirmaId"" INTEGER,
+                        ""TaksitliMi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""ToplamTaksitSayisi"" INTEGER NOT NULL DEFAULT 1,
+                        ""KacinciTaksit"" INTEGER NOT NULL DEFAULT 1,
+                        ""TaksitGrupId"" UUID,
+                        ""TaksitBaslangicAy"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""TaksitBitisAy"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""Durum"" INTEGER NOT NULL DEFAULT 1,
+                        ""Notlar"" TEXT,
+                        ""GercekOdemeTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""OdemeYapildigiHesapId"" INTEGER,
+                        ""OdenenTutar"" NUMERIC(18,2),
+                        ""OdemeNotu"" VARCHAR(500),
+                        ""BankaKasaHareketId"" INTEGER,
+                        ""MasrafKesintisi"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""CezaKesintisi"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""DigerKesinti"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""KesintiAciklamasi"" VARCHAR(500),
+                        ""FaturaId"" INTEGER,
+                        ""FaturaIleKapatildi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("BudgetOdemeler");
+                Console.WriteLine("BudgetOdemeler tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BudgetOdemeler tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // BankaKasaHareketleri tablosu
+        if (!existingTables.Contains("BankaKasaHareketleri"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""BankaKasaHareketleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""IslemNo"" VARCHAR(50) NOT NULL DEFAULT '',
+                        ""IslemTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""HareketTipi"" INTEGER NOT NULL DEFAULT 1,
+                        ""Tutar"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""Aciklama"" TEXT,
+                        ""BelgeNo"" VARCHAR(50),
+                        ""IslemKaynak"" INTEGER NOT NULL DEFAULT 1,
+                        ""MahsupHareketId"" INTEGER,
+                        ""MahsupGrupId"" UUID,
+                        ""MuhasebeHesapKodu"" TEXT,
+                        ""MuhasebeAltHesapKodu"" TEXT,
+                        ""KostMerkeziKodu"" TEXT,
+                        ""ProjeKodu"" TEXT,
+                        ""MuhasebeAciklama"" TEXT,
+                        ""BankaHesapId"" INTEGER NOT NULL,
+                        ""CariId"" INTEGER,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("BankaKasaHareketleri");
+                Console.WriteLine("BankaKasaHareketleri tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BankaKasaHareketleri tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // BudgetMasrafKalemleri tablosu
+        if (!existingTables.Contains("BudgetMasrafKalemleri"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""BudgetMasrafKalemleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""KalemAdi"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("BudgetMasrafKalemleri");
+                Console.WriteLine("BudgetMasrafKalemleri tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BudgetMasrafKalemleri tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // BankaHesaplar tablosu
+        if (!existingTables.Contains("BankaHesaplar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""BankaHesaplar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""HesapAdi"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ""BankaAdi"" VARCHAR(100),
+                        ""SubeAdi"" VARCHAR(100),
+                        ""SubeKodu"" VARCHAR(20),
+                        ""HesapNo"" VARCHAR(50),
+                        ""IBAN"" VARCHAR(50),
+                        ""ParaBirimi"" VARCHAR(10) NOT NULL DEFAULT 'TRY',
+                        ""Bakiye"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""HesapTipi"" INTEGER NOT NULL DEFAULT 1,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""FirmaId"" INTEGER,
+                        ""Notlar"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("BankaHesaplar");
+                Console.WriteLine("BankaHesaplar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BankaHesaplar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // Cariler tablosu
+        if (!existingTables.Contains("Cariler"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""Cariler"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""CariKodu"" VARCHAR(50) NOT NULL DEFAULT '',
+                        ""Unvan"" VARCHAR(300) NOT NULL DEFAULT '',
+                        ""CariTipi"" INTEGER NOT NULL DEFAULT 1,
+                        ""VergiDairesi"" VARCHAR(100),
+                        ""VergiNo"" VARCHAR(20),
+                        ""TcKimlikNo"" VARCHAR(20),
+                        ""Adres"" TEXT,
+                        ""Telefon"" VARCHAR(20),
+                        ""Email"" VARCHAR(200),
+                        ""WebSite"" VARCHAR(200),
+                        ""YetkiliAdi"" VARCHAR(100),
+                        ""YetkiliTelefon"" VARCHAR(20),
+                        ""YetkiliEmail"" VARCHAR(200),
+                        ""Bakiye"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""RiskLimiti"" NUMERIC(18,2) NOT NULL DEFAULT 0,
+                        ""VadeGunu"" INTEGER NOT NULL DEFAULT 0,
+                        ""IskontoOrani"" NUMERIC(5,2) NOT NULL DEFAULT 0,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""FirmaId"" INTEGER,
+                        ""Notlar"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("Cariler");
+                Console.WriteLine("Cariler tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Cariler tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // Firmalar tablosu
+        if (!existingTables.Contains("Firmalar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""Firmalar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""FirmaKodu"" VARCHAR(50) NOT NULL DEFAULT '',
+                        ""FirmaAdi"" VARCHAR(300) NOT NULL DEFAULT '',
+                        ""VergiDairesi"" VARCHAR(100),
+                        ""VergiNo"" VARCHAR(20),
+                        ""TicariSicilNo"" VARCHAR(50),
+                        ""MersisNo"" VARCHAR(50),
+                        ""Adres"" TEXT,
+                        ""Telefon"" VARCHAR(20),
+                        ""Email"" VARCHAR(200),
+                        ""WebSite"" VARCHAR(200),
+                        ""YetkiliAdi"" VARCHAR(100),
+                        ""YetkiliTelefon"" VARCHAR(20),
+                        ""YetkiliEmail"" VARCHAR(200),
+                        ""LogoYolu"" TEXT,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""Notlar"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("Firmalar");
+                Console.WriteLine("Firmalar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Firmalar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // Kullanicilar tablosu
+        if (!existingTables.Contains("Kullanicilar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""Kullanicilar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""KullaniciAdi"" VARCHAR(100) NOT NULL DEFAULT '',
+                        ""Email"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ""SifreHash"" TEXT NOT NULL DEFAULT '',
+                        ""Ad"" VARCHAR(100) NOT NULL DEFAULT '',
+                        ""Soyad"" VARCHAR(100) NOT NULL DEFAULT '',
+                        ""Telefon"" VARCHAR(20),
+                        ""ProfilFotoUrl"" TEXT,
+                        ""RolId"" INTEGER,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""SonGirisTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("Kullanicilar");
+                Console.WriteLine("Kullanicilar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Kullanicilar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // Roller tablosu
+        if (!existingTables.Contains("Roller"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""Roller"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""RolAdi"" VARCHAR(100) NOT NULL DEFAULT '',
+                        ""Aciklama"" TEXT,
+                        ""Yetkiler"" TEXT,
+                        ""Renk"" VARCHAR(20) DEFAULT '#dc3545',
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("Roller");
+                Console.WriteLine("Roller tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Roller tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // PuantajKayitlar tablosu
+        if (!existingTables.Contains("PuantajKayitlar"))
+        {
+            try
+            {
+                var gunKolonlari = string.Join(", ", Enumerable.Range(1, 31).Select(g => $@"""Gun{g:D2}"" INTEGER NOT NULL DEFAULT 0"));
+                await using var createCmd = new NpgsqlCommand($@"
+                    CREATE TABLE ""PuantajKayitlar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Yil"" INTEGER NOT NULL,
+                        ""Ay"" INTEGER NOT NULL,
+                        ""SoforId"" INTEGER NOT NULL,
+                        ""Bolge"" VARCHAR(100),
+                        ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ""AitFirmaAdi"" VARCHAR(200),
+                        {gunKolonlari},
+                        ""ToplamCalismaGunu"" INTEGER NOT NULL DEFAULT 0,
+                        ""Notlar"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("PuantajKayitlar");
+                Console.WriteLine("PuantajKayitlar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"PuantajKayitlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine("Kritik tablolar kontrol edildi.");
     }
 }

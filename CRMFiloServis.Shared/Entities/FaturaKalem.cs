@@ -58,6 +58,7 @@ public enum FaturaKalemTipi
     Demirbas = 3,       // Demirbaş satışı/alışı
     Arac = 4,           // Araç satışı/alışı
     Servis = 5,         // Servis hizmeti
+    Masraf = 6,         // Araç masrafları (yansıtma için)
     Diger = 99
 }
 
@@ -93,6 +94,14 @@ public enum FaturaKalemAltTipi
     Muayene = 504,
     Lastik = 505,
     Yakit = 506,
-    
+
+    // Masraf Alt Tipleri (Yansıtma için)
+    YansitmaBedeli = 601,       // Araca ait masrafın müşteriye yansıtılması
+    AracKiraBedeli = 602,       // Araç kira bedeli
+    YanitimYakit = 603,         // Yakıt yansıtma
+    YansitimServis = 604,       // Servis yansıtma
+    YansitimSigorta = 605,      // Sigorta yansıtma
+    YansitimDiger = 699,        // Diğer yansıtma
+
     Diger = 999
 }

@@ -407,27 +407,30 @@
         new("Masraf", KolayIslemTuru.MasrafGirisi, "warning", "bi-cash-stack"),
         new("Tahsilat", KolayIslemTuru.TahsilatGirisi, "primary", "bi-wallet2"),
         new("Ödeme", KolayIslemTuru.OdemeGirisi, "info", "bi-credit-card"),
-        new("Avans", KolayIslemTuru.AvansGirisi, "secondary", "bi-person-badge")
+        new("Avans", KolayIslemTuru.AvansGirisi, "secondary", "bi-person-badge"),
+        new("Mahsup", KolayIslemTuru.MahsupKaydi, "dark", "bi-arrow-left-right")
     };
 
     // Computed properties
-    private bool CariGerekliMi => giris.IslemTuru != KolayIslemTuru.MasrafGirisi || giris.IslemTuru == KolayIslemTuru.MahsupKaydi;
+    private bool CariGerekliMi => giris.IslemTuru != KolayIslemTuru.MasrafGirisi;
     
     private string CariBaslik => giris.IslemTuru switch
     {
         KolayIslemTuru.GelirFatura or KolayIslemTuru.TahsilatGirisi => "Müşteri",
         KolayIslemTuru.GiderFatura or KolayIslemTuru.OdemeGirisi => "Tedarikçi",
         KolayIslemTuru.AvansGirisi => "Personel",
+        KolayIslemTuru.MahsupKaydi => "Cari (Mahsup)",
         _ => "Cari"
     };
 
     private bool BankaGerekliMi => giris.IslemTuru is KolayIslemTuru.TahsilatGirisi or KolayIslemTuru.OdemeGirisi 
-                                   or KolayIslemTuru.MasrafGirisi or KolayIslemTuru.AvansGirisi;
+                                   or KolayIslemTuru.MasrafGirisi or KolayIslemTuru.AvansGirisi or KolayIslemTuru.MahsupKaydi;
 
     private string BankaBaslik => giris.IslemTuru switch
     {
         KolayIslemTuru.TahsilatGirisi => "Tahsilat Hesabı (Kasa/Banka)",
         KolayIslemTuru.OdemeGirisi or KolayIslemTuru.AvansGirisi => "Ödeme Hesabı (Kasa/Banka)",
+        KolayIslemTuru.MahsupKaydi => "Mahsup Hesabı (Kasa/Banka)",
         _ => "Banka/Kasa Hesabı"
     };
 
@@ -454,15 +457,23 @@
     private async Task IslemTuruDegisti(KolayIslemTuru yeniTur)
     {
         giris.IslemTuru = yeniTur;
-        
+
         // Cari tipi ayarla
         giris.YeniCariTipi = yeniTur switch
         {
             KolayIslemTuru.GelirFatura or KolayIslemTuru.TahsilatGirisi => CariTipi.Musteri,
             KolayIslemTuru.GiderFatura or KolayIslemTuru.OdemeGirisi => CariTipi.Tedarikci,
             KolayIslemTuru.AvansGirisi => CariTipi.Personel,
+            KolayIslemTuru.MahsupKaydi => null, // Mahsup için herhangi bir cari tipi olabilir
             _ => null
         };
+
+        // Cari seçimini temizle (tip değiştiğinde)
+        secilenCari = null;
+        giris.CariId = null;
+        giris.CariUnvan = null;
+        cariArama = "";
+        arananCariler = new();
 
         await OnizlemeGuncelle();
     }
@@ -512,6 +523,7 @@
             KolayIslemTuru.GelirFatura or KolayIslemTuru.TahsilatGirisi => CariTipi.Musteri,
             KolayIslemTuru.GiderFatura or KolayIslemTuru.OdemeGirisi => CariTipi.Tedarikci,
             KolayIslemTuru.AvansGirisi => CariTipi.Personel,
+            KolayIslemTuru.MahsupKaydi => (CariTipi?)null, // Mahsup için tüm cariler
             _ => (CariTipi?)null
         };
 
@@ -547,11 +559,26 @@
             KolayIslemTuru.GelirFatura or KolayIslemTuru.TahsilatGirisi => CariTipi.Musteri,
             KolayIslemTuru.GiderFatura or KolayIslemTuru.OdemeGirisi => CariTipi.Tedarikci,
             KolayIslemTuru.AvansGirisi => CariTipi.Personel,
+            KolayIslemTuru.MahsupKaydi => CariTipi.MusteriTedarikci,
             _ => CariTipi.MusteriTedarikci
         };
 
+        // Hızlı cari oluştur
+        try
+        {
+            var yeniCari = await KolayMuhasebeService.HizliCariOlusturAsync(cariArama, giris.YeniCariTipi.Value);
+            secilenCari = yeniCari;
+            giris.CariId = yeniCari.Id;
+            giris.CariUnvan = yeniCari.Unvan;
+            ToastService.ShowSuccess($"'{cariArama}' isimli yeni cari oluşturuldu. Kod: {yeniCari.CariKodu}");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Cari oluşturulamadı: {ex.Message}");
+        }
+
         arananCariler = new();
-        ToastService.ShowInfo($"'{cariArama}' isimli yeni cari kaydedilecek.");
+        cariArama = "";
         await OnizlemeGuncelle();
     }
 
@@ -629,6 +656,7 @@
         KolayIslemTuru.TahsilatGirisi => "Tahsilat",
         KolayIslemTuru.OdemeGirisi => "Ödeme",
         KolayIslemTuru.AvansGirisi => "Avans",
+        KolayIslemTuru.MahsupKaydi => "Mahsup",
         _ => tur.ToString()
     };
 
@@ -637,6 +665,7 @@
         KolayIslemTuru.GelirFatura or KolayIslemTuru.TahsilatGirisi => "success",
         KolayIslemTuru.GiderFatura or KolayIslemTuru.OdemeGirisi => "danger",
         KolayIslemTuru.MasrafGirisi => "warning",
+        KolayIslemTuru.MahsupKaydi => "dark",
         _ => "secondary"
     };
 

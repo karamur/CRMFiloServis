@@ -797,12 +797,29 @@ public class DestekAyar : BaseEntity
 /// </summary>
 public enum DestekDurum
 {
+    Taslak = 0,
     Yeni = 1,
     Acik = 2,
     Beklemede = 3,
     YanitBekleniyor = 4,
     Cozuldu = 5,
-    Kapali = 6
+    Kapali = 6,
+    /// <summary>
+    /// Gönderildi - Atama bekliyor (osTicket benzeri)
+    /// </summary>
+    Gonderildi = 7,
+    /// <summary>
+    /// İşlemde - Yetkili üzerinde çalışıyor
+    /// </summary>
+    Islemde = 8,
+    /// <summary>
+    /// Bitti - Tamamlandı, onay bekliyor
+    /// </summary>
+    Bitti = 9,
+    /// <summary>
+    /// Onaylandi - Kullanıcı tarafından onaylandı
+    /// </summary>
+    Onaylandi = 10
 }
 
 /// <summary>

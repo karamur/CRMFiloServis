@@ -66,6 +66,18 @@ public interface IBudgetService
     Task<TekrarlayanOdeme> UpdateTekrarlayanOdemeAsync(TekrarlayanOdeme odeme);
     Task DeleteTekrarlayanOdemeAsync(int id);
     Task<int> TekrarlayanOdemelerdenKayitOlusturAsync(int yil, int ay, int? firmaId = null);
+
+    // Hedef Yönetimi
+    Task<List<BudgetHedef>> GetHedeflerAsync(int yil, int? ay = null, int? firmaId = null);
+    Task<BudgetHedef?> GetHedefByIdAsync(int id);
+    Task<BudgetHedef> CreateHedefAsync(BudgetHedef hedef);
+    Task<BudgetHedef> UpdateHedefAsync(BudgetHedef hedef);
+    Task DeleteHedefAsync(int id);
+    Task<int> KopyalaHedeflerAsync(int kaynakYil, int hedefYil, decimal artisOrani = 0);
+
+    // Hedef vs Gerçekleşen Karşılaştırma
+    Task<List<BudgetHedefGerceklesen>> GetHedefGerceklesenAsync(int yil, int? ay = null, int? firmaId = null);
+    Task<BudgetYillikHedefOzet> GetYillikHedefOzetAsync(int yil, int? firmaId = null);
 }
 
 public class TaksitliOdemeRequest

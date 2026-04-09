@@ -49,6 +49,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<BudgetOdeme> BudgetOdemeler { get; set; }
     public DbSet<BudgetMasrafKalemi> BudgetMasrafKalemleri { get; set; }
     public DbSet<TekrarlayanOdeme> TekrarlayanOdemeler { get; set; }
+    public DbSet<BudgetHedef> BudgetHedefler { get; set; }
 
     // Muhasebe Modulu
     public DbSet<MuhasebeHesap> MuhasebeHesaplari { get; set; }
@@ -187,6 +188,13 @@ public class ApplicationDbContext : DbContext
     public DbSet<DestekBilgiBankasi> DestekBilgiBankasiMakaleleri { get; set; }
     public DbSet<DestekSla> DestekSlaListesi { get; set; }
     public DbSet<DestekAyar> DestekAyarlari { get; set; }
+
+    // EBYS Gelen/Giden Evrak Modülü
+    public DbSet<EbysEvrak> EbysEvraklar { get; set; }
+    public DbSet<EbysEvrakKategori> EbysEvrakKategoriler { get; set; }
+    public DbSet<EbysEvrakDosya> EbysEvrakDosyalar { get; set; }
+    public DbSet<EbysEvrakAtama> EbysEvrakAtamalar { get; set; }
+    public DbSet<EbysEvrakHareket> EbysEvrakHareketler { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1786,6 +1794,102 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Anahtar).HasMaxLength(100);
             entity.Property(e => e.Deger).HasMaxLength(2000);
             entity.Property(e => e.Grup).HasMaxLength(50);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // ===== EBYS GELEN/GİDEN EVRAK MODÜLÜ =====
+
+        // EbysEvrak - Gelen/Giden evrak ana tablosu
+        modelBuilder.Entity<EbysEvrak>(entity =>
+        {
+            entity.HasIndex(e => e.EvrakNo);
+            entity.HasIndex(e => new { e.Yon, e.Durum });
+            entity.HasIndex(e => e.EvrakTarihi);
+            entity.Property(e => e.EvrakNo).HasMaxLength(50);
+            entity.Property(e => e.Konu).HasMaxLength(500);
+            entity.Property(e => e.Ozet).HasMaxLength(2000);
+            entity.Property(e => e.GonderenKurum).HasMaxLength(250);
+            entity.Property(e => e.AliciKurum).HasMaxLength(250);
+            entity.Property(e => e.GelisNo).HasMaxLength(50);
+            entity.Property(e => e.GidisNo).HasMaxLength(50);
+            entity.Property(e => e.Aciklama).HasMaxLength(2000);
+            entity.Property(e => e.Notlar).HasMaxLength(4000);
+            entity.HasOne(e => e.Kategori)
+                .WithMany(k => k.Evraklar)
+                .HasForeignKey(e => e.KategoriId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.UstEvrak)
+                .WithMany(e => e.AltEvraklar)
+                .HasForeignKey(e => e.UstEvrakId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.AtananKullanici)
+                .WithMany()
+                .HasForeignKey(e => e.AtananKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // EbysEvrakKategori
+        modelBuilder.Entity<EbysEvrakKategori>(entity =>
+        {
+            entity.HasIndex(e => e.KategoriAdi);
+            entity.Property(e => e.KategoriAdi).HasMaxLength(100);
+            entity.Property(e => e.Aciklama).HasMaxLength(500);
+            entity.Property(e => e.Renk).HasMaxLength(20);
+            entity.Property(e => e.Ikon).HasMaxLength(50);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // EbysEvrakDosya
+        modelBuilder.Entity<EbysEvrakDosya>(entity =>
+        {
+            entity.Property(e => e.DosyaAdi).HasMaxLength(255);
+            entity.Property(e => e.DosyaYolu).HasMaxLength(500);
+            entity.Property(e => e.DosyaTipi).HasMaxLength(20);
+            entity.Property(e => e.Aciklama).HasMaxLength(500);
+            entity.HasOne(e => e.Evrak)
+                .WithMany(e => e.Dosyalar)
+                .HasForeignKey(e => e.EvrakId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // EbysEvrakAtama
+        modelBuilder.Entity<EbysEvrakAtama>(entity =>
+        {
+            entity.HasIndex(e => new { e.EvrakId, e.Durum });
+            entity.Property(e => e.Talimat).HasMaxLength(2000);
+            entity.Property(e => e.Sonuc).HasMaxLength(2000);
+            entity.HasOne(e => e.Evrak)
+                .WithMany(e => e.Atamalar)
+                .HasForeignKey(e => e.EvrakId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.AtananKullanici)
+                .WithMany()
+                .HasForeignKey(e => e.AtananKullaniciId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.AtayanKullanici)
+                .WithMany()
+                .HasForeignKey(e => e.AtayanKullaniciId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // EbysEvrakHareket
+        modelBuilder.Entity<EbysEvrakHareket>(entity =>
+        {
+            entity.HasIndex(e => new { e.EvrakId, e.IslemTarihi });
+            entity.Property(e => e.Aciklama).HasMaxLength(1000);
+            entity.Property(e => e.EskiDeger).HasMaxLength(500);
+            entity.Property(e => e.YeniDeger).HasMaxLength(500);
+            entity.HasOne(e => e.Evrak)
+                .WithMany(e => e.Hareketler)
+                .HasForeignKey(e => e.EvrakId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Kullanici)
+                .WithMany()
+                .HasForeignKey(e => e.KullaniciId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
     }

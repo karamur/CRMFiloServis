@@ -109,3 +109,70 @@ public class BudgetMasrafKalemi : BaseEntity
 
     public int SiraNo { get; set; }
 }
+
+/// <summary>
+/// Bütçe Hedef Kaydı - Kategori bazlı hedef tutarlar
+/// </summary>
+public class BudgetHedef : BaseEntity
+{
+    [Required]
+    public int Yil { get; set; }
+
+    [Required]
+    public int Ay { get; set; } // 1-12, 0 = Yıllık hedef
+
+    [Required]
+    public string MasrafKalemi { get; set; } = string.Empty;
+
+    [Required]
+    public decimal HedefTutar { get; set; }
+
+    public string? Aciklama { get; set; }
+
+    // Firma bazlı hedef (opsiyonel)
+    public int? FirmaId { get; set; }
+    public virtual Firma? Firma { get; set; }
+}
+
+/// <summary>
+/// Hedef vs Gerçekleşen Karşılaştırma DTO
+/// </summary>
+public class BudgetHedefGerceklesen
+{
+    public string MasrafKalemi { get; set; } = string.Empty;
+    public int Ay { get; set; }
+    public int Yil { get; set; }
+    public decimal HedefTutar { get; set; }
+    public decimal GerceklesenTutar { get; set; }
+    public decimal Fark => GerceklesenTutar - HedefTutar;
+    public decimal FarkYuzdesi => HedefTutar > 0 ? (Fark / HedefTutar) * 100 : 0;
+    public string Durum => GerceklesenTutar <= HedefTutar ? "Basarili" : "Asim";
+    public string? Renk { get; set; }
+}
+
+/// <summary>
+/// Yıllık Hedef vs Gerçekleşen Özet
+/// </summary>
+public class BudgetYillikHedefOzet
+{
+    public int Yil { get; set; }
+    public decimal ToplamHedef { get; set; }
+    public decimal ToplamGerceklesen { get; set; }
+    public decimal ToplamFark => ToplamGerceklesen - ToplamHedef;
+    public decimal BasariOrani => ToplamHedef > 0 ? ((ToplamHedef - Math.Max(0, ToplamFark)) / ToplamHedef) * 100 : 100;
+    public List<BudgetHedefGerceklesen> KategoriDetaylari { get; set; } = new();
+    public List<BudgetAylikHedefOzet> AylikDetaylar { get; set; } = new();
+}
+
+/// <summary>
+/// Aylık Hedef vs Gerçekleşen Özet
+/// </summary>
+public class BudgetAylikHedefOzet
+{
+    public int Ay { get; set; }
+    public string AyAdi { get; set; } = string.Empty;
+    public decimal HedefTutar { get; set; }
+    public decimal GerceklesenTutar { get; set; }
+    public decimal Fark => GerceklesenTutar - HedefTutar;
+    public decimal BasariOrani => HedefTutar > 0 ? Math.Min(100, (GerceklesenTutar / HedefTutar) * 100) : 0;
+}

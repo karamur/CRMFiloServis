@@ -285,69 +285,74 @@ public class StokService : IStokService
         if (recete.MamulMiktari <= 0)
             throw new Exception("Mamul miktarı 0'dan büyük olmalıdır.");
 
-        await using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        // ExecutionStrategy ile transaction sarmalama (NpgsqlRetryingExecutionStrategy uyumluluğu)
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            var hareketler = new List<StokHareket>();
-            decimal toplamMaliyet = 0;
-
-            foreach (var kalem in recete.Kalemler.Where(k => k.StokKartiId > 0 && k.Miktar > 0))
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var stok = await _context.StokKartlari.FirstOrDefaultAsync(s => s.Id == kalem.StokKartiId && !s.IsDeleted);
-                if (stok == null)
-                    throw new Exception($"Bileşen stok bulunamadı: {kalem.StokKartiId}");
+                var hareketler = new List<StokHareket>();
+                decimal toplamMaliyet = 0;
 
-                var birimFiyat = kalem.BirimFiyat > 0 ? kalem.BirimFiyat : stok.AlisFiyati;
-                toplamMaliyet += kalem.Miktar * birimFiyat;
+                foreach (var kalem in recete.Kalemler.Where(k => k.StokKartiId > 0 && k.Miktar > 0))
+                {
+                    var stok = await _context.StokKartlari.FirstOrDefaultAsync(s => s.Id == kalem.StokKartiId && !s.IsDeleted);
+                    if (stok == null)
+                        throw new Exception($"Bileşen stok bulunamadı: {kalem.StokKartiId}");
+
+                    var birimFiyat = kalem.BirimFiyat > 0 ? kalem.BirimFiyat : stok.AlisFiyati;
+                    toplamMaliyet += kalem.Miktar * birimFiyat;
+
+                    hareketler.Add(new StokHareket
+                    {
+                        StokKartiId = kalem.StokKartiId,
+                        HareketTipi = StokHareketTipi.UretimCikis,
+                        IslemTarihi = DateTime.SpecifyKind(recete.IslemTarihi, DateTimeKind.Utc),
+                        Miktar = -Math.Abs(kalem.Miktar),
+                        BirimFiyat = birimFiyat,
+                        BelgeNo = recete.BelgeNo,
+                        Aciklama = $"Üretim Reçetesi Çıkışı - {recete.Aciklama}",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
+                var mamulStok = await _context.StokKartlari.FirstOrDefaultAsync(s => s.Id == recete.MamulStokKartiId && !s.IsDeleted);
+                if (mamulStok == null)
+                    throw new Exception("Mamul stok kartı bulunamadı");
+
+                var mamulBirimMaliyet = recete.MamulBirimMaliyeti > 0
+                    ? recete.MamulBirimMaliyeti
+                    : (toplamMaliyet / recete.MamulMiktari);
 
                 hareketler.Add(new StokHareket
                 {
-                    StokKartiId = kalem.StokKartiId,
-                    HareketTipi = StokHareketTipi.UretimCikis,
+                    StokKartiId = recete.MamulStokKartiId,
+                    HareketTipi = StokHareketTipi.UretimGiris,
                     IslemTarihi = DateTime.SpecifyKind(recete.IslemTarihi, DateTimeKind.Utc),
-                    Miktar = -Math.Abs(kalem.Miktar),
-                    BirimFiyat = birimFiyat,
+                    Miktar = Math.Abs(recete.MamulMiktari),
+                    BirimFiyat = mamulBirimMaliyet,
                     BelgeNo = recete.BelgeNo,
-                    Aciklama = $"Üretim Reçetesi Çıkışı - {recete.Aciklama}",
+                    Aciklama = $"Üretim Reçetesi Girişi - {recete.Aciklama}",
                     CreatedAt = DateTime.UtcNow
                 });
+
+                _context.StokHareketler.AddRange(hareketler);
+                await _context.SaveChangesAsync();
+
+                var stokIds = hareketler.Select(h => h.StokKartiId).Distinct().ToList();
+                foreach (var stokId in stokIds)
+                    await UpdateStokMiktariAsync(stokId);
+
+                await CreateMuhasebeFisiForUretimAsync(recete, hareketler, toplamMaliyet);
+                await transaction.CommitAsync();
             }
-
-            var mamulStok = await _context.StokKartlari.FirstOrDefaultAsync(s => s.Id == recete.MamulStokKartiId && !s.IsDeleted);
-            if (mamulStok == null)
-                throw new Exception("Mamul stok kartı bulunamadı");
-
-            var mamulBirimMaliyet = recete.MamulBirimMaliyeti > 0
-                ? recete.MamulBirimMaliyeti
-                : (toplamMaliyet / recete.MamulMiktari);
-
-            hareketler.Add(new StokHareket
+            catch
             {
-                StokKartiId = recete.MamulStokKartiId,
-                HareketTipi = StokHareketTipi.UretimGiris,
-                IslemTarihi = DateTime.SpecifyKind(recete.IslemTarihi, DateTimeKind.Utc),
-                Miktar = Math.Abs(recete.MamulMiktari),
-                BirimFiyat = mamulBirimMaliyet,
-                BelgeNo = recete.BelgeNo,
-                Aciklama = $"Üretim Reçetesi Girişi - {recete.Aciklama}",
-                CreatedAt = DateTime.UtcNow
-            });
-
-            _context.StokHareketler.AddRange(hareketler);
-            await _context.SaveChangesAsync();
-
-            var stokIds = hareketler.Select(h => h.StokKartiId).Distinct().ToList();
-            foreach (var stokId in stokIds)
-                await UpdateStokMiktariAsync(stokId);
-
-            await CreateMuhasebeFisiForUretimAsync(recete, hareketler, toplamMaliyet);
-            await transaction.CommitAsync();
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     public async Task UpdateStokMiktariAsync(int stokKartiId)

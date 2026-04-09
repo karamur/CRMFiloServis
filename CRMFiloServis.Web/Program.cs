@@ -197,6 +197,7 @@ builder.Services.AddScoped<ICariHatirlatmaService, CariHatirlatmaService>(); // 
 builder.Services.AddHostedService<CariHatirlatmaBackgroundService>(); // Cari Hatırlatma Arka Plan Servisi
 builder.Services.AddScoped<IFaturaSablonService, FaturaSablonService>(); // Fatura Şablon Yönetimi Servisi
 builder.Services.AddScoped<IDestekTalebiService, DestekTalebiService>(); // Destek Talebi (Ticket) Servisi - osTicket benzeri
+builder.Services.AddScoped<IEbysEvrakService, EbysEvrakService>(); // EBYS Gelen/Giden Evrak Servisi
 builder.Services.AddHostedService<AutoBackupService>();
 builder.Services.AddHttpContextAccessor();
 

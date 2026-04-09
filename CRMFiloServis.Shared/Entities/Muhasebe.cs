@@ -86,6 +86,10 @@ public class MuhasebeFis : BaseEntity
     public int? KaynakId { get; set; } // Fatura, Hareket vb. ID
     public string? KaynakTip { get; set; } // "Fatura", "BankaHareket" vb.
 
+    // Bordro bağlantısı (opsiyonel)
+    public int? BordroId { get; set; }
+    public virtual Bordro? Bordro { get; set; }
+
     // Navigation
     public virtual ICollection<MuhasebeFisKalem> Kalemler { get; set; } = new List<MuhasebeFisKalem>();
 }

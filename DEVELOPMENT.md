@@ -41,6 +41,128 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 099 - osTicket Benzeri Destek Talebi Sistemi (Kullanıcı ve Yetkili Arayüzü)
+**Talep:** Destek talebi modülüne osTicket benzeri 2 ana arayüz eklenmesi: kullanıcı talep girişi + yetkili yönetimi (Kanban board).
+
+**Yapılanlar:**
+- `DestekDurum` enum'una yeni durumlar eklendi: `Taslak=0`, `Gonderildi=7`, `Islemde=8`, `Bitti=9`, `Onaylandi=10`
+- 4 yeni Razor sayfası oluşturuldu:
+  - `TalepGiris.razor` (`/destek-talepleri/talep-giris`, `/destek-talepleri/talep-giris/{TalepId:int}`)
+    - Kullanıcı talep oluşturma ve düzenleme
+    - Taslak kaydetme ve Gönder aksiyonları
+    - Departman/Kategori/Öncelik seçimi
+    - Konu ve açıklama girişi
+  - `Taleplerim.razor` (`/destek-talepleri/taleplerim`)
+    - Kullanıcının kendi taleplerini listeleme
+    - Durum bazlı filtreleme
+    - Taslak düzenleme/silme aksiyonları
+    - Bitti durumundaki talepler için onaylama aksiyonu
+  - `TalepTakip.razor` (`/destek-talepleri/talep-takip/{TalepId:int}`)
+    - Talep detay görüntüleme
+    - Durum akışı görseli (Taslak → Gönderildi → İşlemde → Bitti → Onaylandı)
+    - Mesajlaşma/yorum sistemi
+    - Aktivite geçmişi timeline
+  - `TalepYonetim.razor` (`/destek-talepleri/yonetim`)
+    - 4 kolonlu Kanban board (Atama Bekleyen, İşlemde, Onay Bekleyen, Tamamlanan)
+    - Yetkili atama modalı
+    - Durum değiştirme aksiyonları
+    - Talep özet kartları
+- `NavMenu.razor` güncellendi - CRM modülü altına destek talebi linkleri eklendi:
+  - Taleplerim (`destektalebi.oku`)
+  - Yeni Talep (`destektalebi.oku`)
+  - Talep Yönetimi (`destektalebi.yaz`)
+  - Tüm Talepler (`destektalebi.yaz`)
+  - Bilgi Bankası (`destektalebi.oku`)
+- `StokService.cs` içindeki `CreateUretimRecetesiAsync` metodu girintileme hatası düzeltildi (CS1026, CS1002, CS1513)
+- Tüm yeni sayfalarda `OlusturulmaTarihi` → `CreatedAt` düzeltildi (BaseEntity uyumu)
+
+**Durum Akışı:**
+```
+Taslak → Gönderildi → İşlemde → Bitti → Onaylandı
+  ↑        ↑           ↑         ↑         ↑
+  │        │           │         │         └── Kullanıcı onayı
+  │        │           │         └── Yetkili tamamlama
+  │        │           └── Yetkili işleme alma
+  │        └── Kullanıcı gönderme
+  └── Kullanıcı taslak kaydetme
+```
+
+**Yetki Yapısı:**
+- `destektalebi.oku`: Taleplerim, Yeni Talep, Talep Takip, Bilgi Bankası
+- `destektalebi.yaz`: Talep Yönetimi, Tüm Talepler, Atama işlemleri
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/DestekTalebi.cs` (DestekDurum enum)
+- `CRMFiloServis.Web/Components/Pages/DestekTalepleri/TalepGiris.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/DestekTalepleri/Taleplerim.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/DestekTalepleri/TalepTakip.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/DestekTalepleri/TalepYonetim.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncellendi)
+- `CRMFiloServis.Web/Services/StokService.cs` (girintileme düzeltmesi)
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 100 - EBYS Gelen/Giden Evrak Yönetim Sistemi
+**Talep:** EBYS modülüne gelen/giden evrak girişi, atama, işlem ve evrak takip sistemi eklenmesi.
+
+**Yapılanlar:**
+- **Entity Katmanı:**
+  - `EbysEvrak.cs` oluşturuldu - Ana evrak entity (gelen/giden ortak)
+  - `EbysEvrakKategori` - Evrak kategorileri
+  - `EbysEvrakDosya` - Evrak ekleri/dosyaları
+  - `EbysEvrakAtama` - Evrak atama kayıtları
+  - `EbysEvrakHareket` - İşlem geçmişi/log
+  - Enum'lar: `EvrakYonu`, `EvrakOncelik`, `EvrakGizlilik`, `GonderimYontemi`, `EbysEvrakDurum`, `AtamaDurum`, `EbysHareketTipi`
+
+- **Servis Katmanı:**
+  - `IEbysEvrakService.cs` interface oluşturuldu
+  - `EbysEvrakService.cs` implementasyonu - CRUD, atama, dosya yükleme, durum değişikliği, istatistik metodları
+
+- **Razor Sayfaları:**
+  - `GelenEvraklar.razor` (`/ebys/gelen`) - Gelen evrak listesi, filtreleme, yeni evrak ekleme
+  - `GidenEvraklar.razor` (`/ebys/giden`) - Giden evrak listesi, filtreleme, yeni evrak ekleme
+  - `EvrakDetay.razor` (`/ebys/evrak/{Id:int}`) - Evrak detay, atama yapma, dosya yükleme, durum değiştirme
+  - `EvrakTakip.razor` (`/ebys/takip`) - Kanban tarzı evrak takip paneli (Beklemede, İşlemde, Cevap Bekleyen)
+  - `EvrakKategorileri.razor` (`/ebys/kategoriler`) - Kategori CRUD yönetimi
+
+- **Veritabanı:**
+  - `ApplicationDbContext.cs` - 5 yeni DbSet eklendi: `EbysEvraklar`, `EbysEvrakKategoriler`, `EbysEvrakDosyalar`, `EbysEvrakAtamalar`, `EbysEvrakHareketler`
+  - OnModelCreating'de tüm entity konfigürasyonları eklendi
+
+- **Program.cs:**
+  - `IEbysEvrakService` / `EbysEvrakService` Scoped olarak kaydedildi
+
+- **NavMenu.razor:**
+  - EBYS bölümüne 5 yeni link eklendi: Gelen Evraklar, Giden Evraklar, Evrak Takip, Evrak Kategorileri
+
+**Özellikler:**
+- Gelen/Giden evrak ayrımı
+- Otomatik evrak numaralandırma (GE-2025-00001, GI-2025-00001)
+- Öncelik seviyeleri (Düşük, Normal, Yüksek, Acil)
+- Gizlilik seviyeleri (Normal, Gizli, Çok Gizli)
+- Cevap süresi takibi ve gecikme uyarıları
+- Dosya yükleme (max 50MB)
+- Kullanıcıya evrak atama
+- Durum akışı: Taslak → Beklemede → İşleniyor → Atama Bekliyor → Cevap Bekliyor → Cevaplandı → Tamamlandı → Arşivlendi
+- İşlem geçmişi/log kaydı
+- Kategori bazlı organizasyon
+- İstatistik dashboard'u
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/EbysEvrak.cs` (YENİ)
+- `CRMFiloServis.Web/Services/Interfaces/IEbysEvrakService.cs` (YENİ)
+- `CRMFiloServis.Web/Services/EbysEvrakService.cs` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/EBYS/GelenEvraklar.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/EBYS/GidenEvraklar.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/EBYS/EvrakDetay.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/EBYS/EvrakTakip.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/EBYS/EvrakKategorileri.razor` (YENİ)
+- `CRMFiloServis.Web/Data/ApplicationDbContext.cs` (güncellendi)
+- `CRMFiloServis.Web/Program.cs` (güncellendi)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
 ### Kayıt 097 - Destek Talepleri E-posta Entegrasyonu
 **Talep:** Destek talepleri modülüne e-posta bildirim entegrasyonu eklenmesi (ROADMAP Faz 2).
 

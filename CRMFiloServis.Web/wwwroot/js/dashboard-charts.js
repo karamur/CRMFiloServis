@@ -311,3 +311,175 @@ window.createYaslandirmaBarChart = function (canvasId, labels, data, colors) {
         }
     });
 };
+
+// Bütçe Hedef/Gerçekleşen Karşılaştırma Chart Fonksiyonları
+window.renderKategoriChart = function (canvasId, labels, hedefData, gerceklesenData) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Hedef',
+                    data: hedefData,
+                    backgroundColor: 'rgba(108, 117, 125, 0.5)',
+                    borderColor: 'rgba(108, 117, 125, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Gerçekleşen',
+                    data: gerceklesenData,
+                    backgroundColor: gerceklesenData.map((g, i) => g <= hedefData[i] ? 'rgba(40, 167, 69, 0.7)' : 'rgba(220, 53, 69, 0.7)'),
+                    borderColor: gerceklesenData.map((g, i) => g <= hedefData[i] ? 'rgba(40, 167, 69, 1)' : 'rgba(220, 53, 69, 1)'),
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw.toLocaleString('tr-TR') + ' ₺';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value >= 1000 ? (value/1000).toLocaleString('tr-TR') + 'K' : value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+window.renderHedefPieChart = function (canvasId, labels, data, colors) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    // Sadece değeri olan verileri göster
+    const filteredLabels = [];
+    const filteredData = [];
+    const filteredColors = [];
+
+    for (let i = 0; i < data.length; i++) {
+        if (data[i] > 0) {
+            filteredLabels.push(labels[i]);
+            filteredData.push(data[i]);
+            filteredColors.push(colors[i] || '#6c757d');
+        }
+    }
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: filteredLabels,
+            datasets: [{
+                data: filteredData,
+                backgroundColor: filteredColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'right',
+                    labels: { font: { size: 11 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.raw / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.raw.toLocaleString('tr-TR') + ' ₺ (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+};
+
+window.renderTrendChart = function (canvasId, labels, hedefData, gerceklesenData) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (charts[canvasId]) {
+        charts[canvasId].destroy();
+    }
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Hedef',
+                    data: hedefData,
+                    borderColor: 'rgba(108, 117, 125, 1)',
+                    backgroundColor: 'rgba(108, 117, 125, 0.1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0.1
+                },
+                {
+                    label: 'Gerçekleşen',
+                    data: gerceklesenData,
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw.toLocaleString('tr-TR') + ' ₺';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value >= 1000 ? (value/1000).toLocaleString('tr-TR') + 'K' : value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+};

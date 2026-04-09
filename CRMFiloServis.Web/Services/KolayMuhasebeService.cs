@@ -418,12 +418,116 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         return kalemler;
     }
 
-    private Task<List<MuhasebeKalemOnizleme>> OlusturMahsupKalemleri(KolayMuhasebeGiris giris, MuhasebeAyar ayar)
+    private async Task<List<MuhasebeKalemOnizleme>> OlusturMahsupKalemleri(KolayMuhasebeGiris giris, MuhasebeAyar ayar)
     {
-        // Mahsup için basit hesaplar arası transfer
         var kalemler = new List<MuhasebeKalemOnizleme>();
-        // Kullanıcı manuel düzenleyecek
-        return Task.FromResult(kalemler);
+        var siraNo = 1;
+
+        // Cari bilgisini al
+        var cariHesapKodu = "120.01"; // Varsayılan alıcılar veya satıcılar
+        var cariUnvan = giris.CariUnvan ?? "Cari";
+        CariTipi? cariTipi = null;
+
+        if (giris.CariId.HasValue)
+        {
+            var cari = await _context.Cariler.AsNoTracking().FirstOrDefaultAsync(c => c.Id == giris.CariId);
+            if (cari != null)
+            {
+                cariUnvan = cari.Unvan;
+                cariTipi = cari.CariTipi;
+                if (cari.MuhasebeHesap != null)
+                    cariHesapKodu = cari.MuhasebeHesap.HesapKodu;
+                else
+                {
+                    // Cari tipine göre varsayılan hesap
+                    cariHesapKodu = cari.CariTipi switch
+                    {
+                        CariTipi.Musteri => "120.01", // Alıcılar
+                        CariTipi.Tedarikci => "320.01", // Satıcılar
+                        CariTipi.MusteriTedarikci => "120.01", // Varsayılan alıcı
+                        CariTipi.Personel => "335.01", // Personele Borçlar
+                        _ => "120.01"
+                    };
+                }
+            }
+        }
+
+        // Banka/Kasa hesabı bilgisini al
+        var bankaHesapKodu = "100.01";
+        var bankaHesapAdi = "Kasa";
+
+        if (giris.BankaHesapId.HasValue)
+        {
+            var bankaHesap = await _context.BankaHesaplari.AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Id == giris.BankaHesapId);
+            if (bankaHesap != null)
+            {
+                bankaHesapAdi = bankaHesap.HesapAdi;
+                bankaHesapKodu = bankaHesap.VarsayilanMuhasebeKodu ?? GetBankaHesapKodu(bankaHesap.HesapTipi);
+            }
+        }
+
+        // Mahsup işlemi: Cari tipine göre borç/alacak belirlenir
+        // Müşteri ise: Müşteriden tahsilat yapılıyor (Alıcılar azalıyor)
+        // Tedarikçi ise: Tedarikçiye ödeme yapılıyor (Satıcılar azalıyor)
+        bool musteriMahsup = cariTipi == CariTipi.Musteri || cariTipi == CariTipi.MusteriTedarikci;
+
+        if (musteriMahsup)
+        {
+            // Müşteri mahsubu: Banka/Kasa BORÇ, Alıcılar ALACAK
+            kalemler.Add(new MuhasebeKalemOnizleme
+            {
+                SiraNo = siraNo++,
+                HesapKodu = bankaHesapKodu,
+                HesapAdi = bankaHesapAdi,
+                HesapId = await GetHesapIdAsync(bankaHesapKodu),
+                Borc = giris.GenelToplam,
+                Alacak = 0,
+                Aciklama = $"Mahsup tahsilat: {giris.BelgeNo}"
+            });
+
+            kalemler.Add(new MuhasebeKalemOnizleme
+            {
+                SiraNo = siraNo++,
+                HesapKodu = cariHesapKodu,
+                HesapAdi = $"Alıcılar - {cariUnvan}",
+                HesapId = await GetHesapIdAsync(cariHesapKodu),
+                Borc = 0,
+                Alacak = giris.GenelToplam,
+                Aciklama = $"Mahsup: {giris.BelgeNo}",
+                CariId = giris.CariId,
+                CariUnvan = cariUnvan
+            });
+        }
+        else
+        {
+            // Tedarikçi/Personel mahsubu: Satıcılar BORÇ, Banka/Kasa ALACAK
+            kalemler.Add(new MuhasebeKalemOnizleme
+            {
+                SiraNo = siraNo++,
+                HesapKodu = cariHesapKodu,
+                HesapAdi = $"Satıcılar - {cariUnvan}",
+                HesapId = await GetHesapIdAsync(cariHesapKodu),
+                Borc = giris.GenelToplam,
+                Alacak = 0,
+                Aciklama = $"Mahsup ödeme: {giris.BelgeNo}",
+                CariId = giris.CariId,
+                CariUnvan = cariUnvan
+            });
+
+            kalemler.Add(new MuhasebeKalemOnizleme
+            {
+                SiraNo = siraNo++,
+                HesapKodu = bankaHesapKodu,
+                HesapAdi = bankaHesapAdi,
+                HesapId = await GetHesapIdAsync(bankaHesapKodu),
+                Borc = 0,
+                Alacak = giris.GenelToplam,
+                Aciklama = $"Mahsup: {giris.BelgeNo}"
+            });
+        }
+
+        return kalemler;
     }
 
     private async Task<List<MuhasebeKalemOnizleme>> OlusturAvansKalemleri(KolayMuhasebeGiris giris, MuhasebeAyar ayar)
@@ -860,7 +964,19 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         var query = _context.Cariler.AsNoTracking().Where(c => c.Aktif);
 
         if (tip.HasValue)
-            query = query.Where(c => c.CariTipi == tip.Value || c.CariTipi == CariTipi.MusteriTedarikci);
+        {
+            // Müşteri seçilmişse: Müşteri ve MüşteriTedarikçi
+            // Tedarikçi seçilmişse: Tedarikçi ve MüşteriTedarikçi
+            // Personel seçilmişse: Sadece Personel
+            if (tip.Value == CariTipi.Personel)
+            {
+                query = query.Where(c => c.CariTipi == CariTipi.Personel);
+            }
+            else
+            {
+                query = query.Where(c => c.CariTipi == tip.Value || c.CariTipi == CariTipi.MusteriTedarikci);
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(arama))
             query = query.Where(c => c.Unvan.Contains(arama) || c.CariKodu.Contains(arama));

@@ -60,6 +60,9 @@
 | Dashboard ve Raporlama | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 | Dosya Eki Desteği | 🟢 Düşük | 1 gün | ✅ Tamamlandı |
 | E-posta Entegrasyonu | 🟢 Düşük | 2 gün | ✅ Tamamlandı |
+| **osTicket Benzeri Kullanıcı Arayüzü** | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| **Kanban Yetkili Yönetim Paneli** | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| **Durum Akışı (Taslak→Gönderildi→İşlemde→Bitti→Onaylandı)** | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
 
 ---
 
@@ -167,7 +170,7 @@
 | Bütçe Analiz - Kategori bazlı analiz | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | Bütçe Analiz - Trend grafikleri | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
 | Bütçe Analiz - AI Analiz (Ollama) | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
-| Bütçe Analiz - Hedef/Gerçekleşen karşılaştırma | 🟡 Orta | 2 gün | ❌ |
+| Bütçe Analiz - Hedef/Gerçekleşen karşılaştırma | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | Cari - Risk analizi kartları | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | Cari - İletişim geçmişi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 | Cari - Otomatik hatırlatmalar | 🟡 Orta | 2 gün | ✅ Tamamlandı |
@@ -219,9 +222,9 @@
 ### 7.1 Temel EBYS Altyapısı
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Belge kategorileri (sözleşme, ehliyet, diploma vb.) | 🔴 Yüksek | 2 gün | 🔄 Devam Ediyor |
-| Dosya yükleme/indirme sistemi | 🔴 Yüksek | 2 gün | 🔄 Devam Ediyor |
-| Belge metadata yönetimi | 🔴 Yüksek | 2 gün | 🔄 Devam Ediyor |
+| Belge kategorileri (sözleşme, ehliyet, diploma vb.) | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Dosya yükleme/indirme sistemi | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Belge metadata yönetimi | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
 | Versiyon kontrolü | 🟡 Orta | 2 gün | ❌ |
 | Belge arama (içerik + metadata) | 🟡 Orta | 2 gün | 🔄 Devam Ediyor |
 
@@ -234,7 +237,21 @@
 | İş sözleşmesi yönetimi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 | Belge bitiş tarihi uyarıları | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 
-### 7.3 Yapay Zeka Desteği (Offline Çalışabilir)
+### 7.3 Gelen/Giden Evrak Yönetimi (YENİ)
+| Özellik | Öncelik | Süre | Durum |
+|---------|---------|------|-------|
+| Gelen evrak girişi | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Giden evrak girişi | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Evrak atama sistemi | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Evrak takip paneli (Kanban) | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Evrak kategori yönetimi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Evrak dosya ekleme | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Durum akışı yönetimi | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| İşlem geçmişi/log | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Cevap süresi takibi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Dashboard istatistikleri | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+
+### 7.4 Yapay Zeka Desteği (Offline Çalışabilir)
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
 | Local LLM entegrasyonu (Ollama/LLaMA) | 🔴 Yüksek | 3 gün | ❌ |
@@ -244,7 +261,7 @@
 | Belge özeti oluşturma | 🟡 Orta | 2 gün | ❌ |
 | Offline mod (internetsiz çalışma) | 🔴 Yüksek | 2 gün | ❌ |
 
-### 7.4 Örnek Veri & Test
+### 7.5 Örnek Veri & Test
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
 | Örnek personel verisi oluşturma | 🟡 Orta | 1 gün | ❌ |
@@ -346,10 +363,9 @@ FAZ 8 (2-3 Hafta) - ✅ TAMAMLANDI
 
 ### 🔴 Güncel Açık Öncelikler
 1. **Bütçe Analiz - Hedef/Gerçekleşen karşılaştırma**
-2. **Destek Talepleri - E-posta Entegrasyonu**
-3. **EBYS - Versiyon kontrolü**
-4. **EBYS - Belge arama (içerik + metadata) tamamlama**
-5. **Gelişmiş Raporlama - Aylık/Yıllık karşılaştırmalı raporlar**
+2. **EBYS - Versiyon kontrolü**
+3. **EBYS - Belge arama (içerik + metadata) tamamlama**
+4. **Gelişmiş Raporlama - Aylık/Yıllık karşılaştırmalı raporlar**
 
 ### 🟡 Devam Eden Başlıklar
 1. **EBYS Temel Altyapı**
@@ -360,10 +376,27 @@ FAZ 8 (2-3 Hafta) - ✅ TAMAMLANDI
    - örnek veri
    - test senaryoları
 
+### ✅ Son Tamamlanan
+1. **osTicket Benzeri Destek Talebi Sistemi** (Kayıt 099)
+   - Kullanıcı talep girişi sayfası (TalepGiris.razor)
+   - Kullanıcı taleplerim listesi (Taleplerim.razor)
+   - Talep takip/detay sayfası (TalepTakip.razor)
+   - Yetkili Kanban yönetim paneli (TalepYonetim.razor)
+   - Durum akışı: Taslak → Gönderildi → İşlemde → Bitti → Onaylandı
+
+2. **EBYS Gelen/Giden Evrak Yönetim Sistemi** (Kayıt 100)
+   - Gelen evraklar sayfası (GelenEvraklar.razor)
+   - Giden evraklar sayfası (GidenEvraklar.razor)
+   - Evrak detay/atama sayfası (EvrakDetay.razor)
+   - Evrak takip paneli - Kanban (EvrakTakip.razor)
+   - Evrak kategori yönetimi (EvrakKategorileri.razor)
+   - Durum akışı: Taslak → Beklemede → İşleniyor → Atama Bekliyor → Cevap Bekliyor → Tamamlandı → Arşivlendi
+
 ### 🟢 Sonraki Mantıklı Adımlar
-1. Destek modülü smoke test altyapısını görünür hale getirmek
-2. `DEVELOPMENT.md` ile yol haritasını aktif açık maddeler odaklı tutmak
-3. `PersonelÖzlük` tarafında görünür kullanım iyileştirmeleri yapmak
+1. EBYS AI entegrasyonu (OCR, otomatik sınıflandırma)
+2. Evrak versiyon kontrolü eklenmesi
+3. Semantic search (akıllı belge arama) implementasyonu
+4. Bütçe hedef/gerçekleşen karşılaştırma modülü
 
 ---
 
@@ -371,11 +404,13 @@ FAZ 8 (2-3 Hafta) - ✅ TAMAMLANDI
 
 - Öncelik: 🔴🔴 Acil | 🔴 Yüksek | 🟡 Orta | 🟢 Düşük | 🤖 AI
 - Durum: ❌ Bekliyor | 🔄 Devam Ediyor | ✅ Tamamlandı | 🆕 Yeni Eklendi
-- Güncel odak: **EBYS tamamlama**, **destek e-posta entegrasyonu**, **bütçe hedef/gerçekleşen karşılaştırması**
+- Güncel odak: **EBYS AI entegrasyonu**, **versiyon kontrolü**, **semantic search**
 - EBYS için Ollama/LLaMA kullanılarak internetsiz çalışabilirlik sağlanacak
 - Personel/Maaş/Bordro modülleri SGK mevzuatına uygun olmalı
 - Local AI (Ollama) ile raporlama özellikleri offline çalışabilecek
 - İhale Hazırlık modülü Ollama AI ile entegre (masraf tahmini, maaş tahmini, proje analizi)
+- **Destek Talebi modülü osTicket benzeri kullanıcı ve yetkili arayüzleri ile tamamlandı**
+- **EBYS Gelen/Giden Evrak modülü tamamlandı - atama, takip, dosya ekleme özellikleriyle**
 
 ---
 

@@ -146,13 +146,17 @@ public class AracService : IAracService
         // Plaka kontrolü
         if (await PlakaMevcutMu(plaka))
             throw new InvalidOperationException($"Bu plaka ({plaka}) başka bir araçta aktif olarak kullanılıyor.");
-        
+
         try
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            // ExecutionStrategy ile transaction sarmalama (NpgsqlRetryingExecutionStrategy uyumluluğu)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Navigation property'leri temizle (tracking sorununu önle)
-            arac.PlakaGecmisi = new List<AracPlaka>();
+                // Navigation property'leri temizle (tracking sorununu önle)
+                arac.PlakaGecmisi = new List<AracPlaka>();
             arac.Masraflar = new List<AracMasraf>();
             arac.ServisCalismalari = new List<ServisCalisma>();
             arac.KiralikCari = null;
@@ -186,8 +190,9 @@ public class AracService : IAracService
             arac.PlakaGecmisi.Add(aracPlaka);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
-            
+
             return arac;
+            }); // ExecutionStrategy lambda sonu
         }
         catch (Exception ex)
         {
@@ -739,14 +744,14 @@ public class AracService : IAracService
                 try
                 {
                     var saseNo = ws.Cell(row, saseNoKolon.Value).GetString()?.Trim().ToUpper();
-                    
+
                     if (string.IsNullOrWhiteSpace(saseNo))
                         continue;
-                    
+
                     // Açıklama satırlarını atla
                     if (saseNo.StartsWith("*") || saseNo.StartsWith("AÇIKLAMA") || saseNo.Length < 5)
                         continue;
-                    
+
                     var plaka = GetCellValue(ws, row, kolonlar, "PLAKA")?.ToUpper();
                     var marka = GetCellValue(ws, row, kolonlar, "MARKA");
                     var model = GetCellValue(ws, row, kolonlar, "MODEL");
@@ -758,26 +763,33 @@ public class AracService : IAracService
                     var sahiplikTipiStr = GetCellValue(ws, row, kolonlar, "SAHIPLIK TIPI");
                     var kmStr = GetCellValue(ws, row, kolonlar, "KM");
                     var notlar = GetCellValue(ws, row, kolonlar, "NOTLAR");
-                    
+
                     int? modelYili = null;
                     if (int.TryParse(modelYiliStr, out var y)) modelYili = y;
-                    
+
                     int koltukSayisi = 0;
                     if (int.TryParse(koltukSayisiStr, out var k)) koltukSayisi = k;
-                    
+
                     int? km = null;
                     if (int.TryParse(kmStr?.Replace(".", "").Replace(",", ""), out var kmVal)) km = kmVal;
-                    
+
                     var aracTipi = ParseAracTipi(aracTipiStr);
                     var sahiplikTipi = ParseAracSahiplikTipi(sahiplikTipiStr);
                     var muayeneBitis = GetCellDateValue(ws, row, kolonlar, "MUAYENE BITIS TARIHI");
                     var trafikSigortaBitis = GetCellDateValue(ws, row, kolonlar, "TRAFIK SIGORTASI BITIS TARIHI");
                     var kaskoBitis = GetCellDateValue(ws, row, kolonlar, "KASKO BITIS TARIHI");
                     var aktif = GetCellBoolValue(ws, row, kolonlar, "AKTIF");
-                    
-                    await using var transaction = await _context.Database.BeginTransactionAsync();
 
-                    if (mevcutSaseNolar.Contains(saseNo))
+                    // İşlemin güncelleme mi yeni kayıt mı olduğunu baştan belirle
+                    var isUpdate = mevcutSaseNolar.Contains(saseNo);
+
+                    // ExecutionStrategy ile transaction sarmalama (NpgsqlRetryingExecutionStrategy uyumluluğu)
+                    var strategy = _context.Database.CreateExecutionStrategy();
+                    await strategy.ExecuteAsync(async () =>
+                    {
+                        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                        if (isUpdate)
                     {
                         var mevcutArac = await _context.Araclar
                             .Include(a => a.PlakaGecmisi.Where(p => !p.IsDeleted))
@@ -827,7 +839,6 @@ public class AracService : IAracService
                             mevcutArac.UpdatedAt = DateTime.UtcNow;
                             await _context.SaveChangesAsync();
                             await transaction.CommitAsync();
-                            result.UpdatedCount++;
                         }
                     }
                     else
@@ -877,7 +888,15 @@ public class AracService : IAracService
                         _context.Araclar.Add(yeniArac);
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();
-                        mevcutSaseNolar.Add(saseNo);
+                    }
+                    }); // ExecutionStrategy lambda sonu
+
+                    // İşlem başarılı - sayaç güncelle
+                    if (isUpdate)
+                        result.UpdatedCount++;
+                    else
+                    {
+                        mevcutSaseNolar.Add(saseNo); // Yeni eklenen şase numarasını listeye ekle
                         result.ImportedCount++;
                     }
                 }

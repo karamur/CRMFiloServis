@@ -1481,4 +1481,246 @@ public class BudgetService : IBudgetService
     }
 
     #endregion
+
+    #region Hedef Yönetimi
+
+    public async Task<List<BudgetHedef>> GetHedeflerAsync(int yil, int? ay = null, int? firmaId = null)
+    {
+        var query = _context.BudgetHedefler
+            .Include(h => h.Firma)
+            .Where(h => h.Yil == yil);
+
+        if (ay.HasValue)
+            query = query.Where(h => h.Ay == ay.Value || h.Ay == 0); // Belirli ay veya yıllık hedefler
+
+        if (firmaId.HasValue)
+            query = query.Where(h => h.FirmaId == firmaId.Value || h.FirmaId == null);
+
+        return await query
+            .OrderBy(h => h.Ay)
+            .ThenBy(h => h.MasrafKalemi)
+            .ToListAsync();
+    }
+
+    public async Task<BudgetHedef?> GetHedefByIdAsync(int id)
+    {
+        return await _context.BudgetHedefler
+            .Include(h => h.Firma)
+            .FirstOrDefaultAsync(h => h.Id == id);
+    }
+
+    public async Task<BudgetHedef> CreateHedefAsync(BudgetHedef hedef)
+    {
+        // Aynı yıl/ay/masraf kalemi için hedef var mı kontrol et
+        var mevcutHedef = await _context.BudgetHedefler
+            .FirstOrDefaultAsync(h => h.Yil == hedef.Yil && 
+                                      h.Ay == hedef.Ay && 
+                                      h.MasrafKalemi == hedef.MasrafKalemi &&
+                                      h.FirmaId == hedef.FirmaId);
+
+        if (mevcutHedef != null)
+        {
+            // Mevcut hedefi güncelle
+            mevcutHedef.HedefTutar = hedef.HedefTutar;
+            mevcutHedef.Aciklama = hedef.Aciklama;
+            mevcutHedef.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return mevcutHedef;
+        }
+
+        hedef.CreatedAt = DateTime.UtcNow;
+        _context.BudgetHedefler.Add(hedef);
+        await _context.SaveChangesAsync();
+        return hedef;
+    }
+
+    public async Task<BudgetHedef> UpdateHedefAsync(BudgetHedef hedef)
+    {
+        var existing = await _context.BudgetHedefler.FindAsync(hedef.Id);
+        if (existing == null)
+            throw new ArgumentException($"Hedef bulunamadı: {hedef.Id}");
+
+        existing.Yil = hedef.Yil;
+        existing.Ay = hedef.Ay;
+        existing.MasrafKalemi = hedef.MasrafKalemi;
+        existing.HedefTutar = hedef.HedefTutar;
+        existing.Aciklama = hedef.Aciklama;
+        existing.FirmaId = hedef.FirmaId;
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return existing;
+    }
+
+    public async Task DeleteHedefAsync(int id)
+    {
+        var hedef = await _context.BudgetHedefler.FindAsync(id);
+        if (hedef != null)
+        {
+            hedef.IsDeleted = true;
+            hedef.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<int> KopyalaHedeflerAsync(int kaynakYil, int hedefYil, decimal artisOrani = 0)
+    {
+        var kaynakHedefler = await _context.BudgetHedefler
+            .Where(h => h.Yil == kaynakYil)
+            .ToListAsync();
+
+        var kopyalananSayisi = 0;
+
+        foreach (var kaynak in kaynakHedefler)
+        {
+            // Hedef yılda aynı kalem var mı kontrol et
+            var mevcutHedef = await _context.BudgetHedefler
+                .FirstOrDefaultAsync(h => h.Yil == hedefYil && 
+                                          h.Ay == kaynak.Ay && 
+                                          h.MasrafKalemi == kaynak.MasrafKalemi &&
+                                          h.FirmaId == kaynak.FirmaId);
+
+            if (mevcutHedef == null)
+            {
+                var yeniHedef = new BudgetHedef
+                {
+                    Yil = hedefYil,
+                    Ay = kaynak.Ay,
+                    MasrafKalemi = kaynak.MasrafKalemi,
+                    HedefTutar = kaynak.HedefTutar * (1 + artisOrani / 100),
+                    Aciklama = $"[{kaynakYil}'den kopyalandı] {kaynak.Aciklama}",
+                    FirmaId = kaynak.FirmaId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.BudgetHedefler.Add(yeniHedef);
+                kopyalananSayisi++;
+            }
+        }
+
+        if (kopyalananSayisi > 0)
+            await _context.SaveChangesAsync();
+
+        return kopyalananSayisi;
+    }
+
+    #endregion
+
+    #region Hedef vs Gerçekleşen Karşılaştırma
+
+    public async Task<List<BudgetHedefGerceklesen>> GetHedefGerceklesenAsync(int yil, int? ay = null, int? firmaId = null)
+    {
+        // Hedefleri al
+        var hedefler = await GetHedeflerAsync(yil, ay, firmaId);
+
+        // Gerçekleşen ödemeleri al (kategori bazlı toplam)
+        var gerceklesenQuery = _context.BudgetOdemeler
+            .Where(o => o.OdemeYil == yil && 
+                        (o.Durum == OdemeDurum.Odendi || o.FaturaIleKapatildi));
+
+        if (ay.HasValue)
+            gerceklesenQuery = gerceklesenQuery.Where(o => o.OdemeAy == ay.Value);
+
+        if (firmaId.HasValue)
+            gerceklesenQuery = gerceklesenQuery.Where(o => o.FirmaId == firmaId.Value);
+
+        var gerceklesenGruplu = await gerceklesenQuery
+            .GroupBy(o => new { o.MasrafKalemi, Ay = ay.HasValue ? o.OdemeAy : 0 })
+            .Select(g => new 
+            { 
+                g.Key.MasrafKalemi, 
+                g.Key.Ay,
+                Toplam = g.Sum(o => o.OdenenTutar ?? o.Miktar) 
+            })
+            .ToListAsync();
+
+        // Masraf kalemlerinin renklerini al
+        var masrafKalemleri = await _context.BudgetMasrafKalemleri.ToListAsync();
+
+        // Birleştir
+        var sonuc = new List<BudgetHedefGerceklesen>();
+
+        // Hedefi olan kalemler
+        foreach (var hedef in hedefler.Where(h => h.Ay == (ay ?? 0)))
+        {
+            var gerceklesen = gerceklesenGruplu
+                .FirstOrDefault(g => g.MasrafKalemi == hedef.MasrafKalemi);
+
+            var kalem = masrafKalemleri.FirstOrDefault(k => k.KalemAdi == hedef.MasrafKalemi);
+
+            sonuc.Add(new BudgetHedefGerceklesen
+            {
+                MasrafKalemi = hedef.MasrafKalemi,
+                Ay = hedef.Ay,
+                Yil = hedef.Yil,
+                HedefTutar = hedef.HedefTutar,
+                GerceklesenTutar = gerceklesen?.Toplam ?? 0,
+                Renk = kalem?.Renk
+            });
+        }
+
+        // Hedefi olmayan ama harcama yapılan kalemler
+        foreach (var gerceklesen in gerceklesenGruplu)
+        {
+            if (!sonuc.Any(s => s.MasrafKalemi == gerceklesen.MasrafKalemi))
+            {
+                var kalem = masrafKalemleri.FirstOrDefault(k => k.KalemAdi == gerceklesen.MasrafKalemi);
+
+                sonuc.Add(new BudgetHedefGerceklesen
+                {
+                    MasrafKalemi = gerceklesen.MasrafKalemi,
+                    Ay = gerceklesen.Ay,
+                    Yil = yil,
+                    HedefTutar = 0,
+                    GerceklesenTutar = gerceklesen.Toplam,
+                    Renk = kalem?.Renk
+                });
+            }
+        }
+
+        return sonuc.OrderBy(s => s.MasrafKalemi).ToList();
+    }
+
+    public async Task<BudgetYillikHedefOzet> GetYillikHedefOzetAsync(int yil, int? firmaId = null)
+    {
+        var ozet = new BudgetYillikHedefOzet { Yil = yil };
+
+        // Kategori detayları (yıllık toplam)
+        ozet.KategoriDetaylari = await GetHedefGerceklesenAsync(yil, null, firmaId);
+
+        ozet.ToplamHedef = ozet.KategoriDetaylari.Sum(k => k.HedefTutar);
+        ozet.ToplamGerceklesen = ozet.KategoriDetaylari.Sum(k => k.GerceklesenTutar);
+
+        // Aylık detaylar
+        for (int ay = 1; ay <= 12; ay++)
+        {
+            var aylikHedefler = await _context.BudgetHedefler
+                .Where(h => h.Yil == yil && h.Ay == ay)
+                .ToListAsync();
+
+            var aylikGerceklesen = await _context.BudgetOdemeler
+                .Where(o => o.OdemeYil == yil && o.OdemeAy == ay && 
+                            (o.Durum == OdemeDurum.Odendi || o.FaturaIleKapatildi))
+                .SumAsync(o => o.OdenenTutar ?? o.Miktar);
+
+            // Yıllık hedeften aylık payı hesapla (hedef tanımlı değilse)
+            var aylikHedefToplam = aylikHedefler.Sum(h => h.HedefTutar);
+            if (aylikHedefToplam == 0 && ozet.ToplamHedef > 0)
+            {
+                aylikHedefToplam = ozet.ToplamHedef / 12; // Eşit dağılım
+            }
+
+            ozet.AylikDetaylar.Add(new BudgetAylikHedefOzet
+            {
+                Ay = ay,
+                AyAdi = AyAdlari[ay],
+                HedefTutar = aylikHedefToplam,
+                GerceklesenTutar = aylikGerceklesen
+            });
+        }
+
+        return ozet;
+    }
+
+    #endregion
 }

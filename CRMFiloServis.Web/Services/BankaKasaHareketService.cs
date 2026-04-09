@@ -424,12 +424,16 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         if (bakiye < tutar)
             return new MahsupSonuc { Basarili = false, Hata = $"Yetersiz bakiye. Mevcut: {bakiye:N2} ₺" };
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
-
-        try
+        // ExecutionStrategy ile transaction sarmalama (NpgsqlRetryingExecutionStrategy uyumluluğu)
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            var mahsupGrupId = Guid.NewGuid();
-            var islemNo = await GenerateNextIslemNoAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var mahsupGrupId = Guid.NewGuid();
+                var islemNo = await GenerateNextIslemNoAsync();
 
             // Kaynak hesaptan çıkış
             var cikisHareket = new BankaKasaHareket
@@ -502,6 +506,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
             await transaction.RollbackAsync();
             return new MahsupSonuc { Basarili = false, Hata = ex.Message };
         }
+        }); // ExecutionStrategy lambda sonu
     }
 
     public async Task<MahsupSonuc> CariMahsupAsync(int cariId, int hesapId, decimal tutar, DateTime tarih, string aciklama, bool caridenHesaba, string? belgeNo = null, string? muhasebeHesapKodu = null, string? kostMerkeziKodu = null, string? projeKodu = null)
