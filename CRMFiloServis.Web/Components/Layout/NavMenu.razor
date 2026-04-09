@@ -126,40 +126,6 @@
                                 </NavLink>
                             </div>
                         }
-                        @if (HasYetki("destektalebi.oku"))
-                        {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="destek-talepleri/taleplerim">
-                                    <i class="bi bi-ticket-detailed me-2 text-info"></i> Taleplerim
-                                </NavLink>
-                            </div>
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="destek-talepleri/talep-giris">
-                                    <i class="bi bi-plus-circle me-2 text-success"></i> Yeni Talep
-                                </NavLink>
-                            </div>
-                        }
-                        @if (HasYetki("destektalebi.yaz"))
-                        {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="destek-talepleri/yonetim">
-                                    <i class="bi bi-kanban me-2 text-warning"></i> Talep Yönetimi
-                                </NavLink>
-                            </div>
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="destek-talepleri">
-                                    <i class="bi bi-ticket-detailed-fill me-2 text-primary"></i> Tüm Talepler
-                                </NavLink>
-                            </div>
-                        }
-                        @if (HasYetki("destektalebi.oku"))
-                        {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="destek-talepleri/bilgi-bankasi">
-                                    <i class="bi bi-book-fill me-2 text-info"></i> Bilgi Bankası
-                                </NavLink>
-                            </div>
-                        }
                     </div>
                 }
             </div>
@@ -186,11 +152,6 @@
                         }
                         @if (HasYetki("kesilenfatura.oku"))
                         {
-                            <div class="nav-item px-3">
-                                <NavLink class="nav-link" href="faturalar/efatura-xml">
-                                    <i class="bi bi-file-earmark-code me-2 text-warning"></i> E-Fatura XML
-                                </NavLink>
-                            </div>
                             <div class="nav-item px-3">
                                 <NavLink class="nav-link" href="efatura/giden">
                                     <i class="bi bi-file-earmark-arrow-up me-2 text-success"></i> Kesilen Faturalar
@@ -587,6 +548,11 @@
                         @if (HasYetki("kesilenfatura.oku"))
                         {
                             <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="faturalar/efatura-xml">
+                                    <i class="bi bi-file-earmark-code me-2 text-warning"></i> E-Fatura XML
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
                                 <NavLink class="nav-link" href="faturalar/toplu-fatura">
                                     <i class="bi bi-files me-2 text-success"></i> Toplu Fatura
                                 </NavLink>
@@ -981,6 +947,40 @@
                             <div class="nav-item px-3">
                                 <NavLink class="nav-link" href="ayarlar/roller">
                                     <i class="bi bi-shield-check me-2 text-danger"></i> Rol Yonetimi
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("destektalebi.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="destek-talepleri/talep-giris">
+                                    <i class="bi bi-plus-circle me-2 text-success"></i> Yeni Talep
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="destek-talepleri/taleplerim">
+                                    <i class="bi bi-ticket-detailed me-2 text-info"></i> Taleplerim
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("destektalebi.yaz"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="destek-talepleri">
+                                    <i class="bi bi-ticket-detailed-fill me-2 text-primary"></i> Tüm Talepler
+                                </NavLink>
+                            </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="destek-talepleri/yonetim">
+                                    <i class="bi bi-kanban me-2 text-warning"></i> Talep Yönetimi
+                                </NavLink>
+                            </div>
+                        }
+                        @if (HasYetki("destektalebi.oku"))
+                        {
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="destek-talepleri/bilgi-bankasi">
+                                    <i class="bi bi-book-fill me-2 text-info"></i> Bilgi Bankası
                                 </NavLink>
                             </div>
                         }

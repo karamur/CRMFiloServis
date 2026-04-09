@@ -12,255 +12,31 @@ namespace CRMFiloServis.Web.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Hatirlaticilar_Cariler_CariId1",
-                table: "Hatirlaticilar");
+            // CariId1 shadow property temizligi - IF EXISTS ile guvenlice
+            migrationBuilder.Sql(@"
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'FK_Hatirlaticilar_Cariler_CariId1' AND table_name = 'Hatirlaticilar') THEN
+                        ALTER TABLE ""Hatirlaticilar"" DROP CONSTRAINT ""FK_Hatirlaticilar_Cariler_CariId1"";
+                    END IF;
+                END $$;
+            ");
+            migrationBuilder.Sql(@"DROP INDEX IF EXISTS ""IX_Hatirlaticilar_CariId1"";");
+            migrationBuilder.Sql(@"
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Hatirlaticilar' AND column_name = 'CariId1') THEN
+                        ALTER TABLE ""Hatirlaticilar"" DROP COLUMN ""CariId1"";
+                    END IF;
+                END $$;
+            ");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Hatirlaticilar_CariId1",
-                table: "Hatirlaticilar");
+            migrationBuilder.Sql(@"ALTER TABLE ""PuantajKayitlar"" ADD COLUMN IF NOT EXISTS ""AitFirmaAdi"" character varying(200);");
+            migrationBuilder.Sql(@"ALTER TABLE ""PuantajKayitlar"" ADD COLUMN IF NOT EXISTS ""Bolge"" character varying(100);");
+            migrationBuilder.Sql(@"ALTER TABLE ""PuantajKayitlar"" ADD COLUMN IF NOT EXISTS ""SiraNo"" integer NOT NULL DEFAULT 0;");
 
-            migrationBuilder.DropColumn(
-                name: "CariId1",
-                table: "Hatirlaticilar");
-
-            migrationBuilder.AddColumn<string>(
-                name: "AitFirmaAdi",
-                table: "PuantajKayitlar",
-                type: "character varying(200)",
-                maxLength: 200,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "Bolge",
-                table: "PuantajKayitlar",
-                type: "character varying(100)",
-                maxLength: 100,
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun01",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun02",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun03",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun04",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun05",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun06",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun07",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun08",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun09",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun10",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun11",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun12",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun13",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun14",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun15",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun16",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun17",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun18",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun19",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun20",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun21",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun22",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun23",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun24",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun25",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun26",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun27",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun28",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun29",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun30",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Gun31",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "SiraNo",
-                table: "PuantajKayitlar",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
+            for (var gun = 1; gun <= 31; gun++)
+            {
+                migrationBuilder.Sql($@"ALTER TABLE ""PuantajKayitlar"" ADD COLUMN IF NOT EXISTS ""Gun{gun:D2}"" integer NOT NULL DEFAULT 0;");
+            }
 
             migrationBuilder.CreateTable(
                 name: "BudgetHedefler",
