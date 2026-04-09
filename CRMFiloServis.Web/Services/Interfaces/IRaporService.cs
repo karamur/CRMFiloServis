@@ -58,4 +58,16 @@ public interface IRaporService
     Task<CariYaslandirmaOzet> GetCariYaslandirmaDetayAsync(
         int cariId,
         DateTime? raporTarihi = null);
+
+    Task<IseGirisCikisBildirgeRaporu> GetIseGirisCikisBildirgeAsync(
+        DateTime baslangicTarihi,
+        DateTime bitisTarihi,
+        IseGirisCikisFiltreTipi filtreTipi = IseGirisCikisFiltreTipi.Tumu,
+        CRMFiloServis.Shared.Entities.PersonelGorev? gorev = null);
+
+    Task<byte[]> ExportIseGirisCikisBildirgeExcelAsync(
+        DateTime baslangicTarihi,
+        DateTime bitisTarihi,
+        IseGirisCikisFiltreTipi filtreTipi = IseGirisCikisFiltreTipi.Tumu,
+        CRMFiloServis.Shared.Entities.PersonelGorev? gorev = null);
 }

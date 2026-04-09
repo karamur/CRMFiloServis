@@ -152,7 +152,44 @@
                                             <span class="text-muted">-</span>
                                         }
                                     </td>
-                                    <td><small>@hareket.Aciklama</small></td>
+                                    <td>
+                                        <small>@hareket.Aciklama</small>
+                                        @if (!string.IsNullOrWhiteSpace(hareket.BelgeNo))
+                                        {
+                                            <div><small class="text-muted">Belge No: @hareket.BelgeNo</small></div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(hareket.MuhasebeHesapKodu) || !string.IsNullOrWhiteSpace(hareket.KostMerkeziKodu) || !string.IsNullOrWhiteSpace(hareket.ProjeKodu))
+                                        {
+                                            <div class="mt-1">
+                                                @if (!string.IsNullOrWhiteSpace(hareket.MuhasebeHesapKodu))
+                                                {
+                                                    <code>@hareket.MuhasebeHesapKodu</code>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(hareket.KostMerkeziKodu))
+                                                {
+                                                    <small class="text-muted ms-2">KM: @hareket.KostMerkeziKodu</small>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(hareket.ProjeKodu))
+                                                {
+                                                    <small class="text-muted ms-2">Proje: @hareket.ProjeKodu</small>
+                                                }
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(hareket.MuhasebeFisNo))
+                                        {
+                                            <div class="mt-1">
+                                                <small class="text-muted">Fiş: <strong>@hareket.MuhasebeFisNo</strong></small>
+                                                @if (!string.IsNullOrWhiteSpace(hareket.MuhasebeFisDurumu))
+                                                {
+                                                    <small class="text-muted ms-2">Durum: @hareket.MuhasebeFisDurumu</small>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(hareket.IptalFisNo))
+                                                {
+                                                    <div><small class="text-danger">İptal Fişi: @hareket.IptalFisNo</small></div>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
                                     <td class="text-end">
                                         @if (hareket.HareketTipi == HareketTipi.Giris)
                                         {
@@ -570,7 +607,11 @@
                 transferHedefHesapId, 
                 transferTutar, 
                 transferTarih, 
-                transferAciklama);
+                transferAciklama,
+                transferBelgeNo,
+                transferMuhasebeKodu,
+                transferKostMerkezi,
+                transferProjeKodu);
 
             if (sonuc.Basarili)
             {
@@ -636,7 +677,11 @@
                 mahsupTutar,
                 mahsupTarih,
                 mahsupAciklama,
-                mahsupCaridenHesaba);
+                mahsupCaridenHesaba,
+                mahsupBelgeNo,
+                mahsupMuhasebeKodu,
+                mahsupKostMerkezi,
+                mahsupProjeKodu);
 
             if (sonuc.Basarili)
             {

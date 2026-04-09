@@ -3,7 +3,12 @@
 @code {
     protected override void OnInitialized()
     {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var hedefUrl = string.IsNullOrWhiteSpace(relativePath)
+            ? "/login"
+            : $"/login?returnUrl={Uri.EscapeDataString('/' + relativePath)}";
+
         // forceLoad: false - circuit koruyarak yonlendir (auth state korunur)
-        Navigation.NavigateTo("/login", forceLoad: false);
+        Navigation.NavigateTo(hedefUrl, forceLoad: false);
     }
 }

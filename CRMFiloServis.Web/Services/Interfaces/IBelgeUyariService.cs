@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+ï»¿using CRMFiloServis.Shared.Entities;
 
 namespace CRMFiloServis.Web.Services;
 
@@ -18,10 +18,11 @@ public class BelgeUyariOzet
     public List<BelgeUyari> PsikoteknikUyarilari { get; set; } = new();
     public List<BelgeUyari> SaglikRaporuUyarilari { get; set; } = new();
 
-    // Araç Belgeleri
+    // AraÃ§ Belgeleri
     public List<BelgeUyari> MuayeneUyarilari { get; set; } = new();
     public List<BelgeUyari> KaskoUyarilari { get; set; } = new();
     public List<BelgeUyari> TrafikSigortasiUyarilari { get; set; } = new();
+    public List<BelgeUyari> DigerAracEvrakUyarilari { get; set; } = new();
 
     public List<BelgeUyari> TumUyarilar => 
         EhliyetUyarilari
@@ -31,6 +32,7 @@ public class BelgeUyariOzet
         .Concat(MuayeneUyarilari)
         .Concat(KaskoUyarilari)
         .Concat(TrafikSigortasiUyarilari)
+        .Concat(DigerAracEvrakUyarilari)
         .OrderBy(u => u.KalanGun)
         .ToList();
 }
@@ -38,15 +40,17 @@ public class BelgeUyariOzet
 public class BelgeUyari
 {
     public int Id { get; set; }
-    public string Baslik { get; set; } = string.Empty; // Personel Adý veya Araç Plakasý
+        public string Kaynak { get; set; } = string.Empty;
+    public string Baslik { get; set; } = string.Empty; // Personel AdÄ± veya AraÃ§ PlakasÄ±
     public string BelgeTuru { get; set; } = string.Empty;
     public DateTime BitisTarihi { get; set; }
+    public string DetayUrl { get; set; } = string.Empty;
     public int KalanGun => (BitisTarihi - DateTime.Today).Days;
     public BelgeUyariSeviye Seviye => KalanGun switch
     {
-        < 0 => BelgeUyariSeviye.Kritik,     // Süresi geçmiþ
-        <= 7 => BelgeUyariSeviye.Acil,      // 7 gün veya daha az
-        <= 30 => BelgeUyariSeviye.Uyari,    // 30 gün veya daha az
+        < 0 => BelgeUyariSeviye.Kritik,     // SÃ¼resi geÃ§miÅŸ
+        <= 7 => BelgeUyariSeviye.Acil,      // 7 gÃ¼n veya daha az
+        <= 30 => BelgeUyariSeviye.Uyari,    // 30 gÃ¼n veya daha az
         _ => BelgeUyariSeviye.Bilgi
     };
     public string SeviyeClass => Seviye switch

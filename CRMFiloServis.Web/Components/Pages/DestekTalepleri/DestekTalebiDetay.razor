@@ -18,14 +18,45 @@
 }
 else if (talep == null)
 {
-    <div class="alert alert-danger">
-        <i class="bi bi-exclamation-triangle me-2"></i>Talep bulunamadı.
-        <a href="destek-talepleri" class="alert-link ms-2">Listeye Dön</a>
-    </div>
+    @if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <div class="alert alert-warning d-flex justify-content-between align-items-start">
+            <div>
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Destek talebi verileri yüklenirken sorun oluştu.</strong>
+                <div class="small mt-1">@loadError</div>
+                <a href="destek-talepleri" class="alert-link d-inline-block mt-2">Listeye Dön</a>
+            </div>
+            <button class="btn btn-outline-warning btn-sm" @onclick="SayfayiYenile">
+                <i class="bi bi-arrow-clockwise me-1"></i>Tekrar Dene
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>Talep bulunamadı.
+            <a href="destek-talepleri" class="alert-link ms-2">Listeye Dön</a>
+        </div>
+    }
 }
 else
 {
     <div class="container-fluid">
+        @if (!string.IsNullOrWhiteSpace(loadError))
+        {
+            <div class="alert alert-warning d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Bazı referans veriler yüklenirken sorun oluştu.</strong>
+                    <div class="small mt-1">@loadError</div>
+                </div>
+                <button class="btn btn-outline-warning btn-sm" @onclick="SayfayiYenile">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Tekrar Dene
+                </button>
+            </div>
+        }
+
         <!-- Üst Bar -->
         <div class="row mb-3">
             <div class="col-12">
@@ -580,6 +611,7 @@ else
     
     private bool isLoading = true;
     private bool isSaving = false;
+    private string? loadError;
     
     // Modal kontrolleri
     private bool showYanitModal = false;
@@ -595,6 +627,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await SayfayiYenile();
+    }
+
+    private async Task SayfayiYenile()
+    {
+        loadError = null;
         await LoadTalep();
         await LoadReferansVeriler();
     }
@@ -606,6 +644,11 @@ else
         {
             talep = await DestekService.GetByIdWithDetailsAsync(TalepId);
         }
+        catch (Exception ex)
+        {
+            talep = null;
+            loadError = ex.GetBaseException().Message;
+        }
         finally
         {
             isLoading = false;
@@ -614,9 +657,19 @@ else
 
     private async Task LoadReferansVeriler()
     {
-        departmanlar = await DestekService.GetDepartmanlarAsync();
-        hazirYanitlar = await DestekService.GetHazirYanitlarAsync(talep?.DepartmanId, talep?.KategoriId);
-        kullanicilar = (await KullaniciService.GetAllAsync()).Where(k => k.Aktif).ToList();
+        try
+        {
+            departmanlar = await DestekService.GetDepartmanlarAsync();
+            hazirYanitlar = await DestekService.GetHazirYanitlarAsync(talep?.DepartmanId, talep?.KategoriId);
+            kullanicilar = (await KullaniciService.GetAllAsync()).Where(k => k.Aktif).ToList();
+        }
+        catch (Exception ex)
+        {
+            departmanlar = new();
+            hazirYanitlar = new();
+            kullanicilar = new();
+            loadError ??= ex.GetBaseException().Message;
+        }
     }
 
     private async Task DurumGuncelle(DestekDurum yeniDurum)

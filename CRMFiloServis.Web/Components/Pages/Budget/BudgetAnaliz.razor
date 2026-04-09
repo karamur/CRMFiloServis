@@ -760,12 +760,69 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">Hesap *</label>
+                                <select class="form-select" @bind="odemeYapRequest.BankaHesapId" @bind:after="CariMahsupHesapDegisti">
+                                    <option value="">Seçin...</option>
+                                    @if (bankaHesaplari != null)
+                                    {
+                                        @foreach (var hesap in GetCariMahsupHesaplar())
+                                        {
+                                            var bakiye = hesapBakiyeleri.GetValueOrDefault(hesap.Id, 0);
+                                            <option value="@hesap.Id">@hesap.HesapAdi (@FormatPara(bakiye))</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">İşlem Yönü</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="cariMahsupYon" id="cariOdeme" 
+                                           checked="@(!odemeYapRequest.CaridenTahsilat)" @onchange="() => odemeYapRequest.CaridenTahsilat = false" />
+                                    <label class="btn btn-outline-danger" for="cariOdeme">
+                                        <i class="bi bi-arrow-up-circle me-1"></i>Ödeme (Hesap → Cari)
+                                    </label>
+                                    <input type="radio" class="btn-check" name="cariMahsupYon" id="cariTahsilat" 
+                                           checked="@odemeYapRequest.CaridenTahsilat" @onchange="() => odemeYapRequest.CaridenTahsilat = true" />
+                                    <label class="btn btn-outline-success" for="cariTahsilat">
+                                        <i class="bi bi-arrow-down-circle me-1"></i>Tahsilat (Cari → Hesap)
+                                    </label>
+                                </div>
+                                <div class="alert alert-light border mt-2 mb-0 py-2 small">
+                                    <i class="bi bi-info-circle me-1 text-primary"></i>
+                                    @(odemeYapRequest.CaridenTahsilat
+                                        ? "Cari hesaptan seçilen kasa/banka hesabına tahsilat kaydı oluşur."
+                                        : "Seçilen kasa/banka hesabından cari hesaba ödeme kaydı oluşur.")
+                                </div>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Ödeme Tarihi *</label>
                                 <input type="date" class="form-control" @bind="odemeYapRequest.OdemeTarihi" />
                             </div>
+                            <div class="col-12">
+                                <div class="card bg-light border">
+                                    <div class="card-header py-2">
+                                        <i class="bi bi-journal-code me-1"></i>Muhasebe Eşleştirme
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <div class="row g-2">
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Muhasebe Hesap Kodu</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="odemeYapRequest.MuhasebeHesapKodu" placeholder="Örn: 320" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Kost Merkezi</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="odemeYapRequest.KostMerkeziKodu" placeholder="Masraf merkezi" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Proje Kodu</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="odemeYapRequest.ProjeKodu" placeholder="Proje" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         }
-                        <!-- Hesap Seçimi -->
-                        @if (odemeYapRequest.OdemeTipi != Services.OdemeTipi.Mahsup && odemeYapRequest.OdemeTipi != Services.OdemeTipi.CariMahsup && bankaHesaplari != null)
+                        else if (odemeYapRequest.OdemeTipi != Services.OdemeTipi.Mahsup && bankaHesaplari != null)
                         {
                             <div class="col-md-6">
                                 <label class="form-label">@GetHesapLabel() *</label>
@@ -909,6 +966,41 @@
                         <div class="alert alert-warning py-2 mb-3 small">
                             <i class="bi bi-exclamation-triangle me-1"></i>
                             Yapacaginiz degisiklikler <strong>tum raporlara</strong> (Butce Analiz, Kredi/Taksitler, Fatura Odeme vb.) otomatik olarak yansiyacaktir.
+                        </div>
+                    }
+                    @if (editOdeme.Durum == OdemeDurum.Odendi)
+                    {
+                        <div class="alert alert-success py-2 mb-3">
+                            <div><strong><i class="bi bi-check-circle me-1"></i>Ödeme İzi</strong></div>
+                            @if (editOdeme.GercekOdemeTarihi.HasValue)
+                            {
+                                <div><small>Gerçek Ödeme Tarihi: @editOdeme.GercekOdemeTarihi.Value.ToString("dd.MM.yyyy")</small></div>
+                            }
+                            <div><small>Ödenen Tutar: @FormatPara(editOdeme.OdenenTutar ?? editOdeme.Miktar)</small></div>
+                            @if (!string.IsNullOrWhiteSpace(GetOdemeHesapAdi(editOdeme.OdemeYapildigiHesapId)))
+                            {
+                                <div><small>Hesap: @GetOdemeHesapAdi(editOdeme.OdemeYapildigiHesapId)</small></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(editOdeme.HareketKaynakGorunumu))
+                            {
+                                <div><small>İz: @editOdeme.HareketKaynakGorunumu</small></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(editOdeme.HareketCariUnvani))
+                            {
+                                <div><small>Cari: @editOdeme.HareketCariUnvani</small></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(editOdeme.HareketYonGorunumu))
+                            {
+                                <div><small>Yön: @editOdeme.HareketYonGorunumu</small></div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(editOdeme.HareketBelgeNo))
+                            {
+                                <div><small>Belge No: @editOdeme.HareketBelgeNo</small></div>
+                            }
+                            @if (editOdeme.BankaKasaHareketId.HasValue)
+                            {
+                                <div><small>Hareket #: @editOdeme.BankaKasaHareketId</small></div>
+                            }
                         </div>
                     }
                     <div class="mb-3">
@@ -1585,6 +1677,7 @@
     // Kategori & Trend Analiz
     private List<BudgetKategoriOzet> kategoriOzetleri = new();
     private List<BudgetTrendData> trendData = new();
+    private HedefGerceklesenOzet hedefGerceklesen = new();
 
     // AI Ollama
     private bool ollamaBagli = false;
@@ -1713,12 +1806,89 @@
             // Kategori ve trend verilerini de güncelle
             await KategoriAnalizYukle();
             await TrendAnalizYukle();
+            await HedefGerceklesenYukle();
         }
         finally
         {
             isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private async Task HedefGerceklesenYukle()
+    {
+        var referans = GetReferansDonemBilgisi();
+        if (referans is null)
+        {
+            hedefGerceklesen = new HedefGerceklesenOzet();
+            return;
+        }
+
+        int? firmaId = secilenFirmaId > 0 ? secilenFirmaId : null;
+        var referansOdemeler = await BudgetService.GetOdemelerAsync(referans.Value.Yil, referans.Value.Ay, firmaId);
+
+        var gerceklesenToplam = ozet?.ToplamOdeme ?? odemeler.Sum(o => o.Miktar);
+        var hedefToplam = referansOdemeler.Sum(o => o.Miktar);
+
+        var gerceklesenKategori = odemeler
+            .GroupBy(o => o.MasrafKalemi)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Miktar));
+
+        var referansKategori = referansOdemeler
+            .GroupBy(o => o.MasrafKalemi)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Miktar));
+
+        var kategoriRenkleri = masrafKalemleri?
+            .GroupBy(m => m.KalemAdi)
+            .ToDictionary(g => g.Key, g => g.First().Renk) ?? new Dictionary<string, string?>();
+
+        var satirlar = gerceklesenKategori.Keys
+            .Union(referansKategori.Keys)
+            .Select(k =>
+            {
+                var hedef = referansKategori.GetValueOrDefault(k, 0);
+                var gerceklesen = gerceklesenKategori.GetValueOrDefault(k, 0);
+                return new HedefGerceklesenKategoriSatir
+                {
+                    MasrafKalemi = k,
+                    Renk = kategoriRenkleri.GetValueOrDefault(k),
+                    HedefTutar = hedef,
+                    GerceklesenTutar = gerceklesen
+                };
+            })
+            .OrderByDescending(x => Math.Max(x.HedefTutar, x.GerceklesenTutar))
+            .Take(8)
+            .ToList();
+
+        hedefGerceklesen = new HedefGerceklesenOzet
+        {
+            ReferansEtiketi = referans.Value.Etiket,
+            HedefTutar = hedefToplam,
+            GerceklesenTutar = gerceklesenToplam,
+            Kategoriler = satirlar
+        };
+    }
+
+    private (int Yil, int? Ay, string Etiket)? GetReferansDonemBilgisi()
+    {
+        if (secilenAy > 0)
+        {
+            return (secilenYil - 1, secilenAy, $"{GetAyAdi(secilenAy)} {secilenYil - 1}");
+        }
+
+        return (secilenYil - 1, null, $"{secilenYil - 1}");
+    }
+
+    private static string GetSapmaTextClass(decimal sapma)
+        => sapma > 0 ? "text-danger" : sapma < 0 ? "text-success" : "text-muted";
+
+    private static string GetSapmaBarClass(decimal oran)
+        => oran > 100 ? "bg-danger" : oran >= 80 ? "bg-success" : "bg-warning";
+
+    private string FormatSignedPara(decimal tutar)
+    {
+        var isaret = tutar > 0 ? "+" : string.Empty;
+        return $"{isaret}{FormatPara(tutar)}";
     }
 
     private void PeriyodAylikSec() { secilenPeriyod = "aylik"; _ = YenileDataAsync(); }
@@ -1738,6 +1908,27 @@
             secilenGun = null;
             StateHasChanged();
         }
+    }
+
+    private class HedefGerceklesenOzet
+    {
+        public string ReferansEtiketi { get; set; } = "-";
+        public decimal HedefTutar { get; set; }
+        public decimal GerceklesenTutar { get; set; }
+        public decimal SapmaTutar => GerceklesenTutar - HedefTutar;
+        public decimal GerceklesmeOrani => HedefTutar > 0 ? Math.Round(GerceklesenTutar / HedefTutar * 100, 1) : 0;
+        public bool VeriVar => HedefTutar > 0 || GerceklesenTutar > 0;
+        public List<HedefGerceklesenKategoriSatir> Kategoriler { get; set; } = new();
+    }
+
+    private class HedefGerceklesenKategoriSatir
+    {
+        public string MasrafKalemi { get; set; } = string.Empty;
+        public string? Renk { get; set; }
+        public decimal HedefTutar { get; set; }
+        public decimal GerceklesenTutar { get; set; }
+        public decimal SapmaTutar => GerceklesenTutar - HedefTutar;
+        public decimal GerceklesmeOrani => HedefTutar > 0 ? Math.Round(GerceklesenTutar / HedefTutar * 100, 1) : 0;
     }
 
     private async Task SonrakiAy()
@@ -1782,7 +1973,10 @@
             OdemeTarihi = DateTime.Today,
             MasrafKesintisi = 0,
             CezaKesintisi = 0,
-            DigerKesinti = 0
+            DigerKesinti = 0,
+            MuhasebeHesapKodu = string.Empty,
+            KostMerkeziKodu = string.Empty,
+            ProjeKodu = string.Empty
         };
         showOdemeYapModal = true;
     }
@@ -1797,6 +1991,12 @@
             if (!odemeYapRequest.CariId.HasValue || odemeYapRequest.CariId == 0)
             {
                 ToastService.ShowWarning("Lütfen cari hesap seçin!");
+                return;
+            }
+
+            if (!odemeYapRequest.BankaHesapId.HasValue || odemeYapRequest.BankaHesapId == 0)
+            {
+                ToastService.ShowWarning("Lütfen işlem yapılacak hesabı seçin!");
                 return;
             }
         }
@@ -1814,7 +2014,9 @@
             var odenenId = odemeYapilacak.Id;
             await BudgetService.OdemeYapAsync(odenenId, odemeYapRequest);
 
-            var mesaj = $"{odemeYapilacak.MasrafKalemi} ödendi! ({FormatPara(NetOdemeTutari)})";
+            var mesaj = odemeYapRequest.OdemeTipi == Services.OdemeTipi.CariMahsup
+                ? $"{odemeYapRequest.CaridenTahsilat switch { true => "Cari mahsup tahsilat", false => "Cari mahsup ödeme" }} kaydedildi! ({FormatPara(NetOdemeTutari)})"
+                : $"{odemeYapilacak.MasrafKalemi} ödendi! ({FormatPara(NetOdemeTutari)})";
             if (ToplamEkMasraf > 0)
                 mesaj += $" - Ek Masraf: {FormatPara(ToplamEkMasraf)}";
 
@@ -1857,6 +2059,9 @@
         odemeYapRequest.OdemeTipi = tip;
         odemeYapRequest.BankaHesapId = null; // Hesap seçimini sıfırla
         odemeYapRequest.CariId = null; // Cari seçimini sıfırla
+        odemeYapRequest.MuhasebeHesapKodu = string.Empty;
+        odemeYapRequest.KostMerkeziKodu = string.Empty;
+        odemeYapRequest.ProjeKodu = string.Empty;
     }
 
     private string GetHesapLabel() => odemeYapRequest.OdemeTipi switch
@@ -1877,6 +2082,34 @@
             Services.OdemeTipi.KrediKarti => bankaHesaplari.Where(h => h.HesapTipi == HesapTipi.KrediKarti),
             _ => bankaHesaplari.Where(h => h.HesapTipi != HesapTipi.Kasa && h.HesapTipi != HesapTipi.KrediKarti)
         };
+    }
+
+    private IEnumerable<BankaHesap> GetCariMahsupHesaplar()
+    {
+        if (bankaHesaplari == null) return Enumerable.Empty<BankaHesap>();
+
+        return bankaHesaplari.Where(h => h.HesapTipi != HesapTipi.KrediKarti);
+    }
+
+    private string GetOdemeHesapAdi(int? hesapId)
+    {
+        if (!hesapId.HasValue || bankaHesaplari == null)
+            return string.Empty;
+
+        return bankaHesaplari.FirstOrDefault(h => h.Id == hesapId.Value)?.HesapAdi ?? string.Empty;
+    }
+
+    private void CariMahsupHesapDegisti()
+    {
+        if (!odemeYapRequest.BankaHesapId.HasValue || bankaHesaplari == null)
+            return;
+
+        var seciliHesap = bankaHesaplari.FirstOrDefault(h => h.Id == odemeYapRequest.BankaHesapId.Value);
+        if (seciliHesap == null)
+            return;
+
+        odemeYapRequest.MuhasebeHesapKodu = seciliHesap.VarsayilanMuhasebeKodu ?? string.Empty;
+        odemeYapRequest.KostMerkeziKodu = seciliHesap.VarsayilanKostMerkezi ?? string.Empty;
     }
 
     private decimal ToplamEkMasraf => Math.Abs(odemeYapRequest.MasrafKesintisi) + Math.Abs(odemeYapRequest.CezaKesintisi) + Math.Abs(odemeYapRequest.DigerKesinti);
@@ -1914,6 +2147,9 @@
             OdenenTutar = odeme.OdenenTutar,
             OdemeNotu = odeme.OdemeNotu,
             BankaKasaHareketId = odeme.BankaKasaHareketId,
+            HareketKaynakGorunumu = odeme.HareketKaynakGorunumu,
+            HareketCariUnvani = odeme.HareketCariUnvani,
+            HareketYonGorunumu = odeme.HareketYonGorunumu,
             FaturaId = odeme.FaturaId,
             FaturaIleKapatildi = odeme.FaturaIleKapatildi,
             // Taksit bilgilerini de kopyala

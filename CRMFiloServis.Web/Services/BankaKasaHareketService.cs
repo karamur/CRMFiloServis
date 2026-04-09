@@ -406,7 +406,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     }
 
     // Mahsup İşlemleri
-    public async Task<MahsupSonuc> HesaplarArasiTransferAsync(int kaynakHesapId, int hedefHesapId, decimal tutar, DateTime tarih, string aciklama)
+    public async Task<MahsupSonuc> HesaplarArasiTransferAsync(int kaynakHesapId, int hedefHesapId, decimal tutar, DateTime tarih, string aciklama, string? belgeNo = null, string? muhasebeHesapKodu = null, string? kostMerkeziKodu = null, string? projeKodu = null)
     {
         if (kaynakHesapId == hedefHesapId)
             return new MahsupSonuc { Basarili = false, Hata = "Kaynak ve hedef hesap aynı olamaz." };
@@ -439,7 +439,12 @@ public class BankaKasaHareketService : IBankaKasaHareketService
                 HareketTipi = HareketTipi.Cikis,
                 Tutar = tutar,
                 BankaHesapId = kaynakHesapId,
+                BelgeNo = string.IsNullOrWhiteSpace(belgeNo) ? null : belgeNo.Trim(),
                 Aciklama = $"[TRANSFER] {hedefHesap.HesapAdi}'na transfer - {aciklama}",
+                MuhasebeHesapKodu = string.IsNullOrWhiteSpace(muhasebeHesapKodu) ? kaynakHesap.VarsayilanMuhasebeKodu : muhasebeHesapKodu.Trim(),
+                KostMerkeziKodu = string.IsNullOrWhiteSpace(kostMerkeziKodu) ? kaynakHesap.VarsayilanKostMerkezi : kostMerkeziKodu.Trim(),
+                ProjeKodu = string.IsNullOrWhiteSpace(projeKodu) ? null : projeKodu.Trim(),
+                MuhasebeAciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
                 IslemKaynak = IslemKaynak.Mahsup,
                 MahsupGrupId = mahsupGrupId
             };
@@ -454,7 +459,12 @@ public class BankaKasaHareketService : IBankaKasaHareketService
                 HareketTipi = HareketTipi.Giris,
                 Tutar = tutar,
                 BankaHesapId = hedefHesapId,
+                BelgeNo = string.IsNullOrWhiteSpace(belgeNo) ? null : belgeNo.Trim(),
                 Aciklama = $"[TRANSFER] {kaynakHesap.HesapAdi}'ndan transfer - {aciklama}",
+                MuhasebeHesapKodu = string.IsNullOrWhiteSpace(muhasebeHesapKodu) ? hedefHesap.VarsayilanMuhasebeKodu : muhasebeHesapKodu.Trim(),
+                KostMerkeziKodu = string.IsNullOrWhiteSpace(kostMerkeziKodu) ? hedefHesap.VarsayilanKostMerkezi : kostMerkeziKodu.Trim(),
+                ProjeKodu = string.IsNullOrWhiteSpace(projeKodu) ? null : projeKodu.Trim(),
+                MuhasebeAciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
                 IslemKaynak = IslemKaynak.Mahsup,
                 MahsupGrupId = mahsupGrupId,
                 MahsupHareketId = cikisHareket.Id
@@ -494,7 +504,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         }
     }
 
-    public async Task<MahsupSonuc> CariMahsupAsync(int cariId, int hesapId, decimal tutar, DateTime tarih, string aciklama, bool caridenHesaba)
+    public async Task<MahsupSonuc> CariMahsupAsync(int cariId, int hesapId, decimal tutar, DateTime tarih, string aciklama, bool caridenHesaba, string? belgeNo = null, string? muhasebeHesapKodu = null, string? kostMerkeziKodu = null, string? projeKodu = null)
     {
         if (tutar <= 0)
             return new MahsupSonuc { Basarili = false, Hata = "Tutar sıfırdan büyük olmalıdır." };
@@ -520,7 +530,12 @@ public class BankaKasaHareketService : IBankaKasaHareketService
                 Tutar = tutar,
                 BankaHesapId = hesapId,
                 CariId = cariId,
+                BelgeNo = string.IsNullOrWhiteSpace(belgeNo) ? null : belgeNo.Trim(),
                 Aciklama = $"[CARİ MAHSUP] {cari.Unvan} - {aciklama}",
+                MuhasebeHesapKodu = string.IsNullOrWhiteSpace(muhasebeHesapKodu) ? hesap.VarsayilanMuhasebeKodu : muhasebeHesapKodu.Trim(),
+                KostMerkeziKodu = string.IsNullOrWhiteSpace(kostMerkeziKodu) ? hesap.VarsayilanKostMerkezi : kostMerkeziKodu.Trim(),
+                ProjeKodu = string.IsNullOrWhiteSpace(projeKodu) ? null : projeKodu.Trim(),
+                MuhasebeAciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
                 IslemKaynak = IslemKaynak.CariMahsup,
                 MahsupGrupId = mahsupGrupId
             };
@@ -565,7 +580,70 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         if (bitis.HasValue)
             query = query.Where(h => h.IslemTarihi <= bitis.Value);
 
-        return await query.OrderByDescending(h => h.IslemTarihi).ToListAsync();
+        var hareketler = await query
+            .OrderByDescending(h => h.IslemTarihi)
+            .ToListAsync();
+
+        if (!hareketler.Any())
+            return hareketler;
+
+        var hareketIds = hareketler.Select(h => h.Id).ToHashSet();
+        var mahsupGrupIds = hareketler.Where(h => h.MahsupGrupId.HasValue).Select(h => h.MahsupGrupId!.Value).ToHashSet();
+
+        var fisler = await _context.MuhasebeFisleri
+            .AsNoTracking()
+            .Where(f => (f.KaynakTip == "HesapTransfer" || f.KaynakTip == "CariMahsup") && f.KaynakId.HasValue && hareketIds.Contains(f.KaynakId.Value))
+            .Select(f => new { f.Id, f.FisNo, f.Durum, f.KaynakId, f.KaynakTip })
+            .ToListAsync();
+
+        var iptalFisleri = await _context.MuhasebeFisleri
+            .AsNoTracking()
+            .Where(f => f.KaynakTip == "IptalKaydi" && f.KaynakId.HasValue)
+            .Select(f => new { f.FisNo, f.KaynakId })
+            .ToListAsync();
+
+        var fisByKaynakId = fisler
+            .Where(f => f.KaynakId.HasValue)
+            .ToDictionary(f => f.KaynakId!.Value, f => f);
+
+        var iptalFisNoByFisId = iptalFisleri
+            .Where(f => f.KaynakId.HasValue)
+            .GroupBy(f => f.KaynakId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.FisNo).FirstOrDefault());
+
+        foreach (var hareket in hareketler)
+        {
+            var kaynakHareketId = hareket.Id;
+
+            if (!fisByKaynakId.TryGetValue(kaynakHareketId, out var fis)
+                && hareket.MahsupGrupId.HasValue
+                && mahsupGrupIds.Contains(hareket.MahsupGrupId.Value))
+            {
+                var grupKaynakHareket = hareketler.FirstOrDefault(h => h.MahsupGrupId == hareket.MahsupGrupId && fisByKaynakId.ContainsKey(h.Id));
+                if (grupKaynakHareket != null)
+                {
+                    fis = fisByKaynakId[grupKaynakHareket.Id];
+                }
+            }
+
+            if (fis == null)
+                continue;
+
+            hareket.MuhasebeFisNo = fis.FisNo;
+            hareket.MuhasebeFisDurumu = fis.Durum switch
+            {
+                FisDurum.Onaylandi => "Onaylandı",
+                FisDurum.IptalEdildi => "İptal Edildi",
+                _ => "Taslak"
+            };
+
+            if (iptalFisNoByFisId.TryGetValue(fis.Id, out var iptalFisNo) && !string.IsNullOrWhiteSpace(iptalFisNo))
+            {
+                hareket.IptalFisNo = iptalFisNo;
+            }
+        }
+
+        return hareketler;
     }
 
     public async Task MahsupIptalAsync(Guid mahsupGrupId)

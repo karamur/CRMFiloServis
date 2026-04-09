@@ -1,6 +1,7 @@
 ﻿using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using CRMFiloServis.Web.Models;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRMFiloServis.Web.Services;
@@ -767,5 +768,152 @@ public class RaporService : IRaporService
             .ToList();
 
         return ozet;
+    }
+
+    public async Task<IseGirisCikisBildirgeRaporu> GetIseGirisCikisBildirgeAsync(
+        DateTime baslangicTarihi,
+        DateTime bitisTarihi,
+        IseGirisCikisFiltreTipi filtreTipi = IseGirisCikisFiltreTipi.Tumu,
+        PersonelGorev? gorev = null)
+    {
+        var baslangic = baslangicTarihi.Date;
+        var bitis = bitisTarihi.Date;
+
+        var query = _context.Soforler
+            .Where(x => !x.IsDeleted)
+            .AsNoTracking();
+
+        if (gorev.HasValue)
+        {
+            query = query.Where(x => x.Gorev == gorev.Value);
+        }
+
+        var personeller = await query
+            .OrderBy(x => x.Ad)
+            .ThenBy(x => x.Soyad)
+            .ToListAsync();
+
+        var kayitlar = new List<IseGirisCikisBildirgeSatiri>();
+
+        foreach (var personel in personeller)
+        {
+            if ((filtreTipi == IseGirisCikisFiltreTipi.Tumu || filtreTipi == IseGirisCikisFiltreTipi.IseGiris) &&
+                personel.IseBaslamaTarihi.HasValue)
+            {
+                var iseGiris = personel.IseBaslamaTarihi.Value.Date;
+                if (iseGiris >= baslangic && iseGiris <= bitis)
+                {
+                    kayitlar.Add(new IseGirisCikisBildirgeSatiri
+                    {
+                        SoforId = personel.Id,
+                        KayitTipi = IseGirisCikisKayitTipi.IseGiris,
+                        BildirgeTarihi = iseGiris,
+                        PersonelKodu = personel.SoforKodu,
+                        PersonelAdi = personel.TamAd,
+                        TcKimlikNo = personel.TcKimlikNo,
+                        Gorev = personel.Gorev,
+                        Departman = personel.Departman,
+                        IseBaslamaTarihi = personel.IseBaslamaTarihi,
+                        IstenAyrilmaTarihi = personel.IstenAyrilmaTarihi,
+                        SgkCikisTarihi = personel.SgkCikisTarihi,
+                        AktifMi = personel.Aktif,
+                        Notlar = personel.Notlar
+                    });
+                }
+            }
+
+            var cikisTarihi = personel.SgkCikisTarihi ?? personel.IstenAyrilmaTarihi;
+            if ((filtreTipi == IseGirisCikisFiltreTipi.Tumu || filtreTipi == IseGirisCikisFiltreTipi.IstenCikis) &&
+                cikisTarihi.HasValue)
+            {
+                var istenCikis = cikisTarihi.Value.Date;
+                if (istenCikis >= baslangic && istenCikis <= bitis)
+                {
+                    kayitlar.Add(new IseGirisCikisBildirgeSatiri
+                    {
+                        SoforId = personel.Id,
+                        KayitTipi = IseGirisCikisKayitTipi.IstenCikis,
+                        BildirgeTarihi = istenCikis,
+                        PersonelKodu = personel.SoforKodu,
+                        PersonelAdi = personel.TamAd,
+                        TcKimlikNo = personel.TcKimlikNo,
+                        Gorev = personel.Gorev,
+                        Departman = personel.Departman,
+                        IseBaslamaTarihi = personel.IseBaslamaTarihi,
+                        IstenAyrilmaTarihi = personel.IstenAyrilmaTarihi,
+                        SgkCikisTarihi = personel.SgkCikisTarihi,
+                        AktifMi = personel.Aktif,
+                        Notlar = personel.Notlar
+                    });
+                }
+            }
+        }
+
+        kayitlar = kayitlar
+            .OrderByDescending(x => x.BildirgeTarihi)
+            .ThenBy(x => x.PersonelAdi)
+            .ToList();
+
+        return new IseGirisCikisBildirgeRaporu
+        {
+            BaslangicTarihi = baslangic,
+            BitisTarihi = bitis,
+            FiltreTipi = filtreTipi,
+            Gorev = gorev,
+            ToplamKayit = kayitlar.Count,
+            IseGirisSayisi = kayitlar.Count(x => x.KayitTipi == IseGirisCikisKayitTipi.IseGiris),
+            IstenCikisSayisi = kayitlar.Count(x => x.KayitTipi == IseGirisCikisKayitTipi.IstenCikis),
+            AktifPersonelSayisi = personeller.Count(x => x.Aktif),
+            Kayitlar = kayitlar
+        };
+    }
+
+    public async Task<byte[]> ExportIseGirisCikisBildirgeExcelAsync(
+        DateTime baslangicTarihi,
+        DateTime bitisTarihi,
+        IseGirisCikisFiltreTipi filtreTipi = IseGirisCikisFiltreTipi.Tumu,
+        PersonelGorev? gorev = null)
+    {
+        var rapor = await GetIseGirisCikisBildirgeAsync(baslangicTarihi, bitisTarihi, filtreTipi, gorev);
+
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("IseGirisCikis");
+
+        ws.Cell(1, 1).Value = "İŞE GİRİŞ / ÇIKIŞ BİLDİRGE RAPORU";
+        ws.Cell(1, 1).Style.Font.Bold = true;
+        ws.Cell(1, 1).Style.Font.FontSize = 14;
+        ws.Range(1, 1, 1, 9).Merge();
+
+        ws.Cell(2, 1).Value = $"Tarih Aralığı: {rapor.BaslangicTarihi:dd.MM.yyyy} - {rapor.BitisTarihi:dd.MM.yyyy}";
+        ws.Range(2, 1, 2, 9).Merge();
+
+        var basliklar = new[] { "Bildirge Tarihi", "Tip", "Personel Kodu", "Personel", "TC Kimlik No", "Görev", "Departman", "İşe Başlama", "İşten Çıkış / SGK Çıkış" };
+        for (int i = 0; i < basliklar.Length; i++)
+        {
+            ws.Cell(4, i + 1).Value = basliklar[i];
+            ws.Cell(4, i + 1).Style.Font.Bold = true;
+            ws.Cell(4, i + 1).Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
+        }
+
+        var row = 5;
+        foreach (var kayit in rapor.Kayitlar)
+        {
+            ws.Cell(row, 1).Value = kayit.BildirgeTarihi.ToString("dd.MM.yyyy");
+            ws.Cell(row, 2).Value = kayit.KayitTipi == IseGirisCikisKayitTipi.IseGiris ? "İşe Giriş" : "İşten Çıkış";
+            ws.Cell(row, 3).Value = kayit.PersonelKodu;
+            ws.Cell(row, 4).Value = kayit.PersonelAdi;
+            ws.Cell(row, 5).Value = kayit.TcKimlikNo ?? string.Empty;
+            ws.Cell(row, 6).Value = kayit.Gorev.ToString();
+            ws.Cell(row, 7).Value = kayit.Departman ?? string.Empty;
+            ws.Cell(row, 8).Value = kayit.IseBaslamaTarihi?.ToString("dd.MM.yyyy") ?? string.Empty;
+            ws.Cell(row, 9).Value = (kayit.SgkCikisTarihi ?? kayit.IstenAyrilmaTarihi)?.ToString("dd.MM.yyyy") ?? string.Empty;
+            row++;
+        }
+
+        ws.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
     }
 }

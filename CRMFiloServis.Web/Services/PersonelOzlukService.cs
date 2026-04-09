@@ -165,6 +165,14 @@ public class PersonelOzlukService : IPersonelOzlukService
             .ToListAsync();
     }
 
+    public async Task<PersonelOzlukEvrak?> GetPersonelEvrakByIdAsync(int evrakId)
+    {
+        return await _context.PersonelOzlukEvraklar
+            .Include(e => e.Sofor)
+            .Include(e => e.EvrakTanim)
+            .FirstOrDefaultAsync(e => e.Id == evrakId && !e.IsDeleted);
+    }
+
     public async Task<PersonelOzlukEvrakDurum> GetPersonelEvrakDurumuAsync(int soforId)
     {
         var personel = await _context.Soforler.FindAsync(soforId);
@@ -283,6 +291,25 @@ public class PersonelOzlukService : IPersonelOzlukService
             };
             _context.PersonelOzlukEvraklar.Add(existing);
         }
+
+        await _context.SaveChangesAsync();
+        return existing;
+    }
+
+    public async Task<PersonelOzlukEvrak> UpdatePersonelEvrakAsync(PersonelOzlukEvrak evrak)
+    {
+        var existing = await _context.PersonelOzlukEvraklar
+            .FirstOrDefaultAsync(e => e.Id == evrak.Id && !e.IsDeleted);
+
+        if (existing == null)
+            throw new InvalidOperationException("Personel evrak kaydı bulunamadı.");
+
+        existing.Tamamlandi = evrak.Tamamlandi;
+        existing.TamamlanmaTarihi = evrak.Tamamlandi
+            ? (evrak.TamamlanmaTarihi.HasValue ? DateTime.SpecifyKind(evrak.TamamlanmaTarihi.Value, DateTimeKind.Utc) : DateTime.UtcNow)
+            : null;
+        existing.Aciklama = evrak.Aciklama;
+        existing.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return existing;

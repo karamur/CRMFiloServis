@@ -12,6 +12,12 @@ public interface IEmailService
     Task<bool> SendEmailAsync(List<string> to, string subject, string body, bool isHtml = true);
     Task<bool> SendBelgeUyariEmailAsync(string to, List<BelgeUyariEmail> uyarilar);
     Task<bool> SendFaturaEmailAsync(string to, string faturaNo, decimal tutar, DateTime vadeTarihi);
+
+    // === Destek Talepleri E-posta Bildirimleri ===
+    Task<bool> SendDestekYeniTalepEmailAsync(string musteriEmail, string musteriAdi, string talepNo, string konu, string oncelik);
+    Task<bool> SendDestekYanitEmailAsync(string musteriEmail, string musteriAdi, string talepNo, string konu, string yanitOzet);
+    Task<bool> SendDestekDurumEmailAsync(string musteriEmail, string musteriAdi, string talepNo, string konu, string eskiDurum, string yeniDurum);
+    Task<bool> SendDestekAtamaEmailAsync(string temsilciEmail, string temsilciAdi, string talepNo, string konu, string musteriAdi, string oncelik);
 }
 
 public class EmailService : IEmailService
@@ -193,6 +199,120 @@ public class EmailService : IEmailService
 
         return await SendEmailAsync(to, $"Fatura: {faturaNo} - CRM Filo Servis", body);
     }
+
+    #region Destek Talepleri E-posta Bildirimleri
+
+    public async Task<bool> SendDestekYeniTalepEmailAsync(string musteriEmail, string musteriAdi, string talepNo, string konu, string oncelik)
+    {
+        var body = BuildDestekEmailBody(
+            "✅ Destek Talebiniz Alındı",
+            "#198754",
+            $@"<p>Sayın <strong>{musteriAdi}</strong>,</p>
+               <p>Destek talebiniz başarıyla oluşturulmuştur. En kısa sürede ekibimiz tarafından incelenecektir.</p>
+               <div class='details'>
+                   <p><strong>Talep No:</strong> {talepNo}</p>
+                   <p><strong>Konu:</strong> {konu}</p>
+                   <p><strong>Öncelik:</strong> {oncelik}</p>
+                   <p><strong>Tarih:</strong> {DateTime.Now:dd.MM.yyyy HH:mm}</p>
+               </div>
+               <p>Talebinizin durumunu sistem üzerinden takip edebilirsiniz.</p>");
+
+        return await SendEmailAsync(musteriEmail, $"[{talepNo}] Destek Talebiniz Alındı - {konu}", body);
+    }
+
+    public async Task<bool> SendDestekYanitEmailAsync(string musteriEmail, string musteriAdi, string talepNo, string konu, string yanitOzet)
+    {
+        var body = BuildDestekEmailBody(
+            "💬 Destek Talebinize Yanıt",
+            "#0d6efd",
+            $@"<p>Sayın <strong>{musteriAdi}</strong>,</p>
+               <p><strong>{talepNo}</strong> numaralı destek talebinize yeni bir yanıt eklenmiştir.</p>
+               <div class='details'>
+                   <p><strong>Konu:</strong> {konu}</p>
+                   <p><strong>Yanıt Özeti:</strong></p>
+                   <div style='background:#f8f9fa;padding:12px;border-radius:4px;margin-top:8px;'>
+                       {yanitOzet}
+                   </div>
+               </div>
+               <p>Detayları görmek ve yanıt vermek için sisteme giriş yapabilirsiniz.</p>");
+
+        return await SendEmailAsync(musteriEmail, $"[{talepNo}] Yeni Yanıt - {konu}", body);
+    }
+
+    public async Task<bool> SendDestekDurumEmailAsync(string musteriEmail, string musteriAdi, string talepNo, string konu, string eskiDurum, string yeniDurum)
+    {
+        var durumRenk = yeniDurum switch
+        {
+            "Çözüldü" or "Kapalı" => "#198754",
+            "Yanıt Bekleniyor" => "#ffc107",
+            _ => "#0d6efd"
+        };
+
+        var body = BuildDestekEmailBody(
+            "🔄 Talep Durumu Güncellendi",
+            durumRenk,
+            $@"<p>Sayın <strong>{musteriAdi}</strong>,</p>
+               <p><strong>{talepNo}</strong> numaralı destek talebinizin durumu güncellenmiştir.</p>
+               <div class='details'>
+                   <p><strong>Konu:</strong> {konu}</p>
+                   <p><strong>Önceki Durum:</strong> {eskiDurum}</p>
+                   <p><strong>Yeni Durum:</strong> <span style='color:{durumRenk};font-weight:bold;'>{yeniDurum}</span></p>
+               </div>");
+
+        return await SendEmailAsync(musteriEmail, $"[{talepNo}] Durum Güncellendi: {yeniDurum} - {konu}", body);
+    }
+
+    public async Task<bool> SendDestekAtamaEmailAsync(string temsilciEmail, string temsilciAdi, string talepNo, string konu, string musteriAdi, string oncelik)
+    {
+        var body = BuildDestekEmailBody(
+            "📋 Yeni Talep Ataması",
+            "#6f42c1",
+            $@"<p>Merhaba <strong>{temsilciAdi}</strong>,</p>
+               <p>Aşağıdaki destek talebi size atanmıştır:</p>
+               <div class='details'>
+                   <p><strong>Talep No:</strong> {talepNo}</p>
+                   <p><strong>Konu:</strong> {konu}</p>
+                   <p><strong>Müşteri:</strong> {musteriAdi}</p>
+                   <p><strong>Öncelik:</strong> {oncelik}</p>
+               </div>
+               <p>Lütfen en kısa sürede talebi inceleyin ve yanıtlayın.</p>");
+
+        return await SendEmailAsync(temsilciEmail, $"[{talepNo}] Size Atanan Talep - {konu}", body);
+    }
+
+    private static string BuildDestekEmailBody(string baslik, string headerRenk, string icerik)
+    {
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; }}
+        .container {{ max-width: 600px; margin: 0 auto; }}
+        .header {{ background-color: {headerRenk}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+        .content {{ padding: 20px; background: #fff; }}
+        .details {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid {headerRenk}; }}
+        .footer {{ text-align: center; padding: 20px; color: #6c757d; font-size: 12px; background: #f8f9fa; border-radius: 0 0 8px 8px; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h2>{baslik}</h2>
+        </div>
+        <div class='content'>
+            {icerik}
+        </div>
+        <div class='footer'>
+            <p>Bu e-posta CRM Filo Servis sistemi tarafından otomatik olarak gönderilmiştir.</p>
+            <p>© {DateTime.Now.Year} CRM Filo Servis</p>
+        </div>
+    </div>
+</body>
+</html>";
+    }
+
+    #endregion
 }
 
 public class BelgeUyariEmail

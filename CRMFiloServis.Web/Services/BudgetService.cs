@@ -22,6 +22,7 @@ public class BudgetService : IBudgetService
     public async Task<List<BudgetOdeme>> GetOdemelerAsync(int yil, int? ay = null, int? firmaId = null)
     {
         var query = _context.BudgetOdemeler
+            .Include(o => o.OdemeYapildigiHesap)
             .Where(o => o.OdemeYil == yil);
 
         if (ay.HasValue)
@@ -30,10 +31,13 @@ public class BudgetService : IBudgetService
         if (firmaId.HasValue)
             query = query.Where(o => o.FirmaId == firmaId.Value);
 
-        return await query
+        var odemeler = await query
             .OrderBy(o => o.OdemeAy)
             .ThenBy(o => o.OdemeTarihi)
             .ToListAsync();
+
+        await DoldurOdemeHareketIzleriAsync(odemeler);
+        return odemeler;
     }
 
     /// <summary>
@@ -92,6 +96,47 @@ public class BudgetService : IBudgetService
         return await _context.BudgetOdemeler
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.BankaKasaHareketId == bankaKasaHareketId);
+    }
+
+    private async Task DoldurOdemeHareketIzleriAsync(List<BudgetOdeme> odemeler)
+    {
+        var hareketIds = odemeler
+            .Where(o => o.BankaKasaHareketId.HasValue)
+            .Select(o => o.BankaKasaHareketId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (!hareketIds.Any())
+            return;
+
+        var hareketler = await _context.BankaKasaHareketleri
+            .AsNoTracking()
+            .Include(h => h.Cari)
+            .Where(h => hareketIds.Contains(h.Id))
+            .ToDictionaryAsync(h => h.Id);
+
+        foreach (var odeme in odemeler)
+        {
+            if (!odeme.BankaKasaHareketId.HasValue || !hareketler.TryGetValue(odeme.BankaKasaHareketId.Value, out var hareket))
+                continue;
+
+            odeme.HareketKaynakGorunumu = hareket.IslemKaynak switch
+            {
+                IslemKaynak.CariMahsup => "Cari Mahsup",
+                IslemKaynak.Mahsup => "Hesap Mahsup",
+                IslemKaynak.Butce => "Bütçe Ödemesi",
+                _ => null
+            };
+
+            if (hareket.IslemKaynak == IslemKaynak.CariMahsup)
+            {
+                odeme.HareketCariUnvani = hareket.Cari?.Unvan;
+                odeme.HareketYonGorunumu = hareket.HareketTipi == HareketTipi.Giris
+                    ? "Tahsilat (Cari → Hesap)"
+                    : "Ödeme (Hesap → Cari)";
+                odeme.HareketBelgeNo = hareket.BelgeNo;
+            }
+        }
     }
 
     public async Task<BudgetOdeme> CreateOdemeAsync(BudgetOdeme odeme)
@@ -246,7 +291,11 @@ public class BudgetService : IBudgetService
                 netOdemeTutari,
                 odemeTarihi,
                 aciklamaBuilder,
-                request.CaridenTahsilat
+                request.CaridenTahsilat,
+                null,
+                request.MuhasebeHesapKodu,
+                request.KostMerkeziKodu,
+                request.ProjeKodu
             );
 
             if (!sonuc.Basarili)

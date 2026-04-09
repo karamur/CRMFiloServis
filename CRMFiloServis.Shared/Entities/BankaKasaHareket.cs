@@ -1,4 +1,6 @@
-﻿namespace CRMFiloServis.Shared.Entities;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace CRMFiloServis.Shared.Entities;
 
 /// <summary>
 /// Banka/Kasa hareketleri
@@ -23,6 +25,15 @@ public class BankaKasaHareket : BaseEntity
     public string? KostMerkeziKodu { get; set; } // Masraf merkezi
     public string? ProjeKodu { get; set; } // Proje kodu
     public string? MuhasebeAciklama { get; set; } // Muhasebe icin ek aciklama
+
+    [NotMapped]
+    public string? MuhasebeFisNo { get; set; }
+
+    [NotMapped]
+    public string? MuhasebeFisDurumu { get; set; }
+
+    [NotMapped]
+    public string? IptalFisNo { get; set; }
 
     // Foreign Keys
     public int BankaHesapId { get; set; }

@@ -41,6 +41,495 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 
 ## İstek Kayıtları
 
+### Kayıt 097 - Destek Talepleri E-posta Entegrasyonu
+**Talep:** Destek talepleri modülüne e-posta bildirim entegrasyonu eklenmesi (ROADMAP Faz 2).
+
+**Yapılanlar:**
+- `EmailService.cs` → `IEmailService` interface'ine 4 yeni destek e-posta metodu eklendi:
+  - `SendDestekYeniTalepEmailAsync` – yeni talep oluşturulduğunda müşteriye onay
+  - `SendDestekYanitEmailAsync` – temsilci yanıtı eklendiğinde müşteriye bildirim
+  - `SendDestekDurumEmailAsync` – durum değişikliğinde müşteriye bildirim
+  - `SendDestekAtamaEmailAsync` – talep atandığında temsilciye bildirim
+- Her metot için profesyonel HTML e-posta şablonu (`BuildDestekEmailBody` ortak builder) oluşturuldu.
+- `DestekTalebiService.cs` → `IEmailService` inject edildi ve 5 kritik noktada e-posta tetikleme eklendi:
+  - `CreateAsync` → yeni talep onay e-postası
+  - `UpdateDurumAsync` → durum değişiklik bildirimi
+  - `AtaAsync` → atama bildirimi
+  - `KapatAsync` → kapatma bildirimi
+  - `AddYanitAsync` → yanıt bildirimi (yalnızca temsilci yanıtı, dahili not hariç)
+- `SendDestekEmailSafeAsync` yardımcı metodu ile fire-and-forget, hata-güvenli e-posta gönderimi sağlandı.
+- E-posta göndermeden önce `EmailBildirimAktif` destek ayarı kontrol edilir; kapalıysa e-posta atlanır.
+- `DestekAyarlar.razor` bilgi kartı güncellendi: entegrasyon aktif mesajı ve tetiklenen olay listesi eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 096 - Bütçe Analiz Hedef / Gerçekleşen Karşılaştırma
+**Talep:** Yol haritasındaki açık başlıklardan `Bütçe Analiz - Hedef/Gerçekleşen karşılaştırma` adımına başlanması.
+
+**Yapılanlar:**
+- `BudgetAnaliz.razor` içine yeni `Hedef / Gerçekleşen Karşılaştırma` kartı eklendi.
+- Karşılaştırma, seçili dönem için geçmiş dönem referanslı hedef mantığıyla görünür hale getirildi.
+- Toplam hedef, gerçekleşen, sapma ve gerçekleşme oranı kartları eklendi.
+- Kategori bazında hedef / gerçekleşen / sapma tablosu eklendi.
+- Referans dönem etiketi ve sapma renkleri yardımcı metodlarla düzenlendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 095 - Destek Modülü İçin Playwright Smoke Test Altyapısı
+**Talep:** Destek modülünün `Liste`, `Detay`, `Bilgi Bankası` ve `Ayarlar` ekran açılışlarını doğrulayacak gerçek smoke test altyapısının yeniden görünür hale getirilmesi.
+
+**Yapılanlar:**
+- `CRMFiloServis.Web/Tests/PlaywrightSmoke` altında çalıştırılabilir `CRMFiloServis.PlaywrightSmoke.csproj` oluşturuldu.
+- `Program.cs` içinde Playwright tabanlı smoke akışı eklendi.
+- Akış; anonim yönlendirme, login, destek listesi, destek detay, bilgi bankası ve ayarlar ekranlarını kontrol eder hale getirildi.
+- Detay ekranı veri bağımlı olduğu için listede talep yoksa `skip` davranışı tanımlandı.
+- `PlaywrightTestProcedures.md` yeni proje yolu ve destek modülü akışına göre güncellendi.
+- Ana web projesinin test kaynaklarını derlememesi için `CRMFiloServis.Web.csproj` içine `Tests\**\*.cs` exclude kuralı eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 094 - Personel Özlük Checklist Eksik Evrak Görünürlüğü
+**Talep:** Personel özlük checklist ekranında kullanıcı modal açmadan hangi evrakların eksik olduğunu daha görünür biçimde görebilsin.
+
+**Yapılanlar:**
+- `OzlukEvrakChecklist.razor` personel listesinde kişi satırına eksik evrak özeti eklendi."""""""""
+- Zorunlu eksikler için ayrı kırmızı badge görünürlüğü eklendi.
+- Detay modal üst kısmına `Eksik Evrak Özeti` uyarı alanı eklendi.
+- Eksik evrak özeti zorunlu belgeleri önce gösterecek şekilde yardımcı metotlarla üretildi.
+- Checklist export tarafında mevcut `Boş Personel Dosyası` çıktısı ekran üstüne görünür aksiyon olarak taşındı.
+- `Excel İndir` aksiyonu `Tüm Checklist Excel` olarak netleştirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 093 - DEVELOPMENT ve ROADMAP Sadeleştirme
+**Talep:** Güncel durumu yansıtmayan eski açık maddelerin temizlenmesi ve sonraki adımların daha net hale getirilmesi.
+
+**Yapılanlar:**
+- `DEVELOPMENT.md` içindeki eski `aktif dikkat`, `yapılması gerekenler`, `kısa yol haritası` ve `güncel kısa durum` bölümleri güncel açık başlıklara indirgenerek sadeleştirildi.
+- `ROADMAP.md` içindeki artık büyük ölçüde tamamlanmış `Hemen Başlanabilecek Öncelikli İşler` bölümü aktif kalan maddelere göre yeniden yazıldı.
+- Destek modülü smoke test tarafında prosedür dokümanları bulunduğu, ancak repo içinde çalıştırılabilir Playwright smoke test kaynak dosyalarının görünmediği not edildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 092 - Bütçe Tarafında Cari Mahsup Belge No Görünürlüğü
+**Talep:** Bütçe tarafındaki `Cari Mahsup` ödeme izinde hareket bağlantısı görünürken `Belge No` bilgisinin de kullanıcı tarafından görülebilmesi.
+
+**Yapılanlar:**
+- `BudgetOdeme` entity'sine UI gösterimi için `HareketBelgeNo` alanı eklendi.
+- `BudgetService` içinde cari mahsup hareketinden gelen `BelgeNo` bilgisi ödeme satırına taşınır hale getirildi.
+- `OdemeYonetimi.razor` ödeme listesinde açıklama alanı altında `Belge No` görünürlüğü eklendi.
+- `BudgetAnaliz.razor` ödeme düzenleme modalındaki `Ödeme İzi` özetine `Belge No` alanı eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 091 - OdemeYonetimi Odeme Modalinin BudgetAnaliz ile Hizalanmasi
+**Talep:** `OdemeYonetimi.razor` içindeki ödeme modalinin `BudgetAnaliz.razor` ile aynı `Cari Mahsup`, yön seçimi, hesap seçimi, muhasebe alanları ve ek masraf davranışına getirilmesi.
+
+**Yapılanlar:**
+- `OdemeYonetimi.razor` ödeme modalı `Cari Mahsup`, `Kredi Kartı`, `Hesap Mahsup`, `Kasa` ve `Banka` akışlarını kapsayacak şekilde genişletildi.
+- `Cari Mahsup` için cari seçimi, hesap seçimi, işlem yönü ve muhasebe eşleştirme alanları eklendi.
+- Hesap bakiyeleri ve aktif cariler ekrana taşındı; cari mahsup hesap seçiminde varsayılan muhasebe kodu ve kost merkezi otomatik doldurulur hale getirildi.
+- Ek masraf kartı, net ödeme özeti, kaydetme loading durumu ve başarı mesajı `BudgetAnaliz` ile tutarlı hale getirildi.
+- `OdemeYapAsync` validasyonları cari mahsup hesabı dahil olacak şekilde güçlendirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 090 - Destek Modülü PostgreSQL Eksik Kolon Doğrulama Katmanı
+**Talep:** Destek modülünde tablo var ama bazı kolonlar eksik kaldığında başlangıçta tekrar düşme riskinin azaltılması.
+
+**Yapılanlar:**
+- `DbInitializer` içine `EnsureDestekModuluColumnsAsync` eklendi.
+- PostgreSQL için destek modülü tablolarındaki kritik kolonlar `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` ile tamamlanır hale getirildi.
+- `DestekTalepleri`, `DestekKategorileri`, `DestekAyarlari`, `DestekHazirYanitlari`, `DestekBilgiBankasiMakaleleri` ve ilişkili destek tabloları için koruma eklendi.
+- Güncel ve geriye dönük başlangıç akışlarında destek modülü kolon doğrulaması çalıştırılır hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 089 - Destek Ayarlar Ekranı Kontrollü Yükleme Hata Görünümü
+**Talep:** Destek modülünde `DestekAyarlar` ekranının da PostgreSQL tablo/seed sorunlarında tamamen düşmeden kontrollü hata görünümü sunması.
+
+**Yapılanlar:**
+- `DestekAyarlar.razor` içine sayfa üstünde görünen uyarı alanı eklendi.
+- Ayar yükleme akışında hata olması durumunda form alanları güvenli varsayılan değerlere döndürülür hale getirildi.
+- Hata durumunda kullanıcıya `Tekrar Dene` aksiyonu sunuldu.
+- İlk yükleme akışı ortak `SayfayiYenile` metodu altına toplandı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 088 - Destek Talebi Detay Ekranı Kontrollü Yükleme Hata Görünümü
+**Talep:** Destek modülünde `DestekTalebiDetay` ekranının da PostgreSQL tablo/seed sorunlarında tamamen düşmeden kontrollü hata görünümü sunması.
+
+**Yapılanlar:**
+- `DestekTalebiDetay.razor` içinde talep yükleme ve referans veri yükleme akışları ayrı hata yakalama ile güçlendirildi.
+- Talep hiç yüklenemezse açıklayıcı uyarı ve `Tekrar Dene` aksiyonu gösterilir hale getirildi.
+- Talep yüklenmiş fakat referans veriler eksik kalmışsa ekranın açılmaya devam etmesi ve üstte uyarı göstermesi sağlandı.
+- İlk açılış akışı ortak `SayfayiYenile` metodu altında toplandı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 087 - Destek Bilgi Bankası Kontrollü Yükleme Hata Görünümü
+**Talep:** Destek modülünde `BilgiBankasi` ekranının da PostgreSQL tablo/seed sorunlarında tamamen düşmeden kontrollü hata görünümü sunması.
+
+**Yapılanlar:**
+- `BilgiBankasi.razor` içine sayfa üstünde görünen uyarı alanı eklendi.
+- Kategori yükleme, makale listeleme ve özet istatistik yükleme akışlarında hatalar kontrollü şekilde yakalanır hale getirildi.
+- Hata durumunda boş sonuç modeli ve sıfırlanmış özet değerleri ile ekranın açılmaya devam etmesi sağlandı.
+- `Tekrar Dene` aksiyonu ve ortak `SayfayiYenile` akışı eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 086 - Destek Talebi Liste Ekranı Kontrollü Yükleme Hata Görünümü
+**Talep:** Destek modülünde PostgreSQL tablo/seed sorunları sonrası liste ekranının ilk açılışta tamamen düşmemesi ve kullanıcıya kontrollü hata görünümü sunulması.
+
+**Yapılanlar:**
+- `DestekTalebiList.razor` içine sayfa üstünde görünen uyarı alanı eklendi.
+- Referans veriler, talepler ve dashboard istatistikleri yüklenirken oluşan hatalar kontrollü şekilde yakalanır hale getirildi.
+- Hata durumunda ekran boş/düşük state yerine kullanıcıya açıklayıcı mesaj ve `Tekrar Dene` aksiyonu gösterilir hale getirildi.
+- İlk yükleme akışı ortak `SayfayiYenile` metodu altında toplandı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 085 - Faz 1 BudgetAnaliz Ödenmiş Kayıtta Cari Mahsup İzi
+**Talep:** Faz 1 bütçe + cari mahsup entegrasyonunda `BudgetAnaliz` ekranında da ödenmiş kaydın hareket izinin görünür hale getirilmesi.
+
+**Yapılanlar:**
+- `BudgetAnaliz.razor` ödeme düzenleme modalında `Ödeme İzi` özet alanı eklendi.
+- Ödenmiş kayıt için `gerçek ödeme tarihi`, `ödenen tutar`, `hesap`, `iz`, `cari`, `yön` ve `hareket numarası` bilgileri görünür hale getirildi.
+- Düzenleme akışında `BudgetOdeme` kopyasına cari mahsup izi alanları da taşındı.
+- Seçilen hesap adını göstermek için yardımcı görünüm metodu eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 084 - Faz 1 Bütçe Ödenmiş Kayıtta Cari Mahsup İzi Görünürlüğü
+**Talep:** Faz 1 bütçe + cari mahsup entegrasyonunda ödenmiş kayıtta cari mahsup izinin kullanıcı tarafından listede görülebilmesi.
+
+**Yapılanlar:**
+- `BudgetOdeme` entity'sine yalnızca UI gösterimi için `NotMapped` hareket iz alanları eklendi.
+- `BudgetService.GetOdemelerAsync` içinde ilişkili `BankaKasaHareket` kaydı okunarak ödeme satırları `Cari Mahsup`, cari unvanı ve işlem yönü bilgisiyle zenginleştirildi.
+- `OdemeYonetimi.razor` ödeme listesinde açıklama alanı altına `İz`, `Cari`, `Yön` ve `Hareket #` bilgileri görünür hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 083 - Faz 1 Bütçe Cari Mahsup Muhasebe Alanı Bağlantısı
+**Talep:** Faz 1 bütçe + cari mahsup entegrasyonunda muhasebe eşleştirme alanlarının ekrandan servis katmanına gerçekten bağlanması.
+
+**Yapılanlar:**
+- `BudgetAnaliz.razor` içinde `Cari Mahsup` ödeme modalına `Muhasebe Hesap Kodu`, `Kost Merkezi` ve `Proje Kodu` alanları eklendi.
+- Cari mahsup için seçilen hesaptan `VarsayilanMuhasebeKodu` ve `VarsayilanKostMerkezi` değerleri otomatik doldurulur hale getirildi.
+- `Cari Mahsup` ekranındaki yinelenen tarih alanı temizlenerek modal akışı tutarlı hale getirildi.
+- `BudgetService.OdemeYapAsync` içindeki `CariMahsupAsync` çağrısına muhasebe eşleştirme alanları aktarıldı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 082 - Destek Modülü PostgreSQL Eksik Tablo Başlangıç Düzeltmesi
+**Talep:** `Npgsql.PostgresException: 42P01 relation "DestekKategorileri" does not exist` hatasının giderilmesi.
+
+**Yapılanlar:**
+- `DbInitializer.InitializeAsync(context, configuration)` içine destek modülü tablolarını kontrol eden başlangıç adımı eklendi.
+- PostgreSQL için `DestekDepartmanlari`, `DestekKategorileri`, `DestekTalepleri`, `DestekTalebiYanitlari`, `DestekTalebiEkleri`, `DestekTalebiAktiviteleri`, `DestekTalebiIliskileri`, `DestekDepartmanUyeleri`, `DestekHazirYanitlari`, `DestekSlaListesi`, `DestekAyarlari` ve `DestekBilgiBankasiMakaleleri` tablolarını `IF NOT EXISTS` ile oluşturan güvenli altyapı eklendi.
+- Güncel başlangıç akışında destek modülü seed verileri yeniden devreye alındı.
+- Geriye dönük `InitializeAsync(context)` akışı da aynı destek tablo kontrolünü çalıştıracak şekilde güncellendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 081 - Faz 1 Bütçe + Cari Mahsup Entegrasyonu Ekran Doğrulama
+**Talep:** Faz 1 kapsamında bütçe ödeme ekranındaki `Cari Mahsup` akışının kullanıcı tarafından görünür ve doğrulanabilir hale getirilmesi.
+
+**Yapılanlar:**
+- `BudgetAnaliz.razor` ödeme modalında `Cari Mahsup` seçildiğinde artık işlem yapılacak hesap seçimi görünür hale getirildi.
+- `Cari Mahsup` için `Ödeme (Hesap → Cari)` ve `Tahsilat (Cari → Hesap)` yön seçimi eklendi.
+- Seçilen yönün ne anlama geldiğini açıklayan bilgi kutusu eklendi.
+- Ekran tarafında `Cari Mahsup` için hesap seçimi validasyonu tamamlandı.
+- Kayıt sonrası başarı mesajı, cari mahsup yönünü de içerecek şekilde daha görünür hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 080 - Faz 1 Mahsup Ekranı Muhasebe Fişi Görünürlüğü
+**Talep:** Faz 1 mahsup ekranı doğrulamasında mahsup hareketlerinin ilişkili muhasebe fişi ve iptal fişi bağlantılarının kullanıcı tarafından görülebilmesi.
+
+**Yapılanlar:**
+- `BankaKasaHareket` entity'sine liste gösterimi için `NotMapped` muhasebe fişi alanları eklendi.
+- `BankaKasaHareketService.GetMahsupHareketleriAsync` içinde ilişkili muhasebe fişi numarası, durum bilgisi ve varsa iptal fişi bilgisi doldurulur hale getirildi.
+- Hesap transferlerinde tek fişin aynı mahsup grubu içindeki karşı harekete de görünür olması sağlandı.
+- `MahsupIslemleri.razor` listesinde `Fiş`, `Durum` ve `İptal Fişi` bilgileri görünür hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 079 - Faz 1 Mahsup Ekranı Doğrulama Liste Görünürlüğü
+**Talep:** Faz 1 mahsup ekranı doğrulamasında kaydedilen muhasebe alanlarının kullanıcı tarafından listede de doğrulanabilmesi.
+
+**Yapılanlar:**
+- `MahsupIslemleri.razor` işlem listesinde `Belge No` görünürlüğü eklendi.
+- Kaydedilen `Muhasebe Hesap Kodu`, `Kost Merkezi` ve `Proje Kodu` bilgileri açıklama alanı altında gösterilir hale getirildi.
+- Böylece mahsup ekranındaki veri girişinin sadece kayıt anında değil, liste üzerinden de hızlı doğrulanması sağlandı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 078 - Faz 1 Mahsup Ekranı Doğrulama İlk Uçtan Uca Düzeltme
+**Talep:** Faz 1 kapsamında mahsup ekranındaki muhasebe alanlarının gerçekten veritabanına yazıldığının doğrulanması ve eksik bağların tamamlanması.
+
+**Yapılanlar:**
+- `MahsupIslemleri.razor` içinde transfer ve cari mahsup ekranlarında girilen `Belge No`, `Muhasebe Hesap Kodu`, `Kost Merkezi` ve `Proje Kodu` alanları servis çağrılarına bağlandı.
+- `IBankaKasaHareketService` içine mahsup metodları için opsiyonel muhasebe alanı parametreleri eklendi.
+- `BankaKasaHareketService` içinde hesap transferi ve cari mahsup kayıtlarında bu alanlar doğrudan `BankaKasaHareket` kaydına yazılır hale getirildi.
+- Kullanıcı alan bırakırsa hesap üzerindeki varsayılan muhasebe kodu ve varsayılan kost merkezi değerleri fallback olarak kullanılacak şekilde akış genişletildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 077 - Faz 1 Login Stabilizasyonu Erişim Reddedildi Görünümü
+**Talep:** Faz 1 login/yetki zincirinde giriş yapmış ama yetkisi olmayan kullanıcı için daha anlaşılır bir deneyim sağlanması.
+
+**Yapılanlar:**
+- `Routes.razor` içindeki authenticated ancak yetkisiz kullanıcı akışı düz metin yerine kart yapısına taşındı.
+- `Erişim Reddedildi` başlığı ve açıklayıcı metin eklendi.
+- Kullanıcıya `Dashboard` ve `Giriş Ekranı` aksiyonları eklendi.
+- Yetkisiz deneyim login yönlendirme akışından ayrıştırılarak daha anlaşılır hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 076 - Faz 1 Login Stabilizasyonu Remember Me Dayanıklılığı
+**Talep:** Faz 1 login elden geçirmesinde `beni hatırla` davranışının bozuk/eski kayıtlar karşısında daha dayanıklı hale getirilmesi.
+
+**Yapılanlar:**
+- `Login.razor` içinde `remember me` için yeni saklama modeli eklendi.
+- Eski `string` formatındaki saklama kaydıyla geriye uyumluluk korunarak yeni formata otomatik geçiş eklendi.
+- Boş / bozuk `remember me` kayıtları otomatik temizlenir hale getirildi.
+- Hatırlama yükleme ve kaydetme akışı yardımcı metodlara ayrılarak daha okunabilir hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 075 - Faz 1 Login Stabilizasyonu Yetkisiz Yönlendirme Temizliği
+**Talep:** Faz 1 login elden geçirmesinde yetkisiz kullanıcı yönlendirmesinin render sırasında doğrudan navigation çağrısı yapmadan güvenli hale getirilmesi.
+
+**Yapılanlar:**
+- `MainLayout.razor` içindeki `NotAuthorized` bloğunda yer alan doğrudan `NavigateTo` çağrısı kaldırıldı.
+- Yetkisiz kullanıcı akışı mevcut `RedirectToLogin` komponenti üzerinden çalışır hale getirildi.
+- Render sırasında yönlendirme yan etkisi azaltılarak login stabilizasyonu daha güvenli hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 074 - Faz 1 Login Stabilizasyonu Logout Akışı Düzeltmesi
+**Talep:** Faz 1 login elden geçirmesinde çıkış işleminin yalnızca sayfa yönlendirmesi değil, gerçek oturum kapatma ile çalışması.
+
+**Yapılanlar:**
+- `MainLayout.razor` içindeki çıkış butonları doğrudan `/login` JavaScript yönlendirmesi yerine ortak `CikisYapAsync` metoduna bağlandı.
+- `KullaniciService.CikisYapAsync` çağrısı ile auth provider temizlenir hale getirildi.
+- Çıkış sonrası kullanıcı kontrollü biçimde login ekranına yönlendirilir hale getirildi.
+- Lisans geçersiz ekranındaki çıkış aksiyonu da aynı oturum kapatma akışına bağlandı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 073 - Faz 1 Login Stabilizasyonu İlk Sağlamlaştırma
+**Talep:** Faz 1 başlangıcında login akışının yeniden elden geçirilmesi ve kırılgan noktalarının azaltılması.
+
+**Yapılanlar:**
+- `Login.razor` içinde oturum açık kullanıcı login ekranına gelirse otomatik olarak `dashboard` yönlendirmesi eklendi.
+- Çift tıklama / art arda `Enter` ile oluşabilecek tekrar giriş denemelerine karşı `isLoading` koruması eklendi.
+- Başarılı giriş sonrası parola alanı temizlenir hale getirildi.
+- `KullaniciService` içinde kullanıcı adı eşleşmesi `trim + büyük/küçük harf toleranslı` hale getirildi.
+- Giriş ve kullanıcı adı sorgularında `IsDeleted` kayıtları dışlanır hale getirildi.
+- `RedirectToLogin.razor` içine `returnUrl` desteği eklendi.
+- Yetkisiz sayfadan login ekranına düşen kullanıcı için başarılı giriş sonrası güvenli geri yönlendirme eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 072 - EBYS Belge Merkezinde Arama İpuçları ve Filtre Temizleme
+**Talep:** EBYS belge merkezindeki metadata aramanın kullanıcı tarafından daha görünür ve pratik kullanılabilir hale getirilmesi.
+
+**Yapılanlar:**
+- `BelgeMerkezi.razor` filtre alanına `Temizle` aksiyonu eklendi.
+- Aktif filtre varsa çalışan `FiltreVarMi` kontrolü eklendi.
+- Ekrana örnek arama kelimeleri içeren ipucu kutusu eklendi.
+- Tek tıkla arama, kaynak, kategori, risk ve dosya filtresini sıfırlayan akış eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 071 - EBYS Belge Merkezinde Metadata Arama Genişletmesi
+**Talep:** EBYS belge merkezindeki aramanın günlük kullanımda daha fazla metadata alanını kapsaması.
+
+**Yapılanlar:**
+- `EbysService` içinde belge araması servis tarafında tek yardımcı yapı altında genişletildi.
+- Arama kapsamına `kaynak`, `durum`, `risk durumu`, `dosya var/yok`, `dosya adı`, `belge tarihi` ve `bitiş tarihi` metinleri dahil edildi.
+- Türkçe karakterlerden bağımsız normalize arama desteği eklendi.
+- Metadata arama altyapısı güçlendirilirken içerik bazlı arama sonraki adım için açık bırakıldı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 070 - Personel Özlük Dosyasında Detay Arama ve Eksik Evrak Filtresi
+**Talep:** Personel özlük dosyası ekranında çok sayıda belge arasında daha hızlı çalışma imkanı sağlamak.
+
+**Yapılanlar:**
+- `OzlukEvrakChecklist.razor` detay modalına evrak içi arama alanı eklendi.
+- `Sadece eksikler` filtresi eklendi.
+- Arama; evrak adı, kategori adı ve açıklama alanlarında çalışır hale getirildi.
+- Detay modal kapatıldığında arama ve eksik filtre state temizliği eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 069 - İş Sözleşmesi Yönetimi İçin Hızlı Erişim ve Tarih Bağlantısı
+**Talep:** EBYS personel dosyalarında `İş sözleşmesi` evrakının ayrı ve yönetilebilir hale getirilmesi.
+
+**Yapılanlar:**
+- `OzlukEvrakChecklist.razor` detay modalına `İş Sözleşmesi` hızlı filtresi eklendi.
+- `İş Sözleşmesi` evrakı tarih yönetimi akışına dahil edildi.
+- Sözleşme tarihi alanı mevcut `IseBaslamaTarihi` değeriyle eşlenir hale getirildi.
+- Tarih değiştirildiğinde ilgili personel kaydına anında kalıcı yazım eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 068 - Özlük Evraklarında Geçerlilik Tarihi Destekli Yükleme
+**Talep:** `Sağlık raporu` ve şoför belge yüklemelerinde dosya ile birlikte geçerlilik tarihinin de yönetilmesi.
+
+**Yapılanlar:**
+- `OzlukEvrakChecklist.razor` içinde desteklenen evrak satırlarına `geçerlilik tarihi` alanı eklendi.
+- `Ehliyet`, `SRC`, `Psikoteknik` ve `Sağlık Raporu` için mevcut personel tarih alanları modal açılışında ekrana taşındı.
+- Dosya yükleme sonrası seçilmiş geçerlilik tarihi varsa ilgili `Sofor` kayıt alanına otomatik yazım eklendi.
+- Geçerlilik tarihi değiştirildiğinde ilgili personel belge tarihi anında kalıcı kaydedilir hale getirildi.
+- Detay modal kapanırken tarih state temizliği eklendi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 067 - Personel Özlük Evraklarında Satır Bazlı Dosya Yükleme
+**Talep:** EBYS personel dosyaları kapsamında `ehliyet / diploma / sertifika` gibi özlük belgelerinin doğrudan yüklenebilir hale getirilmesi.
+
+**Yapılanlar:**
+- `OzlukEvrakChecklist.razor` içine `InputFile` tabanlı satır bazlı dosya yükleme alanı eklendi.
+- Mevcut dosyası olan evrak satırlarına indirme aksiyonu eklendi.
+- Yüklenen dosyalar `ISecureFileService` ile şifreli olarak saklanır hale getirildi.
+- Aynı evrak için eski dosya varsa yükleme öncesi güvenli şekilde silinmesi eklendi.
+- Yükleme sonrası evrak durumu ve liste anlık yenilenir hale getirildi.
+- Detay modalına `Ehliyet / Diploma / Sertifika / Sağlık Raporu` için hızlı filtre butonları eklendi.
+- Hedef belge türlerine doğrudan erişim kolaylaştırılarak yükleme akışı pratik hale getirildi.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 066 - Belge Uyarıları Filtre Tutarlılığı ve Filtreli Export
+**Talep:** Belge uyarıları ekranındaki filtrelerin görünüm ve export akışlarıyla tutarlı çalışmasının tamamlanması.
+
+**Yapılanlar:**
+- `BelgeUyarilari.razor` içinde filtreler sadece birleşik tabloyu değil, personel ve araç tablolarını da etkiler hale getirildi.
+- Özet kartları aktif filtre sonucuna göre hesaplanır hale getirildi.
+- Excel ve PDF export işlemleri artık tüm kayıtlar yerine görünür filtrelenmiş listeyi dışa aktarır hale getirildi.
+- Filtre temizleme aksiyonu eklendi.
+- Ortak filtreleme mantığı tek yardımcı metod altında toplandı.
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 065 - Belge Uyarıları Birleşik Liste ve Filtreleme
+**Talep:** Belge uyarıları ekranının günlük kullanımda daha hızlı aksiyon alınabilir hale getirilmesi.
+
+**Yapılanlar:**
+- `BelgeUyari` modeline kaynak bilgisi eklendi.
+- `BelgeUyariService` içinde tüm uyarı kayıtları `Personel` / `Araç` kaynağı ile etiketlendi.
+- `BelgeUyarilari.razor` ekranına birleşik `Tüm Uyarılar` tablosu eklendi.
+- Ekrana kaynak filtresi, seviye filtresi ve serbest metin arama eklendi.
+- Birleşik listeden ilgili personel / araç detay ekranına hızlı geçiş aksiyonu eklendi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 064 - EBYS Belge Bitiş Tarihi Uyarıları Genişletmesi
+**Talep:** Yol haritasındaki `Belge bitiş tarihi uyarıları` başlığı kapsamında mevcut uyarı ekranının EBYS belge akışına daha yakın hale getirilmesi.
+
+**Yapılanlar:**
+- `IBelgeUyariService` modellerine satır bazlı detay URL bilgisi eklendi.
+- Personel belge uyarılarındaki bağlantılar çalışan `personel` düzenleme sayfasına yönlendirilecek şekilde düzeltildi.
+- Araç belge uyarılarındaki bağlantılar araç evrak yönetimi sayfasına yönlendirilecek şekilde düzeltildi.
+- `BelgeUyariService` içinde sadece sabit araç alanları değil, `AracEvraklari` tablosundaki bitiş tarihli diğer evrak kategorileri de uyarı kapsamına alındı.
+- `BelgeUyarilari.razor` ekranında diğer araç evrak uyarıları liste ve özet kartlarına dahil edildi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 063 - EBYS Kategori Özeti ve Hızlı Filtreleme
+**Talep:** Yol haritasındaki EBYS başlığında belge kategorilerini daha görünür ve yönetilebilir hale getirmek.
+
+**Yapılanlar:**
+- `IEbysService` ve `EbysService` içine kategori bazlı özet modeli ve özet listeleme metodu eklendi.
+- `BelgeMerkezi.razor` içine kategori özeti kartları eklendi.
+- Kategori kartlarından tek tıkla hızlı filtreleme desteği eklendi.
+- Aktif kategori filtresini temizleme aksiyonu eklendi.
+- Liste yenilendiğinde kategori listesi ve özetler de güncellenir hale getirildi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 062 - EBYS Merkez Ekrandan Yeni Belge Kaydı Oluşturma
+**Talep:** Yol haritasındaki EBYS başlığında belge kayıt oluşturma akışını merkez ekran üzerinden ilerletmek.
+
+**Yapılanlar:**
+- `IEbysService` ve `EbysService` içine yeni belge oluşturma seçenekleri ve kayıt oluşturma metotları eklendi.
+- Personel için aktif personel + aktif evrak tanımı seçilerek merkez ekrandan yeni özlük evrak kaydı açılabilir hale getirildi.
+- Araç için araç, kategori, belge adı, durum ve tarih bilgileriyle merkez ekrandan yeni araç evrakı oluşturulabilir hale getirildi.
+- Oluşturma modalında opsiyonel ilk dosya yükleme desteği eklendi.
+- `BelgeMerkezi.razor` içine `Yeni Belge` butonu ve ortak oluşturma modalı eklendi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 061 - EBYS Merkez Ekrandan Dosya Yükleme
+**Talep:** Yol haritasındaki EBYS başlığında dosya yükleme/indirme akışını merkez ekran üzerinden ilerletmek.
+
+**Yapılanlar:**
+- `IEbysService` ve `EbysService` içine ortak belge dosyası yükleme metodu eklendi.
+- Personel belgeleri için güvenli dosya saklama servisi kullanılarak merkez ekrandan dosya yükleme desteği eklendi.
+- Araç belgeleri için mevcut `IAracService.UploadEvrakDosyaAsync` akışı EBYS merkez ekrana bağlandı.
+- `BelgeMerkezi.razor` içine `Yükle` aksiyonu ve ortak dosya yükleme modalı eklendi.
+- Yükleme sonrası liste yenilenir ve belge dosya durumu merkez ekranda güncellenir hale getirildi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 060 - EBYS Merkez Ekrandan Belge Metadata Düzenleme
+**Talep:** Yol haritasındaki EBYS başlığında belge yönetimini bir adım daha ilerletmek.
+
+**Yapılanlar:**
+- `IPersonelOzlukService` ve `PersonelOzlukService` içine kayıt bazlı personel özlük evrakı getirme ve güncelleme metotları eklendi.
+- `IEbysService` ve `EbysService` içine ortak belge düzenleme modeli ve metadata güncelleme akışı eklendi.
+- Personel belgeleri için merkez ekrandan `tamamlandı`, `tamamlanma tarihi` ve `açıklama` düzenlenebilir hale getirildi.
+- Araç belgeleri için merkez ekrandan `belge adı`, `kategori`, `durum`, `başlangıç/bitiş tarihi` ve `açıklama` düzenlenebilir hale getirildi.
+- `BelgeMerkezi.razor` içine `Düzenle` aksiyonu ve kaynak tipine göre çalışan ortak düzenleme modalı eklendi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 059 - Resmi Raporlar İkinci Eksik Adım: Yıllık İzin Takip Raporu
+**Talep:** Yol haritasındaki resmi raporlar başlığında eksik kalan raporların tamamlanmasına devam edilmesi.
+
+**Yapılanlar:**
+- `YillikIzinTakipRaporu.razor` oluşturuldu.
+- Mevcut `IPersonelMaasIzinService.GetIzinRaporuAsync` altyapısı kullanılarak resmi rapor görünümü eklendi.
+- Ekranda yıl seçimi, personel arama, kalan izin durum filtresi, özet kartlar, izin tipi özeti ve personel bazlı izin tablosu eklendi.
+- Personel bazlı izin geçmişi detay modalı eklendi.
+- Excel export eklendi.
+- `ResmiRaporlar.razor` içine yeni rapora yönlendiren kart eklendi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 058 - Resmi Raporlar İlk Eksik Adım: İşe Giriş / Çıkış Bildirge
+**Talep:** Yol haritasındaki resmi raporlar başlığından başlanabilir bir adım seçilerek geliştirmeye devam edilmesi.
+
+**Yapılanlar:**
+- `IseGirisCikisRaporModels.cs` oluşturuldu.
+- `IRaporService` ve `RaporService` içine işe giriş / çıkış bildirge raporu metotları eklendi.
+- `Sofor` kayıtlarındaki `IseBaslamaTarihi`, `IstenAyrilmaTarihi` ve `SgkCikisTarihi` alanlarından resmi rapor satırları üretilir hale getirildi.
+- `IseGirisCikisBildirge.razor` oluşturuldu.
+- Ekranda tarih aralığı, kayıt tipi ve görev filtresi, özet kartlar, tablo görünümü, yazdırma ve Excel indirme eklendi.
+- `ResmiRaporlar.razor` içine yeni sayfaya yönlendiren kart eklendi.
+
+**Durum:** 🔄 Devam Ediyor
+
+### Kayıt 057 - EBYS İlk Merkezi Ekran
+**Talep:** Yol haritasındaki EBYS başlığı için başlanabilir bir adım seçilerek geliştirmeye devam edilmesi.
+
+**Yapılanlar:**
+- `IEbysService` ve `EbysService` eklendi.
+- Mevcut `PersonelOzlukEvrak` ve `AracEvrak` kayıtları tek merkezde toplanarak sorgulanabilir hale getirildi.
+- `EBYS/BelgeMerkezi.razor` oluşturuldu.
+- Ekranda arama, kaynak filtreleme, sadece dosyalı kayıt filtresi, özet kartlar ve indirme aksiyonu eklendi.
+- Personel güvenli dosyaları `ISecureFileService`, araç evrak dosyaları mevcut araç servis akışı üzerinden indirilebilir hale getirildi.
+- Sol menüye `EBYS Belge Merkezi` bağlantısı eklendi.
+- `EBYS Belge Merkezi` ekranına kategori filtresi ve risk filtresi eklendi.
+- Araç evrakları için `Yaklaşan`, `Süresi Dolmuş`, `Dosya Eksik` risk hesaplaması eklendi.
+- Belge satırlarına detay görüntüleme akışı eklendi; belge detay modalında metadata, risk, dosya ve kaynak bağlantısı gösterilir hale getirildi.
+- Kategori listesi filtre sonucuna göre daralmayacak şekilde servis tarafında ayrı kaynak listeleme ile sabitlendi.
+
+**Durum:** 🔄 Devam Ediyor
+
 ### Kayıt 056 - Araç Kartı Açılış Hatası İlk Stabilizasyon
 **Talep:** Araç kartı açılırken oluşan hatanın incelenmesi ve başlanması. Ayrıca destek talepleri modülünün güncel durumunun kontrol edilmesi.
 
@@ -2073,162 +2562,51 @@ Yakın dönemde eklenen migrationlar:
 
 ## Aktif Olarak Dikkat Edilmesi Gerekenler
 
-## 1. Login akışı
-Login ekranı üzerinde birkaç iterasyon yapıldı. Kod tarafında düzeltmeler uygulanmış olsa da bu alanın tekrar uçtan uca test edilmesi gerekiyor.
+### 1. Destek modülü smoke test altyapısı
+- `PlaywrightTestProcedures.md` mevcut ancak repo içinde çalıştırılabilir smoke test kaynak dosyaları görünmüyor.
+- Destek modülü için otomatik ekran açılış testi istenirse önce test projesi kaynakları netleştirilmeli veya yeniden oluşturulmalı.
 
-### Kontrol edilmesi gerekenler
-- kullanıcı adı / şifre ile giriş
-- başarılı girişten sonra ana sayfaya yönlenme
-- auth state’in sayfaya yansıması
-- “beni hatırla” davranışı
-- şifre göster/gizle butonu
-- farklı tarayıcılarda davranış
-- authentication state'in circuit bazlı kalıcılığı
-- giriş sonrası yönlendirmede kullanıcı oturumunun korunması
+### 2. EBYS tamamlama başlıkları
+- `BelgeMerkezi` etrafındaki dosya, metadata ve arama akışları büyük ölçüde hazır.
+- Versiyon kontrolü, içerik bazlı/akıllı arama ve örnek veri/test tarafı hâlâ açık.
 
-## 2. Marka adı tutarlılığı
-`Koa Filo Servis` adı login ve menüde güncellendi.
-Ancak proje genelinde eski isimlerin (`CRM Filo Servis`, `CRMFiloServis`) geçtiği başka yerler olabilir.
-
-### Tarama yapılmalı
-- `PageTitle`
-- navbar / footer
-- GitHub link açıklamaları
-- versiyon / yayın metinleri
-- lisans / masaüstü uygulama başlıkları
-- deploy scriptleri / paket isimleri
-
-## 3. Repo temizliği
-Geçmişte `wwwroot/uploads/...` altındaki PDF dosyaları repoya eklenmiş durumda.
-Bu dosyaların sürüm kontrolünde tutulması doğru değil.
-
-### Yapılması gereken
-- `uploads` için `.gitignore` kuralı eklemek
-- repodaki gereksiz yüklenen dosyaları temizlemek
-- gerekiyorsa geçmişi düzenlemek ya da en azından yeni commitlerde takibi bırakmak
-
-## 4. Modül tamamlama riski
-Bazı ekranlar oluşturuldu ancak tam iş akışı kapanmadı.
-
-Özellikle:
-- servis puantaj
-- bütçe + cari mahsup entegrasyonu
-- muhasebe eşleştirme yönetim ekranları
-- login stabilizasyonu
+### 3. Yol haritası temizliği sonrası aktif başlıklar
+- Bütçe `Hedef/Gerçekleşen` karşılaştırması
+- Destek talepleri `E-posta Entegrasyonu`
+- EBYS kalan altyapı ve test işleri
 
 ---
 
 ## Yapılması Gerekenler
 
-## A. Öncelikli İşler
+### A. Yakın Geliştirme Sırası
+1. Destek modülü smoke test altyapısını netleştir veya yeniden kur.
+2. EBYS için görünür iyileştirmeleri sürdür:
+   - eksik evrak görünürlüğü
+   - checklist/export doğrulaması
+   - versiyon kontrolü
+3. Bütçe için `Hedef / Gerçekleşen` karşılaştırma ekranını tamamla.
 
-### 1. Login stabilizasyonu
-- login akışı tam test edilmeli
-- auth state provider ve yönlendirme davranışı netleştirilmeli
-- gerekiyorsa login mekanizması tek bir yaklaşıma indirgenmeli
-- local storage / remember me akışı doğrulanmalı
-- giriş sonrası yetkili sayfalara erişim zinciri doğrulanmalı
-
-### 2. Mahsup ekranının tamamlanması
-- transfer kayıtlarında muhasebe alanlarının gerçekten veri tabanına yazıldığı uçtan uca test edilmeli
-- cari mahsup ekranı bütçe ödemesi ile tam entegre edilmeli
-- mahsup iptalinin muhasebe ve bakiye etkileri doğrulanmalı
-- mahsup için muhasebe fişi üretim akışı bağlanmalı
-
-### 3. Bütçe + cari mahsup entegrasyonu
-- bütçe ödemesinde `CariMahsup` seçildiğinde gerçek kayıt akışı tamamlanmalı
-- ilgili cari ve banka/kasa hareketleri doğru kapanmalı
-- kesinti + cari mahsup kombinasyonu test edilmeli
-- kredi kartı ödeme akışı ayrı doğrulanmalı
-
-## B. Filo Tarafı
-
-### 4. Güzergah üretim akışını tamamla
-- taşıma kalemlerinden oluşturulan güzergahların firma bazında kaydı doğrulanmalı
-- güzergah adı parse kuralları iyileştirilmeli
-- sabah / akşam / saatlik tespitleri netleştirilmeli
-
-### 5. Servis puantaj ekranını tamamla
-- `ServisPuantaj.razor` ekranı işlevsel olarak bitirilmeli
-- aylık toplu puantaj üretimi gerçek senaryolarla test edilmeli
-- araç / şoför / güzergah ataması kalıcı iş akışına bağlanmalı
-- excel export / raporlama tamamlanmalı
-
-### 6. Filo eşleştirme ekranları
-- araç-şoför öncelikli eşleştirme
-- güzergah-araç eşleştirme
-- varsayılan atamalar
-- firma bazlı operasyon planlama
-
-## C. Muhasebe Tarafı
-
-### 7. Muhasebe eşleştirme tanım ekranları
-Henüz veri alanları eklendi ancak yönetim ekranları eksik olabilir.
-
-Yapılması gereken:
-- muhasebe hesap kodu seçim / giriş ekranı
-- kost merkezi tanım ekranı
-- proje kodu tanım ekranı
-- banka hesaplarına varsayılan muhasebe kodu tanımlama ekranı
-- otomatik eşleştirme kuralları ekranı
-- banka hareket giriş ekranında bu alanların görünürlüğü doğrulanmalı
-
-### 8. Mahsup fişi üretimi
-- banka / kasa transferlerinden otomatik mahsup fişi üretimi
-- cari mahsuptan otomatik muhasebe fişi üretimi
-- hatalı veya eksik fişlerin raporlanması
-
-## D. E-Fatura / Stok Tarafı
-
-### 9. XML/PDF import testleri
-- toplu yükleme testleri
-- eksik PDF senaryosu
-- aynı isimli / benzer isimli dosya senaryoları
-- hata loglarının iyileştirilmesi
-
-### 10. Stok türü eşleştirme sonrası otomasyon
-- taşıma hizmeti seçilen kayıtların doğrudan güzergah hazırlığına aktarılması
-- kullanıcı onay akışının netleştirilmesi
-
-## E. Kalite / Teknik Borç
-
-### 11. Test altyapısı
-- servis katmanı için unit testler
-- kritik senaryolar için integration testler
-- login, bütçe, mahsup, e-fatura import için test seti
-
-### 12. Dokümantasyon
-- kullanıcı kılavuzu
-- rol / yetki matrisi
-- modül bağımlılıkları
-- veri akış diyagramları
-- deploy rehberi
-
-### 13. Kod temizliği
-- login sayfası son hali sadeleştirilmeli
-- tekrar eden route / state / event hataları gözden geçirilmeli
-- migration helper yapıları gözden geçirilmeli
-- servis isimlendirmelerinde tutarlılık sağlanmalı
+### B. Teknik Borç
+1. Otomatik UI smoke test altyapısını yeniden görünür hale getir.
+2. Dokümantasyonda sadece aktif açık maddeleri bırak.
+3. Kritik modüller için seçilmiş integration test seti oluştur.
 
 ---
 
 ## Önerilen Kısa Yol Haritası
 
-## Faz 1
-- login stabilizasyonu
-- mahsup ekranı doğrulama
-- bütçe + cari mahsup entegrasyonu
-- uploads klasörü git temizliği
+### Faz 1
+- destek modülü smoke test altyapısını çalışır hale getirme
+- `DEVELOPMENT.md` / `ROADMAP.md` aktif başlıklar odaklı tutma
 
-## Faz 2
-- servis puantaj sistemini işlevsel bitirme
-- güzergah üretimi ve eşleştirme akışı
-- muhasebe eşleştirme yönetim ekranları
+### Faz 2
+- EBYS açık işleri: versiyon kontrolü, içerik arama, örnek veri ve test
+- Personel özlük tarafında görünür kullanım iyileştirmeleri
 
-## Faz 3
-- otomatik muhasebe fişi üretimi
-- raporlama / export
-- test ve teknik borç azaltma
+### Faz 3
+- bütçe `Hedef / Gerçekleşen` karşılaştırması
+- seçilmiş modüller için otomatik test kapsaması
 
 ---
 
@@ -2247,24 +2625,19 @@ Yapılması gereken:
 ## Güncel Kısa Durum Özeti
 
 ### Tamamlanan Ana Başlıklar
-- e-fatura XML + PDF import düzeltmeleri
-- mahsup altyapısı
-- bütçe ödeme kesinti altyapısı
-- marka adı güncelleme başlangıcı
+- bütçe + cari mahsup görünürlüğü ve ödeme izi
+- destek modülü kontrollü yükleme ve PostgreSQL dayanıklılığı
+- e-fatura, mahsup, muhasebe ve puantaj ana akışları
+- marka ve runtime klasör temizliği
 
-### Kısmen Tamamlananlar
-- login ekranı
-- taşıma hizmetinden güzergah üretimi
-- servis puantaj sistemi
-- cari mahsup entegrasyonu
-- muhasebe eşleştirme yönetimi
+### Devam Edenler
+- EBYS merkez ekranının ileri seviye tamamlama işleri
+- destek modülü smoke test altyapısının netleştirilmesi
 
 ### Kritik Açık Başlıklar
-- login akışının tam stabil hale getirilmesi
-- bütçe + cari mahsup akışının tamamlanması
-- muhasebe yönetim ekranlarının tamamlanması
-- uploads klasörünün repodan ayrılması
-- proje genelinde marka adı taraması
+- destek modülü için çalıştırılabilir smoke test altyapısı
+- EBYS versiyon kontrolü ve test senaryoları
+- bütçe `Hedef / Gerçekleşen` karşılaştırması
 
 ---
 

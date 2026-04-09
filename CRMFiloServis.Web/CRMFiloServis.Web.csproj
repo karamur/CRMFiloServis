@@ -35,6 +35,11 @@
   <ItemGroup>
     <Compile Remove="bin\**\*.cs" />
     <Compile Remove="obj\**\*.cs" />
+    <Compile Remove="Tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Tests\PlaywrightSmoke\CRMFiloServis.PlaywrightSmoke.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

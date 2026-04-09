@@ -13,15 +13,18 @@ public class DestekTalebiService : IDestekTalebiService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
     private readonly ILogger<DestekTalebiService> _logger;
+    private readonly IEmailService _emailService;
     private readonly string _uploadPath;
 
     public DestekTalebiService(
         IDbContextFactory<ApplicationDbContext> contextFactory, 
         ILogger<DestekTalebiService> logger,
-        IWebHostEnvironment env)
+        IWebHostEnvironment env,
+        IEmailService emailService)
     {
         _contextFactory = contextFactory;
         _logger = logger;
+        _emailService = emailService;
         _uploadPath = Path.Combine(env.WebRootPath, "uploads", "destek");
         
         // Upload klasörünü oluştur
@@ -194,11 +197,14 @@ public class DestekTalebiService : IDestekTalebiService
         
         context.DestekTalepleri.Add(talep);
         await context.SaveChangesAsync();
-        
+
         // Aktivite kaydı
         await LogAktiviteInternalAsync(context, talep.Id, AktiviteTuru.Olusturuldu, 
             $"Talep oluşturuldu: {talep.TalepNo}", talep.OlusturanKullaniciId);
-        
+
+        // E-posta bildirimi: Yeni talep → müşteriye onay
+        _ = SendDestekEmailSafeAsync(() => SendYeniTalepEmailAsync(talep));
+
         return talep;
     }
 
@@ -274,10 +280,13 @@ public class DestekTalebiService : IDestekTalebiService
         }
         
         await context.SaveChangesAsync();
-        
+
         await LogAktiviteInternalAsync(context, talepId, AktiviteTuru.DurumDegisti, 
             $"Durum değiştirildi", kullaniciId, eskiDurum.ToString(), yeniDurum.ToString());
-        
+
+        // E-posta bildirimi: Durum değişikliği → müşteriye
+        _ = SendDestekEmailSafeAsync(() => SendDurumDegisiklikEmailAsync(talep.Id, eskiDurum, yeniDurum));
+
         return true;
     }
 
@@ -331,10 +340,13 @@ public class DestekTalebiService : IDestekTalebiService
             talep.Durum = DestekDurum.Acik;
         
         await context.SaveChangesAsync();
-        
+
         await LogAktiviteInternalAsync(context, talepId, AktiviteTuru.Atandi, 
             $"Talep {kullanici.AdSoyad} kullanıcısına atandı", atayanKullaniciId);
-        
+
+        // E-posta bildirimi: Atama → temsilciye
+        _ = SendDestekEmailSafeAsync(() => SendAtamaEmailAsync(talep.Id, kullanici));
+
         return true;
     }
 
@@ -379,10 +391,13 @@ public class DestekTalebiService : IDestekTalebiService
             talep.DahiliNotlar = (talep.DahiliNotlar ?? "") + $"\n[Kapatma Notu - {DateTime.Now:dd.MM.yyyy HH:mm}]: {kapatmaNotu}";
         
         await context.SaveChangesAsync();
-        
+
         await LogAktiviteInternalAsync(context, talepId, AktiviteTuru.Kapandi, 
             $"Talep kapatıldı{(string.IsNullOrEmpty(kapatmaNotu) ? "" : $": {kapatmaNotu}")}", kullaniciId);
-        
+
+        // E-posta bildirimi: Kapatma → müşteriye
+        _ = SendDestekEmailSafeAsync(() => SendDurumDegisiklikEmailAsync(talep.Id, DestekDurum.Acik, DestekDurum.Kapali));
+
         return true;
     }
 
@@ -494,7 +509,13 @@ public class DestekTalebiService : IDestekTalebiService
         var aciklama = yanit.MusteriYaniti ? "Müşteri yanıtı eklendi" : 
                        yanit.DahiliNot ? "Dahili not eklendi" : "Yanıt eklendi";
         await LogAktiviteInternalAsync(context, talepId, aktiviteTuru, aciklama, yanit.KullaniciId);
-        
+
+        // E-posta bildirimi: Yanıt → müşteriye (temsilci yanıtıysa ve dahili not değilse)
+        if (!yanit.DahiliNot && !yanit.MusteriYaniti)
+        {
+            _ = SendDestekEmailSafeAsync(() => SendYanitEmailAsync(talep, yanit.Icerik));
+        }
+
         return yanit;
     }
 
@@ -1559,6 +1580,111 @@ public class DestekTalebiService : IDestekTalebiService
             .Where(x => x.Grup == grup)
             .ToDictionaryAsync(x => x.Anahtar, x => x.Deger);
     }
+
+    #endregion
+
+    #region E-posta Bildirim Yardımcıları
+
+    private async Task<bool> IsEmailBildirimAktifAsync()
+    {
+        try
+        {
+            var ayar = await GetAyarAsync("EmailBildirimAktif");
+            return bool.TryParse(ayar, out var aktif) && aktif;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task SendDestekEmailSafeAsync(Func<Task> emailAction)
+    {
+        try
+        {
+            if (!await IsEmailBildirimAktifAsync())
+            {
+                _logger.LogDebug("Destek e-posta bildirimleri devre dışı");
+                return;
+            }
+            await emailAction();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Destek e-posta bildirimi gönderilirken hata oluştu");
+        }
+    }
+
+    private async Task SendYeniTalepEmailAsync(DestekTalebi talep)
+    {
+        if (string.IsNullOrWhiteSpace(talep.MusteriEmail)) return;
+
+        await _emailService.SendDestekYeniTalepEmailAsync(
+            talep.MusteriEmail,
+            talep.MusteriAdi,
+            talep.TalepNo,
+            talep.Konu,
+            talep.Oncelik.ToString());
+    }
+
+    private async Task SendYanitEmailAsync(DestekTalebi talep, string yanitIcerik)
+    {
+        if (string.IsNullOrWhiteSpace(talep.MusteriEmail)) return;
+
+        // HTML etiketlerini temizle - özet için
+        var ozet = System.Text.RegularExpressions.Regex.Replace(yanitIcerik, "<[^>]+>", " ");
+        if (ozet.Length > 300) ozet = ozet[..300] + "...";
+
+        await _emailService.SendDestekYanitEmailAsync(
+            talep.MusteriEmail,
+            talep.MusteriAdi,
+            talep.TalepNo,
+            talep.Konu,
+            ozet);
+    }
+
+    private async Task SendDurumDegisiklikEmailAsync(int talepId, DestekDurum eskiDurum, DestekDurum yeniDurum)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var talep = await context.DestekTalepleri.AsNoTracking().FirstOrDefaultAsync(x => x.Id == talepId);
+        if (talep == null || string.IsNullOrWhiteSpace(talep.MusteriEmail)) return;
+
+        await _emailService.SendDestekDurumEmailAsync(
+            talep.MusteriEmail,
+            talep.MusteriAdi,
+            talep.TalepNo,
+            talep.Konu,
+            GetDurumText(eskiDurum),
+            GetDurumText(yeniDurum));
+    }
+
+    private async Task SendAtamaEmailAsync(int talepId, Kullanici kullanici)
+    {
+        if (string.IsNullOrWhiteSpace(kullanici.Email)) return;
+
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var talep = await context.DestekTalepleri.AsNoTracking().FirstOrDefaultAsync(x => x.Id == talepId);
+        if (talep == null) return;
+
+        await _emailService.SendDestekAtamaEmailAsync(
+            kullanici.Email,
+            kullanici.AdSoyad,
+            talep.TalepNo,
+            talep.Konu,
+            talep.MusteriAdi,
+            talep.Oncelik.ToString());
+    }
+
+    private static string GetDurumText(DestekDurum durum) => durum switch
+    {
+        DestekDurum.Yeni => "Yeni",
+        DestekDurum.Acik => "Açık",
+        DestekDurum.YanitBekleniyor => "Yanıt Bekleniyor",
+        DestekDurum.Beklemede => "Beklemede",
+        DestekDurum.Cozuldu => "Çözüldü",
+        DestekDurum.Kapali => "Kapalı",
+        _ => durum.ToString()
+    };
 
     #endregion
 }

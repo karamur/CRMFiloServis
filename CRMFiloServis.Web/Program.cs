@@ -168,6 +168,7 @@ builder.Services.AddScoped<ICRMService, CRMService>(); // CRM Servisi - Bildirim
 builder.Services.AddScoped<CRMFiloServis.Web.Services.Interfaces.IWhatsAppService, WhatsAppService>(); // WhatsApp Servisi
 builder.Services.AddScoped<IStokService, StokService>(); // Stok/Envanter Servisi
 builder.Services.AddScoped<IPersonelOzlukService, PersonelOzlukService>(); // Personel Özlük Evrak Servisi
+builder.Services.AddScoped<IEbysService, EbysService>(); // EBYS Belge Merkezi Servisi
 builder.Services.AddScoped<IPersonelFinansService, PersonelFinansService>(); // Personel Finans (Avans/Borç) Servisi
 builder.Services.AddScoped<IBordroService, BordroService>(); // Bordro Servisi
 builder.Services.AddScoped<IFiloOperasyonService, FiloOperasyonService>(); // Filo Operasyon (Komisyonculuk, Alım/Satım, Plaka Dönüşüm)

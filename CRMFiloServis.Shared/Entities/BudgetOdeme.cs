@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CRMFiloServis.Shared.Entities;
 
@@ -61,6 +62,18 @@ public class BudgetOdeme : BaseEntity
     // Navigation
     public virtual BankaHesap? OdemeYapildigiHesap { get; set; }
     public virtual Fatura? Fatura { get; set; }
+
+    [NotMapped]
+    public string? HareketKaynakGorunumu { get; set; }
+
+    [NotMapped]
+    public string? HareketCariUnvani { get; set; }
+
+    [NotMapped]
+    public string? HareketYonGorunumu { get; set; }
+
+    [NotMapped]
+    public string? HareketBelgeNo { get; set; }
 
     // Hesaplanan alanlar
     public int KalanTaksitSayisi => ToplamTaksitSayisi - KacinciTaksit;

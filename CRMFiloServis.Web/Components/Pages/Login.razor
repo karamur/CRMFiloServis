@@ -8,6 +8,7 @@
 @inject IKullaniciService KullaniciService
 @inject ILisansService LisansService
 @inject IPortalProjectCatalogService PortalProjectCatalogService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject ProtectedLocalStorage LocalStorage
 
@@ -364,6 +365,9 @@
     [SupplyParameterFromQuery(Name = "project")]
     public string? Project { get; set; }
 
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     private string kullaniciAdi = "";
     private string sifre = "";
     private bool beniHatirla = false;
@@ -381,32 +385,29 @@
         lisans = await LisansService.GetAktifLisansAsync();
         selectedProject = PortalProjectCatalogService.GetProjectBySlug(Project)
             ?? PortalProjectCatalogService.GetDefaultProject();
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo(GetSafeReturnUrl(), forceLoad: false);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // "Beni Hatirla" seciliyse kullanici adini yukle
-            try
-            {
-                var result = await LocalStorage.GetAsync<string>(REMEMBER_KEY);
-                if (result.Success && !string.IsNullOrEmpty(result.Value))
-                {
-                    kullaniciAdi = result.Value;
-                    beniHatirla = true;
-                    StateHasChanged();
-                }
-            }
-            catch
-            {
-                // Local storage erisim hatasi - sessizce devam et
-            }
+            await HatirlananKullaniciAdiniYukleAsync();
         }
     }
 
     private async Task GirisYapAsync()
     {
+        if (isLoading)
+        {
+            return;
+        }
+
         // Input degerlerini temizle (bosluk karakterleri)
         kullaniciAdi = kullaniciAdi?.Trim() ?? "";
         sifre = sifre ?? "";
@@ -428,22 +429,7 @@
 
             if (sonuc.Basarili)
             {
-                // "Beni Hatirla" tercihini kaydet
-                try
-                {
-                    if (beniHatirla)
-                    {
-                        await LocalStorage.SetAsync(REMEMBER_KEY, kullaniciAdi);
-                    }
-                    else
-                    {
-                        await LocalStorage.DeleteAsync(REMEMBER_KEY);
-                    }
-                }
-                catch
-                {
-                    // Local storage hatasi - kritik degil
-                }
+                await HatirlamaTercihiniKaydetAsync();
 
                 successMessage = "Giris basarili! Yonlendiriliyorsunuz...";
                 StateHasChanged();
@@ -454,7 +440,8 @@
 
                 // Dashboard'a yonlendir - forceLoad: false ile ayni circuit icinde
                 // navigation yaparak authentication state'in korunmasini sagliyoruz
-                Navigation.NavigateTo("/dashboard", forceLoad: false);
+                sifre = string.Empty;
+                Navigation.NavigateTo(GetSafeReturnUrl(), forceLoad: false);
             }
             else
             {
@@ -486,6 +473,68 @@
         successMessage = "Sifre sifirlama icin sistem yoneticisi ile iletisime gecin.";
     }
 
+    private async Task HatirlananKullaniciAdiniYukleAsync()
+    {
+        try
+        {
+            var yeniFormat = await LocalStorage.GetAsync<RememberedLoginInfo>(REMEMBER_KEY);
+            if (yeniFormat.Success && !string.IsNullOrWhiteSpace(yeniFormat.Value?.KullaniciAdi))
+            {
+                kullaniciAdi = yeniFormat.Value.KullaniciAdi.Trim();
+                beniHatirla = true;
+                StateHasChanged();
+                return;
+            }
+
+            var eskiFormat = await LocalStorage.GetAsync<string>(REMEMBER_KEY);
+            if (eskiFormat.Success && !string.IsNullOrWhiteSpace(eskiFormat.Value))
+            {
+                kullaniciAdi = eskiFormat.Value.Trim();
+                beniHatirla = true;
+                await LocalStorage.SetAsync(REMEMBER_KEY, new RememberedLoginInfo
+                {
+                    KullaniciAdi = kullaniciAdi,
+                    KaydedilmeTarihi = DateTime.UtcNow
+                });
+                StateHasChanged();
+                return;
+            }
+
+            if ((yeniFormat.Success && string.IsNullOrWhiteSpace(yeniFormat.Value?.KullaniciAdi))
+                || (eskiFormat.Success && string.IsNullOrWhiteSpace(eskiFormat.Value)))
+            {
+                await LocalStorage.DeleteAsync(REMEMBER_KEY);
+            }
+        }
+        catch
+        {
+            // Local storage erisim hatasi - sessizce devam et
+        }
+    }
+
+    private async Task HatirlamaTercihiniKaydetAsync()
+    {
+        try
+        {
+            if (beniHatirla)
+            {
+                await LocalStorage.SetAsync(REMEMBER_KEY, new RememberedLoginInfo
+                {
+                    KullaniciAdi = kullaniciAdi,
+                    KaydedilmeTarihi = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                await LocalStorage.DeleteAsync(REMEMBER_KEY);
+            }
+        }
+        catch
+        {
+            // Local storage hatasi - kritik degil
+        }
+    }
+
     private string GetProjectDisplayName()
     {
         if (selectedProject is null)
@@ -496,6 +545,30 @@
         return selectedProject.BrandHighlight is { Length: > 0 }
             ? selectedProject.BrandHighlight
             : selectedProject.Name;
+    }
+
+    private string GetSafeReturnUrl()
+    {
+        if (string.IsNullOrWhiteSpace(ReturnUrl))
+        {
+            return "/dashboard";
+        }
+
+        var decodedReturnUrl = Uri.UnescapeDataString(ReturnUrl);
+        if (!decodedReturnUrl.StartsWith('/') || decodedReturnUrl.StartsWith("//"))
+        {
+            return "/dashboard";
+        }
+
+        return decodedReturnUrl.StartsWith("/login", StringComparison.OrdinalIgnoreCase)
+            ? "/dashboard"
+            : decodedReturnUrl;
+    }
+
+    private sealed class RememberedLoginInfo
+    {
+        public string KullaniciAdi { get; set; } = string.Empty;
+        public DateTime KaydedilmeTarihi { get; set; }
     }
 }
 

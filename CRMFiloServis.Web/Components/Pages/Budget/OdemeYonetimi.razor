@@ -3,6 +3,7 @@
 @using CRMFiloServis.Web.Services
 @inject IBudgetService BudgetService
 @inject IBankaHesapService BankaHesapService
+@inject ICariService CariService
 @inject IToastService ToastService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -145,7 +146,39 @@
                                 <tr class="@(odeme.Durum == OdemeDurum.Odendi ? "table-success" : odeme.Durum == OdemeDurum.Iptal ? "table-secondary" : "")">
                                     <td>@odeme.OdemeTarihi.ToString("dd.MM.yyyy")</td>
                                     <td><strong>@odeme.MasrafKalemi</strong></td>
-                                    <td><small>@(odeme.Aciklama ?? "-")</small></td>
+                                    <td>
+                                        <small>@(odeme.Aciklama ?? "-")</small>
+                                        @if (!string.IsNullOrWhiteSpace(odeme.HareketKaynakGorunumu))
+                                        {
+                                            <div class="mt-1">
+                                                <small class="text-muted">İz: <strong>@odeme.HareketKaynakGorunumu</strong></small>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(odeme.HareketCariUnvani))
+                                        {
+                                            <div>
+                                                <small class="text-muted">Cari: @odeme.HareketCariUnvani</small>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(odeme.HareketYonGorunumu))
+                                        {
+                                            <div>
+                                                <small class="text-muted">Yön: @odeme.HareketYonGorunumu</small>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(odeme.HareketBelgeNo))
+                                        {
+                                            <div>
+                                                <small class="text-muted">Belge No: @odeme.HareketBelgeNo</small>
+                                            </div>
+                                        }
+                                        @if (odeme.BankaKasaHareketId.HasValue)
+                                        {
+                                            <div>
+                                                <small class="text-muted">Hareket #: @odeme.BankaKasaHareketId</small>
+                                            </div>
+                                        }
+                                    </td>
                                     <td class="text-end"><strong>@FormatPara(odeme.Miktar)</strong></td>
                                     <td class="text-center">
                                         <span class="badge @GetDurumClass(odeme)">@GetDurumAdi(odeme)</span>
@@ -196,57 +229,227 @@
 @if (showOdemeYapModal && odemeYapilacak != null)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Odeme Yap</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info py-2">
-                        <strong>@odemeYapilacak.MasrafKalemi</strong><br />
-                        <small>@odemeYapilacak.Aciklama</small><br />
-                        <strong class="text-danger fs-5">@FormatPara(odemeYapilacak.Miktar)</strong>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Odeme Tipi *</label>
-                        <div class="btn-group w-100">
-                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? "btn-primary" : "btn-outline-primary")" 
-                                    @onclick="() => odemeYapRequest.OdemeTipi = Services.OdemeTipi.Kasa">
-                                <i class="bi bi-cash-stack me-1"></i>Kasa
-                            </button>
-                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Banka ? "btn-primary" : "btn-outline-primary")" 
-                                    @onclick="() => odemeYapRequest.OdemeTipi = Services.OdemeTipi.Banka">
-                                <i class="bi bi-bank me-1"></i>Banka
-                            </button>
-                            <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Mahsup ? "btn-primary" : "btn-outline-primary")" 
-                                    @onclick="() => odemeYapRequest.OdemeTipi = Services.OdemeTipi.Mahsup">
-                                <i class="bi bi-arrow-left-right me-1"></i>Mahsup
-                            </button>
+                    <div class="alert alert-info py-2 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@odemeYapilacak.MasrafKalemi</strong><br />
+                                <small>@odemeYapilacak.Aciklama</small>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">Tutar:</small><br/>
+                                <strong class="text-danger fs-5">@FormatPara(odemeYapilacak.Miktar)</strong>
+                            </div>
                         </div>
                     </div>
-                    @if ((odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa || odemeYapRequest.OdemeTipi == Services.OdemeTipi.Banka) && bankaHesaplari != null)
-                    {
-                        <div class="mb-3">
-                            <label class="form-label">@(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? "Kasa Hesabi" : "Banka Hesabi") *</label>
-                            <select class="form-select" @bind="odemeYapRequest.BankaHesapId">
-                                <option value="">Secin...</option>
-                                @foreach (var hesap in bankaHesaplari.Where(h => odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? h.HesapTipi == HesapTipi.Kasa : h.HesapTipi != HesapTipi.Kasa))
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Odeme Sekli *</label>
+                            <div class="btn-group w-100 flex-wrap">
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Kasa ? "btn-success" : "btn-outline-success")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.Kasa)">
+                                    <i class="bi bi-cash-stack me-1"></i>Kasa
+                                </button>
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Banka ? "btn-primary" : "btn-outline-primary")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.Banka)">
+                                    <i class="bi bi-bank me-1"></i>Banka
+                                </button>
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.KrediKarti ? "btn-danger" : "btn-outline-danger")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.KrediKarti)">
+                                    <i class="bi bi-credit-card me-1"></i>Kredi Karti
+                                </button>
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.Mahsup ? "btn-secondary" : "btn-outline-secondary")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.Mahsup)">
+                                    <i class="bi bi-arrow-left-right me-1"></i>Hesap Mahsup
+                                </button>
+                                <button type="button" class="btn @(odemeYapRequest.OdemeTipi == Services.OdemeTipi.CariMahsup ? "btn-warning" : "btn-outline-warning")" 
+                                        @onclick="() => OdemeTipiDegisti(Services.OdemeTipi.CariMahsup)">
+                                    <i class="bi bi-person-lines-fill me-1"></i>Cari Mahsup
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (odemeYapRequest.OdemeTipi == Services.OdemeTipi.CariMahsup)
+                        {
+                            <div class="col-md-6">
+                                <label class="form-label">Cari Hesap *</label>
+                                <select class="form-select" @bind="odemeYapRequest.CariId">
+                                    <option value="">Secin...</option>
+                                    @if (cariler != null)
+                                    {
+                                        @foreach (var cari in cariler)
+                                        {
+                                            <option value="@cari.Id">@cari.CariKodu - @cari.Unvan</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hesap *</label>
+                                <select class="form-select" @bind="odemeYapRequest.BankaHesapId" @bind:after="CariMahsupHesapDegisti">
+                                    <option value="">Secin...</option>
+                                    @foreach (var hesap in GetCariMahsupHesaplar())
+                                    {
+                                        var bakiye = hesapBakiyeleri.GetValueOrDefault(hesap.Id, 0);
+                                        <option value="@hesap.Id">@hesap.HesapAdi (@FormatPara(bakiye))</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Islem Yonu</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="cariMahsupYon" id="cariOdemeYon" checked="@(!odemeYapRequest.CaridenTahsilat)" @onchange="() => odemeYapRequest.CaridenTahsilat = false" />
+                                    <label class="btn btn-outline-danger" for="cariOdemeYon">
+                                        <i class="bi bi-arrow-up-circle me-1"></i>Odeme (Hesap → Cari)
+                                    </label>
+                                    <input type="radio" class="btn-check" name="cariMahsupYon" id="cariTahsilatYon" checked="@odemeYapRequest.CaridenTahsilat" @onchange="() => odemeYapRequest.CaridenTahsilat = true" />
+                                    <label class="btn btn-outline-success" for="cariTahsilatYon">
+                                        <i class="bi bi-arrow-down-circle me-1"></i>Tahsilat (Cari → Hesap)
+                                    </label>
+                                </div>
+                                <div class="alert alert-light border mt-2 mb-0 py-2 small">
+                                    <i class="bi bi-info-circle me-1 text-primary"></i>
+                                    @(odemeYapRequest.CaridenTahsilat
+                                        ? "Cari hesaptan secilen kasa/banka hesabina tahsilat kaydi olusur."
+                                        : "Secilen kasa/banka hesabindan cari hesaba odeme kaydi olusur.")
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Odeme Tarihi *</label>
+                                <input type="date" class="form-control" @bind="odemeYapRequest.OdemeTarihi" />
+                            </div>
+                            <div class="col-12">
+                                <div class="card bg-light border">
+                                    <div class="card-header py-2">
+                                        <i class="bi bi-journal-code me-1"></i>Muhasebe Eslestirme
+                                    </div>
+                                    <div class="card-body py-2">
+                                        <div class="row g-2">
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Muhasebe Hesap Kodu</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="odemeYapRequest.MuhasebeHesapKodu" placeholder="Orn: 320" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Kost Merkezi</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="odemeYapRequest.KostMerkeziKodu" placeholder="Masraf merkezi" />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Proje Kodu</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="odemeYapRequest.ProjeKodu" placeholder="Proje" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else if (odemeYapRequest.OdemeTipi != Services.OdemeTipi.Mahsup)
+                        {
+                            <div class="col-md-6">
+                                <label class="form-label">@GetHesapLabel() *</label>
+                                <select class="form-select" @bind="odemeYapRequest.BankaHesapId">
+                                    <option value="">Secin...</option>
+                                    @foreach (var hesap in GetFiltrelenmisHesaplar())
+                                    {
+                                        var bakiye = hesapBakiyeleri.GetValueOrDefault(hesap.Id, 0);
+                                        <option value="@hesap.Id">@hesap.HesapAdi (@FormatPara(bakiye))</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Odeme Tarihi *</label>
+                                <input type="date" class="form-control" @bind="odemeYapRequest.OdemeTarihi" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="col-12">
+                                <label class="form-label">Odeme Tarihi *</label>
+                                <input type="date" class="form-control" @bind="odemeYapRequest.OdemeTarihi" />
+                            </div>
+                        }
+
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-header py-2">
+                                    <i class="bi bi-plus-circle me-1"></i>Ek Masraflar (Tutara Eklenir)
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Masraf/Komisyon</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" class="form-control" @bind="odemeYapRequest.MasrafKesintisi" step="0.01" />
+                                                <span class="input-group-text">₺</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Ceza/Faiz</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" class="form-control" @bind="odemeYapRequest.CezaKesintisi" step="0.01" />
+                                                <span class="input-group-text">₺</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Diger Ek Masraf</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" class="form-control" @bind="odemeYapRequest.DigerKesinti" step="0.01" />
+                                                <span class="input-group-text">₺</span>
+                                            </div>
+                                        </div>
+                                        @if (ToplamEkMasraf != 0)
+                                        {
+                                            <div class="col-12">
+                                                <input type="text" class="form-control form-control-sm" @bind="odemeYapRequest.KesintiAciklamasi" placeholder="Ek masraf aciklamasi..." />
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Not</label>
+                            <input type="text" class="form-control" @bind="odemeYapRequest.OdemeNotu" placeholder="Odeme notu..." />
+                        </div>
+                    </div>
+
+                    <div class="card mt-3 @(ToplamEkMasraf != 0 ? "border-warning" : "border-success")">
+                        <div class="card-body py-2">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Tutar:</small>
+                                    <div class="fs-5">@FormatPara(odemeYapilacak.Miktar)</div>
+                                </div>
+                                @if (ToplamEkMasraf != 0)
                                 {
-                                    <option value="@hesap.Id">@hesap.HesapAdi</option>
+                                    <div class="col-3 text-center">
+                                        <small class="text-muted">Ek Masraf:</small>
+                                        <div class="text-primary">+@FormatPara(ToplamEkMasraf)</div>
+                                    </div>
                                 }
-                            </select>
+                                <div class="col text-end">
+                                    <small class="text-muted">Net Odeme:</small>
+                                    <div class="fs-4 fw-bold text-success">@FormatPara(NetOdemeTutari)</div>
+                                </div>
+                            </div>
                         </div>
-                    }
-                    <div class="mb-3">
-                        <label class="form-label">Odeme Tarihi</label>
-                        <input type="date" class="form-control" @bind="odemeYapRequest.OdemeTarihi" />
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Iptal</button>
-                    <button type="button" class="btn btn-success" @onclick="OdemeYapAsync">
-                        <i class="bi bi-check-lg me-1"></i>Odemeyi Tamamla
+                    <button type="button" class="btn btn-success" @onclick="OdemeYapAsync" disabled="@isKaydediliyor">
+                        @if (isKaydediliyor)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-check-lg me-1"></i>Odemeyi Tamamla (@FormatPara(NetOdemeTutari))
                     </button>
                 </div>
             </div>
@@ -466,6 +669,9 @@
     private List<BudgetOdeme> filtrelenmisOdemeler = new();
     private List<BudgetMasrafKalemi>? masrafKalemleri;
     private List<BankaHesap>? bankaHesaplari;
+    private Dictionary<int, decimal> hesapBakiyeleri = new();
+    private List<Cari>? cariler;
+    private bool isKaydediliyor = false;
 
     // Filtreler
     private int filtreYil = DateTime.Today.Year;
@@ -490,6 +696,8 @@
     {
         masrafKalemleri = await BudgetService.GetMasrafKalemleriAsync();
         bankaHesaplari = await BankaHesapService.GetAllAsync();
+        hesapBakiyeleri = await BankaHesapService.GetTumHesapBakiyeleriAsync();
+        cariler = (await CariService.GetAllAsync()).Where(c => c.Aktif).OrderBy(c => c.Unvan).ToList();
         await LoadDataAsync();
     }
 
@@ -641,6 +849,12 @@
                 ToastService.ShowWarning("Lütfen cari hesap seçin!");
                 return;
             }
+
+            if (!odemeYapRequest.BankaHesapId.HasValue || odemeYapRequest.BankaHesapId == 0)
+            {
+                ToastService.ShowWarning("Lütfen işlem yapılacak hesabı seçin!");
+                return;
+            }
         }
         else if (odemeYapRequest.OdemeTipi != Services.OdemeTipi.Mahsup && !odemeYapRequest.BankaHesapId.HasValue)
         {
@@ -648,16 +862,32 @@
             return;
         }
 
+        isKaydediliyor = true;
+        StateHasChanged();
+
         try
         {
             await BudgetService.OdemeYapAsync(odemeYapilacak.Id, odemeYapRequest);
-            ToastService.ShowSuccess(odemeYapilacak.MasrafKalemi + " odendi!");
+
+            var mesaj = odemeYapRequest.OdemeTipi == Services.OdemeTipi.CariMahsup
+                ? $"{(odemeYapRequest.CaridenTahsilat ? "Cari mahsup tahsilat" : "Cari mahsup odeme")} kaydedildi! ({FormatPara(NetOdemeTutari)})"
+                : $"{odemeYapilacak.MasrafKalemi} odendi! ({FormatPara(NetOdemeTutari)})";
+            if (ToplamEkMasraf > 0)
+                mesaj += $" - Ek Masraf: {FormatPara(ToplamEkMasraf)}";
+
+            ToastService.ShowSuccess(mesaj);
             ModalKapat();
+            hesapBakiyeleri = await BankaHesapService.GetTumHesapBakiyeleriAsync();
             await LoadDataAsync();
         }
         catch (Exception ex)
         {
             ToastService.ShowError("Hata: " + ex.Message);
+        }
+        finally
+        {
+            isKaydediliyor = false;
+            StateHasChanged();
         }
     }
 
@@ -743,6 +973,59 @@
         showTaksitModal = false;
         taksitListesi.Clear();
     }
+
+    private void OdemeTipiDegisti(Services.OdemeTipi tip)
+    {
+        odemeYapRequest.OdemeTipi = tip;
+        odemeYapRequest.BankaHesapId = null;
+        odemeYapRequest.CariId = null;
+        odemeYapRequest.MuhasebeHesapKodu = string.Empty;
+        odemeYapRequest.KostMerkeziKodu = string.Empty;
+        odemeYapRequest.ProjeKodu = string.Empty;
+    }
+
+    private string GetHesapLabel() => odemeYapRequest.OdemeTipi switch
+    {
+        Services.OdemeTipi.Kasa => "Kasa Hesabi",
+        Services.OdemeTipi.Banka => "Banka Hesabi",
+        Services.OdemeTipi.KrediKarti => "Kredi Karti",
+        _ => "Hesap"
+    };
+
+    private IEnumerable<BankaHesap> GetFiltrelenmisHesaplar()
+    {
+        if (bankaHesaplari == null) return Enumerable.Empty<BankaHesap>();
+
+        return odemeYapRequest.OdemeTipi switch
+        {
+            Services.OdemeTipi.Kasa => bankaHesaplari.Where(h => h.HesapTipi == HesapTipi.Kasa),
+            Services.OdemeTipi.KrediKarti => bankaHesaplari.Where(h => h.HesapTipi == HesapTipi.KrediKarti),
+            _ => bankaHesaplari.Where(h => h.HesapTipi != HesapTipi.Kasa && h.HesapTipi != HesapTipi.KrediKarti)
+        };
+    }
+
+    private IEnumerable<BankaHesap> GetCariMahsupHesaplar()
+    {
+        if (bankaHesaplari == null) return Enumerable.Empty<BankaHesap>();
+
+        return bankaHesaplari.Where(h => h.HesapTipi != HesapTipi.KrediKarti);
+    }
+
+    private void CariMahsupHesapDegisti()
+    {
+        if (!odemeYapRequest.BankaHesapId.HasValue || bankaHesaplari == null)
+            return;
+
+        var seciliHesap = bankaHesaplari.FirstOrDefault(h => h.Id == odemeYapRequest.BankaHesapId.Value);
+        if (seciliHesap == null)
+            return;
+
+        odemeYapRequest.MuhasebeHesapKodu = seciliHesap.VarsayilanMuhasebeKodu ?? string.Empty;
+        odemeYapRequest.KostMerkeziKodu = seciliHesap.VarsayilanKostMerkezi ?? string.Empty;
+    }
+
+    private decimal ToplamEkMasraf => Math.Abs(odemeYapRequest.MasrafKesintisi) + Math.Abs(odemeYapRequest.CezaKesintisi) + Math.Abs(odemeYapRequest.DigerKesinti);
+    private decimal NetOdemeTutari => (odemeYapilacak?.Miktar ?? 0) + ToplamEkMasraf;
 
     private string GetAyAdi(int ay) => AyAdlari[ay];
     private string GetDurumAdi(BudgetOdeme o) 

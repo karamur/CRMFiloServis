@@ -94,8 +94,17 @@ public static class DbInitializer
         // PuantajKayitlar tablosuna yeni kolonları ekle
         await EnsurePuantajKayitlarColumnsAsync(context, dbProvider, configuration);
 
+        // Destek modulu tablolarini kontrol et / olustur
+        await EnsureDestekModuluTablesAsync(context, dbProvider, configuration);
+
+        // Destek modulu eksik kolonlarini tamamla
+        await EnsureDestekModuluColumnsAsync(context, dbProvider, configuration);
+
         // Budget masraf kalemleri her zaman kontrol et
         await SeedBudgetMasrafKalemleriAsync(context);
+
+        // Destek Talebi seed verilerini ekle
+        await SeedDestekTalebiVerileriAsync(context);
     }
 
     private static string GetDefaultConnectionString(ApplicationDbContext context, IConfiguration configuration)
@@ -479,10 +488,383 @@ public static class DbInitializer
             }
         }
 
+        var dbProvider = context.Database.IsNpgsql() ? "PostgreSQL" : context.Database.IsSqlite() ? "SQLite" : "SQLite";
+        await EnsureDestekModuluTablesAsync(context, dbProvider, null);
+        await EnsureDestekModuluColumnsAsync(context, dbProvider, null);
+
         await SeedBudgetMasrafKalemleriAsync(context);
 
         // Destek Talebi seed verilerini ekle
         await SeedDestekTalebiVerileriAsync(context);
+    }
+
+    private static async Task EnsureDestekModuluTablesAsync(ApplicationDbContext context, string dbProvider, IConfiguration? configuration)
+    {
+        try
+        {
+            if (dbProvider == "PostgreSQL")
+            {
+                var connectionString = GetDefaultConnectionString(context, configuration ?? new ConfigurationBuilder().Build());
+                using var conn = new NpgsqlConnection(connectionString);
+                await conn.OpenAsync();
+
+                using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE IF NOT EXISTS ""DestekDepartmanlari"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Ad"" VARCHAR(200) NOT NULL,
+                        ""Aciklama"" TEXT,
+                        ""Email"" VARCHAR(200),
+                        ""OtomatikAtama"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""VarsayilanSlaSuresi"" INTEGER,
+                        ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""UstDepartmanId"" INTEGER NULL REFERENCES ""DestekDepartmanlari""(""Id"") ON DELETE SET NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekKategorileri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Ad"" VARCHAR(200) NOT NULL,
+                        ""Aciklama"" TEXT,
+                        ""Renk"" VARCHAR(50),
+                        ""Simge"" VARCHAR(100),
+                        ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""DepartmanId"" INTEGER NULL REFERENCES ""DestekDepartmanlari""(""Id"") ON DELETE SET NULL,
+                        ""UstKategoriId"" INTEGER NULL REFERENCES ""DestekKategorileri""(""Id"") ON DELETE SET NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekSlaListesi"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Ad"" VARCHAR(200) NOT NULL,
+                        ""Aciklama"" TEXT,
+                        ""IlkYanitSuresi"" INTEGER NOT NULL,
+                        ""CozumSuresi"" INTEGER NOT NULL,
+                        ""Oncelik"" INTEGER NOT NULL,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""SadeceMesaiSaatleri"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""SadeceHaftaIci"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekHazirYanitlari"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Ad"" VARCHAR(200) NOT NULL,
+                        ""Icerik"" TEXT NOT NULL,
+                        ""KonuSablonu"" VARCHAR(500),
+                        ""Aciklama"" TEXT,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ""DepartmanId"" INTEGER NULL REFERENCES ""DestekDepartmanlari""(""Id"") ON DELETE SET NULL,
+                        ""KategoriId"" INTEGER NULL REFERENCES ""DestekKategorileri""(""Id"") ON DELETE SET NULL,
+                        ""KullanimSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekAyarlari"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Anahtar"" VARCHAR(200) NOT NULL,
+                        ""Deger"" TEXT NOT NULL,
+                        ""Aciklama"" TEXT,
+                        ""Grup"" VARCHAR(100),
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekTalepleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TalepNo"" VARCHAR(50) NOT NULL,
+                        ""Konu"" VARCHAR(500) NOT NULL,
+                        ""Aciklama"" TEXT NOT NULL,
+                        ""Durum"" INTEGER NOT NULL DEFAULT 1,
+                        ""Oncelik"" INTEGER NOT NULL DEFAULT 2,
+                        ""Kaynak"" INTEGER NOT NULL DEFAULT 1,
+                        ""SlaSuresi"" INTEGER NULL,
+                        ""SlaBitisTarihi"" TIMESTAMP NULL,
+                        ""SlaAsildi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""SonAktiviteTarihi"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""KapatilmaTarihi"" TIMESTAMP NULL,
+                        ""CozumSuresiDakika"" INTEGER NULL,
+                        ""IlkYanitSuresiDakika"" INTEGER NULL,
+                        ""MemnuniyetPuani"" INTEGER NULL,
+                        ""MemnuniyetYorumu"" TEXT,
+                        ""DahiliNotlar"" TEXT,
+                        ""Etiketler"" TEXT,
+                        ""DepartmanId"" INTEGER NOT NULL REFERENCES ""DestekDepartmanlari""(""Id"") ON DELETE RESTRICT,
+                        ""KategoriId"" INTEGER NULL REFERENCES ""DestekKategorileri""(""Id"") ON DELETE SET NULL,
+                        ""AtananKullaniciId"" INTEGER NULL REFERENCES ""Kullanicilar""(""Id"") ON DELETE SET NULL,
+                        ""OlusturanKullaniciId"" INTEGER NULL REFERENCES ""Kullanicilar""(""Id"") ON DELETE SET NULL,
+                        ""CariId"" INTEGER NULL REFERENCES ""Cariler""(""Id"") ON DELETE SET NULL,
+                        ""MusteriAdi"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ""MusteriEmail"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ""MusteriTelefon"" VARCHAR(50),
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekDepartmanUyeleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""DepartmanId"" INTEGER NOT NULL REFERENCES ""DestekDepartmanlari""(""Id"") ON DELETE CASCADE,
+                        ""KullaniciId"" INTEGER NOT NULL REFERENCES ""Kullanicilar""(""Id"") ON DELETE CASCADE,
+                        ""Yonetici"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""OtomatikAtamaUygun"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekTalebiIliskileri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""AnaTalepId"" INTEGER NOT NULL REFERENCES ""DestekTalepleri""(""Id"") ON DELETE CASCADE,
+                        ""IliskiliTalepId"" INTEGER NOT NULL REFERENCES ""DestekTalepleri""(""Id"") ON DELETE CASCADE,
+                        ""IliskiTuru"" INTEGER NOT NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekTalebiYanitlari"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""DestekTalebiId"" INTEGER NOT NULL REFERENCES ""DestekTalepleri""(""Id"") ON DELETE CASCADE,
+                        ""Icerik"" TEXT NOT NULL,
+                        ""DahiliNot"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""YanitTuru"" INTEGER NOT NULL DEFAULT 1,
+                        ""KullaniciId"" INTEGER NULL REFERENCES ""Kullanicilar""(""Id"") ON DELETE SET NULL,
+                        ""MusteriYaniti"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""MusteriAdi"" VARCHAR(200),
+                        ""HazirYanitId"" INTEGER NULL REFERENCES ""DestekHazirYanitlari""(""Id"") ON DELETE SET NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekTalebiEkleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""DestekTalebiId"" INTEGER NULL REFERENCES ""DestekTalepleri""(""Id"") ON DELETE CASCADE,
+                        ""YanitId"" INTEGER NULL REFERENCES ""DestekTalebiYanitlari""(""Id"") ON DELETE CASCADE,
+                        ""DosyaAdi"" VARCHAR(500) NOT NULL,
+                        ""OrijinalDosyaAdi"" VARCHAR(500) NOT NULL,
+                        ""DosyaYolu"" TEXT NOT NULL,
+                        ""DosyaBoyutu"" BIGINT NOT NULL DEFAULT 0,
+                        ""MimeTipi"" VARCHAR(200) NOT NULL DEFAULT '',
+                        ""YukleyenKullaniciId"" INTEGER NULL REFERENCES ""Kullanicilar""(""Id"") ON DELETE SET NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekTalebiAktiviteleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""DestekTalebiId"" INTEGER NOT NULL REFERENCES ""DestekTalepleri""(""Id"") ON DELETE CASCADE,
+                        ""AktiviteTuru"" INTEGER NOT NULL,
+                        ""Aciklama"" TEXT NOT NULL,
+                        ""EskiDeger"" TEXT,
+                        ""YeniDeger"" TEXT,
+                        ""KullaniciId"" INTEGER NULL REFERENCES ""Kullanicilar""(""Id"") ON DELETE SET NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ""DestekBilgiBankasiMakaleleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Baslik"" VARCHAR(500) NOT NULL,
+                        ""Icerik"" TEXT NOT NULL,
+                        ""Ozet"" TEXT,
+                        ""Etiketler"" TEXT,
+                        ""SeoBaslik"" VARCHAR(500),
+                        ""SeoAciklama"" TEXT,
+                        ""Slug"" VARCHAR(500),
+                        ""GoruntulemeSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ""YararliBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ""YararsizBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ""Durum"" INTEGER NOT NULL DEFAULT 1,
+                        ""YayinlanmaTarihi"" TIMESTAMP NULL,
+                        ""KategoriId"" INTEGER NULL REFERENCES ""DestekKategorileri""(""Id"") ON DELETE SET NULL,
+                        ""YazarKullaniciId"" INTEGER NULL REFERENCES ""Kullanicilar""(""Id"") ON DELETE SET NULL,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP NULL,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekTalepleri_TalepNo"" ON ""DestekTalepleri"" (""TalepNo"");
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekAyarlari_Anahtar"" ON ""DestekAyarlari"" (""Anahtar"");
+                ", conn);
+
+                await createCmd.ExecuteNonQueryAsync();
+                Console.WriteLine("Destek modulu tablolari PostgreSQL'de kontrol edildi.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Destek modulu tablo kontrol hatasi: {ex.Message}");
+        }
+    }
+
+    private static async Task EnsureDestekModuluColumnsAsync(ApplicationDbContext context, string dbProvider, IConfiguration? configuration)
+    {
+        try
+        {
+            if (dbProvider != "PostgreSQL")
+                return;
+
+            var connectionString = GetDefaultConnectionString(context, configuration ?? new ConfigurationBuilder().Build());
+            using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync();
+
+            using var cmd = new NpgsqlCommand(@"
+                ALTER TABLE ""DestekDepartmanlari""
+                    ADD COLUMN IF NOT EXISTS ""Email"" VARCHAR(200),
+                    ADD COLUMN IF NOT EXISTS ""OtomatikAtama"" BOOLEAN NOT NULL DEFAULT FALSE,
+                    ADD COLUMN IF NOT EXISTS ""VarsayilanSlaSuresi"" INTEGER,
+                    ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ADD COLUMN IF NOT EXISTS ""UstDepartmanId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekKategorileri""
+                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""Renk"" VARCHAR(50),
+                    ADD COLUMN IF NOT EXISTS ""Simge"" VARCHAR(100),
+                    ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ADD COLUMN IF NOT EXISTS ""DepartmanId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""UstKategoriId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekSlaListesi""
+                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ADD COLUMN IF NOT EXISTS ""SadeceMesaiSaatleri"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ADD COLUMN IF NOT EXISTS ""SadeceHaftaIci"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekHazirYanitlari""
+                    ADD COLUMN IF NOT EXISTS ""KonuSablonu"" VARCHAR(500),
+                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ADD COLUMN IF NOT EXISTS ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""DepartmanId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""KullanimSayisi"" INTEGER NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekAyarlari""
+                    ADD COLUMN IF NOT EXISTS ""Aciklama"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""Grup"" VARCHAR(100),
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekTalepleri""
+                    ADD COLUMN IF NOT EXISTS ""SlaSuresi"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""SlaBitisTarihi"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""SlaAsildi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                    ADD COLUMN IF NOT EXISTS ""SonAktiviteTarihi"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""KapatilmaTarihi"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""CozumSuresiDakika"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""IlkYanitSuresiDakika"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""MemnuniyetPuani"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""MemnuniyetYorumu"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""DahiliNotlar"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""Etiketler"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""AtananKullaniciId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""OlusturanKullaniciId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""CariId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""MusteriAdi"" VARCHAR(200) NOT NULL DEFAULT '',
+                    ADD COLUMN IF NOT EXISTS ""MusteriEmail"" VARCHAR(200) NOT NULL DEFAULT '',
+                    ADD COLUMN IF NOT EXISTS ""MusteriTelefon"" VARCHAR(50),
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekDepartmanUyeleri""
+                    ADD COLUMN IF NOT EXISTS ""Yonetici"" BOOLEAN NOT NULL DEFAULT FALSE,
+                    ADD COLUMN IF NOT EXISTS ""OtomatikAtamaUygun"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekTalebiIliskileri""
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekTalebiYanitlari""
+                    ADD COLUMN IF NOT EXISTS ""DahiliNot"" BOOLEAN NOT NULL DEFAULT FALSE,
+                    ADD COLUMN IF NOT EXISTS ""YanitTuru"" INTEGER NOT NULL DEFAULT 1,
+                    ADD COLUMN IF NOT EXISTS ""KullaniciId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""MusteriYaniti"" BOOLEAN NOT NULL DEFAULT FALSE,
+                    ADD COLUMN IF NOT EXISTS ""MusteriAdi"" VARCHAR(200),
+                    ADD COLUMN IF NOT EXISTS ""HazirYanitId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekTalebiEkleri""
+                    ADD COLUMN IF NOT EXISTS ""DosyaBoyutu"" BIGINT NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""MimeTipi"" VARCHAR(200) NOT NULL DEFAULT '',
+                    ADD COLUMN IF NOT EXISTS ""YukleyenKullaniciId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekTalebiAktiviteleri""
+                    ADD COLUMN IF NOT EXISTS ""EskiDeger"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""YeniDeger"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""KullaniciId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                ALTER TABLE ""DestekBilgiBankasiMakaleleri""
+                    ADD COLUMN IF NOT EXISTS ""Ozet"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""Etiketler"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""SeoBaslik"" VARCHAR(500),
+                    ADD COLUMN IF NOT EXISTS ""SeoAciklama"" TEXT,
+                    ADD COLUMN IF NOT EXISTS ""Slug"" VARCHAR(500),
+                    ADD COLUMN IF NOT EXISTS ""GoruntulemeSayisi"" INTEGER NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""YararliBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""YararsizBulmaSayisi"" INTEGER NOT NULL DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS ""Durum"" INTEGER NOT NULL DEFAULT 1,
+                    ADD COLUMN IF NOT EXISTS ""YayinlanmaTarihi"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""KategoriId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""YazarKullaniciId"" INTEGER NULL,
+                    ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMP NULL,
+                    ADD COLUMN IF NOT EXISTS ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE;
+
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekTalepleri_TalepNo"" ON ""DestekTalepleri"" (""TalepNo"");
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_DestekAyarlari_Anahtar"" ON ""DestekAyarlari"" (""Anahtar"");
+            ", conn);
+
+            await cmd.ExecuteNonQueryAsync();
+            Console.WriteLine("Destek modulu kolonlari PostgreSQL'de kontrol edildi.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Destek modulu kolon kontrol hatasi: {ex.Message}");
+        }
     }
 
     private static async Task SeedDestekTalebiVerileriAsync(ApplicationDbContext context)

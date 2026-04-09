@@ -1,4 +1,4 @@
-using CRMFiloServis.Shared.Entities;
+ï»¿using CRMFiloServis.Shared.Entities;
 using CRMFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,107 +19,154 @@ public class BelgeUyariService : IBelgeUyariService
         var bugun = DateTime.Today;
         var limitTarih = bugun.AddDays(yaklasanGunSayisi);
 
-        // Aktif þoförleri al
+        // Aktif ÅŸofÃ¶rleri al
         var soforler = await _context.Soforler
             .Where(s => s.Aktif && s.Gorev == PersonelGorev.Sofor)
             .ToListAsync();
 
         foreach (var sofor in soforler)
         {
-            // Ehliyet kontrolü
+            // Ehliyet kontrolÃ¼
             if (sofor.EhliyetGecerlilikTarihi.HasValue && sofor.EhliyetGecerlilikTarihi.Value <= limitTarih)
             {
                 ozet.EhliyetUyarilari.Add(new BelgeUyari
                 {
                     Id = sofor.Id,
+                    Kaynak = "Personel",
                     Baslik = sofor.TamAd,
                     BelgeTuru = "Ehliyet",
-                    BitisTarihi = sofor.EhliyetGecerlilikTarihi.Value
+                    BitisTarihi = sofor.EhliyetGecerlilikTarihi.Value,
+                    DetayUrl = $"/personel/{sofor.Id}"
                 });
             }
 
-            // SRC Belgesi kontrolü
+            // SRC Belgesi kontrolÃ¼
             if (sofor.SrcBelgesiGecerlilikTarihi.HasValue && sofor.SrcBelgesiGecerlilikTarihi.Value <= limitTarih)
             {
                 ozet.SrcUyarilari.Add(new BelgeUyari
                 {
                     Id = sofor.Id,
+                    Kaynak = "Personel",
                     Baslik = sofor.TamAd,
                     BelgeTuru = "SRC Belgesi",
-                    BitisTarihi = sofor.SrcBelgesiGecerlilikTarihi.Value
+                    BitisTarihi = sofor.SrcBelgesiGecerlilikTarihi.Value,
+                    DetayUrl = $"/personel/{sofor.Id}"
                 });
             }
 
-            // Psikoteknik kontrolü
+            // Psikoteknik kontrolÃ¼
             if (sofor.PsikoteknikGecerlilikTarihi.HasValue && sofor.PsikoteknikGecerlilikTarihi.Value <= limitTarih)
             {
                 ozet.PsikoteknikUyarilari.Add(new BelgeUyari
                 {
                     Id = sofor.Id,
+                    Kaynak = "Personel",
                     Baslik = sofor.TamAd,
                     BelgeTuru = "Psikoteknik",
-                    BitisTarihi = sofor.PsikoteknikGecerlilikTarihi.Value
+                    BitisTarihi = sofor.PsikoteknikGecerlilikTarihi.Value,
+                    DetayUrl = $"/personel/{sofor.Id}"
                 });
             }
 
-            // Saðlýk Raporu kontrolü
+            // SaÄŸlÄ±k Raporu kontrolÃ¼
             if (sofor.SaglikRaporuGecerlilikTarihi.HasValue && sofor.SaglikRaporuGecerlilikTarihi.Value <= limitTarih)
             {
                 ozet.SaglikRaporuUyarilari.Add(new BelgeUyari
                 {
                     Id = sofor.Id,
+                    Kaynak = "Personel",
                     Baslik = sofor.TamAd,
-                    BelgeTuru = "Saðlýk Raporu",
-                    BitisTarihi = sofor.SaglikRaporuGecerlilikTarihi.Value
+                    BelgeTuru = "SaÄŸlÄ±k Raporu",
+                    BitisTarihi = sofor.SaglikRaporuGecerlilikTarihi.Value,
+                    DetayUrl = $"/personel/{sofor.Id}"
                 });
             }
         }
 
-        // Aktif araçlarý al
+        // Aktif araÃ§larÄ± al
         var araclar = await _context.Araclar
             .Where(a => a.Aktif)
             .ToListAsync();
 
         foreach (var arac in araclar)
         {
-            // Muayene kontrolü
+            // Muayene kontrolÃ¼
             if (arac.MuayeneBitisTarihi.HasValue && arac.MuayeneBitisTarihi.Value <= limitTarih)
             {
                 ozet.MuayeneUyarilari.Add(new BelgeUyari
                 {
                     Id = arac.Id,
+                    Kaynak = "AraÃ§",
                     Baslik = arac.AktifPlaka ?? arac.SaseNo,
-                    BelgeTuru = "Araç Muayenesi",
-                    BitisTarihi = arac.MuayeneBitisTarihi.Value
+                    BelgeTuru = "AraÃ§ Muayenesi",
+                    BitisTarihi = arac.MuayeneBitisTarihi.Value,
+                    DetayUrl = $"/araclar/{arac.Id}/evraklar"
                 });
             }
 
-            // Kasko kontrolü
+            // Kasko kontrolÃ¼
             if (arac.KaskoBitisTarihi.HasValue && arac.KaskoBitisTarihi.Value <= limitTarih)
             {
                 ozet.KaskoUyarilari.Add(new BelgeUyari
                 {
                     Id = arac.Id,
+                    Kaynak = "AraÃ§",
                     Baslik = arac.AktifPlaka ?? arac.SaseNo,
                     BelgeTuru = "Kasko",
-                    BitisTarihi = arac.KaskoBitisTarihi.Value
+                    BitisTarihi = arac.KaskoBitisTarihi.Value,
+                    DetayUrl = $"/araclar/{arac.Id}/evraklar"
                 });
             }
 
-            // Trafik Sigortasý kontrolü
+            // Trafik SigortasÄ± kontrolÃ¼
             if (arac.TrafikSigortaBitisTarihi.HasValue && arac.TrafikSigortaBitisTarihi.Value <= limitTarih)
             {
                 ozet.TrafikSigortasiUyarilari.Add(new BelgeUyari
                 {
                     Id = arac.Id,
+                    Kaynak = "AraÃ§",
                     Baslik = arac.AktifPlaka ?? arac.SaseNo,
-                    BelgeTuru = "Trafik Sigortasý",
-                    BitisTarihi = arac.TrafikSigortaBitisTarihi.Value
+                    BelgeTuru = "Trafik SigortasÄ±",
+                    BitisTarihi = arac.TrafikSigortaBitisTarihi.Value,
+                    DetayUrl = $"/araclar/{arac.Id}/evraklar"
                 });
             }
         }
 
-        // Özet sayýlarý hesapla
+        var sabitAracKategorileri = new[]
+        {
+            EvrakKategorileri.Muayene,
+            EvrakKategorileri.Kasko,
+            EvrakKategorileri.TrafikSigortasi
+        };
+
+        var digerAracEvraklari = await _context.AracEvraklari
+            .AsNoTracking()
+            .Include(x => x.Arac)
+            .Where(x => !x.IsDeleted
+                && x.Arac != null
+                && !x.Arac.IsDeleted
+                && x.Arac.Aktif
+                && x.BitisTarihi.HasValue
+                && x.BitisTarihi.Value <= limitTarih
+                && !sabitAracKategorileri.Contains(x.EvrakKategorisi))
+            .OrderBy(x => x.BitisTarihi)
+            .ToListAsync();
+
+        foreach (var evrak in digerAracEvraklari)
+        {
+            ozet.DigerAracEvrakUyarilari.Add(new BelgeUyari
+            {
+                Id = evrak.Id,
+                Kaynak = "AraÃ§",
+                Baslik = evrak.Arac?.AktifPlaka ?? evrak.Arac?.SaseNo ?? "AraÃ§",
+                BelgeTuru = string.IsNullOrWhiteSpace(evrak.EvrakAdi) ? evrak.EvrakKategorisi : evrak.EvrakAdi!,
+                BitisTarihi = evrak.BitisTarihi!.Value,
+                DetayUrl = evrak.AracId > 0 ? $"/araclar/{evrak.AracId}/evraklar" : "/araclar"
+            });
+        }
+
+        // Ã–zet sayÄ±larÄ± hesapla
         ozet.ToplamKritikUyari = ozet.TumUyarilar.Count(u => u.Seviye == BelgeUyariSeviye.Kritik || u.Seviye == BelgeUyariSeviye.Acil);
         ozet.ToplamUyari = ozet.TumUyarilar.Count;
 

@@ -34,7 +34,7 @@
                             <a href="/ayarlar/lisans" class="btn btn-primary">
                                 <i class="bi bi-key me-2"></i>Lisans Gir
                             </a>
-                            <button type="button" class="btn btn-outline-danger" onclick="location.href='/login'">
+                            <button type="button" class="btn btn-outline-danger" @onclick="CikisYapAsync">
                                 <i class="bi bi-box-arrow-right me-2"></i>Cikis Yap
                             </button>
                         </div>
@@ -127,8 +127,7 @@
                                 </ul>
                             </div>
 
-                            <!-- Cikis Butonu - JavaScript ile tam sayfa yenileme -->
-                            <button id="logout-button" type="button" class="btn btn-danger btn-sm" onclick="window.location.href='/login'" title="Cikis Yap">
+                            <button id="logout-button" type="button" class="btn btn-danger btn-sm" @onclick="CikisYapAsync" title="Cikis Yap">
                                 <i class="bi bi-box-arrow-right me-1"></i><span class="d-none d-md-inline">Cikis</span>
                             </button>
                         </div>
@@ -144,9 +143,7 @@
         }
     </Authorized>
     <NotAuthorized>
-        @{
-            Navigation.NavigateTo("/login", true);
-        }
+        <RedirectToLogin />
         <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Yonlendiriliyor...</span>
@@ -263,5 +260,17 @@
         aktifFirmaAdi = firma.FirmaAdi;
         StateHasChanged();
         Navigation.NavigateTo(Navigation.Uri, true);
+    }
+
+    private async Task CikisYapAsync()
+    {
+        try
+        {
+            await KullaniciService.CikisYapAsync();
+        }
+        finally
+        {
+            Navigation.NavigateTo("/login", forceLoad: false);
+        }
     }
 }

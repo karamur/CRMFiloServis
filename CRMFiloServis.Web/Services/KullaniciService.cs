@@ -43,10 +43,11 @@ public class KullaniciService : IKullaniciService
 
     public async Task<Kullanici?> GetByKullaniciAdiAsync(string kullaniciAdi)
     {
+        var normalizedKullaniciAdi = (kullaniciAdi ?? string.Empty).Trim().ToUpperInvariant();
         using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Kullanicilar
             .Include(k => k.Rol)
-            .FirstOrDefaultAsync(k => k.KullaniciAdi == kullaniciAdi);
+            .FirstOrDefaultAsync(k => !k.IsDeleted && k.KullaniciAdi.ToUpper() == normalizedKullaniciAdi);
     }
 
     public async Task<Kullanici> CreateAsync(Kullanici kullanici, string sifre)
@@ -118,10 +119,11 @@ public class KullaniciService : IKullaniciService
 
     public async Task<KullaniciGirisSonuc> GirisYapAsync(string kullaniciAdi, string sifre)
     {
+        var normalizedKullaniciAdi = (kullaniciAdi ?? string.Empty).Trim().ToUpperInvariant();
         using var context = await _contextFactory.CreateDbContextAsync();
         var kullanici = await context.Kullanicilar
             .Include(k => k.Rol)
-            .FirstOrDefaultAsync(k => k.KullaniciAdi == kullaniciAdi);
+            .FirstOrDefaultAsync(k => !k.IsDeleted && k.KullaniciAdi.ToUpper() == normalizedKullaniciAdi);
 
         if (kullanici == null)
         {

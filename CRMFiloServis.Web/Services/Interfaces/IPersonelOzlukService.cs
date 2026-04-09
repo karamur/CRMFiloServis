@@ -15,10 +15,12 @@ public interface IPersonelOzlukService
 
     // Personel Evrakları
     Task<List<PersonelOzlukEvrak>> GetPersonelEvraklariAsync(int soforId);
+    Task<PersonelOzlukEvrak?> GetPersonelEvrakByIdAsync(int evrakId);
     Task<PersonelOzlukEvrakDurum> GetPersonelEvrakDurumuAsync(int soforId);
     Task<List<PersonelOzlukEvrakDurum>> GetTumPersonelEvrakDurumlariAsync();
     Task<PersonelOzlukEvrak> EvrakIsaretle(int soforId, int evrakTanimId, bool tamamlandi, string? aciklama = null);
     Task<PersonelOzlukEvrak> EvrakDosyaYukle(int soforId, int evrakTanimId, string dosyaYolu);
+    Task<PersonelOzlukEvrak> UpdatePersonelEvrakAsync(PersonelOzlukEvrak evrak);
 
     // Raporlama
     Task<List<PersonelOzlukEvrakDurum>> GetEksikEvrakliPersonellerAsync();

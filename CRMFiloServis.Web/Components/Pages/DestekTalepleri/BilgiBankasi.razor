@@ -26,6 +26,20 @@
         </div>
     </div>
 
+    @if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <div class="alert alert-warning d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Bilgi bankası verileri yüklenirken sorun oluştu.</strong>
+                <div class="small mt-1">@loadError</div>
+            </div>
+            <button class="btn btn-outline-warning btn-sm" @onclick="SayfayiYenile">
+                <i class="bi bi-arrow-clockwise me-1"></i>Tekrar Dene
+            </button>
+        </div>
+    }
+
     <div class="card mb-3">
         <div class="card-body py-2">
             <div class="row g-2 align-items-end">
@@ -273,10 +287,27 @@
     private int yayindaMakale;
     private int taslakMakale;
     private int toplamGoruntuleme;
+    private string? loadError;
 
     protected override async Task OnInitializedAsync()
     {
-        kategoriler = await DestekService.GetKategorilerAsync();
+        await SayfayiYenile();
+    }
+
+    private async Task SayfayiYenile()
+    {
+        loadError = null;
+
+        try
+        {
+            kategoriler = await DestekService.GetKategorilerAsync();
+        }
+        catch (Exception ex)
+        {
+            kategoriler = new();
+            loadError = ex.GetBaseException().Message;
+        }
+
         await LoadMakaleler();
     }
 
@@ -290,6 +321,14 @@
         }
         catch (Exception ex)
         {
+            pagedResult = new PagedResult<DestekBilgiBankasi>
+            {
+                Items = new List<DestekBilgiBankasi>(),
+                TotalCount = 0,
+                PageNumber = filter.Page,
+                PageSize = filter.PageSize
+            };
+            loadError ??= ex.GetBaseException().Message;
             ToastService.ShowError($"Bilgi bankası yüklenemedi: {ex.GetBaseException().Message}");
         }
         finally
@@ -300,18 +339,29 @@
 
     private async Task LoadStats()
     {
-        var tumMakaleler = await DestekService.GetBilgiBankasiPagedAsync(new BilgiBankasiFilterParams
+        try
         {
-            Page = 1,
-            PageSize = 500,
-            SortBy = "CreatedAt",
-            SortDesc = true
-        });
+            var tumMakaleler = await DestekService.GetBilgiBankasiPagedAsync(new BilgiBankasiFilterParams
+            {
+                Page = 1,
+                PageSize = 500,
+                SortBy = "CreatedAt",
+                SortDesc = true
+            });
 
-        toplamMakale = tumMakaleler.TotalCount;
-        yayindaMakale = tumMakaleler.Items.Count(x => x.Durum == BilgiBankasiDurum.Yayinda);
-        taslakMakale = tumMakaleler.Items.Count(x => x.Durum == BilgiBankasiDurum.Taslak);
-        toplamGoruntuleme = tumMakaleler.Items.Sum(x => x.GoruntulemeSayisi);
+            toplamMakale = tumMakaleler.TotalCount;
+            yayindaMakale = tumMakaleler.Items.Count(x => x.Durum == BilgiBankasiDurum.Yayinda);
+            taslakMakale = tumMakaleler.Items.Count(x => x.Durum == BilgiBankasiDurum.Taslak);
+            toplamGoruntuleme = tumMakaleler.Items.Sum(x => x.GoruntulemeSayisi);
+        }
+        catch (Exception ex)
+        {
+            toplamMakale = 0;
+            yayindaMakale = 0;
+            taslakMakale = 0;
+            toplamGoruntuleme = 0;
+            loadError ??= ex.GetBaseException().Message;
+        }
     }
 
     private async Task OnFilterChanged()

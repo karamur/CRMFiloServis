@@ -34,6 +34,20 @@
         </div>
     </div>
 
+    @if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <div class="alert alert-warning d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Destek modülü verileri yüklenirken sorun oluştu.</strong>
+                <div class="small mt-1">@loadError</div>
+            </div>
+            <button class="btn btn-outline-warning btn-sm" @onclick="SayfayiYenile">
+                <i class="bi bi-arrow-clockwise me-1"></i>Tekrar Dene
+            </button>
+        </div>
+    }
+
     <!-- Dashboard Kartları -->
     @if (stats != null)
     {
@@ -490,6 +504,7 @@
     
     private bool isLoading = true;
     private bool isSaving = false;
+    private string? loadError;
     
     // Modal kontrolleri
     private bool showYeniTalepModal = false;
@@ -502,6 +517,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await SayfayiYenile();
+    }
+
+    private async Task SayfayiYenile()
+    {
+        loadError = null;
         await LoadReferansVeriler();
         await LoadTalepler();
         await LoadDashboardStats();
@@ -509,10 +530,21 @@
 
     private async Task LoadReferansVeriler()
     {
-        departmanlar = await DestekService.GetDepartmanlarAsync();
-        kategoriler = await DestekService.GetKategorilerAsync();
-        kullanicilar = (await KullaniciService.GetAllAsync()).Where(k => k.Aktif).ToList();
-        cariler = (await CariService.GetAllAsync()).Where(c => c.Aktif).OrderBy(c => c.Unvan).ToList();
+        try
+        {
+            departmanlar = await DestekService.GetDepartmanlarAsync();
+            kategoriler = await DestekService.GetKategorilerAsync();
+            kullanicilar = (await KullaniciService.GetAllAsync()).Where(k => k.Aktif).ToList();
+            cariler = (await CariService.GetAllAsync()).Where(c => c.Aktif).OrderBy(c => c.Unvan).ToList();
+        }
+        catch (Exception ex)
+        {
+            departmanlar = new();
+            kategoriler = new();
+            kullanicilar = new();
+            cariler = new();
+            loadError = ex.Message;
+        }
     }
 
     private async Task LoadTalepler()
@@ -521,6 +553,17 @@
         try
         {
             pagedResult = await DestekService.GetPagedAsync(filter);
+        }
+        catch (Exception ex)
+        {
+            pagedResult = new PagedResult<DestekTalebi>
+            {
+                Items = new List<DestekTalebi>(),
+                TotalCount = 0,
+                PageNumber = filter.Page,
+                PageSize = filter.PageSize
+            };
+            loadError ??= ex.Message;
         }
         finally
         {
@@ -550,7 +593,15 @@
 
     private async Task LoadDashboardStats()
     {
-        stats = await DestekService.GetDashboardStatsAsync();
+        try
+        {
+            stats = await DestekService.GetDashboardStatsAsync();
+        }
+        catch (Exception ex)
+        {
+            stats = null;
+            loadError ??= ex.Message;
+        }
     }
 
     private async Task OnAramaKeyUp(KeyboardEventArgs e)
