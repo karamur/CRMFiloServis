@@ -732,6 +732,117 @@ public class MobileController : ControllerBase
     #region Arıza Bildirimi
 
     /// <summary>
+    /// Şoförün sefer geçmişini getirir
+    /// </summary>
+    [HttpGet("seferler")]
+    public async Task<IActionResult> GetSeferGecmisi([FromQuery] int sayfa = 1, [FromQuery] int adet = 20)
+    {
+        try
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            var soforId = await GetSoforIdAsync(context);
+
+            var query = context.ServisCalismalari
+                .AsNoTracking()
+                .Include(s => s.Arac)
+                .Include(s => s.Guzergah)
+                .AsQueryable();
+
+            // Şoför ise sadece kendi seferlerini göster
+            if (soforId.HasValue)
+            {
+                query = query.Where(s => s.SoforId == soforId.Value);
+            }
+
+            var seferler = await query
+                .OrderByDescending(s => s.CalismaTarihi)
+                .ThenByDescending(s => s.BaslangicSaati)
+                .Skip((sayfa - 1) * adet)
+                .Take(adet)
+                .Select(s => new MobileSeferGecmisOzet
+                {
+                    Id = s.Id,
+                    AracId = s.AracId,
+                    AracPlaka = s.Arac != null ? s.Arac.AktifPlaka ?? "" : "",
+                    GuzergahId = s.GuzergahId,
+                    GuzergahAdi = s.Guzergah != null ? s.Guzergah.GuzergahAdi ?? "" : "",
+                    BaslangicZamani = s.CalismaTarihi.Add(s.BaslangicSaati ?? TimeSpan.Zero),
+                    BitisZamani = s.BitisSaati.HasValue ? s.CalismaTarihi.Add(s.BitisSaati.Value) : (DateTime?)null,
+                    Durum = s.Durum.ToString(),
+                    BaslangicKm = s.KmBaslangic,
+                    BitisKm = s.KmBitis,
+                    Tamamlandi = s.Durum == CalismaDurum.Tamamlandi,
+                    ToplamKm = (s.KmBitis ?? 0) - (s.KmBaslangic ?? 0)
+                })
+                .ToListAsync();
+
+            return Ok(seferler);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Sefer geçmişi getirilirken hata");
+            return StatusCode(500, new { Error = "Sefer geçmişi yüklenirken hata oluştu" });
+        }
+    }
+
+    /// <summary>
+    /// Belirli bir seferin detaylarını getirir
+    /// </summary>
+    [HttpGet("seferler/{seferId}")]
+    public async Task<IActionResult> GetSefer(int seferId)
+    {
+        try
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            var soforId = await GetSoforIdAsync(context);
+
+            var sefer = await context.ServisCalismalari
+                .AsNoTracking()
+                .Include(s => s.Arac)
+                .Include(s => s.Guzergah)
+                .Where(s => s.Id == seferId && (soforId == null || s.SoforId == soforId.Value))
+                .Select(s => new MobileSeferGecmisOzet
+                {
+                    Id = s.Id,
+                    AracId = s.AracId,
+                    AracPlaka = s.Arac != null ? s.Arac.AktifPlaka ?? "" : "",
+                    GuzergahId = s.GuzergahId,
+                    GuzergahAdi = s.Guzergah != null ? s.Guzergah.GuzergahAdi ?? "" : "",
+                    BaslangicZamani = s.CalismaTarihi.Add(s.BaslangicSaati ?? TimeSpan.Zero),
+                    BitisZamani = s.BitisSaati.HasValue ? s.CalismaTarihi.Add(s.BitisSaati.Value) : (DateTime?)null,
+                    Durum = s.Durum.ToString(),
+                    BaslangicKm = s.KmBaslangic,
+                    BitisKm = s.KmBitis,
+                    Tamamlandi = s.Durum == CalismaDurum.Tamamlandi,
+                    ToplamKm = (s.KmBitis ?? 0) - (s.KmBaslangic ?? 0)
+                })
+                .FirstOrDefaultAsync();
+
+            if (sefer == null)
+            {
+                return NotFound(new { Error = "Sefer bulunamadı" });
+            }
+
+            return Ok(sefer);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Sefer detayı getirilirken hata: {SeferId}", seferId);
+            return StatusCode(500, new { Error = "Sefer detayı yüklenirken hata oluştu" });
+        }
+    }
+
+    /// <summary>
+    /// Health check endpoint
+    /// </summary>
+    [HttpGet("/api/health")]
+    [AllowAnonymous]
+    public IActionResult HealthCheck()
+    {
+        return Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });
+    }
+
+    /// <summary>
     /// Arıza bildirimi gönderir
     /// </summary>
     [HttpPost("ariza")]
@@ -857,6 +968,22 @@ public class MobileSeferDetay : MobileSeferOzet
 {
     public string? Notlar { get; set; }
     public decimal? YakitTuketimi { get; set; }
+}
+
+public class MobileSeferGecmisOzet
+{
+    public int Id { get; set; }
+    public int AracId { get; set; }
+    public string AracPlaka { get; set; } = string.Empty;
+    public int GuzergahId { get; set; }
+    public string GuzergahAdi { get; set; } = string.Empty;
+    public DateTime BaslangicZamani { get; set; }
+    public DateTime? BitisZamani { get; set; }
+    public string Durum { get; set; } = string.Empty;
+    public int? BaslangicKm { get; set; }
+    public int? BitisKm { get; set; }
+    public bool Tamamlandi { get; set; }
+    public int ToplamKm { get; set; }
 }
 
 public class MobileSeferBaslatRequest
