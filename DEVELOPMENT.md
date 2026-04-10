@@ -42,7 +42,7 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 ## Handoff Notu
 
 ### Son Durum
-- Son tamamlanan geliştirme: `Kayıt 137 - SignalR Gerçek Zamanlı Araç Takip`
+- Son tamamlanan geliştirme: `Kayıt 138 - Araç Takip API Controller`
 - Git durumu: commit edilecek
 - Branch: `main`
 
