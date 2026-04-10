@@ -42,22 +42,22 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 ## Handoff Notu
 
 ### Son Durum
-- Son tamamlanan geliştirme: `Kayıt 140 - MAUI Blazor Mobil Uygulama Altyapısı`
+- Son tamamlanan geliştirme: `Kayıt 141 - Mobil Uygulama Sayfaları ve API Endpoint'leri`
 - Git durumu: commit edilecek
 - Branch: `main`
 
 ### Yarım Devam İçin Önerilen Başlangıç
-1. `Mobil API Controller (Mobile Endpoint'leri)` veya
-2. `Multi-tenant mimari (FAZ 4.1)`
+1. `Multi-tenant mimari (FAZ 4.1)` - Çoklu şirket desteği
 
 ### Kısa Teknik Özet
-- TestDataSeeder servisi oluşturuldu (demo veri oluşturma/temizleme)
-- DemoVeri.razor yönetim sayfası eklendi
-- [TEST] etiketleme sistemi ile kolay temizleme
-- FAZ 7.5 Örnek Veri & Test bölümü tamamlandı
+- Mobil uygulama sayfaları tamamlandı (SeferGecmisi, SeferBitir, Ayarlar)
+- MobileController endpoint'leri eklendi (sefer geçmişi, tekil sefer, health check)
+- IApiService/ApiService metodları güncellendi
+- FAZ 3.3 Mobil Uygulama tamamen tamamlandı
 
 ### Not
-- Yarın devam ederken önce `ROADMAP.md` ve bu dosyadaki son kayıtlar referans alınmalı.
+- Mobil uygulama artık tam fonksiyonel (Giris, Home, SeferBaslat, SeferBitir, SeferGecmisi, MasrafGirisi, ArizaBildir, Ayarlar)
+- Sonraki adım: FAZ 4.1 Multi-tenant mimari (düşük öncelik) veya kullanıcı talepleri
 
 ---
 
@@ -536,6 +536,69 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 - `CRMFiloServis.Mobile/Components/Layout/MainLayout.razor` (güncellendi)
 - `CRMFiloServis.Mobile/wwwroot/index.html` (güncellendi)
 - `CRMFiloServis.slnx` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
+---
+
+### Kayıt 141 - Mobil Uygulama Sayfaları ve API Endpoint'leri
+**Talep:**
+- Mobil uygulamada eksik sayfaların tamamlanması
+- MobileController'a eksik endpoint'lerin eklenmesi
+
+**Yapılanlar:**
+
+**1. Yeni Mobil Sayfalar:**
+- `SeferGecmisi.razor` - Şoför sefer geçmişi görüntüleme:
+  - Ay/yıl filtreleme (dropdown seçici)
+  - Özet kartları (toplam sefer, toplam KM, toplam çalışma süresi)
+  - Sefer listesi (tarih, güzergah, araç, mesafe, süre)
+  - Tamamlanan/iptal renk kodları
+  - Detay görüntüleme navigasyonu
+
+- `SeferBitir.razor` - Aktif seferi bitirme:
+  - Sefer bilgileri kartı (güzergah, araç, başlangıç KM)
+  - Bitiş KM girişi (validation: başlangıç KM'den büyük)
+  - Mevcut konum alma butonu (GPS koordinatları)
+  - Notlar alanı (isteğe bağlı)
+  - Sefer tamamlama API çağrısı
+  - Ana sayfaya yönlendirme
+
+- `Ayarlar.razor` - Mobil uygulama ayarları:
+  - Profil bilgileri kartı (ad, e-posta, telefon)
+  - Konum takibi switch (on/off)
+  - Bildirim ayarları switch (on/off)
+  - Sunucu bağlantısı test butonu (health check API)
+  - Çıkış yap butonu (token temizleme, login'e yönlendirme)
+
+**2. API Service Güncellemeleri (IApiService/ApiService):**
+- `GuzergahlariGetirAsync()` - Tüm güzergahları getir
+- `SeferGecmisiniGetirAsync()` - Şoför sefer geçmişi (ay/yıl filtreli)
+- `SeferGetirAsync(int id)` - Tekil sefer detayı
+- `BaglantiyiTestEtAsync()` - Sunucu bağlantı testi (health check)
+- `GuzergahOzet` DTO eklendi
+
+**3. MobileController Endpoint'leri:**
+- `GET /api/mobile/seferler` - Şoför sefer geçmişi listesi
+- `GET /api/mobile/seferler/{id}` - Tekil sefer detayı
+- `GET /api/health` - Sunucu sağlık kontrolü (health check)
+- `MobileSeferGecmisOzet` DTO eklendi (Id, BaslangicZamani, BitisZamani, ToplamKm, Durum, GuzergahAdi, AracPlaka)
+
+**Teknik Detaylar:**
+- Nullable TimeSpan hesaplama düzeltmesi (ToplamSaat)
+- Bootstrap 5 mobil uyumlu tasarım
+- Form validation (DataAnnotations)
+- JWT Bearer authentication
+- Async/await pattern
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Mobile/Components/Pages/SeferGecmisi.razor` (yeni)
+- `CRMFiloServis.Mobile/Components/Pages/SeferBitir.razor` (yeni)
+- `CRMFiloServis.Mobile/Components/Pages/Ayarlar.razor` (yeni)
+- `CRMFiloServis.Mobile/Services/IApiService.cs` (güncellendi)
+- `CRMFiloServis.Mobile/Services/ApiService.cs` (güncellendi)
+- `CRMFiloServis.Web/Controllers/MobileController.cs` (güncellendi)
+- `ROADMAP.md` (güncellendi)
 
 **Durum:** ✅ Tamamlandı
 
