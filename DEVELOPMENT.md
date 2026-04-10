@@ -42,22 +42,25 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 ## Handoff Notu
 
 ### Son Durum
-- Son tamamlanan geliştirme: `Kayıt 145 - Multi-tenant Veri İzolasyonu (Global Query Filter)`
+- Son tamamlanan geliştirme: `Kayıt 146 - Şirketler Arası Transfer (FAZ 4.1)`
 - Git durumu: commit edilecek
 - Branch: `main`
 
 ### Yarım Devam İçin Önerilen Başlangıç
-1. EF Core Migration oluştur ve uygula
-2. `Şirketler arası transfer (FAZ 4.1)` - Veri transfer mekanizması
+1. EF Core Migration oluştur ve uygula (SirketId alanları + SirketTransferLog tablosu)
+2. Sonraki FAZ veya özellik seçimi
 
 ### Kısa Teknik Özet
-- Şirket Yönetimi UI sayfası oluşturuldu (/ayarlar/sirketler)
-- TenantService Admin rolü desteği eklendi
-- NavMenu'ye Şirket Yönetimi linki eklendi (sadece Admin görebilir)
+- FAZ 4.1 Çoklu Şirket Desteği tamamen tamamlandı:
+  - Multi-tenant mimari (Entity + Servis + UI)
+  - Şirket bazlı veri izolasyonu (Global Query Filter)
+  - Şirketler arası transfer (SirketTransfer.razor + TenantService)
 
 ### Not
-- Multi-tenant altyapısı hazır: Entity + Servis + DB + UI
-- Sonraki adım: Global Query Filter ile şirket bazlı veri izolasyonu
+- FAZ 4 Kurumsal Özellikler bölümü tamamlandı
+- FAZ 4.1 (Çoklu Şirket Desteği) tam olarak hazır
+- FAZ 4.2 (API & Entegrasyon) - REST API, Swagger, Webhook ✅
+- FAZ 4.3 (Performans & Ölçekleme) - Redis Cache, Pagination ✅
 
 ---
 
@@ -5079,5 +5082,111 @@ Projede zaten kapsamlı bir rol/yetki sistemi mevcuttu:
 - `CRMFiloServis.Web/Components/Shared/YetkiKontrol.razor` (YENİ)
 - `CRMFiloServis.Web/Components/Pages/Ayarlar/KullaniciYonetimi.razor` (güncellendi)
 - `CRMFiloServis.Web/Components/Pages/Ayarlar/RolYonetimi.razor` (güncellendi)
+
+**Durum:** ✅ Tamamlandı
+
+---
+
+### Kayıt 145 - Multi-tenant Veri İzolasyonu (FAZ 4.1)
+**Talep:** FAZ 4.1 - Çoklu Şirket Desteği kapsamında şirket bazlı veri izolasyonu.
+
+**Yapılanlar:**
+
+**1. Entity Güncellemeleri (SirketId FK Ekleme):**
+- `Cari` entity'sine `SirketId` (int?, FK) eklendi
+- `Sofor` entity'sine `SirketId` (int?, FK) eklendi
+- `Arac` entity'sine `SirketId` (int?, FK) eklendi
+- `Fatura` entity'sine `SirketId` (int?, FK) eklendi
+- `Guzergah` entity'sine `SirketId` (int?, FK) eklendi
+- `BankaHesap` entity'sine `SirketId` (int?, FK) eklendi
+- `BankaKasaHareket` entity'sine `SirketId` (int?, FK) eklendi
+- Tüm entity'lere `Sirket` navigation property eklendi
+
+**2. ApplicationDbContext Global Query Filter:**
+- 7 entity için `HasQueryFilter` ile otomatik şirket filtreleme
+- `_currentSirketId` private field (aktif şirket ID)
+- `SetTenantService()` metodu ile runtime tenant değişikliği
+- SuperAdmin bypass desteği (`_isSuperAdmin = true` olduğunda filtre devre dışı)
+- `IgnoreQueryFilters()` ile manuel bypass imkanı
+
+**3. ITenantService Interface:**
+- `GetCurrentSirketIdAsync()` - aktif şirket ID
+- `SetCurrentSirketAsync(int sirketId)` - şirket değiştirme
+- `IsSuperAdminAsync()` - SuperAdmin kontrolü
+- `GetKullaniciSirketleriAsync()` - kullanıcının erişebildiği şirketler
+
+**4. TenantService Implementasyonu:**
+- Session/Cookie tabanlı aktif şirket yönetimi
+- Kullanıcı-şirket ilişkisi kontrolü
+- SuperAdmin için tüm şirketlere erişim
+- DbContext'e tenant bilgisi aktarımı
+
+**5. Servis Güncellemeleri:**
+- `CariService`, `SoforService`, `AracService` güncellendi
+- Yeni kayıtlara otomatik `SirketId` atama
+- `ITenantService` injection
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/CRMEntities.cs` (7 entity güncellendi)
+- `CRMFiloServis.Web/Data/ApplicationDbContext.cs` (Global Query Filter)
+- `CRMFiloServis.Web/Services/Interfaces/ITenantService.cs` (YENİ)
+- `CRMFiloServis.Web/Services/TenantService.cs` (YENİ)
+- `CRMFiloServis.Web/Services/CariService.cs` (tenant entegrasyonu)
+- `CRMFiloServis.Web/Services/SoforService.cs` (tenant entegrasyonu)
+- `CRMFiloServis.Web/Services/AracService.cs` (tenant entegrasyonu)
+
+**Durum:** ✅ Tamamlandı
+
+---
+
+### Kayıt 146 - Şirketler Arası Transfer (FAZ 4.1)
+**Talep:** FAZ 4.1 - Çoklu Şirket Desteği kapsamında şirketler arası veri transferi.
+
+**Yapılanlar:**
+
+**1. SirketTransferLog Entity:**
+- `EntityTuru` (string) - transfer edilen entity türü
+- `EntityId` (int) - transfer edilen kayıt ID
+- `KaynakSirketId` (int) - kaynak şirket
+- `HedefSirketId` (int) - hedef şirket
+- `TransferEden` (string) - işlemi yapan kullanıcı
+- `TransferTarihi` (DateTime) - transfer zamanı
+- `Aciklama` (string) - opsiyonel not
+
+**2. ITenantService Transfer Metodları:**
+- `TransferAsync(SirketTransferRequest)` - toplu transfer
+- `GetTransferOnizlemeAsync()` - transfer önizleme (entity sayıları)
+- `GetTransferLoglariAsync()` - transfer geçmişi
+
+**3. TenantService Transfer Implementasyonu:**
+- `TransferCariAsync()` - Cari transferi (alt kayıtlarıyla birlikte)
+- `TransferAracAsync()` - Araç transferi (masraflar, belgeler dahil)
+- `TransferSoforAsync()` - Şoför transferi (puantaj, maaş dahil)
+- `TransferFaturaAsync()` - Fatura transferi (detaylar dahil)
+- `TransferGuzergahAsync()` - Güzergah transferi
+- `TransferBankaHesapAsync()` - Banka hesabı transferi
+- `TransferBankaKasaHareketAsync()` - Hareket transferi
+- Her transfer sonrası `SirketTransferLog` kaydı
+
+**4. SirketTransfer.razor UI Sayfası:**
+- Entity türü seçimi (Cari, Araç, Şoför, Fatura, Güzergah, Banka Hesap, Hareket)
+- Kaynak şirket seçimi (dropdown)
+- Hedef şirket seçimi (dropdown)
+- Transfer önizleme tablosu (kaynak şirketteki kayıt sayıları)
+- Toplu transfer butonu
+- Transfer geçmişi tablosu (son 50 işlem)
+- SuperAdmin yetki kontrolü
+
+**5. SirketYonetimi.razor Güncelleme:**
+- "Şirket Transferi" butonuyla SirketTransfer sayfasına yönlendirme
+- İstatistik kartlarında toplam kayıt sayıları
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/SirketTransferLog.cs` (YENİ)
+- `CRMFiloServis.Web/Data/ApplicationDbContext.cs` (DbSet eklendi)
+- `CRMFiloServis.Web/Services/Interfaces/ITenantService.cs` (transfer metodları)
+- `CRMFiloServis.Web/Services/TenantService.cs` (transfer implementasyonu)
+- `CRMFiloServis.Web/Components/Pages/Ayarlar/SirketTransfer.razor` (YENİ)
+- `CRMFiloServis.Web/Components/Pages/Ayarlar/SirketYonetimi.razor` (güncellendi)
 
 **Durum:** ✅ Tamamlandı

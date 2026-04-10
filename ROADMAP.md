@@ -3,6 +3,7 @@
 ## ?? Mevcut Durum Analizi
 
 ### Son Güncellemeler
+- ✅ `Şirketler Arası Transfer (FAZ 4.1)` tamamlandı - SirketTransferLog entity, ITenantService transfer metodları, 7 entity için transfer desteği (Cari, Araç, Şoför, Fatura, Güzergah, BankaHesap, BankaKasaHareket), SirketTransfer.razor yönetim UI.
 - ✅ `Multi-tenant Veri İzolasyonu (FAZ 4.1)` tamamlandı - 7 temel entity'ye (Cari, Sofor, Arac, Fatura, Guzergah, BankaHesap, BankaKasaHareket) SirketId eklendi, Global Query Filter ile şirket bazlı otomatik filtreleme, SuperAdmin bypass desteği.
 - ✅ `Şirket Yönetimi UI (FAZ 4.1)` tamamlandı - SirketYonetimi.razor sayfası, şirket CRUD, şirket geçişi, istatistik kartları, Admin/SuperAdmin yetki kontrolü.
 - ✅ `Mobil Uygulama API Endpoint'leri (FAZ 3.3)` tamamlandı - Sefer geçmişi, tekil sefer getirme, health check endpoint'leri MobileController'a eklendi.
@@ -140,7 +141,7 @@
 |---------|---------|------|-------|
 | Multi-tenant mimari | 🟢 Düşük | 5 gün | ✅ Tamamlandı (Entity+Servis+UI) |
 | Şirket bazlı veri izolasyonu | 🟢 Düşük | 3 gün | ✅ Tamamlandı (Global Query Filter) |
-| Şirketler arası transfer | 🟢 Düşük | 2 gün | ⏳ |
+| Şirketler arası transfer | 🟢 Düşük | 2 gün | ✅ Tamamlandı |
 
 ### 4.2 API & Entegrasyon
 | Özellik | Öncelik | Süre | Durum |
