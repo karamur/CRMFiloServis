@@ -122,21 +122,21 @@
 ### 3.3 Mobil Uygulama
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Şoför mobil uygulaması (MAUI Blazor) | ?? Orta | 10 gün | ? |
-| Sefer başlat/bitir | ?? Orta | 2 gün | ? |
-| Arıza bildirimi | ?? Orta | 1 gün | ? |
-| Masraf girişi (fotoğraflı) | ?? Orta | 2 gün | ? |
+| Şoför mobil uygulaması (MAUI Blazor) | 🟡 Orta | 10 gün | ✅ Tamamlandı |
+| Sefer başlat/bitir | 🟡 Orta | 2 gün | ✅ Tamamlandı |
+| Arıza bildirimi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Masraf girişi (fotoğraflı) | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 
 ---
 
-## ?? FAZ 4 - Kurumsal Özellikler
+## 🏢 FAZ 4 - Kurumsal Özellikler
 
 ### 4.1 Çoklu Şirket Desteği
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Multi-tenant mimari | ?? Düşük | 5 gün | ? |
-| Şirket bazlı veri izolasyonu | ?? Düşük | 3 gün | ? |
-| Şirketler arası transfer | ?? Düşük | 2 gün | ? |
+| Multi-tenant mimari | 🟢 Düşük | 5 gün | ⏳ |
+| Şirket bazlı veri izolasyonu | 🟢 Düşük | 3 gün | ⏳ |
+| Şirketler arası transfer | 🟢 Düşük | 2 gün | ⏳ |
 
 ### 4.2 API & Entegrasyon
 | Özellik | Öncelik | Süre | Durum |
