@@ -297,4 +297,97 @@ public class ApiService : IApiService
         }
         return new();
     }
+
+    public async Task<List<GuzergahOzet>> GuzergahlariGetirAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/mobile/guzergahlar");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<GuzergahOzet>>(_jsonOptions) ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Güzergahlar alınırken hata oluştu");
+        }
+        return new();
+    }
+
+    public async Task<List<SeferOzet>> SeferGecmisiniGetirAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/mobile/seferler");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<SeferOzet>>(_jsonOptions) ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Sefer geçmişi alınırken hata oluştu");
+        }
+        return new();
+    }
+
+    public async Task<SeferOzet?> SeferGetirAsync(int seferId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/mobile/seferler/{seferId}");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<SeferOzet>(_jsonOptions);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Sefer bilgisi alınırken hata oluştu: {SeferId}", seferId);
+        }
+        return null;
+    }
+
+    public async Task<bool> SeferBitirAsync(object model)
+    {
+        try
+        {
+            // Dynamic model'den değerleri al
+            var json = JsonSerializer.Serialize(model, _jsonOptions);
+            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+
+            if (dict == null || !dict.ContainsKey("seferId")) return false;
+
+            var seferId = dict["seferId"].GetInt32();
+            var request = new SeferBitirRequest
+            {
+                BitisKm = dict.ContainsKey("bitisKm") ? (int)dict["bitisKm"].GetDecimal() : 0,
+                BitisEnlem = dict.ContainsKey("bitisEnlem") ? dict["bitisEnlem"].GetDouble() : null,
+                BitisBoylam = dict.ContainsKey("bitisBoylam") ? dict["bitisBoylam"].GetDouble() : null,
+                Notlar = dict.ContainsKey("notlar") ? dict["notlar"].GetString() : null
+            };
+
+            var result = await SeferBitirAsync(seferId, request);
+            return result != null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Sefer bitirme hatası");
+            return false;
+        }
+    }
+
+    public async Task<bool> BaglantiyiTestEtAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("api/health");
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

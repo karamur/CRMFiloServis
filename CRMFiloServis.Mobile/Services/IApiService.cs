@@ -59,7 +59,37 @@ public interface IApiService
     /// Masraf kalemleri listesi
     /// </summary>
     Task<List<MasrafKalemiOzet>> MasrafKalemleriGetirAsync();
-    
+
+    /// <summary>
+    /// Güzergah listesi
+    /// </summary>
+    Task<List<GuzergahOzet>> GuzergahlariGetirAsync();
+
+    /// <summary>
+    /// Sefer geçmişini getir
+    /// </summary>
+    Task<List<SeferOzet>> SeferGecmisiniGetirAsync();
+
+    /// <summary>
+    /// Belirli bir seferi getir
+    /// </summary>
+    Task<SeferOzet?> SeferGetirAsync(int seferId);
+
+    /// <summary>
+    /// Sefer bitir (basitleştirilmiş model)
+    /// </summary>
+    Task<bool> SeferBitirAsync(object model);
+
+    /// <summary>
+    /// Bağlantıyı test et
+    /// </summary>
+    Task<bool> BaglantiyiTestEtAsync();
+
+    /// <summary>
+    /// Token'ı başlangıçta yükle
+    /// </summary>
+    Task TokenYukleAsync();
+
     /// <summary>
     /// JWT token geçerli mi kontrol et
     /// </summary>
@@ -113,6 +143,17 @@ public class SeferOzet
     public string Durum { get; set; } = string.Empty; // DevamEdiyor, Tamamlandi, IptalEdildi
     public int? BaslangicKm { get; set; }
     public int? BitisKm { get; set; }
+    public bool Tamamlandi => Durum == "Tamamlandi" || BitisZamani.HasValue;
+    public decimal ToplamKm => (BitisKm ?? 0) - (BaslangicKm ?? 0);
+}
+
+public class GuzergahOzet
+{
+    public int Id { get; set; }
+    public string Ad { get; set; } = string.Empty;
+    public string? BaslangicNoktasi { get; set; }
+    public string? BitisNoktasi { get; set; }
+    public decimal? Mesafe { get; set; }
 }
 
 public class SeferDetay : SeferOzet
