@@ -247,6 +247,8 @@ builder.Services.AddScoped<IWebhookService, WebhookService>(); // Webhook Sistem
 builder.Services.AddScoped<TestDataSeeder>(); // Test/Demo Veri Oluşturma Servisi
 builder.Services.AddScoped<IAracTakipService, AracTakipService>(); // Araç GPS Takip Servisi
 builder.Services.AddScoped<IAracTakipBildirimService, AracTakipBildirimService>(); // SignalR Araç Takip Bildirim Servisi
+builder.Services.AddSingleton<GpsSimulasyonService>(); // GPS Simülasyon Servisi (Singleton - state tutar)
+builder.Services.AddHostedService(sp => sp.GetRequiredService<GpsSimulasyonService>()); // BackgroundService olarak çalıştır
 builder.Services.AddSignalR(); // SignalR Hub'ları için
 builder.Services.AddHttpClient("SMS"); // SMS provider'lar için HttpClient
 builder.Services.AddHttpClient("Webhook"); // Webhook gönderimi için HttpClient
