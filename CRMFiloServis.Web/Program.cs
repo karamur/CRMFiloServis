@@ -223,7 +223,9 @@ builder.Services.AddScoped<IEbysAIService, EbysAIService>(); // EBYS AI Servisi 
 builder.Services.AddScoped<ISemanticSearchService, SemanticSearchService>(); // EBYS Semantic Search (Akıllı Belge Arama) Servisi
 builder.Services.AddScoped<IBildirimService, BildirimService>(); // Bildirim Sistemi Servisi
 builder.Services.AddScoped<ISmsService, SmsService>(); // SMS Gönderim Servisi
+builder.Services.AddScoped<IWebhookService, WebhookService>(); // Webhook Sistemi Servisi
 builder.Services.AddHttpClient("SMS"); // SMS provider'lar için HttpClient
+builder.Services.AddHttpClient("Webhook"); // Webhook gönderimi için HttpClient
 builder.Services.AddHostedService<AutoBackupService>();
 builder.Services.AddHttpContextAccessor();
 

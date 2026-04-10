@@ -124,6 +124,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<CariIletisimNot> CariIletisimNotlar { get; set; }
     public DbSet<CariHatirlatma> CariHatirlatmalar { get; set; }
 
+    // Webhook Sistemi
+    public DbSet<WebhookEndpoint> WebhookEndpointler { get; set; }
+    public DbSet<WebhookLog> WebhookLoglar { get; set; }
+
     // WhatsApp Iletisim Modulu
     public DbSet<WhatsAppKisi> WhatsAppKisiler { get; set; }
     public DbSet<WhatsAppGrup> WhatsAppGruplar { get; set; }

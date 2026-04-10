@@ -42,20 +42,20 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 ## Handoff Notu
 
 ### Son Durum
-- Son tamamlanan geliştirme: `Kayıt 130 - REST API + Swagger (FAZ 4.2)`
+- Son tamamlanan geliştirme: `Kayıt 131 - Webhook Desteği (FAZ 4.2)`
 - Git durumu: commit edilecek
 - Branch: `main`
 
 ### Yarın Devam İçin Önerilen Başlangıç
 1. `Harita entegrasyonu` veya
 2. `Mobil uygulama (MAUI Blazor)` veya
-3. `Webhook desteği`
+3. `Redis cache entegrasyonu`
 
 ### Kısa Teknik Özet
-- REST API ile JWT Bearer Authentication eklendi (24 saat token süresi)
-- Swagger/OpenAPI dokümantasyonu aktif (/swagger endpoint)
-- 6 API Controller: AuthController, CarilerController, AraclarController, SoforlerController, FaturalarController, GuzergahlarController
-- appsettings.json'da Jwt:Secret konfigürasyonu eklendi
+- Webhook sistemi eklendi (WebhookEndpoint, WebhookLog entity'leri)
+- IWebhookService ile HMAC imza ve retry mekanizması
+- 20 olay tipi desteği (Fatura, Cari, Araç, Şoför, Güzergah, Ödeme olayları)
+- Webhook yönetim UI'ı (/ayarlar/webhooks)
 
 ### Not
 - Yarın devam ederken önce `ROADMAP.md` ve bu dosyadaki son kayıtlar referans alınmalı.
@@ -63,6 +63,50 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 ---
 
 ## İstek Kayıtları
+
+### Kayıt 131 - Webhook Desteği (FAZ 4.2)
+**Talep:**
+- Dış sistemlere olay bildirimi için webhook sistemi
+
+**Yapılanlar:**
+- Webhook Entity'leri oluşturuldu:
+  - `WebhookEndpoint` - Webhook endpoint tanımları (URL, secret, retry ayarları, olay filtresi)
+  - `WebhookLog` - Webhook gönderim logları (durum, HTTP yanıt, süre, retry sayısı)
+  - `WebhookLogDurum` enum (Bekliyor, Gonderiliyor, Basarili, Basarisiz, YenidenDeneniyor, Iptal)
+  - `WebhookOlayTipleri` static class - 20 olay tipi (Fatura.*, Cari.*, Arac.*, Sofor.*, Guzergah.*, Odeme.*)
+- `IWebhookService` interface oluşturuldu:
+  - Endpoint CRUD
+  - Webhook tetikleme (TriggerWebhookAsync)
+  - Log işlemleri
+  - İstatistikler
+- `WebhookService` implementasyonu:
+  - HMAC-SHA256 imza (X-Webhook-Signature header)
+  - Retry mekanizması (configurable max retry, delay)
+  - Asenkron gönderim (fire and forget)
+  - HTTP status tracking
+  - Olay filtresi desteği
+- Webhook yönetim UI'ı oluşturuldu:
+  - Endpoint listesi ve CRUD
+  - Test butonu
+  - Log görüntüleme
+  - İstatistik kartları
+- ApplicationDbContext'e DbSet'ler eklendi
+- Program.cs'e servis kaydı eklendi
+- NavMenu'ye Webhook Yönetimi linki eklendi
+
+**Etkilenen Dosyalar:**
+- `CRMFiloServis.Shared/Entities/CRMEntities.cs` (güncellendi)
+- `CRMFiloServis.Web/Data/ApplicationDbContext.cs` (güncellendi)
+- `CRMFiloServis.Web/Services/Interfaces/IWebhookService.cs` (yeni)
+- `CRMFiloServis.Web/Services/WebhookService.cs` (yeni)
+- `CRMFiloServis.Web/Components/Pages/Ayarlar/Webhooks.razor` (yeni)
+- `CRMFiloServis.Web/Components/Layout/NavMenu.razor` (güncellendi)
+- `CRMFiloServis.Web/Program.cs` (güncellendi)
+- `ROADMAP.md`
+
+**Durum:** ✅ Tamamlandı
+
+---
 
 ### Kayıt 130 - REST API + Swagger (FAZ 4.2)
 **Talep:**

@@ -562,3 +562,140 @@ public class DashboardWidget : BaseEntity
 }
 
 #endregion
+
+#region Webhook Sistemi
+
+/// <summary>
+/// Webhook endpoint tanımları - dış sistemlere olay bildirimi
+/// </summary>
+public class WebhookEndpoint : BaseEntity
+{
+    [Required]
+    [StringLength(100)]
+    public string Ad { get; set; } = string.Empty;
+
+    [StringLength(500)]
+    public string? Aciklama { get; set; }
+
+    [Required]
+    [StringLength(500)]
+    public string Url { get; set; } = string.Empty;
+
+    [StringLength(100)]
+    public string? Secret { get; set; } // HMAC imza için
+
+    public bool Aktif { get; set; } = true;
+
+    // Retry ayarları
+    public int MaxRetry { get; set; } = 3;
+    public int RetryDelaySaniye { get; set; } = 30;
+
+    // Hangi olayları dinlesin?
+    public string? OlayFiltresi { get; set; } // JSON array: ["Fatura.Olusturuldu", "Cari.Guncellendi"]
+
+    // HTTP ayarları
+    public string HttpMethod { get; set; } = "POST";
+    public string? Headers { get; set; } // JSON formatında ek headerlar
+
+    // İstatistikler
+    public int ToplamGonderim { get; set; } = 0;
+    public int BasariliGonderim { get; set; } = 0;
+    public int BasarisizGonderim { get; set; } = 0;
+    public DateTime? SonGonderimTarihi { get; set; }
+    public DateTime? SonBasariliTarih { get; set; }
+
+    // İlişkiler
+    public virtual ICollection<WebhookLog> Loglar { get; set; } = new List<WebhookLog>();
+}
+
+/// <summary>
+/// Webhook gönderim logları
+/// </summary>
+public class WebhookLog : BaseEntity
+{
+    public int WebhookEndpointId { get; set; }
+    public virtual WebhookEndpoint WebhookEndpoint { get; set; } = null!;
+
+    [Required]
+    [StringLength(100)]
+    public string OlayTipi { get; set; } = string.Empty; // "Fatura.Olusturuldu", "Cari.Guncellendi"
+
+    public string? Payload { get; set; } // Gönderilen JSON veri
+
+    public WebhookLogDurum Durum { get; set; } = WebhookLogDurum.Bekliyor;
+
+    public int HttpStatusCode { get; set; } = 0;
+    public string? ResponseBody { get; set; }
+
+    public DateTime? GonderimTarihi { get; set; }
+    public DateTime? YanitTarihi { get; set; }
+    public int SureMilisaniye { get; set; } = 0;
+
+    public int RetryCount { get; set; } = 0;
+    public string? HataMesaji { get; set; }
+
+    // İlişkili kayıt
+    public string? IliskiliTablo { get; set; }
+    public int? IliskiliKayitId { get; set; }
+}
+
+public enum WebhookLogDurum
+{
+    Bekliyor = 0,
+    Gonderiliyor = 1,
+    Basarili = 2,
+    Basarisiz = 3,
+    YenidenDeneniyor = 4,
+    Iptal = 5
+}
+
+/// <summary>
+/// Webhook olay tipleri
+/// </summary>
+public static class WebhookOlayTipleri
+{
+    // Fatura olayları
+    public const string FaturaOlusturuldu = "Fatura.Olusturuldu";
+    public const string FaturaGuncellendi = "Fatura.Guncellendi";
+    public const string FaturaSilindi = "Fatura.Silindi";
+    public const string FaturaOdendi = "Fatura.Odendi";
+
+    // Cari olayları
+    public const string CariOlusturuldu = "Cari.Olusturuldu";
+    public const string CariGuncellendi = "Cari.Guncellendi";
+    public const string CariSilindi = "Cari.Silindi";
+
+    // Araç olayları
+    public const string AracOlusturuldu = "Arac.Olusturuldu";
+    public const string AracGuncellendi = "Arac.Guncellendi";
+    public const string AracSilindi = "Arac.Silindi";
+
+    // Şoför olayları
+    public const string SoforOlusturuldu = "Sofor.Olusturuldu";
+    public const string SoforGuncellendi = "Sofor.Guncellendi";
+    public const string SoforSilindi = "Sofor.Silindi";
+
+    // Güzergah olayları
+    public const string GuzergahOlusturuldu = "Guzergah.Olusturuldu";
+    public const string GuzergahGuncellendi = "Guzergah.Guncellendi";
+    public const string GuzergahSilindi = "Guzergah.Silindi";
+
+    // Servis çalışması olayları
+    public const string ServisCalismasi = "Servis.Calisma";
+
+    // Ödeme olayları
+    public const string OdemeAlindi = "Odeme.Alindi";
+    public const string OdemeYapildi = "Odeme.Yapildi";
+
+    public static string[] TumOlaylar => new[]
+    {
+        FaturaOlusturuldu, FaturaGuncellendi, FaturaSilindi, FaturaOdendi,
+        CariOlusturuldu, CariGuncellendi, CariSilindi,
+        AracOlusturuldu, AracGuncellendi, AracSilindi,
+        SoforOlusturuldu, SoforGuncellendi, SoforSilindi,
+        GuzergahOlusturuldu, GuzergahGuncellendi, GuzergahSilindi,
+        ServisCalismasi, OdemeAlindi, OdemeYapildi
+    };
+}
+
+#endregion

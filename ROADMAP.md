@@ -3,6 +3,7 @@
 ## ?? Mevcut Durum Analizi
 
 ### Son Güncellemeler
+- ✅ `Webhook Desteği (FAZ 4.2)` tamamlandı - WebhookEndpoint/WebhookLog entity'leri, IWebhookService servisi, HMAC imza, retry mekanizması, Webhook yönetim UI'ı (/ayarlar/webhooks) eklendi.
 - ✅ `REST API + Swagger (FAZ 4.2)` tamamlandı - JWT Bearer Authentication, 6 API Controller (Auth, Cariler, Araclar, Soforler, Faturalar, Guzergahlar), Swagger/OpenAPI dokümantasyonu eklendi.
 - ✅ `E-Fatura entegrasyonu (GİB) - Durum Takibi` tamamlandı - XML sonrası gönderime hazırlık, gönderildi, kabul/red durum takibi ve UI aksiyonları eklendi.
 - ✅ `Puantaj onay sistemi` tamamlandı - Personel puantaj kayıtları için taslak, onay bekliyor, onaylandı, reddedildi akışı ve UI aksiyonları eklendi.
@@ -138,7 +139,7 @@
 |---------|---------|------|-------|
 | REST API oluşturma | 🟡 Orta | 4 gün | ✅ Tamamlandı |
 | API dokümantasyonu (Swagger) | 🟡 Orta | 1 gün | ✅ Tamamlandı |
-| Webhook desteği | 🟢 Düşük | 2 gün | ❌ |
+| Webhook desteği | 🟢 Düşük | 2 gün | ✅ Tamamlandı |
 
 ### 4.3 Performans & Ölçekleme
 | Özellik | Öncelik | Süre | Durum |
