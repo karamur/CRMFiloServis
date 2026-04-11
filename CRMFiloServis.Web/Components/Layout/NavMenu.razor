@@ -251,6 +251,11 @@
                                     <i class="bi bi-calendar-check-fill me-2"></i> Servis Çalışmaları
                                 </NavLink>
                             </div>
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="stok/servis">
+                                    <i class="bi bi-tools me-2 text-warning"></i> Servis Kayıtları
+                                </NavLink>
+                            </div>
                         }
                         @if (HasYetki("toplucalisma.oku"))
                         {
@@ -771,11 +776,6 @@
                                 <i class="bi bi-truck me-2 text-success"></i> Araç Alış/Satış
                             </NavLink>
                         </div>
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="stok/servis">
-                                <i class="bi bi-tools me-2 text-warning"></i> Servis Kayıtları
-                            </NavLink>
-                        </div>
                     </div>
                 }
             </div>
@@ -1223,33 +1223,61 @@
         
         // Yetkiler henuz yuklenmediyse gosterme
         if (!yetkilerYuklendi) return false;
-        
-        // Ana menu yetkisi veya altindaki herhangi bir yetki varsa goster
-        return kullaniciYetkileri.Contains(menuKodu) || 
-               kullaniciYetkileri.Any(y => y.StartsWith(menuKodu.Replace("menu.", "") + ".") ||
-                                           y.StartsWith(GetMenuPrefix(menuKodu)));
+
+        if (kullaniciYetkileri.Contains(menuKodu)) return true;
+
+        var menuPrefixleri = GetMenuPrefixes(menuKodu);
+        var menuYetkileri = GetMenuRelatedYetkiler(menuKodu);
+
+        return kullaniciYetkileri.Any(y =>
+            menuYetkileri.Contains(y) ||
+            menuPrefixleri.Any(prefix => !string.IsNullOrWhiteSpace(prefix) && y.StartsWith(prefix + ".")));
     }
 
-    private string GetMenuPrefix(string menuKodu)
+    private string[] GetMenuPrefixes(string menuKodu)
     {
-        // menu.cari -> cariler, kesilenfatura, gelenfatura
-        // menu.filoservis -> araclar, guzergahlar, serviscalisma vs.
-        return menuKodu switch
+        switch (menuKodu)
         {
-            "menu.crm" => "bildirim",
-            "menu.cari" => "cari",
-            "menu.filoservis" => "arac",
-            "menu.muhasebe" => "muhasebe",
-            "menu.personel" => "personel",
-            "menu.fatura" => "fatura",
-            "menu.bankakasa" => "banka",
-            "menu.butce" => "butce",
-            "menu.checklist" => "checklist",
-            "menu.raporlar" => "rapor",
-            "menu.satis" => "satis",
-            "menu.ayarlar" => "firma",
-            _ => ""
-        };
+            case "menu.crm":
+                return new[] { "bildirim", "mesaj", "email", "hatirlatici" };
+            case "menu.cari":
+                return new[] { "cari", "cariler", "kesilenfatura", "gelenfatura" };
+            case "menu.filoservis":
+                return new[] { "arac", "araclar", "guzergah", "guzergahlar", "serviscalisma", "toplucalisma", "masrafkalem", "aracmasraf", "filo", "hakedis" };
+            case "menu.muhasebe":
+                return new[] { "muhasebe", "hesapplani", "muhasebefis", "muhaseberapor", "malianaliz" };
+            case "menu.personel":
+                return new[] { "personel", "maas", "izin" };
+            case "menu.fatura":
+                return new[] { "fatura", "faturalar", "faturahazirlik", "kesilenfatura", "gelenfatura" };
+            case "menu.bankakasa":
+                return new[] { "banka", "bankahesap", "bankahareket", "odemeeslestir" };
+            case "menu.butce":
+                return new[] { "butce", "odemeyonetim", "tekrarlayanodem" };
+            case "menu.checklist":
+                return new[] { "checklist", "checklistmali" };
+            case "menu.raporlar":
+                return new[] { "rapor", "raporlar", "raporozmal", "raporkirala", "raporkomisyon", "raporservis", "raporfatura", "rapormasraf", "raporekstre" };
+            case "menu.satis":
+                return new[] { "satis", "piyasa", "ilan" };
+            case "menu.ayarlar":
+                return new[] { "firma", "ayarlar", "kullanici", "rol", "veritabani", "sistemdurumu", "aktivitelog", "yedekleme", "guncelleme", "destektalebi", "piyasakaynak" };
+            default:
+                return Array.Empty<string>();
+        }
+    }
+
+    private HashSet<string> GetMenuRelatedYetkiler(string menuKodu)
+    {
+        switch (menuKodu)
+        {
+            case "menu.filoservis":
+                return new HashSet<string> { "raporlar.oku" };
+            case "menu.satis":
+                return new HashSet<string> { "satis.oku", "piyasa.oku", "raporlar.oku" };
+            default:
+                return new HashSet<string>();
+        }
     }
 
     private void ToggleSection(int index)
