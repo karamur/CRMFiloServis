@@ -7,19 +7,21 @@ namespace CRMFiloServis.Web.Services;
 
 public class BankaKasaHareketService : IBankaKasaHareketService
 {
+    private const string IslemNoPrefix = "HRK-";
     private readonly ApplicationDbContext _context;
     private readonly IMuhasebeService _muhasebeService;
+    private readonly IBankaHesapService _bankaHesapService;
 
-    public BankaKasaHareketService(ApplicationDbContext context, IMuhasebeService muhasebeService)
+    public BankaKasaHareketService(ApplicationDbContext context, IMuhasebeService muhasebeService, IBankaHesapService bankaHesapService)
     {
         _context = context;
         _muhasebeService = muhasebeService;
+        _bankaHesapService = bankaHesapService;
     }
 
     public async Task<List<BankaKasaHareket>> GetAllAsync()
     {
-        return await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        return await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .OrderByDescending(h => h.IslemTarihi)
@@ -28,8 +30,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<PagedResult<BankaKasaHareket>> GetPagedAsync(BankaHareketFilterParams filter)
     {
-        var query = _context.BankaKasaHareketleri
-            .AsNoTracking()
+        var query = QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .AsQueryable();
@@ -89,8 +90,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<List<BankaKasaHareket>> GetRecentAsync(int count = 5)
     {
-        return await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        return await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .OrderByDescending(h => h.IslemTarihi)
@@ -100,8 +100,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<List<BankaKasaHareket>> GetByHesapIdAsync(int hesapId)
     {
-        return await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        return await QueryHareketler()
             .Include(h => h.Cari)
             .Where(h => h.BankaHesapId == hesapId)
             .OrderByDescending(h => h.IslemTarihi)
@@ -110,8 +109,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<List<BankaKasaHareket>> GetByCariIdAsync(int cariId)
     {
-        return await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        return await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Where(h => h.CariId == cariId)
             .OrderByDescending(h => h.IslemTarihi)
@@ -120,8 +118,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<List<BankaKasaHareket>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
     {
-        return await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        return await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .Where(h => h.IslemTarihi >= startDate && h.IslemTarihi <= endDate)
@@ -131,8 +128,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<List<BankaKasaHareket>> GetByTipAsync(HareketTipi tip)
     {
-        return await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        return await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .Where(h => h.HareketTipi == tip)
@@ -143,8 +139,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<List<BankaKasaHareket>> GetEslestirmeyeUygunHareketlerAsync(int cariId, HareketTipi tip)
     {
         // Tamamen eşleştirilmemiş hareketleri getir
-        var hareketler = await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        var hareketler = await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.OdemeEslestirmeleri)
             .Where(h => h.CariId == cariId && h.HareketTipi == tip)
@@ -159,8 +154,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<BankaKasaHareket?> GetByIdAsync(int id)
     {
-        return await _context.BankaKasaHareketleri
-            .AsNoTracking()
+        return await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
             .Include(h => h.OdemeEslestirmeleri)
@@ -170,6 +164,8 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<BankaKasaHareket> CreateAsync(BankaKasaHareket hareket)
     {
+        NormalizeHareket(hareket);
+        await ValidateHareketAsync(hareket);
         await ApplyMuhasebeDefaultsAsync(hareket);
         hareket.BankaHesap = null!;
         hareket.Cari = null;
@@ -180,9 +176,12 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task<BankaKasaHareket> UpdateAsync(BankaKasaHareket hareket)
     {
+        NormalizeHareket(hareket);
+        await ValidateHareketAsync(hareket);
         await ApplyMuhasebeDefaultsAsync(hareket);
 
-        var existing = await _context.BankaKasaHareketleri.FindAsync(hareket.Id);
+        var existing = await QueryHareketler(asNoTracking: false)
+            .FirstOrDefaultAsync(h => h.Id == hareket.Id);
         if (existing == null)
             throw new InvalidOperationException($"Banka/Kasa hareketi bulunamadı. Id: {hareket.Id}");
 
@@ -219,9 +218,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         if (hareket.BankaHesapId == 0)
             return;
 
-        var hesap = await _context.BankaHesaplari
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == hareket.BankaHesapId);
+        var hesap = await _bankaHesapService.GetByIdAsync(hareket.BankaHesapId);
 
         if (hesap == null)
             return;
@@ -233,14 +230,94 @@ public class BankaKasaHareketService : IBankaKasaHareketService
             hareket.KostMerkeziKodu = hesap.VarsayilanKostMerkezi;
     }
 
+    private IQueryable<BankaKasaHareket> QueryHareketler(bool asNoTracking = true)
+    {
+        var query = _context.BankaKasaHareketleri
+            .Where(h => !h.IsDeleted);
+
+        return asNoTracking ? query.AsNoTracking() : query;
+    }
+
+    private IQueryable<Cari> QueryCariler(bool asNoTracking = true)
+    {
+        var query = _context.Cariler
+            .Where(c => !c.IsDeleted);
+
+        return asNoTracking ? query.AsNoTracking() : query;
+    }
+
+    private async Task ValidateHareketAsync(BankaKasaHareket hareket)
+    {
+        if (string.IsNullOrWhiteSpace(hareket.IslemNo))
+            throw new InvalidOperationException("İşlem no zorunludur.");
+
+        if (hareket.IslemTarihi == default)
+            throw new InvalidOperationException("İşlem tarihi zorunludur.");
+
+        if (hareket.BankaHesapId <= 0)
+            throw new InvalidOperationException("Geçerli bir hesap seçiniz.");
+
+        if (hareket.Tutar <= 0)
+            throw new InvalidOperationException("Tutar sıfırdan büyük olmalıdır.");
+
+        var islemNoKullanimda = await QueryHareketler()
+            .AnyAsync(h => h.Id != hareket.Id && h.IslemNo == hareket.IslemNo);
+
+        if (islemNoKullanimda)
+            throw new InvalidOperationException($"'{hareket.IslemNo}' işlem numarası zaten kullanımda.");
+
+        var hesapVar = await _bankaHesapService.GetByIdAsync(hareket.BankaHesapId);
+        if (hesapVar == null)
+            throw new InvalidOperationException("Seçilen hesap bulunamadı.");
+
+        if (hareket.CariId.HasValue)
+        {
+            var cariVar = await QueryCariler()
+                .AnyAsync(c => c.Id == hareket.CariId.Value);
+
+            if (!cariVar)
+                throw new InvalidOperationException("Seçilen cari bulunamadı.");
+        }
+    }
+
+    private static void NormalizeHareket(BankaKasaHareket hareket)
+    {
+        hareket.IslemNo = string.IsNullOrWhiteSpace(hareket.IslemNo)
+            ? string.Empty
+            : hareket.IslemNo.Trim().ToUpperInvariant();
+        hareket.Aciklama = NormalizeNullableText(hareket.Aciklama);
+        hareket.BelgeNo = NormalizeNullableText(hareket.BelgeNo);
+        hareket.MuhasebeHesapKodu = NormalizeNullableText(hareket.MuhasebeHesapKodu);
+        hareket.MuhasebeAltHesapKodu = NormalizeNullableText(hareket.MuhasebeAltHesapKodu);
+        hareket.KostMerkeziKodu = NormalizeNullableText(hareket.KostMerkeziKodu);
+        hareket.ProjeKodu = NormalizeNullableText(hareket.ProjeKodu);
+        hareket.MuhasebeAciklama = NormalizeNullableText(hareket.MuhasebeAciklama);
+        hareket.CariId = hareket.CariId <= 0 ? null : hareket.CariId;
+        hareket.MahsupHareketId = hareket.MahsupHareketId <= 0 ? null : hareket.MahsupHareketId;
+    }
+
+    private static string? NormalizeNullableText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
     public async Task DeleteAsync(int id)
     {
-        var hareket = await _context.BankaKasaHareketleri
-            .Include(h => h.OdemeEslestirmeleri)
-            .FirstOrDefaultAsync(h => h.Id == id);
-
-        if (hareket != null)
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            var hareket = await QueryHareketler(asNoTracking: false)
+                .Include(h => h.OdemeEslestirmeleri)
+                .FirstOrDefaultAsync(h => h.Id == id);
+
+            if (hareket == null)
+            {
+                await transaction.CommitAsync();
+                return;
+            }
+
             // İlişkili bütçe ödemesini bul ve durumunu geri al
             var iliskiliOdeme = await _context.BudgetOdemeler
                 .FirstOrDefaultAsync(o => o.BankaKasaHareketId == id);
@@ -261,38 +338,35 @@ public class BankaKasaHareketService : IBankaKasaHareketService
                 iliskiliOdeme.UpdatedAt = DateTime.UtcNow;
             }
 
-            // Önce ilişkili OdemeEslestirmeleri sil
             if (hareket.OdemeEslestirmeleri.Any())
             {
                 _context.OdemeEslestirmeleri.RemoveRange(hareket.OdemeEslestirmeleri);
             }
 
-            // Veritabanından tamamen sil (hard delete)
             _context.BankaKasaHareketleri.Remove(hareket);
             await _context.SaveChangesAsync();
-        }
+            await transaction.CommitAsync();
+        });
     }
 
     public async Task<string> GenerateNextIslemNoAsync()
     {
         var today = DateTime.Today;
-        var prefix = $"HRK-{today:yyyyMMdd}";
+        var prefix = $"{IslemNoPrefix}{today:yyyyMMdd}";
 
-        var lastHareket = await _context.BankaKasaHareketleri
+        var islemNolari = await _context.BankaKasaHareketleri
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .Where(h => h.IslemNo.StartsWith(prefix))
-            .OrderByDescending(h => h.IslemNo)
-            .FirstOrDefaultAsync();
+            .Select(h => h.IslemNo)
+            .ToListAsync();
 
-        var nextNumber = 1;
-        if (lastHareket != null)
-        {
-            var parts = lastHareket.IslemNo.Split('-');
-            if (parts.Length >= 3 && int.TryParse(parts[2], out int lastNumber))
-            {
-                nextNumber = lastNumber + 1;
-            }
-        }
+        var nextNumber = islemNolari
+            .Select(TryParseIslemNoSequence)
+            .Where(number => number.HasValue)
+            .Select(number => number!.Value)
+            .DefaultIfEmpty(0)
+            .Max() + 1;
 
         return $"{prefix}-{nextNumber:D4}";
     }
@@ -300,94 +374,49 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     // BankaHesap (Kasa/Banka) işlemleri
     public async Task<List<BankaHesap>> GetHesaplarAsync()
     {
-        var hesaplar = await _context.BankaHesaplari
-            .AsNoTracking()
-            .Include(h => h.Hareketler)
-            .OrderBy(h => h.HesapTipi)
-            .ThenBy(h => h.HesapAdi)
-            .ToListAsync();
-
-        return hesaplar;
+        return await _bankaHesapService.GetAllAsync();
     }
 
     public async Task<List<BankaHesap>> GetAktifHesaplarAsync()
     {
-        return await _context.BankaHesaplari
-            .AsNoTracking()
-            .Include(h => h.Hareketler)
-            .Where(h => h.Aktif)
-            .OrderBy(h => h.HesapTipi)
-            .ThenBy(h => h.HesapAdi)
-            .ToListAsync();
+        return await _bankaHesapService.GetActiveAsync();
     }
 
     public async Task<BankaHesap?> GetHesapByIdAsync(int id)
     {
-        return await _context.BankaHesaplari
-            .AsNoTracking()
-            .Include(h => h.Hareketler)
-            .FirstOrDefaultAsync(h => h.Id == id);
+        return await _bankaHesapService.GetByIdAsync(id);
     }
 
     public async Task<BankaHesap> CreateHesapAsync(BankaHesap hesap)
     {
-        _context.BankaHesaplari.Add(hesap);
-        await _context.SaveChangesAsync();
-        return hesap;
+        return await _bankaHesapService.CreateAsync(hesap);
     }
 
     public async Task<BankaHesap> UpdateHesapAsync(BankaHesap hesap)
     {
-        var existing = await _context.BankaHesaplari.FindAsync(hesap.Id);
-        if (existing == null)
-            throw new InvalidOperationException($"Banka hesabı bulunamadı. Id: {hesap.Id}");
-
-        existing.HesapKodu = hesap.HesapKodu;
-        existing.HesapAdi = hesap.HesapAdi;
-        existing.HesapTipi = hesap.HesapTipi;
-        existing.BankaAdi = hesap.BankaAdi;
-        existing.SubeAdi = hesap.SubeAdi;
-        existing.SubeKodu = hesap.SubeKodu;
-        existing.HesapNo = hesap.HesapNo;
-        existing.Iban = hesap.Iban;
-        existing.ParaBirimi = hesap.ParaBirimi;
-        existing.AcilisBakiye = hesap.AcilisBakiye;
-        existing.Aktif = hesap.Aktif;
-        existing.Notlar = hesap.Notlar;
-        existing.KrediTaksitGrupId = hesap.KrediTaksitGrupId;
-        existing.VarsayilanMuhasebeKodu = hesap.VarsayilanMuhasebeKodu;
-        existing.VarsayilanKostMerkezi = hesap.VarsayilanKostMerkezi;
-        existing.IsDeleted = hesap.IsDeleted;
-        existing.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-        return existing;
+        return await _bankaHesapService.UpdateAsync(hesap);
     }
 
     public async Task DeleteHesapAsync(int id)
     {
-        var hesap = await _context.BankaHesaplari.FindAsync(id);
-        if (hesap != null)
-        {
-            hesap.IsDeleted = true;
-            await _context.SaveChangesAsync();
-        }
+        await _bankaHesapService.DeleteAsync(id);
     }
 
     public async Task<DashboardBankaStats> GetDashboardStatsAsync()
     {
         // Calculate balances using a single optimized query
         var hesapBakiyeleri = await _context.BankaHesaplari
+            .AsNoTracking()
             .Where(h => !h.IsDeleted)
             .Select(h => new
             {
                 h.HesapTipi,
                 h.AcilisBakiye,
-                Girisler = _context.BankaKasaHareketleri
-                    .Where(hr => hr.BankaHesapId == h.Id && !hr.IsDeleted && hr.HareketTipi == HareketTipi.Giris)
+                Girisler = QueryHareketler()
+                    .Where(hr => hr.BankaHesapId == h.Id && hr.HareketTipi == HareketTipi.Giris)
                     .Sum(hr => (decimal?)hr.Tutar) ?? 0,
-                Cikislar = _context.BankaKasaHareketleri
-                    .Where(hr => hr.BankaHesapId == h.Id && !hr.IsDeleted && hr.HareketTipi == HareketTipi.Cikis)
+                Cikislar = QueryHareketler()
+                    .Where(hr => hr.BankaHesapId == h.Id && hr.HareketTipi == HareketTipi.Cikis)
                     .Sum(hr => (decimal?)hr.Tutar) ?? 0
             })
             .ToListAsync();
@@ -414,11 +443,14 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         if (tutar <= 0)
             return new MahsupSonuc { Basarili = false, Hata = "Tutar sıfırdan büyük olmalıdır." };
 
-        var kaynakHesap = await _context.BankaHesaplari.FindAsync(kaynakHesapId);
-        var hedefHesap = await _context.BankaHesaplari.FindAsync(hedefHesapId);
+        var kaynakHesap = await _bankaHesapService.GetByIdAsync(kaynakHesapId);
+        var hedefHesap = await _bankaHesapService.GetByIdAsync(hedefHesapId);
 
         if (kaynakHesap == null || hedefHesap == null)
             return new MahsupSonuc { Basarili = false, Hata = "Hesap bulunamadı." };
+
+        if (!kaynakHesap.Aktif || !hedefHesap.Aktif)
+            return new MahsupSonuc { Basarili = false, Hata = "Transfer için hesapların aktif olması gerekir." };
 
         var bakiye = await GetHesapBakiyeAsync(kaynakHesapId);
         if (bakiye < tutar)
@@ -452,6 +484,8 @@ public class BankaKasaHareketService : IBankaKasaHareketService
                 IslemKaynak = IslemKaynak.Mahsup,
                 MahsupGrupId = mahsupGrupId
             };
+            NormalizeHareket(cikisHareket);
+            await ValidateHareketAsync(cikisHareket);
             _context.BankaKasaHareketleri.Add(cikisHareket);
             await _context.SaveChangesAsync();
 
@@ -473,6 +507,8 @@ public class BankaKasaHareketService : IBankaKasaHareketService
                 MahsupGrupId = mahsupGrupId,
                 MahsupHareketId = cikisHareket.Id
             };
+            NormalizeHareket(girisHareket);
+            await ValidateHareketAsync(girisHareket);
             _context.BankaKasaHareketleri.Add(girisHareket);
             await _context.SaveChangesAsync();
 
@@ -514,70 +550,82 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         if (tutar <= 0)
             return new MahsupSonuc { Basarili = false, Hata = "Tutar sıfırdan büyük olmalıdır." };
 
-        var cari = await _context.Cariler.FindAsync(cariId);
-        var hesap = await _context.BankaHesaplari.FindAsync(hesapId);
+        var cari = await QueryCariler()
+            .FirstOrDefaultAsync(c => c.Id == cariId);
+        var hesap = await _bankaHesapService.GetByIdAsync(hesapId);
 
         if (cari == null || hesap == null)
             return new MahsupSonuc { Basarili = false, Hata = "Cari veya hesap bulunamadı." };
 
-        try
+        if (!hesap.Aktif)
+            return new MahsupSonuc { Basarili = false, Hata = "Cari mahsup için hesabın aktif olması gerekir." };
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
         {
-            var mahsupGrupId = Guid.NewGuid();
-            var islemNo = await GenerateNextIslemNoAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // caridenHesaba = true: Cari bize borçlu, biz tahsil ediyoruz (Hesaba Giriş)
-            // caridenHesaba = false: Biz cariye borçluyuz, ödeme yapıyoruz (Hesaptan Çıkış)
-            var hareket = new BankaKasaHareket
-            {
-                IslemNo = islemNo,
-                IslemTarihi = tarih,
-                HareketTipi = caridenHesaba ? HareketTipi.Giris : HareketTipi.Cikis,
-                Tutar = tutar,
-                BankaHesapId = hesapId,
-                CariId = cariId,
-                BelgeNo = string.IsNullOrWhiteSpace(belgeNo) ? null : belgeNo.Trim(),
-                Aciklama = $"[CARİ MAHSUP] {cari.Unvan} - {aciklama}",
-                MuhasebeHesapKodu = string.IsNullOrWhiteSpace(muhasebeHesapKodu) ? hesap.VarsayilanMuhasebeKodu : muhasebeHesapKodu.Trim(),
-                KostMerkeziKodu = string.IsNullOrWhiteSpace(kostMerkeziKodu) ? hesap.VarsayilanKostMerkezi : kostMerkeziKodu.Trim(),
-                ProjeKodu = string.IsNullOrWhiteSpace(projeKodu) ? null : projeKodu.Trim(),
-                MuhasebeAciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
-                IslemKaynak = IslemKaynak.CariMahsup,
-                MahsupGrupId = mahsupGrupId
-            };
-
-            _context.BankaKasaHareketleri.Add(hareket);
-            await _context.SaveChangesAsync();
-
-            // Muhasebe fişi oluştur
             try
             {
-                await _muhasebeService.CreateCariMahsupFisiAsync(hareket, cari, hesap, caridenHesaba);
-            }
-            catch
-            {
-                // Muhasebe entegrasyonu başarısız olsa bile işlem devam eder
-            }
+                var mahsupGrupId = Guid.NewGuid();
+                var islemNo = await GenerateNextIslemNoAsync();
 
-            return new MahsupSonuc
+                // caridenHesaba = true: Cari bize borçlu, biz tahsil ediyoruz (Hesaba Giriş)
+                // caridenHesaba = false: Biz cariye borçluyuz, ödeme yapıyoruz (Hesaptan Çıkış)
+                var hareket = new BankaKasaHareket
+                {
+                    IslemNo = islemNo,
+                    IslemTarihi = tarih,
+                    HareketTipi = caridenHesaba ? HareketTipi.Giris : HareketTipi.Cikis,
+                    Tutar = tutar,
+                    BankaHesapId = hesapId,
+                    CariId = cariId,
+                    BelgeNo = string.IsNullOrWhiteSpace(belgeNo) ? null : belgeNo.Trim(),
+                    Aciklama = $"[CARİ MAHSUP] {cari.Unvan} - {aciklama}",
+                    MuhasebeHesapKodu = string.IsNullOrWhiteSpace(muhasebeHesapKodu) ? hesap.VarsayilanMuhasebeKodu : muhasebeHesapKodu.Trim(),
+                    KostMerkeziKodu = string.IsNullOrWhiteSpace(kostMerkeziKodu) ? hesap.VarsayilanKostMerkezi : kostMerkeziKodu.Trim(),
+                    ProjeKodu = string.IsNullOrWhiteSpace(projeKodu) ? null : projeKodu.Trim(),
+                    MuhasebeAciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama.Trim(),
+                    IslemKaynak = IslemKaynak.CariMahsup,
+                    MahsupGrupId = mahsupGrupId
+                };
+
+                NormalizeHareket(hareket);
+                await ValidateHareketAsync(hareket);
+                _context.BankaKasaHareketleri.Add(hareket);
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _muhasebeService.CreateCariMahsupFisiAsync(hareket, cari, hesap, caridenHesaba);
+                }
+                catch
+                {
+                }
+
+                await transaction.CommitAsync();
+
+                return new MahsupSonuc
+                {
+                    Basarili = true,
+                    MahsupGrupId = mahsupGrupId,
+                    KaynakHareket = hareket
+                };
+            }
+            catch (Exception ex)
             {
-                Basarili = true,
-                MahsupGrupId = mahsupGrupId,
-                KaynakHareket = hareket
-            };
-        }
-        catch (Exception ex)
-        {
-            return new MahsupSonuc { Basarili = false, Hata = ex.Message };
-        }
+                await transaction.RollbackAsync();
+                return new MahsupSonuc { Basarili = false, Hata = ex.Message };
+            }
+        });
     }
 
     public async Task<List<BankaKasaHareket>> GetMahsupHareketleriAsync(DateTime? baslangic = null, DateTime? bitis = null)
     {
-        var query = _context.BankaKasaHareketleri
-            .AsNoTracking()
+        var query = QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
-            .Where(h => !h.IsDeleted && (h.IslemKaynak == IslemKaynak.Mahsup || h.IslemKaynak == IslemKaynak.CariMahsup));
+            .Where(h => h.IslemKaynak == IslemKaynak.Mahsup || h.IslemKaynak == IslemKaynak.CariMahsup);
 
         if (baslangic.HasValue)
             query = query.Where(h => h.IslemTarihi >= baslangic.Value);
@@ -653,45 +701,47 @@ public class BankaKasaHareketService : IBankaKasaHareketService
 
     public async Task MahsupIptalAsync(Guid mahsupGrupId)
     {
-        var hareketler = await _context.BankaKasaHareketleri
-            .Include(h => h.OdemeEslestirmeleri)
-            .Where(h => h.MahsupGrupId == mahsupGrupId)
-            .ToListAsync();
-
-        // Önce muhasebe iptal fişi oluştur
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            await _muhasebeService.IptalFisiOlusturAsync(mahsupGrupId);
-        }
-        catch
-        {
-            // Muhasebe entegrasyonu başarısız olsa bile işlem devam eder
-        }
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-        // Önce ilişkili OdemeEslestirmeleri sil
-        var eslestirmeler = hareketler.SelectMany(h => h.OdemeEslestirmeleri).ToList();
-        if (eslestirmeler.Any())
-        {
-            _context.OdemeEslestirmeleri.RemoveRange(eslestirmeler);
-        }
+            var hareketler = await QueryHareketler(asNoTracking: false)
+                .Include(h => h.OdemeEslestirmeleri)
+                .Where(h => h.MahsupGrupId == mahsupGrupId)
+                .ToListAsync();
 
-        // Veritabanından tamamen sil (hard delete)
-        _context.BankaKasaHareketleri.RemoveRange(hareketler);
+            try
+            {
+                await _muhasebeService.IptalFisiOlusturAsync(mahsupGrupId);
+            }
+            catch
+            {
+            }
 
-        await _context.SaveChangesAsync();
+            var eslestirmeler = hareketler.SelectMany(h => h.OdemeEslestirmeleri).ToList();
+            if (eslestirmeler.Any())
+            {
+                _context.OdemeEslestirmeleri.RemoveRange(eslestirmeler);
+            }
+
+            _context.BankaKasaHareketleri.RemoveRange(hareketler);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        });
     }
 
     public async Task<decimal> GetHesapBakiyeAsync(int hesapId)
     {
-        var hesap = await _context.BankaHesaplari.FindAsync(hesapId);
+        var hesap = await _bankaHesapService.GetByIdAsync(hesapId);
         if (hesap == null) return 0;
 
-        var girisler = await _context.BankaKasaHareketleri
-            .Where(h => h.BankaHesapId == hesapId && !h.IsDeleted && h.HareketTipi == HareketTipi.Giris)
+        var girisler = await QueryHareketler()
+            .Where(h => h.BankaHesapId == hesapId && h.HareketTipi == HareketTipi.Giris)
             .SumAsync(h => (decimal?)h.Tutar) ?? 0;
 
-        var cikislar = await _context.BankaKasaHareketleri
-            .Where(h => h.BankaHesapId == hesapId && !h.IsDeleted && h.HareketTipi == HareketTipi.Cikis)
+        var cikislar = await QueryHareketler()
+            .Where(h => h.BankaHesapId == hesapId && h.HareketTipi == HareketTipi.Cikis)
             .SumAsync(h => (decimal?)h.Tutar) ?? 0;
 
         return hesap.AcilisBakiye + girisler - cikislar;
@@ -700,20 +750,34 @@ public class BankaKasaHareketService : IBankaKasaHareketService
     public async Task<Dictionary<int, decimal>> GetTumHesapBakiyeleriAsync()
     {
         var hesaplar = await _context.BankaHesaplari
+            .AsNoTracking()
             .Where(h => !h.IsDeleted && h.Aktif)
             .Select(h => new
             {
                 h.Id,
                 h.AcilisBakiye,
-                Girisler = _context.BankaKasaHareketleri
-                    .Where(hr => hr.BankaHesapId == h.Id && !hr.IsDeleted && hr.HareketTipi == HareketTipi.Giris)
+                Girisler = QueryHareketler()
+                    .Where(hr => hr.BankaHesapId == h.Id && hr.HareketTipi == HareketTipi.Giris)
                     .Sum(hr => (decimal?)hr.Tutar) ?? 0,
-                Cikislar = _context.BankaKasaHareketleri
-                    .Where(hr => hr.BankaHesapId == h.Id && !hr.IsDeleted && hr.HareketTipi == HareketTipi.Cikis)
+                Cikislar = QueryHareketler()
+                    .Where(hr => hr.BankaHesapId == h.Id && hr.HareketTipi == HareketTipi.Cikis)
                     .Sum(hr => (decimal?)hr.Tutar) ?? 0
             })
             .ToListAsync();
 
         return hesaplar.ToDictionary(h => h.Id, h => h.AcilisBakiye + h.Girisler - h.Cikislar);
+    }
+
+    private static int? TryParseIslemNoSequence(string? islemNo)
+    {
+        if (string.IsNullOrWhiteSpace(islemNo))
+            return null;
+
+        var normalized = islemNo.Trim().ToUpperInvariant();
+        var parts = normalized.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 3 || parts[0] != IslemNoPrefix.TrimEnd('-'))
+            return null;
+
+        return int.TryParse(parts[2], out var sequence) ? sequence : null;
     }
 }

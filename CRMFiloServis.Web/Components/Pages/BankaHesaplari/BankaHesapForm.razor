@@ -4,6 +4,7 @@
 @using CRMFiloServis.Web.Services
 @inject IBankaHesapService BankaHesapService
 @inject IBudgetService BudgetService
+@inject IToastService ToastService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -19,15 +20,22 @@
 
     <div class="card">
         <div class="card-body">
+            @if (!string.IsNullOrWhiteSpace(saveErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-octagon me-2"></i>@saveErrorMessage
+                </div>
+            }
+
             <EditForm Model="hesap" OnValidSubmit="Kaydet">
                 <DataAnnotationsValidator />
+                <ValidationSummary />
 
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Hesap Kodu *</label>
-                            <InputText @bind-Value="hesap.HesapKodu" class="form-control"
-                                readonly="@IsEdit" />
+                            <InputText @bind-Value="hesap.HesapKodu" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -165,10 +173,18 @@
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1"></i>Kaydet
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check-lg me-1"></i>
+                        }
+                        Kaydet
                     </button>
-                    <button type="button" class="btn btn-secondary" @onclick="Geri">
+                    <button type="button" class="btn btn-secondary" @onclick="Geri" disabled="@isSaving">
                         <i class="bi bi-x-lg me-1"></i>İptal
                     </button>
                 </div>
@@ -185,6 +201,8 @@
     private List<KrediOzet>? krediOzetleri;
     private string secilenKrediGrupId = "";
     private bool IsEdit => Id.HasValue;
+    private bool isSaving;
+    private string? saveErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,8 +248,14 @@
 
     private async Task Kaydet()
     {
-        if (string.IsNullOrWhiteSpace(hesap.HesapAdi))
+        if (isSaving)
             return;
+
+        if (string.IsNullOrWhiteSpace(hesap.HesapAdi))
+        {
+            ToastService.ShowWarning("Hesap adı zorunludur.");
+            return;
+        }
 
         // Kredi kartı için ilişkili kredi ayarla
         if (hesap.HesapTipi == HesapTipi.KrediKarti && !string.IsNullOrEmpty(secilenKrediGrupId))
@@ -243,15 +267,38 @@
             hesap.KrediTaksitGrupId = null;
         }
 
-        if (IsEdit)
+        saveErrorMessage = null;
+        isSaving = true;
+
+        try
         {
-            await BankaHesapService.UpdateAsync(hesap);
+            if (IsEdit)
+            {
+                await BankaHesapService.UpdateAsync(hesap);
+                ToastService.ShowSuccess("Banka hesabı güncellendi.");
+            }
+            else
+            {
+                await BankaHesapService.CreateAsync(hesap);
+                ToastService.ShowSuccess("Banka hesabı kaydedildi.");
+            }
+
+            Navigation.NavigateTo("/banka-hesaplari");
         }
-        else
+        catch (InvalidOperationException ex)
         {
-            await BankaHesapService.CreateAsync(hesap);
+            saveErrorMessage = ex.Message;
+            ToastService.ShowError(ex.Message);
         }
-        Navigation.NavigateTo("/banka-hesaplari");
+        catch (Exception ex)
+        {
+            saveErrorMessage = "Kayıt sırasında beklenmeyen bir hata oluştu.";
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 
     private void Geri()

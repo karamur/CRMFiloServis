@@ -21,14 +21,22 @@
 
     <div class="card">
         <div class="card-body">
+            @if (!string.IsNullOrWhiteSpace(saveErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-octagon me-2"></i>@saveErrorMessage
+                </div>
+            }
+
             <EditForm Model="hareket" OnValidSubmit="Kaydet">
                 <DataAnnotationsValidator />
+                <ValidationSummary />
 
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">İşlem No *</label>
-                            <InputText @bind-Value="hareket.IslemNo" class="form-control" readonly="@IsEdit" />
+                            <InputText @bind-Value="hareket.IslemNo" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -74,6 +82,29 @@
                         </div>
                     </div>
                 </div>
+
+                @if (SeciliHesap is not null)
+                {
+                    <div class="alert @(SeciliHesap.Aktif ? "alert-light" : "alert-warning") py-2">
+                        <div class="d-flex flex-wrap gap-3 small align-items-center">
+                            <span><strong>Seçili Hesap:</strong> @SeciliHesap.HesapAdi</span>
+                            <span><strong>Tip:</strong> @GetTipText(SeciliHesap.HesapTipi)</span>
+                            <span><strong>Para Birimi:</strong> @(SeciliHesap.ParaBirimi ?? "TRY")</span>
+                            @if (!string.IsNullOrWhiteSpace(SeciliHesap.VarsayilanMuhasebeKodu))
+                            {
+                                <span><strong>Muhasebe:</strong> <code>@SeciliHesap.VarsayilanMuhasebeKodu</code></span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(SeciliHesap.VarsayilanKostMerkezi))
+                            {
+                                <span><strong>Kost Merkezi:</strong> <code>@SeciliHesap.VarsayilanKostMerkezi</code></span>
+                            }
+                            @if (!SeciliHesap.Aktif)
+                            {
+                                <span class="badge bg-warning text-dark">Pasif hesap</span>
+                            }
+                        </div>
+                    </div>
+                }
 
                 <div class="row">
                     <div class="col-md-4">
@@ -140,10 +171,18 @@
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1"></i>Kaydet
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check-lg me-1"></i>
+                        }
+                        Kaydet
                     </button>
-                    <button type="button" class="btn btn-secondary" @onclick="Geri">
+                    <button type="button" class="btn btn-secondary" @onclick="Geri" disabled="@isSaving">
                         <i class="bi bi-x-lg me-1"></i>İptal
                     </button>
                 </div>
@@ -160,10 +199,12 @@
     private List<BankaHesap> hesaplar = new();
     private List<Cari> cariler = new();
     private bool IsEdit => Id.HasValue;
+    private BankaHesap? SeciliHesap => hesaplar.FirstOrDefault(x => x.Id == hareket.BankaHesapId);
+    private bool isSaving;
+    private string? saveErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        hesaplar = await BankaHesapService.GetActiveAsync();
         cariler = await CariService.GetAllAsync();
 
         if (IsEdit)
@@ -171,6 +212,7 @@
             var existing = await HareketService.GetByIdAsync(Id!.Value);
             if (existing != null)
             {
+                hesaplar = await BankaHesapService.GetAllAsync();
                 hareket = existing;
             }
             else
@@ -180,6 +222,7 @@
         }
         else
         {
+            hesaplar = await BankaHesapService.GetActiveAsync();
             hareket.IslemNo = await HareketService.GenerateNextIslemNoAsync();
             hareket.IslemTarihi = DateTime.Today;
             hareket.HareketTipi = HareketTipi.Giris;
@@ -189,11 +232,17 @@
 
     private async Task Kaydet()
     {
+        if (isSaving)
+            return;
+
         if (hareket.BankaHesapId == 0 || hareket.Tutar <= 0)
         {
             ToastService.ShowWarning("Lütfen tüm zorunlu alanları doldurunuz.");
             return;
         }
+
+        saveErrorMessage = null;
+        isSaving = true;
 
         try
         {
@@ -209,9 +258,19 @@
             }
             Navigation.NavigateTo("/banka-hareketleri");
         }
+        catch (InvalidOperationException ex)
+        {
+            saveErrorMessage = ex.Message;
+            ToastService.ShowError(ex.Message);
+        }
         catch (Exception ex)
         {
+            saveErrorMessage = "Kayıt sırasında beklenmeyen bir hata oluştu.";
             ToastService.ShowError($"Hata: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
         }
     }
 
@@ -222,6 +281,7 @@
 
     private Task OnHesapChanged()
     {
+        saveErrorMessage = null;
         HesapVarsayilanlariniUygula();
         return Task.CompletedTask;
     }

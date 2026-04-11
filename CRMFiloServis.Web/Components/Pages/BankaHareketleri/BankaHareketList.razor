@@ -244,7 +244,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        hesaplar = await HareketService.GetAktifHesaplarAsync();
+        hesaplar = await BankaHesapService.GetActiveAsync();
         await LoadData();
     }
 
