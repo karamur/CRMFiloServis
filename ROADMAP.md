@@ -3,6 +3,9 @@
 ## ?? Mevcut Durum Analizi
 
 ### Son Güncellemeler
+- ✅ `İhale Teklif Operasyonları (FAZ 8.5)` tamamlandı - Teklif versiyonlama, revizyon geçmişi, onay/red akışı, karar günlüğü, versiyon karşılaştırma, PDF/Excel export akışları tamamlandı.
+- ✅ `Kazanılan Proje Gerçekleşen Takibi (FAZ 8.6)` tamamlandı - Gerçekleşen maliyet takibi, tekliflenen vs gerçekleşen sapma analizi, sözleşme revizyon/ek protokol takibi, hat bazlı kârlılık, AI doğruluk skoru ve operasyon dashboard kartları tamamlandı.
+- ✅ `İhale Operasyon Dashboard Excel Export` tamamlandı - Yönetim özeti ve riskli projeler listesi Excel olarak indirilebilir hale getirildi.
 - ✅ `Şirketler Arası Transfer (FAZ 4.1)` tamamlandı - SirketTransferLog entity, ITenantService transfer metodları, 7 entity için transfer desteği (Cari, Araç, Şoför, Fatura, Güzergah, BankaHesap, BankaKasaHareket), SirketTransfer.razor yönetim UI.
 - ✅ `Multi-tenant Veri İzolasyonu (FAZ 4.1)` tamamlandı - 7 temel entity'ye (Cari, Sofor, Arac, Fatura, Guzergah, BankaHesap, BankaKasaHareket) SirketId eklendi, Global Query Filter ile şirket bazlı otomatik filtreleme, SuperAdmin bypass desteği.
 - ✅ `Şirket Yönetimi UI (FAZ 4.1)` tamamlandı - SirketYonetimi.razor sayfası, şirket CRUD, şirket geçişi, istatistik kartları, Admin/SuperAdmin yetki kontrolü.
@@ -360,22 +363,22 @@
 ### 8.5 Teklif Operasyonları & Karar Destek (YENİ)
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Teklif versiyonlama ve revizyon geçmişi | 🔴 Yüksek | 2 gün | ❌ Bekliyor |
-| Teklif onay akışı (Hazırlayan → Yönetici → Onaylandı) | 🔴 Yüksek | 2 gün | ❌ Bekliyor |
-| Teklif PDF / Excel export | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Senaryo karşılaştırma (A/B teklif modeli) | 🟡 Orta | 2 gün | ❌ Bekliyor |
+| Teklif versiyonlama ve revizyon geçmişi | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Teklif onay akışı (Hazırlayan → Yönetici → Onaylandı) | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Teklif PDF / Excel export | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Senaryo karşılaştırma (A/B teklif modeli) | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | Rakip / piyasa teklif benchmark alanları | 🟡 Orta | 2 gün | ❌ Bekliyor |
-| Teklif notları ve karar günlüğü | 🟢 Düşük | 1 gün | ❌ Bekliyor |
+| Teklif notları ve karar günlüğü | 🟢 Düşük | 1 gün | ✅ Tamamlandı |
 
 ### 8.6 Kazanılan Proje Gerçekleşen Takibi (YENİ)
 | Özellik | Öncelik | Süre | Durum |
 |---------|---------|------|-------|
-| Kazanılan proje için gerçekleşen maliyet takibi | 🔴 Yüksek | 2 gün | ❌ Bekliyor |
-| Tekliflenen vs gerçekleşen sapma analizi | 🔴 Yüksek | 2 gün | ❌ Bekliyor |
-| Sözleşme revizyon ve ek protokol takibi | 🟡 Orta | 2 gün | ❌ Bekliyor |
-| Hat/güzergah bazlı gerçekleşen kârlılık | 🟡 Orta | 2 gün | ❌ Bekliyor |
-| AI tahmin geri besleme (teklif doğruluk skoru) | 🟡 Orta | 2 gün | ❌ Bekliyor |
-| İhale sonrası operasyon dashboard kartları | 🟢 Düşük | 1 gün | ❌ Bekliyor |
+| Kazanılan proje için gerçekleşen maliyet takibi | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Tekliflenen vs gerçekleşen sapma analizi | 🔴 Yüksek | 2 gün | ✅ Tamamlandı |
+| Sözleşme revizyon ve ek protokol takibi | 🟡 Orta | 2 gün | ✅ Tamamlandı |
+| Hat/güzergah bazlı gerçekleşen kârlılık | 🟡 Orta | 2 gün | ✅ Tamamlandı |
+| AI tahmin geri besleme (teklif doğruluk skoru) | 🟡 Orta | 2 gün | ✅ Tamamlandı |
+| İhale sonrası operasyon dashboard kartları | 🟢 Düşük | 1 gün | ✅ Tamamlandı |
 
 ### 8.7 FAZ 8.5 İlk Sprint Backlog'u (ÖNERİLEN)
 | İş Paketi | İçerik | Öncelik | Süre | Durum |
@@ -771,12 +774,12 @@ Proje MVP'den kurumsal seviyeye kadar tüm temel özellikleri içermektedir:
 - ✅ FAZ 7: EBYS & AI Entegrasyonu
 - ✅ FAZ 8: İhale Hazırlık & Teklif (çekirdek kapsam)
 
-### 🆕 FAZ 8'den Devam Önerisi
-1. **Teklif versiyonlama ve revizyon geçmişi**
-2. **Teklif onay akışı ve karar günlüğü**
-3. **Teklif PDF / Excel export**
-4. **Kazanılan projelerde gerçekleşen vs tekliflenen sapma analizi**
-5. **AI tahmin doğruluk skoru ve geri besleme mekanizması**
+### 🆕 FAZ 8 Sonrası Devam Önerisi
+1. **İhale operasyon dashboard için ayrı detay rapor sayfası**
+2. **Operasyon dashboard Excel çıktısını çok sekmeli / kurumsal şablona taşıma**
+3. **Rakip / piyasa teklif benchmark alanlarını tamamlama**
+4. **Kazanılan projelerde revizyon etkisini daha ileri trend raporlarına bağlama**
+5. **İhale sonrası operasyon verilerini scheduled report e-posta ile paylaşma**
 
 #### Alt Kırılım Önerisi
 
@@ -1150,7 +1153,7 @@ Proje MVP'den kurumsal seviyeye kadar tüm temel özellikleri içermektedir:
 
 - Öncelik: 🔴🔴 Acil | 🔴 Yüksek | 🟡 Orta | 🟢 Düşük | 🤖 AI
 - Durum: ❌ Bekliyor | 🔄 Devam Ediyor | ✅ Tamamlandı | 🆕 Yeni Eklendi
-- Güncel odak: **FAZ 8.5 - Teklif Operasyonları & Gerçekleşen Takibi**
+- Güncel odak: **FAZ 8 sonrası operasyon detay raporları ve ileri analitik**
 - EBYS için Ollama/LLaMA kullanılarak internetsiz çalışabilirlik sağlandı
 - Personel/Maaş/Bordro modülleri SGK mevzuatına uygun olmalı
 - Local AI (Ollama) ile raporlama özellikleri offline çalışabilecek
