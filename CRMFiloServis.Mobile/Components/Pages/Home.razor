@@ -10,6 +10,24 @@
             <div class="text-center">
                 <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
                 <p class="text-muted">Yükleniyor...</p>
+                @if (!string.IsNullOrWhiteSpace(_yuklenmeDurumu))
+                {
+                    <p class="small text-muted mb-3">@_yuklenmeDurumu</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(_yuklenmeHatasi))
+                {
+                    <div class="alert alert-warning text-start small">
+                        <i class="bi bi-exclamation-triangle me-2"></i>@_yuklenmeHatasi
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" @onclick="YenidenDeneAsync">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Yeniden Dene
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="GiriseSayfasinaGit">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Giriş Ekranına Git
+                        </button>
+                    </div>
+                }
             </div>
         </div>
     }
@@ -139,44 +157,92 @@
 
 @code {
     private bool _yukleniyor = true;
+    private bool _ilkYuklemeTamamlandi;
+    private string? _yuklenmeDurumu;
+    private string? _yuklenmeHatasi;
+    private bool _giriseYonlendir;
     private KullaniciBilgisi? _kullanici;
     private SeferOzet? _aktifSefer;
     private List<AracOzet> _araclar = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender || _ilkYuklemeTamamlandi)
+            return;
+
+        _ilkYuklemeTamamlandi = true;
         await VerileriYukleAsync();
+
+        if (_giriseYonlendir)
+        {
+            Navigation.NavigateTo("/giris", replace: true);
+            return;
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task VerileriYukleAsync()
     {
         _yukleniyor = true;
+        _yuklenmeHatasi = null;
+        _yuklenmeDurumu = "Oturum bilgileri kontrol ediliyor...";
+        _giriseYonlendir = false;
+        _kullanici = null;
+        _aktifSefer = null;
+        _araclar = new();
 
         try
         {
-            await ApiService.TokenYukleAsync();
+            var tokenYuklemeGorevi = ApiService.TokenYukleAsync();
+            var tamamlanan = await Task.WhenAny(tokenYuklemeGorevi, Task.Delay(TimeSpan.FromSeconds(10)));
+
+            if (tamamlanan != tokenYuklemeGorevi)
+            {
+                _yuklenmeHatasi = "Açılış sırasında sunucu veya yerel oturum bilgisi yanıt vermedi. Sunucu adresini kontrol edin.";
+                return;
+            }
+
+            await tokenYuklemeGorevi;
 
             if (ApiService.TokenGecerliMi)
             {
+                _yuklenmeDurumu = "Kullanıcı bilgileri alınıyor...";
                 _kullanici = await ApiService.KullaniciBilgisiGetirAsync();
 
                 if (_kullanici != null)
                 {
+                    _yuklenmeDurumu = "Sefer ve araç bilgileri yükleniyor...";
                     var seferler = await ApiService.AktifSeferleriGetirAsync();
                     _aktifSefer = seferler.FirstOrDefault();
 
                     _araclar = await ApiService.SoforAraclariniGetirAsync();
                 }
+                else
+                {
+                    await ApiService.CikisYapAsync();
+                    _giriseYonlendir = true;
+                }
+            }
+            else
+            {
+                _giriseYonlendir = true;
             }
         }
         catch (Exception ex)
         {
+            _yuklenmeHatasi = $"Veri yükleme hatası: {ex.Message}";
             Console.WriteLine($"Veri yükleme hatası: {ex.Message}");
         }
         finally
         {
             _yukleniyor = false;
         }
+    }
+
+    private async Task YenidenDeneAsync()
+    {
+        await VerileriYukleAsync();
     }
 
     private void GiriseSayfasinaGit() => Navigation.NavigateTo("/giris");
