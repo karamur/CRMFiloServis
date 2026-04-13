@@ -11,7 +11,7 @@ namespace CRMFiloServis.Mobile.Services;
 /// </summary>
 public class ApiService : IApiService
 {
-    private const string VarsayilanSunucuAdresi = "http://192.168.1.10:5190/";
+    private const string VarsayilanSunucuAdresi = "http://192.168.1.112:5190/";
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
     private readonly ILogger<ApiService> _logger;

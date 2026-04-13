@@ -37,13 +37,13 @@
                             </span>
                             <InputText @bind-Value="_sunucuAdresi"
                                        class="form-control"
-                                       placeholder="192.168.1.10:5190"
+                                       placeholder="192.168.1.112:5190"
                                        disabled="@_yukleniyor" />
                             <button type="button" class="btn btn-outline-secondary" @onclick="VarsayilanSunucuyuUygula" disabled="@_yukleniyor">
-                                192.168.1.10:5190
+                                192.168.1.112:5190
                             </button>
                         </div>
-                        <small class="text-muted">Gerekirse IP:Port girin. Örnek: 192.168.1.10:5190</small>
+                        <small class="text-muted">Gerekirse IP:Port girin. Örnek: 192.168.1.112:5190</small>
                         <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
                             <button type="button" class="btn btn-outline-primary btn-sm" @onclick="BaglantiyiTestEtAsync" disabled="@_yukleniyor">
                                 @if (_baglantiTestEdiliyor)
@@ -137,7 +137,7 @@
     private bool _yukleniyor;
     private string? _hataMesaji;
     private bool _sifreGoster;
-    private string _sunucuAdresi = "192.168.1.10:5190";
+    private string _sunucuAdresi = "192.168.1.112:5190";
     private bool _baglantiTestEdiliyor;
     private bool _baglantiBasarili;
     private string? _baglantiDurumu;
@@ -222,7 +222,7 @@
 
     private void VarsayilanSunucuyuUygula()
     {
-        _sunucuAdresi = "192.168.1.10:5190";
+        _sunucuAdresi = "192.168.1.112:5190";
         _hataMesaji = null;
         _baglantiDurumu = null;
     }

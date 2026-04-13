@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Data;
+using System.Data.Common;
 
 namespace CRMFiloServis.Web.Data;
 
@@ -24,6 +25,11 @@ public static class DbInitializer
             if (!await context.Database.CanConnectAsync())
             {
                 throw new Exception("Veritabani baglantisi kurulamadi!");
+            }
+
+            if (context.Database.IsNpgsql())
+            {
+                await NormalizePostgreSqlAuditTimestampColumnsAsync(context, configuration);
             }
 
             // Bekleyen migration'lari uygula (yeni tablolar icin)
@@ -54,8 +60,8 @@ public static class DbInitializer
                         pendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToList();
                         if (!pendingMigrations.Any())
                         {
+                            migrationRecovered = true;
                             Console.WriteLine("SQLite migration gecmisi mevcut tablo yapisina gore duzeltildi.");
-                            return;
                         }
                     }
                 }
@@ -65,43 +71,17 @@ public static class DbInitializer
                 }
             }
 
-            if (context.Database.IsNpgsql())
-            {
-                try
-                {
-                    var pendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToList();
-                    migrationRecovered = await EnsurePostgreSqlMigrationHistoryAsync(context, pendingMigrations, ex);
-                    if (migrationRecovered)
-                    {
-                        Console.WriteLine("PostgreSQL migration gecmisi mevcut tablo yapisina gore duzeltildi.");
-                    }
-                }
-                catch (Exception pgFixEx)
-                {
-                    Console.WriteLine($"PostgreSQL migration duzeltme hatasi: {pgFixEx.Message}");
-                }
-            }
-
             if (migrationRecovered)
             {
-                goto AfterMigrationHandling;
+                Console.WriteLine("Migration kurtarma islemi tamamlandi, startup yardimcilari calistiriliyor.");
             }
-
-            // Migration hatasi durumunda EnsureCreated dene
-            Console.WriteLine($"Migration hatasi: {ex.Message}. EnsureCreated deneniyor...");
-            
-            try
+            else
             {
-                await context.Database.EnsureCreatedAsync();
-            }
-            catch (Exception createEx)
-            {
-                Console.WriteLine($"EnsureCreated hatasi: {createEx.Message}");
-                // Tablolar zaten var, devam et
+                throw new InvalidOperationException(
+                    "Veritabani migration islemi tamamlanamadi. Uygulama tutarsiz sema ile devam ettirilmedi.",
+                    ex);
             }
         }
-
-AfterMigrationHandling:
 
         // PostgreSQL için eksik kolonları ekle
         if (dbProvider == "PostgreSQL")
@@ -129,6 +109,7 @@ AfterMigrationHandling:
 
         // Budget masraf kalemleri her zaman kontrol et
         await SeedBudgetMasrafKalemleriAsync(context);
+        await SeedAracMasrafKalemleriAsync(context);
 
         // Destek Talebi seed verilerini ekle
         await SeedDestekTalebiVerileriAsync(context);
@@ -142,6 +123,52 @@ AfterMigrationHandling:
         return context.Database.GetConnectionString()
             ?? configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("DefaultConnection bulunamadi.");
+    }
+
+    private static async Task NormalizePostgreSqlAuditTimestampColumnsAsync(ApplicationDbContext context, IConfiguration configuration)
+    {
+        try
+        {
+            var connectionString = GetDefaultConnectionString(context, configuration);
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync();
+
+            const string findColumnsSql = @"
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND column_name IN ('CreatedAt', 'UpdatedAt')
+  AND data_type = 'timestamp with time zone';";
+
+            var targets = new List<(string TableName, string ColumnName)>();
+            await using (var findCmd = new NpgsqlCommand(findColumnsSql, conn))
+            await using (var reader = await findCmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    targets.Add((reader.GetString(0), reader.GetString(1)));
+                }
+            }
+
+            foreach (var (tableName, columnName) in targets)
+            {
+                var alterSql = $@"ALTER TABLE ""{tableName}""
+ALTER COLUMN ""{columnName}"" TYPE timestamp without time zone
+USING ""{columnName}"" AT TIME ZONE 'UTC';";
+
+                await using var alterCmd = new NpgsqlCommand(alterSql, conn);
+                await alterCmd.ExecuteNonQueryAsync();
+            }
+
+            if (targets.Count > 0)
+            {
+                Console.WriteLine($"PostgreSQL timestamp kolonlari normalize edildi: {targets.Count}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"PostgreSQL timestamp normalizasyon hatasi: {ex.Message}");
+        }
     }
 
     private static async Task EnsurePiyasaKaynaklarTableAsync(ApplicationDbContext context, string dbProvider, IConfiguration configuration)
@@ -520,94 +547,6 @@ AfterMigrationHandling:
         }
     }
 
-    private static async Task<bool> EnsurePostgreSqlMigrationHistoryAsync(ApplicationDbContext context, List<string> pendingMigrations, Exception migrationException)
-    {
-        const string addBudgetHedefMigrationId = "20260409091451_AddBudgetHedef";
-
-        if (!pendingMigrations.Contains(addBudgetHedefMigrationId))
-        {
-            return false;
-        }
-
-        var errorText = migrationException.ToString();
-        var looksLikeDuplicateSchemaObject = errorText.Contains("already exists", StringComparison.OrdinalIgnoreCase)
-            || errorText.Contains("42701", StringComparison.OrdinalIgnoreCase)
-            || errorText.Contains("42P07", StringComparison.OrdinalIgnoreCase)
-            || errorText.Contains("42710", StringComparison.OrdinalIgnoreCase);
-
-        if (!looksLikeDuplicateSchemaObject)
-        {
-            return false;
-        }
-
-        var connection = (NpgsqlConnection)context.Database.GetDbConnection();
-        var shouldClose = connection.State != ConnectionState.Open;
-
-        if (shouldClose)
-        {
-            await connection.OpenAsync();
-        }
-
-        try
-        {
-            await using var historyCreate = new NpgsqlCommand(@"
-                CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
-                    ""MigrationId"" character varying(150) NOT NULL,
-                    ""ProductVersion"" character varying(32) NOT NULL,
-                    CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
-                );", connection);
-            await historyCreate.ExecuteNonQueryAsync();
-
-            await using var markerCmd = new NpgsqlCommand(@"
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM information_schema.columns
-                    WHERE table_name = 'PuantajKayitlar' AND column_name = 'AitFirmaAdi'
-                ) OR EXISTS (
-                    SELECT 1
-                    FROM information_schema.tables
-                    WHERE table_name = 'BudgetHedefler'
-                ) OR EXISTS (
-                    SELECT 1
-                    FROM information_schema.tables
-                    WHERE table_name = 'CariHatirlatmalar'
-                );", connection);
-
-            var schemaLooksApplied = (bool)(await markerCmd.ExecuteScalarAsync() ?? false);
-            if (!schemaLooksApplied)
-            {
-                return false;
-            }
-
-            await using var existsCmd = new NpgsqlCommand(@"
-                SELECT EXISTS (
-                    SELECT 1 FROM ""__EFMigrationsHistory"" WHERE ""MigrationId"" = @migrationId
-                );", connection);
-            existsCmd.Parameters.AddWithValue("migrationId", addBudgetHedefMigrationId);
-            var alreadyRecorded = (bool)(await existsCmd.ExecuteScalarAsync() ?? false);
-            if (alreadyRecorded)
-            {
-                return true;
-            }
-
-            await using var insertCmd = new NpgsqlCommand(@"
-                INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-                VALUES (@migrationId, @productVersion);", connection);
-            insertCmd.Parameters.AddWithValue("migrationId", addBudgetHedefMigrationId);
-            insertCmd.Parameters.AddWithValue("productVersion", "10.0.5");
-            await insertCmd.ExecuteNonQueryAsync();
-
-            return true;
-        }
-        finally
-        {
-            if (shouldClose)
-            {
-                await connection.CloseAsync();
-            }
-        }
-    }
-
     // Eski metod - geriye donuk uyumluluk icin
     public static async Task InitializeAsync(ApplicationDbContext context)
     {
@@ -615,17 +554,11 @@ AfterMigrationHandling:
         {
             await context.Database.MigrateAsync();
         }
-        catch
+        catch (Exception ex)
         {
-            // Hata olursa EnsureCreated dene
-            try
-            {
-                await context.Database.EnsureCreatedAsync();
-            }
-            catch
-            {
-                // Tablolar zaten var, devam et
-            }
+            throw new InvalidOperationException(
+                "Veritabani migration islemi tamamlanamadi. Uygulama tutarsiz sema ile devam ettirilmedi.",
+                ex);
         }
 
         var dbProvider = context.Database.IsNpgsql() ? "PostgreSQL" : context.Database.IsSqlite() ? "SQLite" : "SQLite";
@@ -633,6 +566,7 @@ AfterMigrationHandling:
         await EnsureDestekModuluColumnsAsync(context, dbProvider, null);
 
         await SeedBudgetMasrafKalemleriAsync(context);
+        await SeedAracMasrafKalemleriAsync(context);
 
         // Destek Talebi seed verilerini ekle
         await SeedDestekTalebiVerileriAsync(context);
@@ -1201,6 +1135,34 @@ AfterMigrationHandling:
         }
     }
 
+    private static async Task SeedAracMasrafKalemleriAsync(ApplicationDbContext context)
+    {
+        try
+        {
+            var mevcutKalem = await context.MasrafKalemleri
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(k => k.MasrafAdi == "AdBlue" || k.MasrafKodu == "MSR-ADBLUE");
+
+            if (mevcutKalem == null)
+            {
+                context.MasrafKalemleri.Add(new MasrafKalemi
+                {
+                    MasrafKodu = "MSR-ADBLUE",
+                    MasrafAdi = "AdBlue",
+                    Kategori = MasrafKategori.Yakit,
+                    Aktif = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await context.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Araç masraf kalemi seed hatası: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// EBYS modülü için örnek veriler ve test senaryoları
     /// Evrak kategorileri, gelen/giden evraklar, özlük evrak tanımları
@@ -1209,6 +1171,12 @@ AfterMigrationHandling:
     {
         try
         {
+            if (!await ContextTableExistsAsync(context, "EbysEvrakKategoriler") || !await ContextTableExistsAsync(context, "OzlukEvrakTanimlari"))
+            {
+                Console.WriteLine("EBYS seed atlandi: gerekli tablolar henuz olusmamis.");
+                return;
+            }
+
             // ========== 1. EBYS Evrak Kategorileri ==========
             if (!await context.EbysEvrakKategoriler.AnyAsync())
             {
@@ -1526,6 +1494,42 @@ AfterMigrationHandling:
             ("BankaKasaHareketleri", "KostMerkeziKodu", "TEXT", null),
             ("BankaKasaHareketleri", "ProjeKodu", "TEXT", null),
             ("BankaKasaHareketleri", "MuhasebeAciklama", "TEXT", null),
+
+             // MuhasebeFisleri tablosu - Bordro bağlantısı
+             ("MuhasebeFisleri", "BordroId", "INTEGER", null),
+
+            // ========== Mega-migration (EbysEvrakKategoriler_Fix) eksik kolonları ==========
+
+            // SirketId kolonları - 8 tablo (multi-tenant)
+            ("Faturalar", "SirketId", "INTEGER", null),
+            ("Cariler", "SirketId", "INTEGER", null),
+            ("Araclar", "SirketId", "INTEGER", null),
+            ("Guzergahlar", "SirketId", "INTEGER", null),
+            ("BankaHesaplari", "SirketId", "INTEGER", null),
+            ("BankaKasaHareketleri", "SirketId", "INTEGER", null),
+            ("Personeller", "SirketId", "INTEGER", null),
+            ("Kullanicilar", "SirketId", "INTEGER", null),
+
+            // PersonelOzlukEvraklar tablosu - Versiyon/dosya alanları
+            ("PersonelOzlukEvraklar", "DosyaAdi", "TEXT", null),
+            ("PersonelOzlukEvraklar", "DosyaBoyutu", "BIGINT", null),
+            ("PersonelOzlukEvraklar", "DosyaTipi", "TEXT", null),
+            ("PersonelOzlukEvraklar", "SonDegisiklikNotu", "TEXT", null),
+            ("PersonelOzlukEvraklar", "VersiyonNo", "INTEGER", "0"),
+
+            // EbysEvrakDosyalar tablosu - Versiyon alanları
+            ("EbysEvrakDosyalar", "SonDegisiklikNotu", "TEXT", null),
+            ("EbysEvrakDosyalar", "VersiyonNo", "INTEGER", "0"),
+
+            // AracEvrakDosyalari tablosu - Versiyon alanları
+            ("AracEvrakDosyalari", "SonDegisiklikNotu", "TEXT", null),
+            ("AracEvrakDosyalari", "VersiyonNo", "INTEGER", "0"),
+
+            // PersonelPuantajlar tablosu - Onay alanları
+            ("PersonelPuantajlar", "OnayDurumu", "INTEGER", "0"),
+            ("PersonelPuantajlar", "OnayNotu", "TEXT", null),
+            ("PersonelPuantajlar", "OnayTarihi", "TIMESTAMP WITHOUT TIME ZONE", null),
+            ("PersonelPuantajlar", "OnaylayanKullanici", "TEXT", null),
         };
 
         foreach (var (table, column, type, defaultValue) in missingColumns)
@@ -1561,6 +1565,39 @@ AfterMigrationHandling:
             catch (Exception ex)
             {
                 Console.WriteLine($"{table}.{column} eklenirken hata: {ex.Message}");
+            }
+        }
+
+        // MuhasebeFisleri.BordroId için indeks ve foreign key kontrolü
+        if (existingTables.Contains("MuhasebeFisleri") && existingTables.Contains("Bordrolar"))
+        {
+            try
+            {
+                await using var indexCmd = new NpgsqlCommand(
+                    @"CREATE INDEX IF NOT EXISTS ""IX_MuhasebeFisleri_BordroId"" ON ""MuhasebeFisleri"" (""BordroId"")",
+                    connection);
+                await indexCmd.ExecuteNonQueryAsync();
+
+                const string fkName = "FK_MuhasebeFisleri_Bordrolar_BordroId";
+                await using var fkCheckCmd = new NpgsqlCommand(
+                    @"SELECT COUNT(*) FROM pg_constraint WHERE conname = @constraintName",
+                    connection);
+                fkCheckCmd.Parameters.AddWithValue("constraintName", fkName);
+
+                var fkExists = Convert.ToInt32(await fkCheckCmd.ExecuteScalarAsync()) > 0;
+                if (!fkExists)
+                {
+                    await using var fkCmd = new NpgsqlCommand(
+                        @"ALTER TABLE ""MuhasebeFisleri""
+                          ADD CONSTRAINT ""FK_MuhasebeFisleri_Bordrolar_BordroId""
+                          FOREIGN KEY (""BordroId"") REFERENCES ""Bordrolar"" (""Id"") ON DELETE SET NULL",
+                        connection);
+                    await fkCmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"MuhasebeFisleri.BordroId ilişki kontrolü hatası: {ex.Message}");
             }
         }
 
@@ -1679,6 +1716,41 @@ AfterMigrationHandling:
         }
     }
 
+    private static async Task<bool> ContextTableExistsAsync(ApplicationDbContext context, string tableName)
+    {
+        var connection = context.Database.GetDbConnection();
+        var closeAfter = connection.State != ConnectionState.Open;
+
+        if (closeAfter)
+            await connection.OpenAsync();
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+
+            if (context.Database.IsNpgsql())
+            {
+                command.CommandText = $"SELECT to_regclass('\"{tableName}\"') IS NOT NULL";
+            }
+            else if (context.Database.IsSqlite())
+            {
+                command.CommandText = $"SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '{tableName}')";
+            }
+            else
+            {
+                return true;
+            }
+
+            var result = await command.ExecuteScalarAsync();
+            return result != null && Convert.ToBoolean(result);
+        }
+        finally
+        {
+            if (closeAfter)
+                await connection.CloseAsync();
+        }
+    }
+
     private static async Task<bool> TableExistsAsync(NpgsqlConnection connection, string tableName)
     {
         await using var command = new NpgsqlCommand(@"
@@ -1713,11 +1785,15 @@ AfterMigrationHandling:
                 ""MigrationId"" character varying(150) NOT NULL,
                 ""ProductVersion"" character varying(32) NOT NULL,
                 CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
-            );
+            );");
 
+        await using var insertCommand = new NpgsqlCommand(@"
             INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
-            VALUES ('20260326224724_AracSasePlakaYapisi', '10.0.5')
-            ON CONFLICT (""MigrationId"") DO NOTHING;");
+            VALUES (@migrationId, @productVersion)
+            ON CONFLICT (""MigrationId"") DO NOTHING;", connection);
+        insertCommand.Parameters.AddWithValue("migrationId", migrationId);
+        insertCommand.Parameters.AddWithValue("productVersion", "10.0.5");
+        await insertCommand.ExecuteNonQueryAsync();
     }
 
     private static async Task ExecuteNonQueryAsync(NpgsqlConnection connection, NpgsqlTransaction? transaction, string sql)
@@ -1956,13 +2032,13 @@ AfterMigrationHandling:
             }
         }
 
-        // BankaHesaplar tablosu
-        if (!existingTables.Contains("BankaHesaplar"))
+        // BankaHesaplari tablosu
+        if (!existingTables.Contains("BankaHesaplari"))
         {
             try
             {
                 await using var createCmd = new NpgsqlCommand(@"
-                    CREATE TABLE ""BankaHesaplar"" (
+                    CREATE TABLE ""BankaHesaplari"" (
                         ""Id"" SERIAL PRIMARY KEY,
                         ""HesapAdi"" VARCHAR(200) NOT NULL DEFAULT '',
                         ""BankaAdi"" VARCHAR(100),
@@ -1981,12 +2057,12 @@ AfterMigrationHandling:
                         ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
                     )", connection);
                 await createCmd.ExecuteNonQueryAsync();
-                existingTables.Add("BankaHesaplar");
-                Console.WriteLine("BankaHesaplar tablosu oluşturuldu.");
+                existingTables.Add("BankaHesaplari");
+                Console.WriteLine("BankaHesaplari tablosu oluşturuldu.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"BankaHesaplar tablosu oluşturulurken hata: {ex.Message}");
+                Console.WriteLine($"BankaHesaplari tablosu oluşturulurken hata: {ex.Message}");
             }
         }
 
@@ -2158,6 +2234,571 @@ AfterMigrationHandling:
             catch (Exception ex)
             {
                 Console.WriteLine($"PuantajKayitlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // ========== Mega-migration (EbysEvrakKategoriler_Fix) eksik tabloları ==========
+
+        // Sirketler tablosu (multi-tenant)
+        if (!existingTables.Contains("Sirketler"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""Sirketler"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""SirketKodu"" VARCHAR(20) NOT NULL,
+                        ""Unvan"" VARCHAR(250) NOT NULL,
+                        ""KisaAd"" VARCHAR(100),
+                        ""VergiDairesi"" VARCHAR(100),
+                        ""VergiNo"" VARCHAR(11),
+                        ""Adres"" VARCHAR(500),
+                        ""Il"" VARCHAR(50),
+                        ""Ilce"" VARCHAR(50),
+                        ""PostaKodu"" VARCHAR(10),
+                        ""Telefon"" VARCHAR(20),
+                        ""Email"" VARCHAR(100),
+                        ""WebSitesi"" VARCHAR(200),
+                        ""LogoUrl"" VARCHAR(500),
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""ParaBirimi"" VARCHAR(5) NOT NULL DEFAULT 'TRY',
+                        ""AyarlarJson"" TEXT,
+                        ""LisansBitisTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""MaxKullaniciSayisi"" INTEGER NOT NULL DEFAULT 10,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("Sirketler");
+
+                // Unique index
+                await using var idxCmd = new NpgsqlCommand(@"
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Sirketler_SirketKodu"" ON ""Sirketler"" (""SirketKodu"")", connection);
+                await idxCmd.ExecuteNonQueryAsync();
+
+                Console.WriteLine("Sirketler tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Sirketler tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // BildirimAyarlari tablosu
+        if (!existingTables.Contains("BildirimAyarlari"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""BildirimAyarlari"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""KullaniciId"" INTEGER NOT NULL,
+                        ""FaturaVadeUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""EhliyetBitisUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""SrcBelgesiUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""PsikoteknikUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""SaglikRaporuUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""TrafikSigortaUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""KaskoUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""MuayeneUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""DestekTalebiUyarisi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""SistemBildirimleri"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""EpostaAlsin"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""EpostaAdresi"" TEXT,
+                        ""SmsAlsin"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""SmsTelefon"" VARCHAR(20),
+                        ""SmsVadeHatirlatma"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""SmsBelgeHatirlatma"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""VadeUyariGunSayisi"" INTEGER NOT NULL DEFAULT 7,
+                        ""BelgeUyariGunSayisi"" INTEGER NOT NULL DEFAULT 30,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("BildirimAyarlari");
+                Console.WriteLine("BildirimAyarlari tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BildirimAyarlari tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // EpostaBildirimLoglari tablosu
+        if (!existingTables.Contains("EpostaBildirimLoglari"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""EpostaBildirimLoglari"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""KullaniciId"" INTEGER NOT NULL,
+                        ""EpostaAdresi"" VARCHAR(200) NOT NULL,
+                        ""UyariSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ""GonderimTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""Basarili"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""HataMesaji"" VARCHAR(500),
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("EpostaBildirimLoglari");
+                Console.WriteLine("EpostaBildirimLoglari tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EpostaBildirimLoglari tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // WebhookEndpointler tablosu
+        if (!existingTables.Contains("WebhookEndpointler"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""WebhookEndpointler"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Ad"" VARCHAR(100) NOT NULL,
+                        ""Aciklama"" VARCHAR(500),
+                        ""Url"" VARCHAR(500) NOT NULL,
+                        ""Secret"" VARCHAR(100),
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""MaxRetry"" INTEGER NOT NULL DEFAULT 3,
+                        ""RetryDelaySaniye"" INTEGER NOT NULL DEFAULT 30,
+                        ""OlayFiltresi"" TEXT,
+                        ""HttpMethod"" TEXT NOT NULL DEFAULT 'POST',
+                        ""Headers"" TEXT,
+                        ""ToplamGonderim"" INTEGER NOT NULL DEFAULT 0,
+                        ""BasariliGonderim"" INTEGER NOT NULL DEFAULT 0,
+                        ""BasarisizGonderim"" INTEGER NOT NULL DEFAULT 0,
+                        ""SonGonderimTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""SonBasariliTarih"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("WebhookEndpointler");
+                Console.WriteLine("WebhookEndpointler tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WebhookEndpointler tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // WebhookLoglar tablosu
+        if (!existingTables.Contains("WebhookLoglar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""WebhookLoglar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""WebhookEndpointId"" INTEGER NOT NULL,
+                        ""OlayTipi"" VARCHAR(100) NOT NULL,
+                        ""Payload"" TEXT,
+                        ""Durum"" INTEGER NOT NULL DEFAULT 0,
+                        ""HttpStatusCode"" INTEGER NOT NULL DEFAULT 0,
+                        ""ResponseBody"" TEXT,
+                        ""GonderimTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""YanitTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""SureMilisaniye"" INTEGER NOT NULL DEFAULT 0,
+                        ""RetryCount"" INTEGER NOT NULL DEFAULT 0,
+                        ""HataMesaji"" TEXT,
+                        ""IliskiliTablo"" TEXT,
+                        ""IliskiliKayitId"" INTEGER,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("WebhookLoglar");
+                Console.WriteLine("WebhookLoglar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WebhookLoglar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // AracBolgeler tablosu
+        if (!existingTables.Contains("AracBolgeler"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""AracBolgeler"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""BolgeAdi"" TEXT NOT NULL,
+                        ""Tip"" INTEGER NOT NULL DEFAULT 0,
+                        ""MerkezLatitude"" DOUBLE PRECISION,
+                        ""MerkezLongitude"" DOUBLE PRECISION,
+                        ""YaricapMetre"" DOUBLE PRECISION,
+                        ""PoligonKoordinatlari"" TEXT,
+                        ""Renk"" TEXT,
+                        ""GirisBildirimi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""CikisBildirimi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""Notlar"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("AracBolgeler");
+                Console.WriteLine("AracBolgeler tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AracBolgeler tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // AracBolgeAtamalar tablosu
+        if (!existingTables.Contains("AracBolgeAtamalar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""AracBolgeAtamalar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""AracBolgeId"" INTEGER NOT NULL,
+                        ""AracId"" INTEGER NOT NULL,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("AracBolgeAtamalar");
+                Console.WriteLine("AracBolgeAtamalar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AracBolgeAtamalar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // AracTakipCihazlar tablosu
+        if (!existingTables.Contains("AracTakipCihazlar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""AracTakipCihazlar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""AracId"" INTEGER NOT NULL,
+                        ""CihazId"" TEXT NOT NULL,
+                        ""CihazMarka"" TEXT,
+                        ""CihazModel"" TEXT,
+                        ""SimKartNo"" TEXT,
+                        ""Aktif"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""KurulumTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""SonIletisimZamani"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""BataryaSeviyesi"" INTEGER,
+                        ""SinyalGucu"" INTEGER,
+                        ""Notlar"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("AracTakipCihazlar");
+                Console.WriteLine("AracTakipCihazlar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AracTakipCihazlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // AracKonumlar tablosu
+        if (!existingTables.Contains("AracKonumlar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""AracKonumlar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""AracTakipCihazId"" INTEGER NOT NULL,
+                        ""Latitude"" DOUBLE PRECISION NOT NULL,
+                        ""Longitude"" DOUBLE PRECISION NOT NULL,
+                        ""Hiz"" DOUBLE PRECISION,
+                        ""Yon"" DOUBLE PRECISION,
+                        ""Rakım"" DOUBLE PRECISION,
+                        ""Hassasiyet"" DOUBLE PRECISION,
+                        ""KayitZamani"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""KontakDurumu"" BOOLEAN,
+                        ""MotorDurumu"" BOOLEAN,
+                        ""YakitSeviyesi"" INTEGER,
+                        ""Kilometre"" INTEGER,
+                        ""Sicaklik"" DOUBLE PRECISION,
+                        ""OlayTipi"" INTEGER NOT NULL DEFAULT 0,
+                        ""Adres"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("AracKonumlar");
+                Console.WriteLine("AracKonumlar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AracKonumlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // AracTakipAlarmlar tablosu
+        if (!existingTables.Contains("AracTakipAlarmlar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""AracTakipAlarmlar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""AracTakipCihazId"" INTEGER NOT NULL,
+                        ""AlarmTipi"" INTEGER NOT NULL DEFAULT 0,
+                        ""AlarmZamani"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""Latitude"" DOUBLE PRECISION,
+                        ""Longitude"" DOUBLE PRECISION,
+                        ""Mesaj"" TEXT,
+                        ""Deger"" DOUBLE PRECISION,
+                        ""Okundu"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""Islendi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""Notlar"" TEXT,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("AracTakipAlarmlar");
+                Console.WriteLine("AracTakipAlarmlar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AracTakipAlarmlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // EbysAramaGecmisleri tablosu
+        if (!existingTables.Contains("EbysAramaGecmisleri"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""EbysAramaGecmisleri"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""KullaniciId"" INTEGER NOT NULL,
+                        ""AramaMetni"" VARCHAR(500) NOT NULL,
+                        ""FiltreJson"" VARCHAR(2000),
+                        ""SonucSayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ""AramaTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("EbysAramaGecmisleri");
+                Console.WriteLine("EbysAramaGecmisleri tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EbysAramaGecmisleri tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // EbysBelgeEmbeddingler tablosu
+        if (!existingTables.Contains("EbysBelgeEmbeddingler"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""EbysBelgeEmbeddingler"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Kaynak"" INTEGER NOT NULL DEFAULT 0,
+                        ""KaynakId"" INTEGER NOT NULL,
+                        ""DosyaId"" INTEGER,
+                        ""Metin"" VARCHAR(8000) NOT NULL,
+                        ""MetinOzet"" VARCHAR(500),
+                        ""EmbeddingJson"" TEXT NOT NULL,
+                        ""EmbeddingBoyutu"" INTEGER NOT NULL DEFAULT 0,
+                        ""ModelAdi"" VARCHAR(100),
+                        ""OlusturmaTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""GuncellemeTarihi"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("EbysBelgeEmbeddingler");
+                Console.WriteLine("EbysBelgeEmbeddingler tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EbysBelgeEmbeddingler tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // EbysEvrakDosyaVersiyonlar tablosu
+        if (!existingTables.Contains("EbysEvrakDosyaVersiyonlar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""EbysEvrakDosyaVersiyonlar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""EvrakDosyaId"" INTEGER NOT NULL,
+                        ""VersiyonNo"" INTEGER NOT NULL DEFAULT 1,
+                        ""DosyaAdi"" TEXT NOT NULL,
+                        ""DosyaYolu"" TEXT NOT NULL,
+                        ""DosyaTipi"" TEXT,
+                        ""DosyaBoyutu"" BIGINT NOT NULL DEFAULT 0,
+                        ""Aciklama"" TEXT,
+                        ""DegisiklikNotu"" TEXT,
+                        ""OlusturanKullaniciId"" INTEGER,
+                        ""OlusturmaTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("EbysEvrakDosyaVersiyonlar");
+                Console.WriteLine("EbysEvrakDosyaVersiyonlar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EbysEvrakDosyaVersiyonlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // EbysKayitliAramalar tablosu
+        if (!existingTables.Contains("EbysKayitliAramalar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""EbysKayitliAramalar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""KullaniciId"" INTEGER NOT NULL,
+                        ""AramaAdi"" VARCHAR(100) NOT NULL,
+                        ""Aciklama"" VARCHAR(250),
+                        ""FiltreJson"" VARCHAR(2000) NOT NULL,
+                        ""BildirimAktif"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""SiraNo"" INTEGER NOT NULL DEFAULT 0,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("EbysKayitliAramalar");
+                Console.WriteLine("EbysKayitliAramalar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"EbysKayitliAramalar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // PersonelOzlukEvrakVersiyonlar tablosu
+        if (!existingTables.Contains("PersonelOzlukEvrakVersiyonlar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""PersonelOzlukEvrakVersiyonlar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""PersonelOzlukEvrakId"" INTEGER NOT NULL,
+                        ""VersiyonNo"" INTEGER NOT NULL DEFAULT 1,
+                        ""DosyaYolu"" TEXT,
+                        ""DosyaAdi"" TEXT,
+                        ""DosyaTipi"" TEXT,
+                        ""DosyaBoyutu"" BIGINT,
+                        ""Aciklama"" TEXT,
+                        ""DegisiklikNotu"" TEXT,
+                        ""OlusturanKullaniciId"" INTEGER,
+                        ""OlusturmaTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("PersonelOzlukEvrakVersiyonlar");
+                Console.WriteLine("PersonelOzlukEvrakVersiyonlar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"PersonelOzlukEvrakVersiyonlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // AracEvrakDosyaVersiyonlar tablosu
+        if (!existingTables.Contains("AracEvrakDosyaVersiyonlar"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""AracEvrakDosyaVersiyonlar"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""AracEvrakDosyaId"" INTEGER NOT NULL,
+                        ""VersiyonNo"" INTEGER NOT NULL DEFAULT 1,
+                        ""DosyaAdi"" TEXT NOT NULL,
+                        ""DosyaYolu"" TEXT NOT NULL,
+                        ""DosyaTipi"" TEXT,
+                        ""DosyaBoyutu"" BIGINT NOT NULL DEFAULT 0,
+                        ""Aciklama"" TEXT,
+                        ""DegisiklikNotu"" TEXT,
+                        ""OlusturanKullaniciId"" INTEGER,
+                        ""OlusturmaTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("AracEvrakDosyaVersiyonlar");
+                Console.WriteLine("AracEvrakDosyaVersiyonlar tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AracEvrakDosyaVersiyonlar tablosu oluşturulurken hata: {ex.Message}");
+            }
+        }
+
+        // SirketTransferLoglari tablosu
+        if (!existingTables.Contains("SirketTransferLoglari"))
+        {
+            try
+            {
+                await using var createCmd = new NpgsqlCommand(@"
+                    CREATE TABLE ""SirketTransferLoglari"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""EntityTuru"" VARCHAR(50) NOT NULL,
+                        ""EntityId"" INTEGER NOT NULL,
+                        ""EntityAciklama"" VARCHAR(500),
+                        ""KaynakSirketId"" INTEGER NOT NULL,
+                        ""HedefSirketId"" INTEGER NOT NULL,
+                        ""KullaniciId"" INTEGER NOT NULL,
+                        ""TransferTarihi"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""Durum"" INTEGER NOT NULL DEFAULT 0,
+                        ""HataMesaji"" VARCHAR(2000),
+                        ""IliskiliVerilerTransferEdildi"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""IliskiliEntitySayisi"" INTEGER NOT NULL DEFAULT 0,
+                        ""Notlar"" VARCHAR(1000),
+                        ""CreatedAt"" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""UpdatedAt"" TIMESTAMP WITHOUT TIME ZONE,
+                        ""IsDeleted"" BOOLEAN NOT NULL DEFAULT FALSE
+                    )", connection);
+                await createCmd.ExecuteNonQueryAsync();
+                existingTables.Add("SirketTransferLoglari");
+                Console.WriteLine("SirketTransferLoglari tablosu oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SirketTransferLoglari tablosu oluşturulurken hata: {ex.Message}");
             }
         }
 
