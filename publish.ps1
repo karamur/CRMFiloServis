@@ -10,6 +10,8 @@ $Host.UI.RawUI.WindowTitle = "CRMFiloServis Publish"
 # Veritabanı ayarları
 $dbSettingsPath = "CRMFiloServis.Web\dbsettings.json"
 $backupOutputDir = "publish\DatabaseBackup"
+$installerPayloadDir = "CRMFiloServis.Installer\Payload"
+$installerPayloadZip = Join-Path $installerPayloadDir "crmfiloservis-package.zip"
 
 # Renk fonksiyonları
 function Write-Header {
@@ -34,6 +36,38 @@ function Write-Error {
 function Write-Info {
     param([string]$Text)
     Write-Host "[BILGI] $Text" -ForegroundColor Yellow
+}
+
+function New-InstallerPayload {
+    param(
+        [string]$WebPublishDir = "publish\Web"
+    )
+
+    if (-not (Test-Path $WebPublishDir)) {
+        Write-Error "Installer payload olusturulamadi. Web publish klasoru bulunamadi: $WebPublishDir"
+        return $false
+    }
+
+    Write-Info "Installer icin gomulu web paketi hazirlaniyor..."
+
+    if (-not (Test-Path $installerPayloadDir)) {
+        New-Item -ItemType Directory -Path $installerPayloadDir -Force | Out-Null
+    }
+
+    if (Test-Path $installerPayloadZip) {
+        Remove-Item $installerPayloadZip -Force
+    }
+
+    Compress-Archive -Path (Join-Path $WebPublishDir '*') -DestinationPath $installerPayloadZip -CompressionLevel Optimal
+
+    if (Test-Path $installerPayloadZip) {
+        $payloadSize = "{0:N2} MB" -f ((Get-Item $installerPayloadZip).Length / 1MB)
+        Write-Success "Installer payload hazirlandi: $installerPayloadZip ($payloadSize)"
+        return $true
+    }
+
+    Write-Error "Installer payload ZIP dosyasi olusturulamadi."
+    return $false
 }
 
 # Veritabanı yedeği alma fonksiyonu
@@ -197,6 +231,20 @@ function Publish-Proje {
     
     Write-Info "$($proje.Ad) publish ediliyor..."
     Write-Host "  Cikti klasoru: $($proje.CiktiKlasoru)" -ForegroundColor Gray
+
+    if ($ProjeKey -eq "3") {
+        $webExePath = Join-Path "publish\Web" "CRMFiloServis.Web.exe"
+        if (-not (Test-Path $webExePath)) {
+            Write-Info "Installer publish oncesi Web publish alinacak..."
+            if (-not (Publish-Proje -ProjeKey "1")) {
+                return $false
+            }
+        }
+
+        if (-not (New-InstallerPayload -WebPublishDir "publish\Web")) {
+            return $false
+        }
+    }
     
     # Çıktı klasörünü temizle
     if (Test-Path $proje.CiktiKlasoru) {
@@ -218,6 +266,11 @@ function Publish-Proje {
         $dosyaSayisi = (Get-ChildItem -Path $proje.CiktiKlasoru -Recurse -File).Count
         $klasorBoyutu = "{0:N2} MB" -f ((Get-ChildItem -Path $proje.CiktiKlasoru -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB)
         Write-Host "  Dosya sayisi: $dosyaSayisi | Toplam boyut: $klasorBoyutu" -ForegroundColor Gray
+
+        if ($ProjeKey -eq "3") {
+            Write-Host "  Not: Installer EXE icinde web paketi gomulu olarak bulunuyor." -ForegroundColor Gray
+        }
+
         return $true
     } else {
         Write-Error "$($proje.Ad) publish edilirken hata olustu!"

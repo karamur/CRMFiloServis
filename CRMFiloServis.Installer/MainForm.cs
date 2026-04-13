@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO.Compression;
+using System.Reflection;
 using System.Text.Json;
 using CRMFiloServis.Shared;
 using CRMFiloServis.Shared.Entities;
@@ -8,6 +9,7 @@ namespace CRMFiloServis.Installer;
 
 public partial class MainForm : Form
 {
+    private const string EmbeddedPackageFileName = "crmfiloservis-package.zip";
     private enum KurulumTipi { Normal, Docker }
     private enum KurulumModu { YeniKurulum, MevcutYedekIle }
 
@@ -21,7 +23,11 @@ public partial class MainForm : Form
     {
         InitializeComponent();
         txtMakineKodu.Text = LisansHelper.GetMachineCode();
+        InitializePackageSource();
+        FormClosed += (_, _) => CleanupTemporaryPackageFiles();
     }
+
+    private readonly List<string> _temporaryPackageFiles = new();
 
     private void rbNormal_CheckedChanged(object sender, EventArgs e)
     {
@@ -119,9 +125,9 @@ public partial class MainForm : Form
 
     private async void btnKurulumBaslat_Click(object sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(_paketDosyaYolu) || !File.Exists(_paketDosyaYolu))
+        if (!HasAvailablePackage())
         {
-            MessageBox.Show("Lütfen önce kurulum paketini seçin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Kurulum paketi bulunamadı. Tek EXE paketini kullanın ya da manuel ZIP seçin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -186,7 +192,8 @@ public partial class MainForm : Form
         var tempDir = Path.Combine(Path.GetTempPath(), "CRMFiloServis_Install_" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(tempDir);
 
-        ZipFile.ExtractToDirectory(_paketDosyaYolu!, tempDir, overwriteFiles: true);
+        var paketDosyaYolu = await PreparePackageFileAsync();
+        ZipFile.ExtractToDirectory(paketDosyaYolu, tempDir, overwriteFiles: true);
 
         var sourceDir = tempDir;
         var publishSubDir = Path.Combine(tempDir, "publish");
@@ -246,7 +253,8 @@ public partial class MainForm : Form
         var tempDir = Path.Combine(Path.GetTempPath(), "CRMFiloServis_Install_" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(tempDir);
 
-        ZipFile.ExtractToDirectory(_paketDosyaYolu!, tempDir, overwriteFiles: true);
+        var paketDosyaYolu = await PreparePackageFileAsync();
+        ZipFile.ExtractToDirectory(paketDosyaYolu, tempDir, overwriteFiles: true);
 
         var sourceDir = tempDir;
         var publishSubDir = Path.Combine(tempDir, "publish");
@@ -295,6 +303,91 @@ public partial class MainForm : Form
             "Docker Kurulum",
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);
+    }
+
+    private void InitializePackageSource()
+    {
+        var adjacentPackage = FindAdjacentPackageFile();
+        if (TryGetEmbeddedPackageResourceName() is not null)
+        {
+            _paketDosyaYolu = null;
+            lblPaketDurum.Text = "Gömülü kurulum paketi hazır. Bu EXE tek başına kurulum yapabilir.";
+            btnPaketSec.Enabled = false;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(adjacentPackage))
+        {
+            _paketDosyaYolu = adjacentPackage;
+            lblPaketDurum.Text = $"Otomatik paket bulundu: {Path.GetFileName(adjacentPackage)}";
+            return;
+        }
+
+        lblPaketDurum.Text = "Kurulum paketi seçilmedi. Tek EXE değilse ZIP seçin.";
+    }
+
+    private bool HasAvailablePackage()
+        => TryGetEmbeddedPackageResourceName() is not null || (!string.IsNullOrWhiteSpace(_paketDosyaYolu) && File.Exists(_paketDosyaYolu));
+
+    private async Task<string> PreparePackageFileAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_paketDosyaYolu) && File.Exists(_paketDosyaYolu))
+        {
+            return _paketDosyaYolu;
+        }
+
+        var resourceName = TryGetEmbeddedPackageResourceName();
+        if (resourceName is null)
+        {
+            throw new FileNotFoundException("Kurulum paketi bulunamadı.");
+        }
+
+        var tempPackagePath = Path.Combine(Path.GetTempPath(), $"CRMFiloServis_Paket_{Guid.NewGuid():N}.zip");
+        var assembly = Assembly.GetExecutingAssembly();
+        await using var resourceStream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new FileNotFoundException("Gömülü kurulum paketi okunamadı.", resourceName);
+        await using var fileStream = File.Create(tempPackagePath);
+        await resourceStream.CopyToAsync(fileStream);
+
+        _temporaryPackageFiles.Add(tempPackagePath);
+        return tempPackagePath;
+    }
+
+    private static string? FindAdjacentPackageFile()
+    {
+        var baseDir = AppContext.BaseDirectory;
+        var directPath = Path.Combine(baseDir, EmbeddedPackageFileName);
+        if (File.Exists(directPath))
+        {
+            return directPath;
+        }
+
+        return Directory.GetFiles(baseDir, "*.zip", SearchOption.TopDirectoryOnly)
+            .FirstOrDefault(file => Path.GetFileName(file).Contains("crmfiloservis", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? TryGetEmbeddedPackageResourceName()
+    {
+        return Assembly.GetExecutingAssembly()
+            .GetManifestResourceNames()
+            .FirstOrDefault(name => name.EndsWith($".{EmbeddedPackageFileName}", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void CleanupTemporaryPackageFiles()
+    {
+        foreach (var tempFile in _temporaryPackageFiles)
+        {
+            try
+            {
+                if (File.Exists(tempFile))
+                {
+                    File.Delete(tempFile);
+                }
+            }
+            catch
+            {
+            }
+        }
     }
 
     private static void CopyDirectory(string sourceDir, string destDir)

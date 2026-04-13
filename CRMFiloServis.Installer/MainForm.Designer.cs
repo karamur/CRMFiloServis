@@ -115,7 +115,7 @@ partial class MainForm
         grpYedek.Controls.Add(btnYedekSec);
 
         // Paket Grubu
-        var grpPaket = new GroupBox
+        grpPaket = new GroupBox
         {
             Text = "4. Kurulum Paketi",
             Location = new Point(20, 295),
@@ -131,7 +131,7 @@ partial class MainForm
         };
         grpPaket.Controls.Add(lblPaketDurum);
 
-        var btnPaketSec = new Button
+        btnPaketSec = new Button
         {
             Text = "Paket Seç...",
             Location = new Point(480, 24),
@@ -268,6 +268,7 @@ partial class MainForm
     private RadioButton rbYeniKurulum;
     private RadioButton rbMevcutYedek;
     private GroupBox grpYedek;
+    private GroupBox grpPaket;
     private Label lblYedekDurum;
     private Label lblPaketDurum;
     private TextBox txtHedefDizin;
@@ -277,4 +278,5 @@ partial class MainForm
     private ProgressBar progressBar;
     private Label lblDurum;
     private Button btnKurulumBaslat;
+    private Button btnPaketSec;
 }

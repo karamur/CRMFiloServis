@@ -20,4 +20,10 @@
     <ProjectReference Include="..\CRMFiloServis.Shared\CRMFiloServis.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Payload\crmfiloservis-package.zip"
+                      Condition="Exists('Payload\\crmfiloservis-package.zip')"
+                      LogicalName="CRMFiloServis.Installer.Payload.crmfiloservis-package.zip" />
+  </ItemGroup>
+
 </Project>
