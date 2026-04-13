@@ -48,9 +48,7 @@ namespace CRMFiloServis.Web.Data.Migrations
                 name: "FK_PersonelMaaslari_Soforler_SoforId",
                 table: "PersonelMaaslari");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_PersonelOzlukEvraklar_Soforler_SoforId",
-                table: "PersonelOzlukEvraklar");
+            migrationBuilder.Sql(@"ALTER TABLE ""PersonelOzlukEvraklar"" DROP CONSTRAINT IF EXISTS ""FK_PersonelOzlukEvraklar_Soforler_SoforId"";");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_PersonelPuantajlar_Soforler_PersonelId",
@@ -941,9 +939,7 @@ namespace CRMFiloServis.Web.Data.Migrations
                 name: "FK_PersonelMaaslari_Personeller_SoforId",
                 table: "PersonelMaaslari");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_PersonelOzlukEvraklar_Personeller_SoforId",
-                table: "PersonelOzlukEvraklar");
+            migrationBuilder.Sql(@"ALTER TABLE ""PersonelOzlukEvraklar"" DROP CONSTRAINT IF EXISTS ""FK_PersonelOzlukEvraklar_Personeller_SoforId"";");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_PersonelPuantajlar_Personeller_PersonelId",
