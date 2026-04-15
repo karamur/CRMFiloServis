@@ -1966,23 +1966,50 @@ WHERE IsDeleted = 0;");
     {
         try
         {
-            var mevcutKalem = await context.MasrafKalemleri
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(k => k.MasrafAdi == "AdBlue" || k.MasrafKodu == "MSR-ADBLUE");
-
-            if (mevcutKalem == null)
+            // Temel masraf kalemleri listesi
+            var masrafKalemleri = new List<(string Kod, string Ad, MasrafKategori Kategori)>
             {
-                context.MasrafKalemleri.Add(new MasrafKalemi
-                {
-                    MasrafKodu = "MSR-ADBLUE",
-                    MasrafAdi = "AdBlue",
-                    Kategori = MasrafKategori.Yakit,
-                    Aktif = true,
-                    CreatedAt = DateTime.UtcNow
-                });
+                ("MSR-YAKIT", "Yakıt", MasrafKategori.Yakit),
+                ("MSR-ADBLUE", "AdBlue", MasrafKategori.Yakit),
+                ("MSR-BAKIM", "Periyodik Bakım", MasrafKategori.Bakim),
+                ("MSR-YAG", "Yağ Değişimi", MasrafKategori.Bakim),
+                ("MSR-TAMIR", "Tamir/Onarım", MasrafKategori.Tamir),
+                ("MSR-SIGORTA", "Sigorta", MasrafKategori.Sigorta),
+                ("MSR-KASKO", "Kasko", MasrafKategori.Sigorta),
+                ("MSR-VERGI", "MTV/Vergi", MasrafKategori.Vergi),
+                ("MSR-MUAYENE", "Muayene", MasrafKategori.Vergi),
+                ("MSR-PERSONEL", "Personel Ulaşım", MasrafKategori.Personel),
+                ("MSR-LASTIK", "Lastik", MasrafKategori.Lastik),
+                ("MSR-YEDEK", "Yedek Parça", MasrafKategori.YedekParca),
+                ("MSR-MUTFAK", "Mutfak Giderleri", MasrafKategori.Mutfak),
+                ("MSR-CAY", "Çay/Kahve Malzemeleri", MasrafKategori.Mutfak),
+                ("MSR-YEMEK", "Yemek/Kumanya", MasrafKategori.Mutfak),
+                ("MSR-OFIS", "Ofis Malzemeleri", MasrafKategori.Ofis),
+                ("MSR-TEMIZLIK", "Temizlik Malzemeleri", MasrafKategori.Temizlik),
+                ("MSR-KIRTASIYE", "Kırtasiye", MasrafKategori.Kirtasiye),
+                ("MSR-DIGER", "Diğer Masraflar", MasrafKategori.Diger)
+            };
 
-                await context.SaveChangesAsync();
+            foreach (var (kod, ad, kategori) in masrafKalemleri)
+            {
+                var mevcutKalem = await context.MasrafKalemleri
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(k => k.MasrafKodu == kod);
+
+                if (mevcutKalem == null)
+                {
+                    context.MasrafKalemleri.Add(new MasrafKalemi
+                    {
+                        MasrafKodu = kod,
+                        MasrafAdi = ad,
+                        Kategori = kategori,
+                        Aktif = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
             }
+
+            await context.SaveChangesAsync();
         }
         catch (Exception ex)
         {

@@ -84,7 +84,8 @@
                                 }
                             </div>
 
-                            @if (!giris.CariId.HasValue && !string.IsNullOrWhiteSpace(cariArama) && cariArama.Length >= 2)
+                            @* Cari arama yapıldığında veya personel seçildiğinde (otomatik liste) *@
+                            @if (!giris.CariId.HasValue && ((!string.IsNullOrWhiteSpace(cariArama) && cariArama.Length >= 2) || arananCariler.Any()))
                             {
                                 @if (arananCariler.Any())
                                 {
@@ -101,7 +102,7 @@
                                         }
                                     </div>
                                 }
-                                else
+                                else if (!string.IsNullOrWhiteSpace(cariArama))
                                 {
                                     <div class="alert alert-warning mt-1 py-1 small">
                                         <i class="bi bi-exclamation-triangle me-1"></i>
@@ -181,25 +182,146 @@
                     <hr />
 
                     <!-- Tutar Bilgileri -->
-                    <h6><i class="bi bi-currency-exchange me-1"></i>Tutar Bilgileri</h6>
-
-                    <!-- KDV Dahil/Hariç Seçimi -->
-                    <div class="mb-3">
-                        <div class="btn-group w-100" role="group">
-                            <button type="button" 
-                                    class="btn @(giris.KdvDahilMi ? "btn-outline-secondary" : "btn-primary")"
-                                    @onclick="() => KdvDurumDegistir(false)">
-                                <i class="bi bi-plus-circle me-1"></i>KDV Hariç
-                                <small class="d-block text-muted">Tutar + KDV</small>
-                            </button>
-                            <button type="button" 
-                                    class="btn @(giris.KdvDahilMi ? "btn-success" : "btn-outline-secondary")"
-                                    @onclick="() => KdvDurumDegistir(true)">
-                                <i class="bi bi-check-circle me-1"></i>KDV Dahil
-                                <small class="d-block text-muted">Tutardan KDV çıkar</small>
-                            </button>
-                        </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="bi bi-currency-exchange me-1"></i>Tutar Bilgileri</h6>
+                        @if (giris.IslemTuru is KolayIslemTuru.GelirFatura or KolayIslemTuru.GiderFatura)
+                        {
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="detayliGiris" @bind="giris.DetayliGiris" @bind:after="DetayliGirisToggle" />
+                                <label class="form-check-label small" for="detayliGiris">Detaylı Kalem Girişi</label>
+                            </div>
+                        }
                     </div>
+
+                    @if (giris.DetayliGiris && giris.IslemTuru is KolayIslemTuru.GelirFatura or KolayIslemTuru.GiderFatura)
+                    {
+                        <!-- Detaylı Kalem Girişi -->
+                        <div class="card mb-3">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-list-ul me-1"></i>Fatura Kalemleri</span>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-1" @onclick="StokModalAc">
+                                        <i class="bi bi-box-seam me-1"></i>Stoktan Ekle
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-success" @onclick="YeniKalemEkle">
+                                        <i class="bi bi-plus-lg me-1"></i>Manuel Ekle
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-2">
+                                @if (giris.Kalemler.Any())
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 8%;">Stok Kodu</th>
+                                                    <th style="width: 25%;">Açıklama</th>
+                                                    <th style="width: 10%;">Miktar</th>
+                                                    <th style="width: 10%;">Birim</th>
+                                                    <th style="width: 12%;">Birim Fiyat</th>
+                                                    <th style="width: 10%;">KDV %</th>
+                                                    <th style="width: 15%;">Toplam</th>
+                                                    <th style="width: 10%;"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var kalem in giris.Kalemler)
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <input type="text" class="form-control form-control-sm" @bind="kalem.StokKodu" readonly placeholder="-" style="background-color: #f8f9fa;" />
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" class="form-control form-control-sm" @bind="kalem.Aciklama" @bind:after="KalemlerdenTutarHesapla" placeholder="Açıklama" />
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="kalem.Miktar" @bind:after="KalemlerdenTutarHesapla" />
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-select form-select-sm" @bind="kalem.Birim">
+                                                                <option value="Adet">Adet</option>
+                                                                <option value="Kg">Kg</option>
+                                                                <option value="Lt">Lt</option>
+                                                                <option value="Mt">Mt</option>
+                                                                <option value="Kutu">Kutu</option>
+                                                                <option value="Paket">Paket</option>
+                                                                <option value="Saat">Saat</option>
+                                                                <option value="Gün">Gün</option>
+                                                                <option value="Ay">Ay</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="kalem.BirimFiyat" @bind:after="KalemlerdenTutarHesapla" />
+                                                        </td>
+                                                        <td>
+                                                            <select class="form-select form-select-sm" @bind="kalem.KdvOrani" @bind:after="KalemlerdenTutarHesapla">
+                                                                <option value="0">%0</option>
+                                                                <option value="1">%1</option>
+                                                                <option value="10">%10</option>
+                                                                <option value="20">%20</option>
+                                                            </select>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <span class="fw-bold">@kalem.ToplamTutar.ToString("N2")</span>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => KalemSil(kalem)">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                            <tfoot class="table-secondary">
+                                                <tr>
+                                                    <th colspan="5" class="text-end">Ara Toplam:</th>
+                                                    <th class="text-end">@giris.Kalemler.Sum(k => k.AraTutar).ToString("N2") TL</th>
+                                                    <th></th>
+                                                </tr>
+                                                <tr>
+                                                    <th colspan="5" class="text-end">KDV Toplam:</th>
+                                                    <th class="text-end">@giris.Kalemler.Sum(k => k.KdvTutar).ToString("N2") TL</th>
+                                                    <th></th>
+                                                </tr>
+                                                <tr class="table-dark">
+                                                    <th colspan="5" class="text-end">Genel Toplam:</th>
+                                                    <th class="text-end">@giris.Kalemler.Sum(k => k.ToplamTutar).ToString("N2") TL</th>
+                                                    <th></th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center text-muted py-3">
+                                        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                                        Henüz kalem eklenmedi. Yukarıdaki "Kalem Ekle" butonunu kullanın.
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- KDV Dahil/Hariç Seçimi -->
+                        <div class="mb-3">
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" 
+                                        class="btn @(giris.KdvDahilMi ? "btn-outline-secondary" : "btn-primary")"
+                                        @onclick="() => KdvDurumDegistir(false)">
+                                    <i class="bi bi-plus-circle me-1"></i>KDV Hariç
+                                    <small class="d-block text-muted">Tutar + KDV</small>
+                                </button>
+                                <button type="button" 
+                                        class="btn @(giris.KdvDahilMi ? "btn-success" : "btn-outline-secondary")"
+                                        @onclick="() => KdvDurumDegistir(true)">
+                                    <i class="bi bi-check-circle me-1"></i>KDV Dahil
+                                    <small class="d-block text-muted">Tutardan KDV çıkar</small>
+                                </button>
+                            </div>
+                        </div>
 
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -291,6 +413,7 @@
                         <label class="form-label">Açıklama</label>
                         <textarea class="form-control" rows="2" @bind="giris.Aciklama" placeholder="İşlem açıklaması..."></textarea>
                     </div>
+                    }
                 </div>
             </div>
         </div>
@@ -542,6 +665,99 @@
     </div>
 }
 
+@* Stok Seçim Modal *@
+@if (stokModalAcik)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Stok Seç</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="StokModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Arama -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" @bind="stokArama" @bind:after="StokAra" 
+                                   placeholder="Stok kodu veya adı ile arayın..." />
+                        </div>
+                    </div>
+
+                    <!-- Stok Listesi -->
+                    @if (arananStoklar.Any())
+                    {
+                        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Kod</th>
+                                        <th>Stok Adı</th>
+                                        <th class="text-center">Birim</th>
+                                        <th class="text-end">Fiyat</th>
+                                        <th class="text-center">Stok</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var stok in arananStoklar)
+                                    {
+                                        <tr>
+                                            <td><small class="text-muted">@stok.StokKodu</small></td>
+                                            <td>@stok.StokAdi</td>
+                                            <td class="text-center"><span class="badge bg-secondary">@stok.Birim</span></td>
+                                            <td class="text-end">
+                                                @if (giris.IslemTuru == KolayIslemTuru.GelirFatura)
+                                                {
+                                                    @stok.SatisFiyati.ToString("N2")
+                                                }
+                                                else
+                                                {
+                                                    @stok.AlisFiyati.ToString("N2")
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge @(stok.MevcutStok > 0 ? "bg-success" : "bg-danger")">
+                                                    @stok.MevcutStok.ToString("N0")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-primary" @onclick="() => StokSec(stok)">
+                                                    <i class="bi bi-plus-lg"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(stokArama))
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            "@stokArama" için stok bulunamadı.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-search display-6 d-block mb-2"></i>
+                            Stok aramak için yukarıdaki kutuya yazın.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="StokModalKapat">
+                        <i class="bi bi-x-lg me-1"></i>Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private KolayMuhasebeGiris giris = new();
     private MuhasebeOnizleme? onizleme;
@@ -557,6 +773,11 @@
     private bool hizliCariModalAcik = false;
     private bool hizliCariKaydediliyor = false;
     private HizliCariModel yeniCariModel = new();
+
+    // Stok Seçim Modal
+    private bool stokModalAcik = false;
+    private string stokArama = "";
+    private List<StokBasit> arananStoklar = new();
 
     // Dropdown verileri
     private List<MasrafKalemiBasit> masrafKalemleri = new();
@@ -581,7 +802,7 @@
     // Computed properties
     private bool CariGerekliMi => giris.IslemTuru != KolayIslemTuru.MasrafGirisi
                                   || giris.MasrafOdemeKaynagi != MasrafOdemeKaynagi.KasaBanka;
-    
+
     private string CariBaslik => giris.IslemTuru switch
     {
         KolayIslemTuru.GelirFatura or KolayIslemTuru.TahsilatGirisi => "Müşteri",
@@ -663,6 +884,16 @@
         if (yeniKaynak == MasrafOdemeKaynagi.KasaBanka)
         {
             giris.YeniCariTipi = null;
+        }
+        else if (yeniKaynak == MasrafOdemeKaynagi.Personel)
+        {
+            // Personel seçildiğinde otomatik olarak personel listesini yükle
+            giris.YeniCariTipi = CariTipi.Personel;
+            arananCariler = await KolayMuhasebeService.GetCarilerAsync(CariTipi.Personel, null);
+        }
+        else if (yeniKaynak == MasrafOdemeKaynagi.Cari)
+        {
+            giris.YeniCariTipi = CariTipi.Tedarikci;
         }
 
         await OnizlemeGuncelle();
@@ -947,6 +1178,111 @@
             .ToList();
 
         return parcalar.Any() ? string.Join(" - ", parcalar) : "-";
+    }
+
+    // Detaylı Kalem Girişi Metodları
+    private void DetayliGirisToggle()
+    {
+        if (giris.DetayliGiris && !giris.Kalemler.Any())
+        {
+            // Detaylı giriş açıldığında ilk kalemi ekle
+            YeniKalemEkle();
+        }
+        else if (!giris.DetayliGiris)
+        {
+            // Detaylı giriş kapatıldığında kalemleri temizle
+            giris.Kalemler.Clear();
+        }
+    }
+
+    private void YeniKalemEkle()
+    {
+        var yeniSira = giris.Kalemler.Any() ? giris.Kalemler.Max(k => k.SiraNo) + 1 : 1;
+        giris.Kalemler.Add(new KolayFaturaKalem
+        {
+            SiraNo = yeniSira,
+            Miktar = 1,
+            BirimFiyat = 0,
+            Birim = "Adet",
+            KdvOrani = giris.KdvOrani > 0 ? giris.KdvOrani : 20
+        });
+    }
+
+    private async Task KalemlerdenTutarHesapla()
+    {
+        if (giris.Kalemler.Any())
+        {
+            giris.AraToplam = giris.Kalemler.Sum(k => k.AraTutar);
+            giris.KdvTutar = giris.Kalemler.Sum(k => k.KdvTutar);
+            giris.GenelToplam = giris.Kalemler.Sum(k => k.ToplamTutar);
+            girilenTutar = giris.GenelToplam;
+        }
+        await OnizlemeGuncelle();
+    }
+
+    private async Task KalemSil(KolayFaturaKalem kalem)
+    {
+        giris.Kalemler.Remove(kalem);
+        await KalemlerdenTutarHesapla();
+    }
+
+    // Stok Modal Metodları
+    private void StokModalAc()
+    {
+        stokArama = "";
+        arananStoklar = new();
+        stokModalAcik = true;
+    }
+
+    private void StokModalKapat()
+    {
+        stokModalAcik = false;
+        stokArama = "";
+        arananStoklar = new();
+    }
+
+    private async Task StokAra()
+    {
+        if (string.IsNullOrWhiteSpace(stokArama) || stokArama.Length < 2)
+        {
+            arananStoklar = new();
+            return;
+        }
+
+        arananStoklar = await KolayMuhasebeService.GetStoklarAsync(stokArama);
+    }
+
+    private async Task StokSec(StokBasit stok)
+    {
+        var yeniSira = giris.Kalemler.Any() ? giris.Kalemler.Max(k => k.SiraNo) + 1 : 1;
+
+        // Gelir faturası için satış fiyatı, gider faturası için alış fiyatı
+        var birimFiyat = giris.IslemTuru == KolayIslemTuru.GelirFatura 
+            ? stok.SatisFiyati 
+            : stok.AlisFiyati;
+
+        giris.Kalemler.Add(new KolayFaturaKalem
+        {
+            SiraNo = yeniSira,
+            StokId = stok.Id,
+            StokKodu = stok.StokKodu,
+            Aciklama = stok.StokAdi,
+            Miktar = 1,
+            Birim = stok.Birim,
+            BirimFiyat = birimFiyat,
+            KdvOrani = stok.KdvOrani
+        });
+
+        // Detaylı giriş modunu aç (eğer kapalıysa)
+        if (!giris.DetayliGiris)
+        {
+            giris.DetayliGiris = true;
+        }
+
+        await KalemlerdenTutarHesapla();
+
+        // Modal'ı kapatma - kullanıcı birden fazla stok ekleyebilir
+        // StokModalKapat();
     }
 
     // Helper classes

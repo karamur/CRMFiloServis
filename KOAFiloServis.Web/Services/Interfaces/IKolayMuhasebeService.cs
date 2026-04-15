@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Models;
 
 namespace KOAFiloServis.Web.Services;
@@ -49,6 +49,11 @@ public interface IKolayMuhasebeService
     /// Muhasebe hesap listesi (manuel düzenleme için)
     /// </summary>
     Task<List<MuhasebeHesap>> GetMuhasebeHesaplariAsync();
+
+    /// <summary>
+    /// Stok listesini getirir (kalem girişi için)
+    /// </summary>
+    Task<List<StokBasit>> GetStoklarAsync(string? arama = null);
 
     /// <summary>
     /// Varsayılan muhasebe ayarlarını getirir

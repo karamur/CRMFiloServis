@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 
 namespace KOAFiloServis.Web.Models;
 
@@ -56,6 +56,10 @@ public class KolayMuhasebeGiris
     // Açıklama
     public string? Aciklama { get; set; }
     public string? Notlar { get; set; }
+
+    // Detay kalemler (stok/hizmet kalemleri)
+    public List<KolayFaturaKalem> Kalemler { get; set; } = new();
+    public bool DetayliGiris { get; set; } = false;
 
     // Hesaplanan değerler
     public decimal OdenecekTutar => TevkifatliMi ? GenelToplam - TevkifatTutar : GenelToplam;
@@ -146,4 +150,39 @@ public enum MasrafOdemeKaynagi
     KasaBanka = 1,
     Personel = 2,
     Cari = 3
+}
+
+/// <summary>
+/// Kolay fatura kalem modeli (stok/hizmet kalemi)
+/// </summary>
+public class KolayFaturaKalem
+{
+    public int SiraNo { get; set; }
+    public string Aciklama { get; set; } = string.Empty;
+    public decimal Miktar { get; set; } = 1;
+    public string Birim { get; set; } = "Adet";
+    public decimal BirimFiyat { get; set; }
+    public decimal KdvOrani { get; set; } = 20;
+    public decimal KdvTutar => Math.Round(AraTutar * KdvOrani / 100, 2);
+    public decimal AraTutar => Math.Round(Miktar * BirimFiyat, 2);
+    public decimal ToplamTutar => AraTutar + KdvTutar;
+
+    // Stok takibi için (opsiyonel)
+    public int? StokId { get; set; }
+    public string? StokKodu { get; set; }
+}
+
+/// <summary>
+/// Stok basit model (dropdown için)
+/// </summary>
+public class StokBasit
+{
+    public int Id { get; set; }
+    public string StokKodu { get; set; } = string.Empty;
+    public string StokAdi { get; set; } = string.Empty;
+    public string Birim { get; set; } = "Adet";
+    public decimal AlisFiyati { get; set; }
+    public decimal SatisFiyati { get; set; }
+    public decimal KdvOrani { get; set; } = 20;
+    public decimal MevcutStok { get; set; }
 }

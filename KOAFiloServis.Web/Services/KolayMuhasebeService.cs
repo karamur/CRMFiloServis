@@ -1013,14 +1013,29 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             return;
 
         var personelIds = personeller.Select(s => s.Id).ToList();
+
+        // Mevcut cari kayıtlarını bul
         var mevcutCariler = await _context.Cariler
             .Where(c => c.CariTipi == CariTipi.Personel && c.SoforId.HasValue && personelIds.Contains(c.SoforId.Value))
-            .Select(c => c.SoforId!.Value)
             .ToListAsync();
 
+        var mevcutCariSoforIds = mevcutCariler.Select(c => c.SoforId!.Value).ToList();
+
+        // Mevcut carilerin unvanlarını güncelle (Ad Soyad formatına)
+        foreach (var cari in mevcutCariler)
+        {
+            var personel = personeller.FirstOrDefault(p => p.Id == cari.SoforId);
+            if (personel != null && cari.Unvan != personel.TamAd)
+            {
+                cari.Unvan = personel.TamAd;
+                cari.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        // Yeni cariler oluştur
         var yeniCariler = new List<Cari>();
 
-        foreach (var personel in personeller.Where(s => !mevcutCariler.Contains(s.Id)))
+        foreach (var personel in personeller.Where(s => !mevcutCariSoforIds.Contains(s.Id)))
         {
             var cari = new Cari
             {
@@ -1041,11 +1056,13 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             _context.Cariler.Add(cari);
         }
 
-        if (!yeniCariler.Any())
-            return;
+        // Değişiklikleri kaydet (hem güncelleme hem yeni eklemeler)
+        if (mevcutCariler.Any(c => c.UpdatedAt != null) || yeniCariler.Any())
+        {
+            await _context.SaveChangesAsync();
+        }
 
-        await _context.SaveChangesAsync();
-
+        // Yeni cariler için muhasebe hesabı oluştur
         foreach (var yeniCari in yeniCariler)
         {
             await _cariService.EnsureMuhasebeHesapAsync(yeniCari.Id);
@@ -1057,13 +1074,14 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         return await _context.MasrafKalemleri
             .AsNoTracking()
             .Where(m => m.Aktif)
-            .OrderBy(m => m.MasrafAdi)
-            .Select(m => new MasrafKalemiBasit
+            .GroupBy(m => new { m.Id, m.MasrafAdi, m.Kategori })
+            .Select(g => new MasrafKalemiBasit
             {
-                Id = m.Id,
-                Ad = m.MasrafAdi,
-                MuhasebeHesapKodu = GetMasrafHesapKodu(m.Kategori)
+                Id = g.Key.Id,
+                Ad = g.Key.MasrafAdi,
+                MuhasebeHesapKodu = GetMasrafHesapKodu(g.Key.Kategori)
             })
+            .OrderBy(m => m.Ad)
             .ToListAsync();
     }
 
@@ -1092,11 +1110,69 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             .ToListAsync();
     }
 
+    public async Task<List<StokBasit>> GetStoklarAsync(string? arama = null)
+    {
+        var query = _context.StokKartlari
+            .AsNoTracking()
+            .Where(s => s.Aktif);
+
+        if (!string.IsNullOrWhiteSpace(arama))
+        {
+            query = query.Where(s => s.StokAdi.Contains(arama) || s.StokKodu.Contains(arama));
+        }
+
+        return await query
+            .OrderBy(s => s.StokAdi)
+            .Take(50)
+            .Select(s => new StokBasit
+            {
+                Id = s.Id,
+                StokKodu = s.StokKodu,
+                StokAdi = s.StokAdi,
+                Birim = s.Birim,
+                AlisFiyati = s.AlisFiyati,
+                SatisFiyati = s.SatisFiyati,
+                KdvOrani = s.KdvOrani,
+                MevcutStok = s.MevcutStok
+            })
+            .ToListAsync();
+    }
+
     public async Task<Cari> HizliCariOlusturAsync(string unvan, CariTipi tip)
     {
+        // Önce aynı unvan ile mevcut cari var mı kontrol et
+        var mevcutCari = await _context.Cariler
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Unvan == unvan && !c.IsDeleted);
+
+        if (mevcutCari != null)
+        {
+            // Mevcut cari varsa onu döndür
+            return mevcutCari;
+        }
+
+        // Benzersiz kod üret (retry mekanizması ile)
+        string cariKodu;
+        var maxRetries = 5;
+        var retryCount = 0;
+
+        do
+        {
+            cariKodu = await _cariService.GenerateNextKodAsync();
+            var kodMevcut = await _context.Cariler
+                .IgnoreQueryFilters()
+                .AnyAsync(c => c.CariKodu == cariKodu);
+
+            if (!kodMevcut)
+                break;
+
+            retryCount++;
+            await Task.Delay(50); // Kısa bekleme
+        } while (retryCount < maxRetries);
+
         var cari = new Cari
         {
-            CariKodu = await _cariService.GenerateNextKodAsync(),
+            CariKodu = cariKodu,
             Unvan = unvan,
             CariTipi = tip,
             Aktif = true,
@@ -1352,6 +1428,11 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             MasrafKategori.Personel => "770.06",
             MasrafKategori.Lastik => "770.07",
             MasrafKategori.YedekParca => "770.08",
+            MasrafKategori.Mutfak => "770.09",
+            MasrafKategori.Ofis => "770.10",
+            MasrafKategori.Temizlik => "770.11",
+            MasrafKategori.Kirtasiye => "770.12",
+            MasrafKategori.Diger => "770.99",
             _ => "770.99"
         };
     }

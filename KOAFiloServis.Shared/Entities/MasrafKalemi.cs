@@ -1,4 +1,4 @@
-namespace KOAFiloServis.Shared.Entities;
+﻿namespace KOAFiloServis.Shared.Entities;
 
 /// <summary>
 /// Masraf kalemleri tan�mlar�
@@ -22,8 +22,12 @@ public enum MasrafKategori
     Tamir = 3,
     Sigorta = 4,
     Vergi = 5,
-    Personel = 6,        // Taksi, ula��m fi�leri vb.
+    Personel = 6,        // Taksi, ulaşım fişleri vb.
     Lastik = 7,
     YedekParca = 8,
+    Mutfak = 9,          // Mutfak giderleri
+    Ofis = 10,           // Ofis malzemeleri
+    Temizlik = 11,       // Temizlik malzemeleri
+    Kirtasiye = 12,      // Kırtasiye giderleri
     Diger = 99
 }

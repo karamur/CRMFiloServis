@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using KOAFiloServis.Web.Models;
 using Microsoft.EntityFrameworkCore;
@@ -521,12 +521,26 @@ public class CariService : ICariService
 
     public async Task<string> GenerateNextKodAsync()
     {
-        var lastCari = await _context.Cariler
+        // Veritabanında MAX değeri bul ve +1 ekle (tek sorguda, race condition'a karşı daha güvenli)
+        var maxNumber = await _context.Cariler
             .IgnoreQueryFilters()
-            .OrderByDescending(c => c.Id)
-            .FirstOrDefaultAsync();
+            .Where(c => c.CariKodu != null && c.CariKodu.StartsWith("CRI-"))
+            .Select(c => c.CariKodu!.Substring(4))
+            .Where(s => s.Length == 5)
+            .Select(s => Convert.ToInt32(s))
+            .DefaultIfEmpty(0)
+            .MaxAsync();
 
-        var nextNumber = (lastCari?.Id ?? 0) + 1;
+        // Timestamp ile ek benzersizlik garantisi
+        var timestamp = DateTime.UtcNow.Ticks % 1000;
+        var nextNumber = maxNumber + 1 + (int)timestamp;
+
+        // Eğer bu kod mevcutsa, daha yüksek bir sayı bul
+        while (await _context.Cariler.IgnoreQueryFilters().AnyAsync(c => c.CariKodu == $"CRI-{nextNumber:D5}"))
+        {
+            nextNumber++;
+        }
+
         return $"CRI-{nextNumber:D5}";
     }
 
