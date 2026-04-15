@@ -380,15 +380,17 @@
 | AI tahmin geri besleme (teklif doğruluk skoru) | 🟡 Orta | 2 gün | ✅ Tamamlandı |
 | İhale sonrası operasyon dashboard kartları | 🟢 Düşük | 1 gün | ✅ Tamamlandı |
 
-### 8.7 FAZ 8.5 İlk Sprint Backlog'u (ÖNERİLEN)
+### 8.7 FAZ 8.5 İlk Sprint Backlog'u (ARŞİV / TAMAMLANAN İLK PLAN)
+> Not: `FAZ 8.5` üst seviye kapsamı tamamlanmıştır. Bu bölüm ilk sprint planının tarihsel kaydı olarak korunmaktadır. Güncel durum için `8.5 Teklif Operasyonları & Karar Destek` ve üstteki `Son Güncellemeler` bölümü esas alınmalıdır.
+
 | İş Paketi | İçerik | Öncelik | Süre | Durum |
 |-----------|--------|---------|------|-------|
-| Teklif versiyon entity/model tasarımı | `IhaleProje` ile ilişkili teklif versiyon tablosu, revizyon no, durum, açıklama, hazırlayan kullanıcı | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif versiyon servis katmanı | Yeni versiyon oluştur, aktif versiyonu kopyala, revizyon geçmişi listele, karşılaştırma için temel DTO'lar | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif revizyon UI | İhale detay ekranında “Versiyonlar” sekmesi, aktif versiyon rozetleri, revizyon notu modalı | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif onay akışı altyapısı | Hazırlandı / İncelemede / Onaylandı / Reddedildi durumları, onaylayan kullanıcı ve zaman damgası | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif onay UI aksiyonları | Yönetici onayla/reddet butonları, durum geçmişi ve karar notu alanı | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif export altyapısı | PDF/Excel çıktı servisi, teklif özeti + maliyet tablosu + kâr marjı bölümleri | 🟡 Orta | 1 gün | ❌ Bekliyor |
+| Teklif versiyon entity/model tasarımı | `IhaleProje` ile ilişkili teklif versiyon tablosu, revizyon no, durum, açıklama, hazırlayan kullanıcı | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif versiyon servis katmanı | Yeni versiyon oluştur, aktif versiyonu kopyala, revizyon geçmişi listele, karşılaştırma için temel DTO'lar | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif revizyon UI | İhale detay ekranında “Versiyonlar” sekmesi, aktif versiyon rozetleri, revizyon notu modalı | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif onay akışı altyapısı | Hazırlandı / İncelemede / Onaylandı / Reddedildi durumları, onaylayan kullanıcı ve zaman damgası | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif onay UI aksiyonları | Yönetici onayla/reddet butonları, durum geçmişi ve karar notu alanı | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif export altyapısı | PDF/Excel çıktı servisi, teklif özeti + maliyet tablosu + kâr marjı bölümleri | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 
 ### 8.8 FAZ 8.5 Sprint Çıkış Kriterleri
 - Aynı ihale projesi için birden fazla teklif versiyonu oluşturulabilmeli.
@@ -511,25 +513,27 @@
 - [ ] Aktif versiyon listelemesi UI'da görünüyor
 - [ ] Onay durumu rozetleri gösteriliyor
 
-### 8.11 FAZ 8.5 Sprint 2-3 Backlog'u
+### 8.11 FAZ 8.5 Sprint 2-3 Backlog'u (ARŞİV)
+
+> Not: Bu backlog bölümü de tarihsel sprint planı olarak saklanmaktadır. `FAZ 8.5` ana teslimleri tamamlanmış durumdadır; burada yer alan maddeler sonraki iterasyon, genişletme veya arşiv referansı olarak değerlendirilmelidir.
 
 #### Sprint 2 - Karşılaştırma ve Çıktılar
 | İş Paketi | İçerik | Öncelik | Süre | Durum |
 |-----------|--------|---------|------|-------|
-| Versiyon karşılaştırma servisi | iki teklif versiyonu arasında maliyet, teklif, kâr ve oran farkları | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Karşılaştırma UI | yan yana versiyon karşılaştırma ekranı / modalı | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif PDF çıktısı | yönetim özeti, maliyet tablosu, varsayımlar, kâr marjı | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif Excel çıktısı | kalem bazlı teklif ve özet sayfaları | 🟡 Orta | 1 gün | ❌ Bekliyor |
-| Karar günlüğü görünümü | onay/red/inceleme aksiyonlarının zaman çizelgesi | 🟡 Orta | 1 gün | ❌ Bekliyor |
+| Versiyon karşılaştırma servisi | iki teklif versiyonu arasında maliyet, teklif, kâr ve oran farkları | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Karşılaştırma UI | yan yana versiyon karşılaştırma ekranı / modalı | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif PDF çıktısı | yönetim özeti, maliyet tablosu, varsayımlar, kâr marjı | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif Excel çıktısı | kalem bazlı teklif ve özet sayfaları | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| Karar günlüğü görünümü | onay/red/inceleme aksiyonlarının zaman çizelgesi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 
 #### Sprint 3 - Gerçekleşen ve Sapma Takibi
 | İş Paketi | İçerik | Öncelik | Süre | Durum |
 |-----------|--------|---------|------|-------|
-| Gerçekleşen maliyet veri modeli | proje/hat/güzergah bazlı gerçekleşen kayıt yapısı | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Teklif vs gerçekleşen hesaplama servisi | sapma tutarı, sapma oranı, kârlılık farkı | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Sapma dashboard kartları | toplam sapma, en yüksek sapma, riskli projeler | 🔴 Yüksek | 1 gün | ❌ Bekliyor |
-| Hat/güzergah bazlı sapma raporu | kırılım bazlı analiz tablosu | 🟡 Orta | 1 gün | ❌ Bekliyor |
-| AI doğruluk geri besleme skoru | tahmin edilen ve gerçekleşen farklara göre skor üretimi | 🟡 Orta | 1 gün | ❌ Bekliyor |
+| Gerçekleşen maliyet veri modeli | proje/hat/güzergah bazlı gerçekleşen kayıt yapısı | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Teklif vs gerçekleşen hesaplama servisi | sapma tutarı, sapma oranı, kârlılık farkı | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Sapma dashboard kartları | toplam sapma, en yüksek sapma, riskli projeler | 🔴 Yüksek | 1 gün | ✅ Tamamlandı |
+| Hat/güzergah bazlı sapma raporu | kırılım bazlı analiz tablosu | 🟡 Orta | 1 gün | ✅ Tamamlandı |
+| AI doğruluk geri besleme skoru | tahmin edilen ve gerçekleşen farklara göre skor üretimi | 🟡 Orta | 1 gün | ✅ Tamamlandı |
 
 ### 8.12 FAZ 8.5 MVP Teslim Kapsamı
 - teklif versiyon oluşturma
@@ -1154,6 +1158,7 @@ Proje MVP'den kurumsal seviyeye kadar tüm temel özellikleri içermektedir:
 - Öncelik: 🔴🔴 Acil | 🔴 Yüksek | 🟡 Orta | 🟢 Düşük | 🤖 AI
 - Durum: ❌ Bekliyor | 🔄 Devam Ediyor | ✅ Tamamlandı | 🆕 Yeni Eklendi
 - Güncel odak: **FAZ 8 sonrası operasyon detay raporları ve ileri analitik**
+- `FAZ 8.5` ve `FAZ 8.6` üst seviye teslim durumları günceldir; alt sprint backlog bölümleri tarihsel plan notları içerebilir.
 - EBYS için Ollama/LLaMA kullanılarak internetsiz çalışabilirlik sağlandı
 - Personel/Maaş/Bordro modülleri SGK mevzuatına uygun olmalı
 - Local AI (Ollama) ile raporlama özellikleri offline çalışabilecek

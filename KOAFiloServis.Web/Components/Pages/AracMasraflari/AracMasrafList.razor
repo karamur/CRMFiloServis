@@ -1,4 +1,4 @@
-@page "/arac-masraflari"
+﻿@page "/arac-masraflari"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @inject IAracMasrafService AracMasrafService
@@ -174,6 +174,9 @@
     {
         if (masraf.Sofor != null)
             return $"Personel cebinden: {masraf.Sofor.TamAd}";
+
+        if (masraf.Cari?.CariTipi == CariTipi.Personel)
+            return $"Personel cebinden: {masraf.Cari.Unvan}";
 
         if (masraf.Cari != null)
             return $"Cari cebinden: {masraf.Cari.Unvan}";

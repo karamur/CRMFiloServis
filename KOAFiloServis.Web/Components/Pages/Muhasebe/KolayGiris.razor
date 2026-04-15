@@ -1,4 +1,4 @@
-@page "/muhasebe/kolay-giris"
+﻿@page "/muhasebe/kolay-giris"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @using KOAFiloServis.Web.Models
@@ -859,7 +859,7 @@
                 sonKayitlar.Insert(0, new SonKayitItem
                 {
                     Tip = GetIslemTuruAdi(giris.IslemTuru),
-                    Aciklama = giris.CariUnvan ?? giris.BelgeNo ?? giris.Aciklama ?? "-",
+                    Aciklama = BuildSonKayitAciklama(),
                     Tutar = giris.GenelToplam,
                     Renk = GetIslemRenk(giris.IslemTuru)
                 });
@@ -937,6 +937,17 @@
         KolayIslemTuru.MahsupKaydi => "dark",
         _ => "secondary"
     };
+
+    private string BuildSonKayitAciklama()
+    {
+        var parcalar = new[] { giris.CariUnvan, giris.BelgeNo, giris.Aciklama }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!.Trim())
+            .Distinct()
+            .ToList();
+
+        return parcalar.Any() ? string.Join(" - ", parcalar) : "-";
+    }
 
     // Helper classes
     private record IslemTuruItem(string Ad, KolayIslemTuru Tur, string Renk, string Ikon);

@@ -1,4 +1,4 @@
-@page "/servis-calismalari/toplu-ekle"
+﻿@page "/servis-calismalari/toplu-ekle"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @inject IServisCalismaService ServisCalismaService
@@ -8,11 +8,11 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>Toplu Servis �al��mas� Giri�i</PageTitle>
+<PageTitle>Toplu Servis Çalışması Girişi</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-list-check me-2"></i>Toplu Servis �al��mas� Giri�i</h3>
+        <h3><i class="bi bi-list-check me-2"></i>Toplu Servis Çalışması Girişi</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -34,9 +34,9 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">Ara� Se�imi <span class="text-danger">*</span></label>
+                        <label class="form-label">Araç Seçimi <span class="text-danger">*</span></label>
                         <select class="form-select" @bind="secilenAracId">
-                            <option value="0">-- Ara� Se�in --</option>
+                            <option value="0">-- Araç Seçin --</option>
                             @foreach (var arac in araclar)
                             {
                                 <option value="@arac.Id">@arac.AktifPlaka - @arac.Marka @arac.Model</option>
@@ -44,9 +44,9 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">�of�r Se�imi <span class="text-danger">*</span></label>
+                        <label class="form-label">Şoför Seçimi <span class="text-danger">*</span></label>
                         <select class="form-select" @bind="secilenSoforId">
-                            <option value="0">-- �of�r Se�in --</option>
+                            <option value="0">-- Şoför Seçin --</option>
                             @foreach (var sofor in soforler)
                             {
                                 <option value="@sofor.Id">@sofor.TamAd</option>
@@ -54,53 +54,53 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">G�zergah Se�imi <span class="text-danger">*</span></label>
+                        <label class="form-label">Güzergah Seçimi <span class="text-danger">*</span></label>
                         <select class="form-select" @bind="secilenGuzergahId" @bind:after="GuzergahDegisti">
-                            <option value="0">-- G�zergah Se�in --</option>
+                            <option value="0">-- Güzergah Seçin --</option>
                             @foreach (var guzergah in guzergahlar)
                             {
-                                <option value="@guzergah.Id">@guzergah.GuzergahAdi (@guzergah.BirimFiyat.ToString("N0") ?)</option>
+                                <option value="@guzergah.Id">@guzergah.GuzergahAdi (@guzergah.BirimFiyat.ToString("N0") ₺)</option>
                             }
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Servis T�r�</label>
+                        <label class="form-label">Servis Türü</label>
                         <select class="form-select" @bind="secilenServisTuru">
                             <option value="@ServisTuru.Sabah">Sabah</option>
-                            <option value="@ServisTuru.Aksam">Ak�am</option>
-                            <option value="@ServisTuru.SabahAksam">Sabah + Ak�am</option>
-                            <option value="@ServisTuru.Ozel">�zel</option>
+                            <option value="@ServisTuru.Aksam">Akşam</option>
+                            <option value="@ServisTuru.SabahAksam">Sabah + Akşam</option>
+                            <option value="@ServisTuru.Ozel">Özel</option>
                         </select>
                     </div>
 
                     <hr />
 
                     <div class="mb-3">
-                        <label class="form-label">Ba�lang�� Tarihi</label>
+                        <label class="form-label">Başlangıç Tarihi</label>
                         <input type="date" class="form-control" @bind="baslangicTarihi" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Biti� Tarihi</label>
+                        <label class="form-label">Bitiş Tarihi</label>
                         <input type="date" class="form-control" @bind="bitisTarihi" />
                     </div>
 
                     <button class="btn btn-primary w-100" @onclick="TarihleriOlustur" 
                             disabled="@(secilenAracId == 0 || secilenSoforId == 0 || secilenGuzergahId == 0)">
-                        <i class="bi bi-calendar-plus me-1"></i>Tarihleri Olu�tur
+                        <i class="bi bi-calendar-plus me-1"></i>Tarihleri Oluştur
                     </button>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <h6 class="mb-0">H�zl� Se�im</h6>
+                    <h6 class="mb-0">Hızlı Seçim</h6>
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <button class="btn btn-outline-primary btn-sm" @onclick="@(() => HizliSecim(7))">Son 7 G�n</button>
-                        <button class="btn btn-outline-primary btn-sm" @onclick="@(() => HizliSecim(30))">Son 30 G�n</button>
+                        <button class="btn btn-outline-primary btn-sm" @onclick="@(() => HizliSecim(7))">Son 7 Gün</button>
+                        <button class="btn btn-outline-primary btn-sm" @onclick="@(() => HizliSecim(30))">Son 30 Gün</button>
                         <button class="btn btn-outline-primary btn-sm" @onclick="BuAy">Bu Ay</button>
-                        <button class="btn btn-outline-primary btn-sm" @onclick="GecenAy">Ge�en Ay</button>
+                        <button class="btn btn-outline-primary btn-sm" @onclick="GecenAy">Geçen Ay</button>
                     </div>
                 </div>
             </div>
@@ -109,18 +109,18 @@
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">�al��ma G�nleri</h6>
+                    <h6 class="mb-0">Çalışma Günleri</h6>
                     @if (calismalar.Any())
                     {
                         <div>
                             <button class="btn btn-outline-secondary btn-sm me-2" @onclick="TumunuSec">
-                                <i class="bi bi-check-all me-1"></i>T�m�n� Se�
+                                <i class="bi bi-check-all me-1"></i>Tümünü Seç
                             </button>
                             <button class="btn btn-outline-secondary btn-sm me-2" @onclick="HaftaIciSec">
-                                <i class="bi bi-calendar-week me-1"></i>Hafta ��i
+                                <i class="bi bi-calendar-week me-1"></i>Hafta İçi
                             </button>
                             <button class="btn btn-outline-secondary btn-sm" @onclick="SecimileriKaldir">
-                                <i class="bi bi-x me-1"></i>Se�imleri Kald�r
+                                <i class="bi bi-x me-1"></i>Seçimleri Kaldır
                             </button>
                         </div>
                     }
@@ -130,7 +130,7 @@
                     {
                         <div class="text-center text-muted py-4">
                             <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
-                            <p class="mt-2">Tarih aral��� se�ip "Tarihleri Olu�tur" butonuna t�klay�n.</p>
+                            <p class="mt-2">Tarih aralığı seçip "Tarihleri Oluştur" butonuna tıklayın.</p>
                         </div>
                     }
                     else
@@ -139,9 +139,9 @@
                             <table class="table table-hover">
                                 <thead class="table-light sticky-top">
                                     <tr>
-                                        <th style="width: 50px;">Se�</th>
+                                        <th style="width: 50px;">Seç</th>
                                         <th>Tarih</th>
-                                        <th>G�n</th>
+                                        <th>Gün</th>
                                         <th style="width: 150px;">Notlar</th>
                                         <th class="text-end" style="width: 120px;">Tutar</th>
                                     </tr>
@@ -170,7 +170,7 @@
                                             <td class="text-end">
                                                 @if (calisma.Secili)
                                                 {
-                                                    <strong>@birimFiyat.ToString("N2") ?</strong>
+                                                    <strong>@birimFiyat.ToString("N2") ₺</strong>
                                                 }
                                             </td>
                                         </tr>
@@ -179,7 +179,7 @@
                                 <tfoot class="table-light">
                                     <tr>
                                         <td colspan="4" class="text-end"><strong>Toplam:</strong></td>
-                                        <td class="text-end"><strong class="text-primary">@(calismalar.Count(c => c.Secili) * birimFiyat).ToString("N2") ?</strong></td>
+                                        <td class="text-end"><strong class="text-primary">@(calismalar.Count(c => c.Secili) * birimFiyat).ToString("N2") ₺</strong></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -189,14 +189,14 @@
 
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <span class="text-muted">Se�ilen: <strong>@calismalar.Count(c => c.Secili)</strong> g�n</span>
+                                <span class="text-muted">Seçilen: <strong>@calismalar.Count(c => c.Secili)</strong> gün</span>
                             </div>
                             <button class="btn btn-success btn-lg" @onclick="Kaydet" disabled="@(kayitYapiliyor || !calismalar.Any(c => c.Secili))">
                                 @if (kayitYapiliyor)
                                 {
                                     <span class="spinner-border spinner-border-sm me-1"></span>
                                 }
-                                <i class="bi bi-check-lg me-1"></i>T�m�n� Kaydet
+                                <i class="bi bi-check-lg me-1"></i>Tümünü Kaydet
                             </button>
                         </div>
                     }
@@ -227,7 +227,7 @@
     protected override async Task OnInitializedAsync()
     {
         araclar = (await AracService.GetActiveAsync()).ToList();
-        soforler = (await SoforService.GetActiveSoforlerAsync()).ToList(); // Sadece �of�r g�revli personeller
+        soforler = (await SoforService.GetActiveSoforlerAsync()).ToList(); // Sadece şoför görevli personeller
         guzergahlar = (await GuzergahService.GetActiveAsync()).ToList();
     }
 
@@ -304,7 +304,7 @@
     {
         if (secilenAracId == 0 || secilenSoforId == 0 || secilenGuzergahId == 0)
         {
-            mesaj = "Ara�, �of�r ve g�zergah se�imi zorunludur!";
+            mesaj = "Araç, şoför ve güzergah seçimi zorunludur!";
             basarili = false;
             return;
         }
@@ -312,7 +312,7 @@
         var secilenler = calismalar.Where(c => c.Secili).ToList();
         if (!secilenler.Any())
         {
-            mesaj = "En az bir g�n se�ilmelidir!";
+            mesaj = "En az bir gün seçilmelidir!";
             basarili = false;
             return;
         }
@@ -342,7 +342,7 @@
                 basariliKayit++;
             }
 
-            mesaj = $"{basariliKayit} adet servis �al��mas� ba�ar�yla kaydedildi!";
+            mesaj = $"{basariliKayit} adet servis çalışması başarıyla kaydedildi!";
             basarili = true;
             calismalar.Clear();
         }
@@ -365,9 +365,9 @@
     private string GetGunAdi(DayOfWeek gun) => gun switch
     {
         DayOfWeek.Monday => "Pazartesi",
-        DayOfWeek.Tuesday => "Sal�",
-        DayOfWeek.Wednesday => "�ar�amba",
-        DayOfWeek.Thursday => "Per�embe",
+        DayOfWeek.Tuesday => "Salı",
+        DayOfWeek.Wednesday => "Çarşamba",
+        DayOfWeek.Thursday => "Perşembe",
         DayOfWeek.Friday => "Cuma",
         DayOfWeek.Saturday => "Cumartesi",
         DayOfWeek.Sunday => "Pazar",

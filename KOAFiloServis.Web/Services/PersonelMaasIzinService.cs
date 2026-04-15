@@ -156,7 +156,7 @@ public class PersonelMaasIzinService : IPersonelMaasIzinService
         _context.PersonelIzinleri.Add(izin);
         await _context.SaveChangesAsync();
 
-        // Y�ll�k izinse, izin hakk�ndan d��
+        // Yıllık izinse, izin hakkından düş
         if (izin.IzinTipi == IzinTipi.YillikIzin && izin.Durum == IzinDurum.Onaylandi)
         {
             await UpdateIzinHakkiKullanimAsync(izin.SoforId, izin.BaslangicTarihi.Year, izin.ToplamGun);
@@ -191,7 +191,7 @@ public class PersonelMaasIzinService : IPersonelMaasIzinService
             izin.OnaylayanKisi = onaylayanKisi;
             izin.OnayTarihi = DateTime.Now;
 
-            // Y�ll�k izinse kullan�m� g�ncelle
+            // Yıllık izinse kullanımı güncelle
             if (izin.IzinTipi == IzinTipi.YillikIzin)
             {
                 await UpdateIzinHakkiKullanimAsync(izin.SoforId, izin.BaslangicTarihi.Year, izin.ToplamGun);
@@ -224,7 +224,7 @@ public class PersonelMaasIzinService : IPersonelMaasIzinService
 
     #endregion
 
-    #region �zin Hakk� ��lemleri
+    #region İzin Hakkı İşlemleri
 
     public async Task<PersonelIzinHakki?> GetIzinHakkiAsync(int soforId, int yil)
     {
@@ -261,11 +261,11 @@ public class PersonelMaasIzinService : IPersonelMaasIzinService
             var mevcutHak = await GetIzinHakkiAsync(sofor.Id, yil);
             if (mevcutHak == null)
             {
-                // �nceki y�ldan devreden izin
+                // Önceki yıldan devreden izin
                 var oncekiYilHak = await GetIzinHakkiAsync(sofor.Id, yil - 1);
                 var devirenIzin = oncekiYilHak?.KalanIzin ?? 0;
 
-                // K�dem y�l�na g�re izin hakk� hesapla
+                // Kıdem yılına göre izin hakkı hesapla
                 var kidemYili = sofor.IseBaslamaTarihi.HasValue 
                     ? (yil - sofor.IseBaslamaTarihi.Value.Year) 
                     : 0;
@@ -411,14 +411,14 @@ public class PersonelMaasIzinService : IPersonelMaasIzinService
     {
         return tip switch
         {
-            IzinTipi.YillikIzin => "Y�ll�k �zin",
-            IzinTipi.UcretsizIzin => "�cretsiz �zin",
-            IzinTipi.RaporluIzin => "Raporlu �zin",
-            IzinTipi.MazeretIzni => "Mazeret �zni",
-            IzinTipi.EvlilikIzni => "Evlilik �zni",
-            IzinTipi.DogumIzni => "Do�um �zni",
-            IzinTipi.OlumIzni => "�l�m �zni",
-            IzinTipi.IdariIzin => "�dari �zin",
+            IzinTipi.YillikIzin => "Yıllık İzin",
+            IzinTipi.UcretsizIzin => "Ücretsiz İzin",
+            IzinTipi.RaporluIzin => "Raporlu İzin",
+            IzinTipi.MazeretIzni => "Mazeret İzni",
+            IzinTipi.EvlilikIzni => "Evlilik İzni",
+            IzinTipi.DogumIzni => "Doğum İzni",
+            IzinTipi.OlumIzni => "Ölüm İzni",
+            IzinTipi.IdariIzin => "İdari İzin",
             _ => tip.ToString()
         };
     }

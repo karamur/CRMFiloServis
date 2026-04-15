@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using KOAFiloServis.Web.Models;
 using Microsoft.EntityFrameworkCore;
@@ -960,6 +960,11 @@ public class KolayMuhasebeService : IKolayMuhasebeService
 
     public async Task<List<Cari>> GetCarilerAsync(CariTipi? tip = null, string? arama = null)
     {
+        if (tip == CariTipi.Personel)
+        {
+            await EnsurePersonelCariKayitlariAsync(arama);
+        }
+
         var query = _context.Cariler.AsNoTracking().Where(c => c.Aktif);
 
         if (tip.HasValue)
@@ -981,6 +986,70 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             query = query.Where(c => c.Unvan.Contains(arama) || c.CariKodu.Contains(arama));
 
         return await query.OrderBy(c => c.Unvan).Take(50).ToListAsync();
+    }
+
+    private async Task EnsurePersonelCariKayitlariAsync(string? arama)
+    {
+        var personelQuery = _context.Soforler
+            .Where(s => s.Aktif && !s.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(arama))
+        {
+            var normalizedSearch = arama.Trim();
+            personelQuery = personelQuery.Where(s =>
+                ((s.Ad ?? string.Empty) + " " + (s.Soyad ?? string.Empty)).Contains(normalizedSearch) ||
+                (s.SoforKodu != null && s.SoforKodu.Contains(normalizedSearch)) ||
+                (s.TcKimlikNo != null && s.TcKimlikNo.Contains(normalizedSearch)) ||
+                (s.Telefon != null && s.Telefon.Contains(normalizedSearch)));
+        }
+
+        var personeller = await personelQuery
+            .OrderBy(s => s.Ad)
+            .ThenBy(s => s.Soyad)
+            .Take(20)
+            .ToListAsync();
+
+        if (!personeller.Any())
+            return;
+
+        var personelIds = personeller.Select(s => s.Id).ToList();
+        var mevcutCariler = await _context.Cariler
+            .Where(c => c.CariTipi == CariTipi.Personel && c.SoforId.HasValue && personelIds.Contains(c.SoforId.Value))
+            .Select(c => c.SoforId!.Value)
+            .ToListAsync();
+
+        var yeniCariler = new List<Cari>();
+
+        foreach (var personel in personeller.Where(s => !mevcutCariler.Contains(s.Id)))
+        {
+            var cari = new Cari
+            {
+                CariKodu = await _cariService.GenerateNextKodAsync(),
+                Unvan = personel.TamAd,
+                CariTipi = CariTipi.Personel,
+                TcKimlikNo = personel.TcKimlikNo,
+                Telefon = personel.Telefon,
+                Email = personel.Email,
+                Adres = personel.Adres,
+                SoforId = personel.Id,
+                SirketId = personel.SirketId,
+                Aktif = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            yeniCariler.Add(cari);
+            _context.Cariler.Add(cari);
+        }
+
+        if (!yeniCariler.Any())
+            return;
+
+        await _context.SaveChangesAsync();
+
+        foreach (var yeniCari in yeniCariler)
+        {
+            await _cariService.EnsureMuhasebeHesapAsync(yeniCari.Id);
+        }
     }
 
     public async Task<List<MasrafKalemiBasit>> GetMasrafKalemleriAsync()
@@ -1187,7 +1256,77 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             _ => "İşlem"
         };
 
-        return $"{islemAdi}: {giris.BelgeNo ?? giris.CariUnvan ?? giris.Aciklama ?? "-"}";
+        var detaylar = new[] { giris.BelgeNo, giris.CariUnvan, giris.Aciklama }
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!.Trim())
+            .Distinct()
+            .ToList();
+
+        var detay = detaylar.Any() ? string.Join(" - ", detaylar) : "-";
+        return $"{islemAdi}: {detay}";
+    }
+
+    private async Task<(int? SoforId, int? CariId, string? PersonelAdi)> ResolveMasrafPersoneliAsync(int? cariId, string? fallbackUnvan)
+    {
+        if (!cariId.HasValue)
+            return (null, null, fallbackUnvan);
+
+        var cari = await _context.Cariler
+            .Include(c => c.Sofor)
+            .FirstOrDefaultAsync(c => c.Id == cariId.Value);
+
+        if (cari == null)
+            return (null, cariId, fallbackUnvan);
+
+        if (cari.SoforId.HasValue)
+            return (cari.SoforId.Value, null, cari.Sofor?.TamAd ?? cari.Unvan);
+
+        if (cari.CariTipi != CariTipi.Personel)
+            return (null, cari.Id, cari.Unvan);
+
+        var sofor = await FindMatchingSoforAsync(cari);
+        if (sofor == null)
+            return (null, cari.Id, cari.Unvan);
+
+        cari.SoforId = sofor.Id;
+        await _context.SaveChangesAsync();
+
+        return (sofor.Id, null, sofor.TamAd);
+    }
+
+    private async Task<Sofor?> FindMatchingSoforAsync(Cari cari)
+    {
+        IQueryable<Sofor> query = _context.Soforler.Where(s => s.Aktif && !s.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(cari.TcKimlikNo))
+        {
+            var tc = cari.TcKimlikNo.Trim();
+            var byTc = await query.FirstOrDefaultAsync(s => s.TcKimlikNo == tc);
+            if (byTc != null)
+                return byTc;
+        }
+
+        if (!string.IsNullOrWhiteSpace(cari.Email))
+        {
+            var email = cari.Email.Trim();
+            var byEmail = await query.FirstOrDefaultAsync(s => s.Email == email);
+            if (byEmail != null)
+                return byEmail;
+        }
+
+        if (!string.IsNullOrWhiteSpace(cari.Telefon))
+        {
+            var telefon = cari.Telefon.Trim();
+            var byTelefon = await query.FirstOrDefaultAsync(s => s.Telefon == telefon);
+            if (byTelefon != null)
+                return byTelefon;
+        }
+
+        if (string.IsNullOrWhiteSpace(cari.Unvan))
+            return null;
+
+        var unvan = cari.Unvan.Trim();
+        return await query.FirstOrDefaultAsync(s => ((s.Ad ?? string.Empty) + " " + (s.Soyad ?? string.Empty)) == unvan);
     }
 
     private static string GetKaynakTip(FisKaynak kaynak)

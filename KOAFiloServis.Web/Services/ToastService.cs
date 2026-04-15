@@ -1,4 +1,4 @@
-namespace KOAFiloServis.Web.Services;
+﻿namespace KOAFiloServis.Web.Services;
 
 public interface IToastService
 {
@@ -15,7 +15,7 @@ public class ToastService : IToastService
 
     public void ShowSuccess(string message, string? title = null)
     {
-        OnShow?.Invoke(new ToastMessage(ToastType.Success, message, title ?? "Ba�ar�l�"));
+        OnShow?.Invoke(new ToastMessage(ToastType.Success, message, title ?? "Başarılı"));
     }
 
     public void ShowError(string message, string? title = null)
@@ -25,7 +25,7 @@ public class ToastService : IToastService
 
     public void ShowWarning(string message, string? title = null)
     {
-        OnShow?.Invoke(new ToastMessage(ToastType.Warning, message, title ?? "Uyar�"));
+        OnShow?.Invoke(new ToastMessage(ToastType.Warning, message, title ?? "Uyarı"));
     }
 
     public void ShowInfo(string message, string? title = null)

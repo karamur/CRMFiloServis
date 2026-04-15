@@ -1,4 +1,4 @@
-@page "/servis-calismalari/yeni"
+﻿@page "/servis-calismalari/yeni"
 @page "/servis-calismalari/{Id:int}"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
@@ -9,11 +9,11 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEdit ? "Servis �al��mas� D�zenle" : "Yeni Servis �al��mas�")</PageTitle>
+<PageTitle>@(IsEdit ? "Servis Çalışması Düzenle" : "Yeni Servis Çalışması")</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-calendar-check me-2"></i>@(IsEdit ? "Servis �al��mas� D�zenle" : "Yeni Servis �al��mas�")</h3>
+        <h3><i class="bi bi-calendar-check me-2"></i>@(IsEdit ? "Servis Çalışması Düzenle" : "Yeni Servis Çalışması")</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -27,13 +27,13 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">�al��ma Tarihi *</label>
+                            <label class="form-label">Çalışma Tarihi *</label>
                             <InputDate @bind-Value="calisma.CalismaTarihi" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Servis T�r� *</label>
+                            <label class="form-label">Servis Türü *</label>
                             <InputSelect @bind-Value="calisma.ServisTuru" class="form-select">
                                 @foreach (ServisTuru tur in Enum.GetValues(typeof(ServisTuru)))
                                 {
@@ -58,9 +58,9 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Ara� (Plaka) *</label>
+                            <label class="form-label">Araç (Plaka) *</label>
                             <InputSelect @bind-Value="calisma.AracId" class="form-select">
-                                <option value="0">-- Ara� Se�iniz --</option>
+                                <option value="0">-- Araç Seçiniz --</option>
                                 @foreach (var arac in araclar)
                                 {
                                     <option value="@arac.Id">@arac.AktifPlaka - @arac.Marka @arac.Model</option>
@@ -70,9 +70,9 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">�of�r *</label>
+                            <label class="form-label">Şoför *</label>
                             <InputSelect @bind-Value="calisma.SoforId" class="form-select">
-                                <option value="0">-- �of�r Se�iniz --</option>
+                                <option value="0">-- Şoför Seçiniz --</option>
                                 @foreach (var sofor in soforler)
                                 {
                                     <option value="@sofor.Id">@sofor.TamAd</option>
@@ -82,12 +82,12 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">G�zergah *</label>
+                            <label class="form-label">Güzergah *</label>
                             <InputSelect @bind-Value="calisma.GuzergahId" class="form-select" @onchange="GuzergahDegisti">
-                                <option value="0">-- G�zergah Se�iniz --</option>
+                                <option value="0">-- Güzergah Seçiniz --</option>
                                 @foreach (var guzergah in guzergahlar)
                                 {
-                                    <option value="@guzergah.Id">@guzergah.GuzergahAdi (@guzergah.Cari?.Unvan) - @guzergah.BirimFiyat.ToString("N2")?</option>
+                                    <option value="@guzergah.Id">@guzergah.GuzergahAdi (@guzergah.Cari?.Unvan) - @guzergah.BirimFiyat.ToString("N2")₺</option>
                                 }
                             </InputSelect>
                         </div>
@@ -97,20 +97,20 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Fiyat (?)</label>
+                            <label class="form-label">Fiyat (₺)</label>
                             <InputNumber @bind-Value="calisma.Fiyat" class="form-control" />
-                            <small class="text-muted">Bo� b�rak�l�rsa g�zergah fiyat� kullan�l�r</small>
+                            <small class="text-muted">Boş bırakılırsa güzergah fiyatı kullanılır</small>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Km Ba�lang��</label>
+                            <label class="form-label">Km Başlangıç</label>
                             <InputNumber @bind-Value="calisma.KmBaslangic" class="form-control" />
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Km Biti�</label>
+                            <label class="form-label">Km Bitiş</label>
                             <InputNumber @bind-Value="calisma.KmBitis" class="form-control" />
                         </div>
                     </div>
@@ -119,13 +119,13 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Ba�lang�� Saati</label>
+                            <label class="form-label">Başlangıç Saati</label>
                             <InputText @bind-Value="baslangicSaati" class="form-control" type="time" />
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">Biti� Saati</label>
+                            <label class="form-label">Bitiş Saati</label>
                             <InputText @bind-Value="bitisSaati" class="form-control" type="time" />
                         </div>
                     </div>
@@ -133,19 +133,19 @@
 
                 <div class="card bg-light mb-3">
                     <div class="card-body">
-                        <h6 class="card-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Ar�za Bilgileri</h6>
+                        <h6 class="card-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Arıza Bilgileri</h6>
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-check">
                                     <InputCheckbox @bind-Value="calisma.ArizaOlduMu" class="form-check-input" id="arizaOldu" />
-                                    <label class="form-check-label" for="arizaOldu">Ar�za Oldu</label>
+                                    <label class="form-check-label" for="arizaOldu">Arıza Oldu</label>
                                 </div>
                             </div>
                             <div class="col-md-9">
                                 @if (calisma.ArizaOlduMu)
                                 {
                                     <div class="mb-3">
-                                        <label class="form-label">Ar�za A��klamas�</label>
+                                        <label class="form-label">Arıza Açıklaması</label>
                                         <InputTextArea @bind-Value="calisma.ArizaAciklamasi" class="form-control" rows="2" />
                                     </div>
                                 }
@@ -164,7 +164,7 @@
                         <i class="bi bi-check-lg me-1"></i>Kaydet
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Geri">
-                        <i class="bi bi-x-lg me-1"></i>�ptal
+                        <i class="bi bi-x-lg me-1"></i>İptal
                     </button>
                 </div>
             </EditForm>
@@ -187,7 +187,7 @@
     protected override async Task OnInitializedAsync()
     {
         araclar = await AracService.GetActiveAsync();
-        soforler = await SoforService.GetActiveSoforlerAsync(); // Sadece �of�r g�revli personeller
+        soforler = await SoforService.GetActiveSoforlerAsync(); // Sadece şoför görevli personeller
         guzergahlar = await GuzergahService.GetActiveAsync();
 
         if (IsEdit)
@@ -260,18 +260,18 @@
     private string GetServisTuruText(ServisTuru tur) => tur switch
     {
         ServisTuru.Sabah => "Sabah",
-        ServisTuru.Aksam => "Ak�am",
-        ServisTuru.SabahAksam => "Sabah+Ak�am",
-        ServisTuru.Ozel => "�zel",
+        ServisTuru.Aksam => "Akşam",
+        ServisTuru.SabahAksam => "Sabah+Akşam",
+        ServisTuru.Ozel => "Özel",
         _ => tur.ToString()
     };
 
     private string GetDurumText(CalismaDurum durum) => durum switch
     {
-        CalismaDurum.Planli => "Planl�",
-        CalismaDurum.Tamamlandi => "Tamamland�",
-        CalismaDurum.IptalEdildi => "�ptal Edildi",
-        CalismaDurum.ArizaNedeniyleYapilamadi => "Ar�za Nedeniyle Yap�lamad�",
+        CalismaDurum.Planli => "Planlı",
+        CalismaDurum.Tamamlandi => "Tamamlandı",
+        CalismaDurum.IptalEdildi => "İptal Edildi",
+        CalismaDurum.ArizaNedeniyleYapilamadi => "Arıza Nedeniyle Yapılamadı",
         _ => durum.ToString()
     };
 }

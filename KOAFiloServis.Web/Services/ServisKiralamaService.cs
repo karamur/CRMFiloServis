@@ -16,7 +16,7 @@ public class ServisKiralamaService : IServisKiralamaService
         _contextFactory = contextFactory;
     }
 
-    #region Kiralama Ara� ��lemleri
+    #region Kiralama Araç İşlemleri
 
     public async Task<List<KiralamaArac>> GetTumKiralamaAraclarAsync(int firmaId)
     {
@@ -84,7 +84,7 @@ public class ServisKiralamaService : IServisKiralamaService
 
     #endregion
 
-    #region Servis �al��ma ��lemleri
+    #region Servis Çalışma İşlemleri
 
     public async Task<List<ServisCalismaKiralama>> GetServisCalismalariAsync(int firmaId, DateTime baslangic, DateTime bitis)
     {
@@ -170,17 +170,17 @@ public class ServisKiralamaService : IServisKiralamaService
             .Include(s => s.KiralamaArac)
             .FirstOrDefaultAsync(s => s.Id == id);
 
-        if (calisma == null) throw new Exception("Servis �al��mas� bulunamad�");
+        if (calisma == null) throw new Exception("Servis çalışması bulunamadı");
 
-        // Kiral�k ara� ise kira bedelini hesapla
+        // Kiralık araç ise kira bedelini hesapla
         if (calisma.AracSahiplikTuru == AracSahiplikTuru.KiralikArac && calisma.KiralamaArac != null)
         {
-            // Sefer ba��na bedel varsa
+            // Sefer başına bedel varsa
             if (calisma.KiralamaArac.SeferBasinaKiraBedeli.HasValue)
             {
                 calisma.AracKiraBedeli = calisma.KiralamaArac.SeferBasinaKiraBedeli.Value;
             }
-            // G�nl�k bedel varsa
+            // Günlük bedel varsa
             else if (calisma.KiralamaArac.GunlukKiraBedeli.HasValue)
             {
                 calisma.AracKiraBedeli = calisma.KiralamaArac.GunlukKiraBedeli.Value;
@@ -197,7 +197,7 @@ public class ServisKiralamaService : IServisKiralamaService
             }
         }
 
-        // Net kazan� hesapla
+        // Net kazanç hesapla
         var gelir = calisma.CalismaBedeli ?? 0;
         var gider = (calisma.AracKiraBedeli ?? 0) + (calisma.KomisyonTutari ?? 0);
         calisma.NetKazanc = gelir - gider;
@@ -213,7 +213,7 @@ public class ServisKiralamaService : IServisKiralamaService
         using var context = await _contextFactory.CreateDbContextAsync();
         var sonuclar = new List<ServisCalismaKiralama>();
 
-        // �nceki hafta �al��malar�n� bul (tekrar eden g�zergahlar i�in)
+        // Önceki hafta çalışmalarını bul (tekrar eden güzergahlar için)
         var oncekiHafta = haftaBaslangic.AddDays(-7);
         var oncekiCalismalanlar = await context.ServisCalismaKiralamalar
             .Where(s => s.FirmaId == firmaId &&
@@ -222,7 +222,7 @@ public class ServisKiralamaService : IServisKiralamaService
                        !s.IsDeleted)
             .ToListAsync();
 
-        // 7 g�n i�in plan olu�tur
+        // 7 gün için plan oluştur
         for (int i = 0; i < 7; i++)
         {
             var tarih = haftaBaslangic.AddDays(i);
@@ -291,7 +291,7 @@ public class ServisKiralamaService : IServisKiralamaService
             Plaka = s.AracSahiplikTuru == AracSahiplikTuru.KendiArac 
                 ? s.Arac?.AktifPlaka 
                 : s.KiralamaArac?.Plaka,
-            AracSahiplik = s.AracSahiplikTuru == AracSahiplikTuru.KendiArac ? "Kendi" : "Kiral�k",
+            AracSahiplik = s.AracSahiplikTuru == AracSahiplikTuru.KendiArac ? "Kendi" : "Kiralık",
             SoforAdi = $"{s.Sofor?.Ad} {s.Sofor?.Soyad}",
             GuzergahAdi = s.Guzergah?.GuzergahAdi,
             MusteriFirma = s.MusteriFirma?.FirmaAdi,
@@ -378,10 +378,10 @@ public class ServisKiralamaService : IServisKiralamaService
         var veriler = await GetServisCalismaRaporuAsync(firmaId, baslangic, bitis);
 
         using var package = new ExcelPackage();
-        var worksheet = package.Workbook.Worksheets.Add("Servis �al��ma Raporu");
+        var worksheet = package.Workbook.Worksheets.Add("Servis Çalışma Raporu");
 
-        // Ba�l�k
-        worksheet.Cells["A1"].Value = "SERV�S �ALI�MA RAPORU";
+        // Başlık
+        worksheet.Cells["A1"].Value = "SERVİS ÇALIŞMA RAPORU";
         worksheet.Cells["A1:O1"].Merge = true;
         worksheet.Cells["A1"].Style.Font.Size = 16;
         worksheet.Cells["A1"].Style.Font.Bold = true;
@@ -391,13 +391,13 @@ public class ServisKiralamaService : IServisKiralamaService
         worksheet.Cells["A2:O2"].Merge = true;
         worksheet.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-        // Kolon ba�l�klar�
+        // Kolon başlıkları
         int row = 4;
         var basliklar = new[]
         {
-            "Tarih", "Plaka", "Sahiplik", "�of�r", "G�zergah", "M��teri Firma",
-            "Servis T�r�", "�al��ma Bedeli", "Kira Bedeli", "Komisyon",
-            "Net Kazan�", "Km", "Ba�lang��", "Biti�", "Durum"
+            "Tarih", "Plaka", "Sahiplik", "Şoför", "Güzergah", "Müşteri Firma",
+            "Servis Türü", "Çalışma Bedeli", "Kira Bedeli", "Komisyon",
+            "Net Kazanç", "Km", "Başlangıç", "Bitiş", "Durum"
         };
 
         for (int col = 0; col < basliklar.Length; col++)
@@ -429,14 +429,14 @@ public class ServisKiralamaService : IServisKiralamaService
             worksheet.Cells[row, 14].Value = v.BitisSaati;
             worksheet.Cells[row, 15].Value = v.Durum;
 
-            // Para format�
+            // Para formatı
             for (int col = 8; col <= 11; col++)
             {
                 worksheet.Cells[row, col].Style.Numberformat.Format = "#,##0.00";
             }
 
-            // Renklendirme: Kiral�k ara�lar
-            if (v.AracSahiplik == "Kiral�k")
+            // Renklendirme: Kiralık araçlar
+            if (v.AracSahiplik == "Kiralık")
             {
                 worksheet.Cells[row, 1, row, basliklar.Length].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 worksheet.Cells[row, 1, row, basliklar.Length].Style.Fill.BackgroundColor.SetColor(Color.LightYellow);
@@ -445,7 +445,7 @@ public class ServisKiralamaService : IServisKiralamaService
             row++;
         }
 
-        // Toplam sat�r�
+        // Toplam satırı
         worksheet.Cells[row, 1].Value = "TOPLAM";
         worksheet.Cells[row, 1, row, 7].Merge = true;
         worksheet.Cells[row, 8].Formula = $"SUM(H5:H{row-1})";
@@ -472,19 +472,19 @@ public class ServisKiralamaService : IServisKiralamaService
         var araclar = await GetTumKiralamaAraclarAsync(firmaId);
 
         using var package = new ExcelPackage();
-        var worksheet = package.Workbook.Worksheets.Add("Kiralama Ara�lar");
+        var worksheet = package.Workbook.Worksheets.Add("Kiralama Araçlar");
 
-        // Ba�l�k
-        worksheet.Cells["A1"].Value = "K�RALIK ARA� L�STES�";
+        // Başlık
+        worksheet.Cells["A1"].Value = "KİRALIK ARAÇ LİSTESİ";
         worksheet.Cells["A1:J1"].Merge = true;
         worksheet.Cells["A1"].Style.Font.Size = 14;
         worksheet.Cells["A1"].Style.Font.Bold = true;
         worksheet.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-        // Kolon ba�l�klar�
+        // Kolon başlıkları
         int row = 3;
-        var basliklar = new[] { "Plaka", "Marka/Model", "Ara� Tipi", "Kiralayan", 
-            "Ba�lang��", "Biti�", "G�nl�k Kira", "Sefer Kira", "Ayl�k Kira", "Durum" };
+        var basliklar = new[] { "Plaka", "Marka/Model", "Araç Tipi", "Kiralayan", 
+            "Başlangıç", "Bitiş", "Günlük Kira", "Sefer Kira", "Aylık Kira", "Durum" };
 
         for (int col = 0; col < basliklar.Length; col++)
         {
@@ -531,26 +531,26 @@ public class ServisKiralamaService : IServisKiralamaService
         var veriler = await GetServisCalismaRaporuAsync(firmaId, baslangic, bitis);
 
         using var package = new ExcelPackage();
-        var worksheet = package.Workbook.Worksheets.Add($"{ay:00}-{yil} �zet");
+        var worksheet = package.Workbook.Worksheets.Add($"{ay:00}-{yil} Özet");
 
-        // Ba�l�k
-        worksheet.Cells["A1"].Value = $"{GetAyAdi(ay)} {yil} - SERV�S �ALI�MA �ZET�";
+        // Başlık
+        worksheet.Cells["A1"].Value = $"{GetAyAdi(ay)} {yil} - SERVİS ÇALIŞMA ÖZETİ";
         worksheet.Cells["A1:E1"].Merge = true;
         worksheet.Cells["A1"].Style.Font.Size = 14;
         worksheet.Cells["A1"].Style.Font.Bold = true;
 
-        // �zet bilgiler
+        // Özet bilgiler
         int row = 3;
-        worksheet.Cells[row, 1].Value = "Toplam Servis Say�s�:";
+        worksheet.Cells[row, 1].Value = "Toplam Servis Sayısı:";
         worksheet.Cells[row, 2].Value = veriler.Count;
 
         row++;
-        worksheet.Cells[row, 1].Value = "Kendi Ara� Say�s�:";
+        worksheet.Cells[row, 1].Value = "Kendi Araç Sayısı:";
         worksheet.Cells[row, 2].Value = veriler.Count(v => v.AracSahiplik == "Kendi");
 
         row++;
-        worksheet.Cells[row, 1].Value = "Kiral�k Ara� Say�s�:";
-        worksheet.Cells[row, 2].Value = veriler.Count(v => v.AracSahiplik == "Kiral�k");
+        worksheet.Cells[row, 1].Value = "Kiralık Araç Sayısı:";
+        worksheet.Cells[row, 2].Value = veriler.Count(v => v.AracSahiplik == "Kiralık");
 
         row++;
         worksheet.Cells[row, 1].Value = "Toplam Gelir:";
@@ -563,7 +563,7 @@ public class ServisKiralamaService : IServisKiralamaService
         worksheet.Cells[row, 2].Style.Numberformat.Format = "#,##0.00";
 
         row++;
-        worksheet.Cells[row, 1].Value = "Toplam Net Kazan�:";
+        worksheet.Cells[row, 1].Value = "Toplam Net Kazanç:";
         worksheet.Cells[row, 2].Value = veriler.Sum(v => v.NetKazanc ?? 0);
         worksheet.Cells[row, 2].Style.Numberformat.Format = "#,##0.00";
         worksheet.Cells[row, 1, row, 2].Style.Font.Bold = true;
@@ -575,7 +575,7 @@ public class ServisKiralamaService : IServisKiralamaService
 
     #endregion
 
-    #region �statistikler
+    #region İstatistikler
 
     public async Task<int> GetToplamKiralamaAracSayisiAsync(int firmaId)
     {
@@ -630,9 +630,9 @@ public class ServisKiralamaService : IServisKiralamaService
 
     private string GetAyAdi(int ay) => ay switch
     {
-        1 => "Ocak", 2 => "�ubat", 3 => "Mart", 4 => "Nisan",
-        5 => "May�s", 6 => "Haziran", 7 => "Temmuz", 8 => "A�ustos",
-        9 => "Eyl�l", 10 => "Ekim", 11 => "Kas�m", 12 => "Aral�k",
+        1 => "Ocak", 2 => "Şubat", 3 => "Mart", 4 => "Nisan",
+        5 => "Mayıs", 6 => "Haziran", 7 => "Temmuz", 8 => "Ağustos",
+        9 => "Eylül", 10 => "Ekim", 11 => "Kasım", 12 => "Aralık",
         _ => ""
     };
 }

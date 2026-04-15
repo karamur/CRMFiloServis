@@ -78,3 +78,4 @@ deploy/Uploads/**
 publish/
 CRMFiloServis-Release.zip
 KOAFiloServis.Installer/Payload/koafiloservis-package.zip
+KOAFiloServisKurulum.exe

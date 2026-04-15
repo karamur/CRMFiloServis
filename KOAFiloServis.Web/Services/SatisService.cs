@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -344,8 +344,8 @@ public class SatisService : ISatisService
 
     public Task<List<PiyasaIlan>> TaraPiyasaAsync(AracIlan aracIlan)
     {
-        // Bu method web scraping veya API ile sahibinden/arabam taramas� yapacak
-        // Simdilik bos liste donuyor - ileride implementasyon eklenecek
+        // Bu method web scraping veya API ile sahibinden/arabam taraması yapacak
+        // Şimdilik boş liste dönüyor - ileride implementasyon eklenecek
         return Task.FromResult(new List<PiyasaIlan>());
     }
 

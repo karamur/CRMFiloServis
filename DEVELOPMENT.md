@@ -42,29 +42,131 @@ Sorun çıkaran, tekrar kontrol edilmesi gereken veya teknik risk barındıran k
 ## Handoff Notu
 
 ### Son Durum
-- Son tamamlanan geliştirme: `Kayıt 146 - Şirketler Arası Transfer (FAZ 4.1)`
+- Son tamamlanan geliştirme: `Kayıt 161 - Manuel veritabanı yedeği oluşturulması`
 - Git durumu: commit edilecek
 - Branch: `main`
 
 ### Yarım Devam İçin Önerilen Başlangıç
-1. EF Core Migration oluştur ve uygula (SirketId alanları + SirketTransferLog tablosu)
-2. Sonraki FAZ veya özellik seçimi
+1. `ROADMAP.md` içindeki kalan tarihsel backlog bölümlerini gerekirse arşiv formatına dönüştür
+2. `FAZ 8.5` altında bekleyen `Rakip / piyasa teklif benchmark alanları` işi için kapsam netleştir
+3. Fatura çoklu firma/yön akışında UI + API regresyon kontrolü yap
 
 ### Kısa Teknik Özet
-- FAZ 4.1 Çoklu Şirket Desteği tamamen tamamlandı:
-  - Multi-tenant mimari (Entity + Servis + UI)
-  - Şirket bazlı veri izolasyonu (Global Query Filter)
-  - Şirketler arası transfer (SirketTransfer.razor + TenantService)
+- Son güncel iş akışı `Fatura` çoklu firma/yön kuralları etrafında ilerledi:
+  - `Kayıt 154`: veritabanı seviyesinde benzersizlik koruması
+  - `Kayıt 155`: API doğrulama ve DTO uyumu
+  - `Kayıt 156`: UI'da çakışma hatalarının görünür hale getirilmesi
+  - `Kayıt 157`: listede firma/yön rozetlerinin güçlendirilmesi
+- `Servis Çalışmaları` ekranları ve ilişkili dosyalarda Türkçe karakter / encoding temizliği yapıldı.
+- `ROADMAP.md` ve `DEVELOPMENT.md` arasında üst seviye durum ile tarihsel backlog notları ayrıştırıldı.
 
 ### Not
 - FAZ 4 Kurumsal Özellikler bölümü tamamlandı
 - FAZ 4.1 (Çoklu Şirket Desteği) tam olarak hazır
 - FAZ 4.2 (API & Entegrasyon) - REST API, Swagger, Webhook ✅
 - FAZ 4.3 (Performans & Ölçekleme) - Redis Cache, Pagination ✅
+- FAZ 8.5 ve 8.6 üst seviye teslimleri tamamlanmış durumda; alt sprint backlog bölümleri tarihsel referans olarak korunuyor
 
 ---
 
 ## İstek Kayıtları
+
+### Kayıt 161 - Manuel Veritabanı Yedeği Oluşturulması
+**Talep:**
+- Mevcut veritabanı için yedeğin gerçekten alınması.
+
+**Yapılanlar:**
+- `KOAFiloServis.Web/dbsettings.json` içindeki PostgreSQL ayarları kullanılarak manuel `pg_dump` çalıştırıldı.
+- Zaman damgalı yedek klasörü oluşturuldu.
+- `database.sql` dump dosyası üretildi.
+- Aynı klasöre `dbsettings.json` kopyalandı.
+- Yedek ayrıca `.zip` paketine sıkıştırıldı.
+
+**Doğrulama:**
+- `database.sql` dosyası oluşturuldu.
+- `.zip` paketi oluşturuldu.
+
+**Etkilenen Dosyalar:**
+- `KOAFiloServis.Web/Backups/Database/KOAFiloServis_Backup_20260414_150331/database.sql`
+- `KOAFiloServis.Web/Backups/Database/KOAFiloServis_Backup_20260414_150331/dbsettings.json`
+- `KOAFiloServis.Web/Backups/Database/KOAFiloServis_Backup_20260414_150331.zip`
+- `DEVELOPMENT.md`
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 160 - IIS Paket Publish ve `kur.bat` Kurulum Otomasyonu
+**Talep:**
+- IIS için publish paketi hazırlanması, kurulumun `kur.bat` ile yapılabilmesi ve veritabanı yedeğinin yoksa oluşturulup varsa güncellenmesi.
+
+**Yapılanlar:**
+- Web projesi publish çıktısına otomatik dahil edilen `kur.bat` ve `kur.ps1` kurulum scriptleri eklendi.
+- `kur.bat` artık yayın paketinin içinden çalıştırılarak hedef klasöre kurulum/güncelleme yapabiliyor.
+- Kurulum sırasında mevcut yayın klasörü zaman damgalı ve `latest` yedek mantığıyla kopyalanıyor.
+- `dbsettings.json` üzerinden veritabanı ayarı okunarak yedek akışı eklendi:
+  - `SQLite` için veritabanı dosyası kopyalanıyor
+  - `PostgreSQL` için `pg_dump` varsa SQL dump alınıyor
+  - diğer sağlayıcılarda en azından `dbsettings.json` yedeği korunuyor
+- Mevcut sunucu `dbsettings.json` dosyası varsa ezilmemesi sağlandı; yoksa paket içinden ilk kurulum için kopyalanıyor.
+- Yerelde IIS dağıtım paketi üretmek için kök dizine `publish-iis-package.bat` eklendi.
+
+**Doğrulama:**
+- Publish scriptleri ve proje publish içeriği manuel olarak kontrol edildi.
+
+**Etkilenen Dosyalar:**
+- `KOAFiloServis.Web/KOAFiloServis.Web.csproj`
+- `KOAFiloServis.Web/Deploy/IIS/kur.bat`
+- `KOAFiloServis.Web/Deploy/IIS/kur.ps1`
+- `publish-iis-package.bat`
+- `DEVELOPMENT.md`
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 159 - ROADMAP / DEVELOPMENT Dokümantasyon Senkronizasyonu
+**Talep:**
+- `ROADMAP.md` ve `DEVELOPMENT.md` dosyalarının incelenmesi ve güncel durumla tutarsız özetlerin netleştirilmesi.
+
+**Yapılanlar:**
+- `ROADMAP.md` içinde `FAZ 8.5` altındaki sprint backlog bölümlerine tarihsel referans notları eklendi.
+- `FAZ 8.5` üst seviye tamamlanma durumu ile alt backlog notları arasındaki fark dokümante edildi.
+- `DEVELOPMENT.md` üst `Handoff Notu` bölümü güncellendi.
+- Son durum, önerilen başlangıç ve kısa teknik özet bölümleri güncel proje akışına göre revize edildi.
+
+**Doğrulama:**
+- Dokümantasyon güncelliği manuel olarak kontrol edildi.
+
+**Etkilenen Dosyalar:**
+- `ROADMAP.md`
+- `DEVELOPMENT.md`
+
+**Durum:** ✅ Tamamlandı
+
+### Kayıt 158 - Türkçe Karakter / Encoding Temizliği
+**Talep:**
+- `/servis-calismalari` akışında görülen Türkçe karakter bozulmalarının düzeltilmesi ve çözüm genelinde benzer encoding sorunlarının temizlenmesi.
+
+**Yapılanlar:**
+- `ServisCalismaList.razor`, `ServisCalismaForm.razor` ve `TopluServisCalismasiEkle.razor` dosyaları UTF-8 uyumlu Türkçe içerikle yenilendi.
+- Test dokümanları ve servis katmanındaki bozuk Türkçe sabit/metinler temizlendi.
+- `ToastService`, `ServisKiralamaService`, `PersonelMaasIzinService`, `PythonScraperService`, `SatisService` ve `MultiUserSessionTests.md` içinde bozuk karakterler düzeltildi.
+- Çözüm genelinde `*.razor`, `*.cs`, `*.md` dosyaları taranarak görünür bozuk karakter kaydı kalmadığı doğrulandı.
+
+**Doğrulama:**
+- Bozuk karakter taraması temiz sonuç verdi.
+- `run_build` başarılı.
+
+**Etkilenen Dosyalar:**
+- `KOAFiloServis.Web/Components/Pages/ServisCalismalari/ServisCalismaList.razor`
+- `KOAFiloServis.Web/Components/Pages/ServisCalismalari/ServisCalismaForm.razor`
+- `KOAFiloServis.Web/Components/Pages/ServisCalismalari/TopluServisCalismasiEkle.razor`
+- `KOAFiloServis.Web/Services/ToastService.cs`
+- `KOAFiloServis.Web/Services/ServisKiralamaService.cs`
+- `KOAFiloServis.Web/Services/PersonelMaasIzinService.cs`
+- `KOAFiloServis.Web/Services/PythonScraperService.cs`
+- `KOAFiloServis.Web/Services/SatisService.cs`
+- `KOAFiloServis.Web/Tests/MultiUserSessionTests.md`
+- `DEVELOPMENT.md`
+
+**Durum:** ✅ Tamamlandı
 
 ### Kayıt 157 - Fatura Listesinde Firma/Yön Rozetlerinin Güçlendirilmesi
 **Talep:**

@@ -8,11 +8,11 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEdit ? "Fatura D�zenle" : "Yeni Fatura")</PageTitle>
+<PageTitle>@(IsEdit ? "Fatura Düzenle" : "Yeni Fatura")</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-receipt me-2"></i>@(IsEdit ? "Fatura D�zenle" : "Yeni Fatura")</h3>
+        <h3><i class="bi bi-receipt me-2"></i>@(IsEdit ? "Fatura Düzenle" : "Yeni Fatura")</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -110,7 +110,7 @@
                                 <div class="mb-3">
                                     <label class="form-label">Cari *</label>
                                     <InputSelect @bind-Value="fatura.CariId" class="form-select">
-                                        <option value="0">-- Cari Se�iniz --</option>
+                                        <option value="0">-- Cari Seçiniz --</option>
                                         @foreach (var cari in CariSecenekleri())
                                         {
                                             <option value="@cari.Id">@cari.Unvan</option>
@@ -142,7 +142,7 @@
                             <table class="table table-bordered">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width: 40%;">A��klama</th>
+                                        <th style="width: 40%;">Açıklama</th>
                                         <th style="width: 10%;">Miktar</th>
                                         <th style="width: 10%;">Birim</th>
                                         <th style="width: 15%;">Birim Fiyat</th>
@@ -191,7 +191,7 @@
                         </button>
 
                         <div class="mb-3">
-                            <label class="form-label">A��klama</label>
+                            <label class="form-label">Açıklama</label>
                             <InputTextArea @bind-Value="fatura.Aciklama" class="form-control" rows="2" />
                         </div>
 
@@ -200,7 +200,7 @@
                                 <i class="bi bi-check-lg me-1"></i>Kaydet
                             </button>
                             <button type="button" class="btn btn-secondary" @onclick="Geri">
-                                <i class="bi bi-x-lg me-1"></i>�ptal
+                                <i class="bi bi-x-lg me-1"></i>İptal
                             </button>
                         </div>
                     </EditForm>
@@ -449,10 +449,10 @@
 
     private string GetTipText(FaturaTipi tip) => tip switch
     {
-        FaturaTipi.SatisFaturasi => "Sat�� Faturas�",
-        FaturaTipi.AlisFaturasi => "Al�� Faturas�",
-        FaturaTipi.SatisIadeFaturasi => "Sat�� �ade Faturas�",
-        FaturaTipi.AlisIadeFaturasi => "Al�� �ade Faturas�",
+        FaturaTipi.SatisFaturasi => "Satış Faturası",
+        FaturaTipi.AlisFaturasi => "Alış Faturası",
+        FaturaTipi.SatisIadeFaturasi => "Satış İade Faturası",
+        FaturaTipi.AlisIadeFaturasi => "Alış İade Faturası",
         _ => tip.ToString()
     };
 }

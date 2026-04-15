@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using KOAFiloServis.Shared.Entities;
@@ -49,8 +49,8 @@ public class PythonScraperService : IPythonScraperService
             // Saglik kontrolu
             if (!await SaglikKontroluAsync())
             {
-                progress?.Report("Python Scraper servisi calism�yor! Lutfen start_scraper.bat calistirin.");
-                _logger.LogWarning("Python Scraper servisi calism�yor");
+                progress?.Report("Python Scraper servisi çalışmıyor! Lütfen start_scraper.bat çalıştırın.");
+                _logger.LogWarning("Python Scraper servisi çalışmıyor");
                 return ilanlar;
             }
 

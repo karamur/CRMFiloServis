@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\KOAFiloServis.Shared\KOAFiloServis.Shared.csproj" />
@@ -44,6 +44,17 @@
 
   <ItemGroup>
     <None Include="Tests\PlaywrightSmoke\KOAFiloServis.PlaywrightSmoke.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Deploy\IIS\kur.bat">
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+      <Link>kur.bat</Link>
+    </Content>
+    <Content Include="Deploy\IIS\kur.ps1">
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+      <Link>kur.ps1</Link>
+    </Content>
   </ItemGroup>
 
   <PropertyGroup>

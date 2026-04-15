@@ -1,17 +1,17 @@
-@page "/servis-calismalari"
+﻿@page "/servis-calismalari"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @inject IServisCalismaService ServisCalismaService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>Servis �al��malar�</PageTitle>
+<PageTitle>Servis Çalışmaları</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-calendar-check me-2"></i>Servis �al��malar�</h3>
+        <h3><i class="bi bi-calendar-check me-2"></i>Servis Çalışmaları</h3>
         <button class="btn btn-primary" @onclick="YeniCalisma">
-            <i class="bi bi-plus-lg me-1"></i>Yeni �al��ma
+            <i class="bi bi-plus-lg me-1"></i>Yeni Çalışma
         </button>
     </div>
 
@@ -19,14 +19,14 @@
     {
         <div class="text-center">
             <div class="spinner-border" role="status">
-                <span class="visually-hidden">Y�kleniyor...</span>
+                <span class="visually-hidden">Yükleniyor...</span>
             </div>
         </div>
     }
     else if (!calismalar.Any())
     {
         <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>Hen�z servis �al��ma kayd� bulunmamaktad�r.
+            <i class="bi bi-info-circle me-2"></i>Henüz servis çalışma kaydı bulunmamaktadır.
         </div>
     }
     else
@@ -39,13 +39,13 @@
                             <tr>
                                 <th>Tarih</th>
                                 <th>Plaka</th>
-                                <th>�of�r</th>
+                                <th>Şoför</th>
                                 <th>Firma</th>
-                                <th>G�zergah</th>
-                                <th>Servis T�r�</th>
+                                <th>Güzergah</th>
+                                <th>Servis Türü</th>
                                 <th>Fiyat</th>
                                 <th>Durum</th>
-                                <th style="width: 120px;">��lemler</th>
+                                <th style="width: 120px;">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -60,18 +60,18 @@
                                     <td>
                                         <span class="badge bg-info">@GetServisTuruText(calisma.ServisTuru)</span>
                                     </td>
-                                    <td><strong>@((calisma.Fiyat ?? calisma.Guzergah?.BirimFiyat ?? 0).ToString("N2")) ?</strong></td>
+                                    <td><strong>@((calisma.Fiyat ?? calisma.Guzergah?.BirimFiyat ?? 0).ToString("N2")) ₺</strong></td>
                                     <td>
                                         <span class="badge @GetDurumBadgeClass(calisma.Durum)">
                                             @GetDurumText(calisma.Durum)
                                         </span>
                                         @if (calisma.ArizaOlduMu)
                                         {
-                                            <span class="badge bg-danger ms-1">Ar�za</span>
+                                            <span class="badge bg-danger ms-1">Arıza</span>
                                         }
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(calisma.Id)" title="D�zenle">
+                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(calisma.Id)" title="Düzenle">
                                             <i class="bi bi-pencil"></i>
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger" @onclick="() => SilOnay(calisma)" title="Sil">
@@ -94,14 +94,14 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Silme Onay�</h5>
+                    <h5 class="modal-title">Silme Onayı</h5>
                     <button type="button" class="btn-close" @onclick="() => showDeleteModal = false"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Bu servis �al��mas�n� silmek istedi�inize emin misiniz?</p>
+                    <p>Bu servis çalışmasını silmek istediğinize emin misiniz?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">�ptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">İptal</button>
                     <button type="button" class="btn btn-danger" @onclick="Sil">Sil</button>
                 </div>
             </div>
@@ -154,18 +154,18 @@
     private string GetServisTuruText(ServisTuru tur) => tur switch
     {
         ServisTuru.Sabah => "Sabah",
-        ServisTuru.Aksam => "Ak�am",
-        ServisTuru.SabahAksam => "Sabah+Ak�am",
-        ServisTuru.Ozel => "�zel",
+        ServisTuru.Aksam => "Akşam",
+        ServisTuru.SabahAksam => "Sabah+Akşam",
+        ServisTuru.Ozel => "Özel",
         _ => tur.ToString()
     };
 
     private string GetDurumText(CalismaDurum durum) => durum switch
     {
-        CalismaDurum.Planli => "Planl�",
-        CalismaDurum.Tamamlandi => "Tamamland�",
-        CalismaDurum.IptalEdildi => "�ptal",
-        CalismaDurum.ArizaNedeniyleYapilamadi => "Ar�za",
+        CalismaDurum.Planli => "Planlı",
+        CalismaDurum.Tamamlandi => "Tamamlandı",
+        CalismaDurum.IptalEdildi => "İptal",
+        CalismaDurum.ArizaNedeniyleYapilamadi => "Arıza",
         _ => durum.ToString()
     };
 
