@@ -1,4 +1,4 @@
-namespace KOAFiloServis.Shared.Entities;
+﻿namespace KOAFiloServis.Shared.Entities;
 
 /// <summary>
 /// Aylık bordro kayıtları
@@ -47,18 +47,41 @@ public class BordroDetay : BaseEntity
     public decimal SgkMaasi { get; set; } // SGK'ya bildirilen
     public decimal EkOdeme { get; set; } // Toplu - SGK
     
-    // Kesintiler
-    public decimal SgkIssizlikKesinti { get; set; }
+    // Kesintiler (İşçi Payı)
+    public decimal SgkIsciPrim { get; set; }
+    public decimal IssizlikIsciPrim { get; set; }
+    public decimal SgkIssizlikKesinti { get; set; } // Geriye uyumluluk: SgkIsciPrim + IssizlikIsciPrim
     public decimal GelirVergisi { get; set; }
     public decimal DamgaVergisi { get; set; }
-    public decimal ToplamKesinti => SgkIssizlikKesinti + GelirVergisi + DamgaVergisi;
-    
-    // Ek Ödemeler
+    public decimal ToplamKesinti => SgkIssizlikKesinti + GelirVergisi + DamgaVergisi + OzelKesintilerToplam;
+
+    // İşveren Maliyeti
+    public decimal SgkIsverenPrim { get; set; }
+    public decimal IssizlikIsverenPrim { get; set; }
+    public decimal ToplamIsverenMaliyet => SgkIsverenPrim + IssizlikIsverenPrim;
+    public decimal ToplamIsverenMaliyetDahilMaas => BrutMaas + ToplamIsverenMaliyet;
+
+    // Kümülatif Vergi Matrahı
+    public decimal KumulatifVergiMatrahi { get; set; }
+    public int UygulananVergiDilimi { get; set; }
+
+    // Ek Ödemeler / Sosyal Yardımlar
     public decimal YemekYardimi { get; set; }
     public decimal YolYardimi { get; set; }
     public decimal PrimTutar { get; set; }
+    public decimal AileYardimi { get; set; }
+    public decimal Ikramiye { get; set; }
     public decimal DigerEkOdeme { get; set; }
-    public decimal ToplamEkOdeme => YemekYardimi + YolYardimi + PrimTutar + DigerEkOdeme;
+    public decimal ToplamEkOdeme => YemekYardimi + YolYardimi + PrimTutar + AileYardimi + Ikramiye + DigerEkOdeme;
+
+    // Özel Kesintiler
+    public decimal IcraKesintisi { get; set; }
+    public decimal BESKesintisi { get; set; }
+    public decimal SendikaKesintisi { get; set; }
+    public decimal HayatSigortasi { get; set; }
+    public decimal BireyselEmeklilik { get; set; }
+    public decimal DigerOzelKesinti { get; set; }
+    public decimal OzelKesintilerToplam => IcraKesintisi + BESKesintisi + SendikaKesintisi + HayatSigortasi + BireyselEmeklilik + DigerOzelKesinti;
     
     // Ödeme Durumu
     public bool BankaOdemesiYapildi { get; set; } = false;
@@ -118,14 +141,36 @@ public class BordroAyar : BaseEntity
     public string BankaHesapKodu { get; set; } = "102"; // Banka
     public string PersonelAvansHesapKodu { get; set; } = "195"; // Personel Avansları (mahsup için)
     
-    // Oran Ayarları (%)
+    // İşçi Payı Oranları (%)
     public decimal SgkIsciPayiOrani { get; set; } = 14; // SGK işçi payı %
     public decimal IssizlikIsciPayiOrani { get; set; } = 1; // İşsizlik işçi payı %
     public decimal DamgaVergisiOrani { get; set; } = 0.759M; // Damga vergisi %
-    
+
+    // İşveren Payı Oranları (%)
+    public decimal SgkIsverenPayiOrani { get; set; } = 20.5M; // SGK işveren payı (15.5 SGK + 2 İşKaz + 2 Genel Sağ + 1 kısa vade)
+    public decimal IssizlikIsverenPayiOrani { get; set; } = 2; // İşsizlik işveren payı %
+    public bool Sgk5PuanIndirimVarMi { get; set; } = true; // 5 puan SGK indirimi aktif mi
+
+    // Gelir Vergisi Dilimleri (2025 yılı değerleri)
+    public decimal GelirVergisiDilim1Sinir { get; set; } = 158_000; // 1. dilim üst sınır
+    public decimal GelirVergisiDilim1Oran { get; set; } = 15;
+    public decimal GelirVergisiDilim2Sinir { get; set; } = 330_000; // 2. dilim üst sınır
+    public decimal GelirVergisiDilim2Oran { get; set; } = 20;
+    public decimal GelirVergisiDilim3Sinir { get; set; } = 800_000; // 3. dilim üst sınır
+    public decimal GelirVergisiDilim3Oran { get; set; } = 27;
+    public decimal GelirVergisiDilim4Sinir { get; set; } = 4_300_000; // 4. dilim üst sınır
+    public decimal GelirVergisiDilim4Oran { get; set; } = 35;
+    public decimal GelirVergisiDilim5Oran { get; set; } = 40; // 5. dilim (üstü)
+
+    // AGİ (Asgari Geçim İndirimi) - 2025'den itibaren uygulanmıyor ama uyumluluk için
+    public bool AgiUygulaniyor { get; set; } = false;
+    public decimal AgiTutari { get; set; } = 0;
+
     // ARGE Özel Ayarlar
     public bool ArgeSgkIsverenDestekVarMi { get; set; } = true;
     public decimal ArgeSgkIsverenDestekOrani { get; set; } = 100; // % tam destek
+    public bool ArgeGelirVergisiStopajDestekVarMi { get; set; } = true;
+    public decimal ArgeGelirVergisiStopajDestekOrani { get; set; } = 100; // %
     
     // Navigation Properties
     public virtual Firma? Firma { get; set; }

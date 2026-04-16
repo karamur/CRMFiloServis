@@ -219,11 +219,14 @@
                                                 <th>Personel</th>
                                                 <th class="text-end">Brüt</th>
                                                 <th class="text-end">SGK Maaşı</th>
+                                                <th class="text-end">SGK İşçi</th>
+                                                <th class="text-end">G.Vergisi</th>
+                                                <th class="text-end">D.Vergisi</th>
+                                                <th class="text-end">Özel Kes.</th>
                                                 <th class="text-end">Kesintiler</th>
                                                 <th class="text-end">Net</th>
                                                 <th class="text-end">Ek Ödemeler</th>
-                                                <th class="text-end">Toplu Maaş</th>
-                                                <th class="text-end">Ek Ödeme</th>
+                                                <th class="text-end">İşveren Mlyt</th>
                                                 <th class="text-end">Toplam</th>
                                                 <th>Durum</th>
                                                 <th class="text-center" style="width:80px;">İşlem</th>
@@ -243,11 +246,23 @@
                                                     </td>
                                                     <td class="text-end">@FormatPara(detay.BrutMaas)</td>
                                                     <td class="text-end">@FormatPara(detay.SgkMaasi)</td>
+                                                    <td class="text-end"><small>@FormatPara(detay.SgkIssizlikKesinti)</small></td>
+                                                    <td class="text-end"><small>@FormatPara(detay.GelirVergisi)</small></td>
+                                                    <td class="text-end"><small>@FormatPara(detay.DamgaVergisi)</small></td>
+                                                    <td class="text-end">
+                                                        @if (detay.OzelKesintilerToplam > 0)
+                                                        {
+                                                            <small class="text-danger" title="İcra:@FormatPara(detay.IcraKesintisi) BES:@FormatPara(detay.BESKesintisi) Sendika:@FormatPara(detay.SendikaKesintisi)">@FormatPara(detay.OzelKesintilerToplam)</small>
+                                                        }
+                                                        else
+                                                        {
+                                                            <small class="text-muted">-</small>
+                                                        }
+                                                    </td>
                                                     <td class="text-end">@FormatPara(detay.ToplamKesinti)</td>
                                                     <td class="text-end"><strong>@FormatPara(detay.NetMaas)</strong></td>
                                                     <td class="text-end">@FormatPara(detay.ToplamEkOdeme)</td>
-                                                    <td class="text-end">@FormatPara(detay.TopluMaas)</td>
-                                                    <td class="text-end">@FormatPara(detay.EkOdeme)</td>
+                                                    <td class="text-end"><small class="text-info" title="SGK İşv:@FormatPara(detay.SgkIsverenPrim) İşsiz İşv:@FormatPara(detay.IssizlikIsverenPrim)">@FormatPara(detay.ToplamIsverenMaliyet)</small></td>
                                                     <td class="text-end"><strong>@FormatPara(detay.ToplamOdenecek)</strong></td>
                                                     <td>
                                                         @if (detay.BankaOdemesiYapildi && detay.EkOdemeYapildi)
@@ -290,11 +305,14 @@
                                                 <td><strong>TOPLAM</strong></td>
                                                 <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.BrutMaas))</strong></td>
                                                 <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.SgkMaasi))</strong></td>
+                                                <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.SgkIssizlikKesinti))</strong></td>
+                                                <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.GelirVergisi))</strong></td>
+                                                <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.DamgaVergisi))</strong></td>
+                                                <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.OzelKesintilerToplam))</strong></td>
                                                 <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.ToplamKesinti))</strong></td>
                                                 <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.NetMaas))</strong></td>
                                                 <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.ToplamEkOdeme))</strong></td>
-                                                <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.TopluMaas))</strong></td>
-                                                <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.EkOdeme))</strong></td>
+                                                <td class="text-end"><strong class="text-info">@FormatPara(bordroDetaylar.Sum(d => d.ToplamIsverenMaliyet))</strong></td>
                                                 <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.ToplamOdenecek))</strong></td>
                                                 <td></td>
                                                 <td></td>

@@ -277,6 +277,75 @@
                     }
                 </div>
 
+                <!-- Sosyal Yardımlar -->
+                @if (sofor.SGKBordroDahilMi)
+                {
+                    <hr />
+                    <h5 class="text-primary mb-3"><i class="bi bi-gift me-2"></i>Sosyal Yardımlar (Aylık)</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Yemek Yardımı</label>
+                                <InputNumber @bind-Value="sofor.YemekYardimi" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Yol Yardımı</label>
+                                <InputNumber @bind-Value="sofor.YolYardimi" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Aile Yardımı</label>
+                                <InputNumber @bind-Value="sofor.AileYardimi" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="text-danger mb-3"><i class="bi bi-scissors me-2"></i>Özel Kesintiler (Aylık)</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">İcra Kesintisi</label>
+                                <InputNumber @bind-Value="sofor.IcraKesintisi" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">BES Kesintisi</label>
+                                <InputNumber @bind-Value="sofor.BESKesintisi" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Sendika Aidatı</label>
+                                <InputNumber @bind-Value="sofor.SendikaKesintisi" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Hayat Sigortası</label>
+                                <InputNumber @bind-Value="sofor.HayatSigortasi" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Bireysel Emeklilik</label>
+                                <InputNumber @bind-Value="sofor.BireyselEmeklilik" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Diğer Özel Kesinti</label>
+                                <InputNumber @bind-Value="sofor.DigerOzelKesinti" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                }
+
                 <!-- Muhasebe Hesap Entegrasyonu -->
                 <hr />
                 <h5 class="text-primary mb-3"><i class="bi bi-calculator me-2"></i>Muhasebe Hesap Entegrasyonu</h5>

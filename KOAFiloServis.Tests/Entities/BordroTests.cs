@@ -38,16 +38,72 @@ public class BordroDetayTests
     }
 
     [Fact]
-    public void ToplamEkOdeme_TumEkOdemelerinToplami()
+    public void ToplamKesinti_OzelKesintilerDahil()
+    {
+        var detay = new BordroDetay
+        {
+            SgkIssizlikKesinti = 1000m,
+            GelirVergisi = 500m,
+            DamgaVergisi = 100m,
+            IcraKesintisi = 200m,
+            BESKesintisi = 150m,
+            SendikaKesintisi = 50m
+        };
+        // 1000 + 500 + 100 + (200+150+50+0+0+0) = 2000
+        Assert.Equal(2000m, detay.ToplamKesinti);
+    }
+
+    [Fact]
+    public void OzelKesintilerToplam_HepsiBirlesiyor()
+    {
+        var detay = new BordroDetay
+        {
+            IcraKesintisi = 300m,
+            BESKesintisi = 200m,
+            SendikaKesintisi = 100m,
+            HayatSigortasi = 150m,
+            BireyselEmeklilik = 250m,
+            DigerOzelKesinti = 50m
+        };
+        Assert.Equal(1050m, detay.OzelKesintilerToplam);
+    }
+
+    [Fact]
+    public void IsverenMaliyeti_SgkVeIssizlik()
+    {
+        var detay = new BordroDetay
+        {
+            SgkIsverenPrim = 3000m,
+            IssizlikIsverenPrim = 400m
+        };
+        Assert.Equal(3400m, detay.ToplamIsverenMaliyet);
+    }
+
+    [Fact]
+    public void ToplamIsverenMaliyetDahilMaas_BrutArtIsverenMaliyet()
+    {
+        var detay = new BordroDetay
+        {
+            BrutMaas = 20000m,
+            SgkIsverenPrim = 3000m,
+            IssizlikIsverenPrim = 400m
+        };
+        Assert.Equal(23400m, detay.ToplamIsverenMaliyetDahilMaas);
+    }
+
+    [Fact]
+    public void ToplamEkOdeme_SosyalYardimlarDahil()
     {
         var detay = new BordroDetay
         {
             YemekYardimi = 200m,
             YolYardimi = 150m,
             PrimTutar = 500m,
+            AileYardimi = 300m,
+            Ikramiye = 1000m,
             DigerEkOdeme = 100m
         };
-        Assert.Equal(950m, detay.ToplamEkOdeme);
+        Assert.Equal(2250m, detay.ToplamEkOdeme);
     }
 
     [Fact]

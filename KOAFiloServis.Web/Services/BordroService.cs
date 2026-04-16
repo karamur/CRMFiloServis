@@ -164,23 +164,55 @@ public class BordroService : IBordroService
             {
                 BordroId = bordro.Id,
                 PersonelId = personel.Id,
-                FirmaId = bordro.FirmaId, // Bordrodan al
+                FirmaId = bordro.FirmaId,
                 BrutMaas = brutMaas,
                 NetMaas = resmiNetMaas,
                 TopluMaas = resmiNetMaas + digerMaas,
                 SgkMaasi = resmiNetMaas,
-                EkOdeme = digerMaas
+                EkOdeme = digerMaas,
+                // Sosyal Yardımlar (personelden al)
+                YemekYardimi = YuvarlaTutar(personel.YemekYardimi * sgkMaasOrani),
+                YolYardimi = YuvarlaTutar(personel.YolYardimi * sgkMaasOrani),
+                AileYardimi = YuvarlaTutar(personel.AileYardimi * sgkMaasOrani),
+                // Özel Kesintiler (personelden al)
+                IcraKesintisi = YuvarlaTutar(personel.IcraKesintisi * sgkMaasOrani),
+                BESKesintisi = YuvarlaTutar(personel.BESKesintisi * sgkMaasOrani),
+                SendikaKesintisi = YuvarlaTutar(personel.SendikaKesintisi * sgkMaasOrani),
+                HayatSigortasi = YuvarlaTutar(personel.HayatSigortasi * sgkMaasOrani),
+                BireyselEmeklilik = YuvarlaTutar(personel.BireyselEmeklilik * sgkMaasOrani),
+                DigerOzelKesinti = YuvarlaTutar(personel.DigerOzelKesinti * sgkMaasOrani)
             };
 
-            // Kesintileri hesapla
-            detay.SgkIssizlikKesinti = detay.SgkMaasi * (ayarlar.SgkIsciPayiOrani + ayarlar.IssizlikIsciPayiOrani) / 100;
-            
-            // Gelir vergisi hesaplama (basit: %15 varsayım, gerçekte dilimlere göre hesaplanmalı)
+            // İşçi SGK Kesintileri (ayrı ayrı)
+            detay.SgkIsciPrim = YuvarlaTutar(detay.SgkMaasi * ayarlar.SgkIsciPayiOrani / 100);
+            detay.IssizlikIsciPrim = YuvarlaTutar(detay.SgkMaasi * ayarlar.IssizlikIsciPayiOrani / 100);
+            detay.SgkIssizlikKesinti = detay.SgkIsciPrim + detay.IssizlikIsciPrim;
+
+            // İşveren SGK Maliyeti
+            var isverenSgkOrani = ayarlar.SgkIsverenPayiOrani;
+            if (ayarlar.Sgk5PuanIndirimVarMi)
+                isverenSgkOrani -= 5; // 5 puan SGK indirimi
+            detay.SgkIsverenPrim = YuvarlaTutar(detay.SgkMaasi * isverenSgkOrani / 100);
+            detay.IssizlikIsverenPrim = YuvarlaTutar(detay.SgkMaasi * ayarlar.IssizlikIsverenPayiOrani / 100);
+
+            // Gelir Vergisi Matrahı
             var gelirVergisiMatrahi = detay.SgkMaasi - detay.SgkIssizlikKesinti;
-            detay.GelirVergisi = gelirVergisiMatrahi * 0.15M;
-            
+            // BES/Hayat sigortası vergi matrahından düşülür (brütün %15'ine kadar)
+            var sigortaIndirimi = Math.Min(detay.BireyselEmeklilik + detay.HayatSigortasi, brutMaas * 0.15M);
+            gelirVergisiMatrahi -= sigortaIndirimi;
+            if (gelirVergisiMatrahi < 0) gelirVergisiMatrahi = 0;
+
+            // Kümülatif vergi matrahı hesapla (önceki ayların toplamı)
+            var kumulatifOncekiAylar = await GetKumulatifVergiMatrahiAsync(context, personel.Id, bordro.Yil, bordro.Ay);
+            var kumulatifYeni = kumulatifOncekiAylar + gelirVergisiMatrahi;
+            detay.KumulatifVergiMatrahi = kumulatifYeni;
+
+            // Kademeli gelir vergisi hesaplama
+            detay.GelirVergisi = HesaplaKademeliGelirVergisi(ayarlar, kumulatifOncekiAylar, gelirVergisiMatrahi, out int vergiDilimi);
+            detay.UygulananVergiDilimi = vergiDilimi;
+
             // Damga vergisi
-            detay.DamgaVergisi = detay.SgkMaasi * ayarlar.DamgaVergisiOrani / 100;
+            detay.DamgaVergisi = YuvarlaTutar(detay.SgkMaasi * ayarlar.DamgaVergisiOrani / 100);
 
             // Ek ödeme bordroda diğer maaş olarak taşınır
             detay.TopluMaas = detay.NetMaas + detay.EkOdeme;
@@ -194,6 +226,61 @@ public class BordroService : IBordroService
         await UpdateBordroOzetAsync(bordro.Id);
 
         return true;
+    }
+
+    /// <summary>
+    /// Kümülatif gelir vergisi matrahını hesaplar (yıl içi önceki aylar toplamı)
+    /// </summary>
+    private async Task<decimal> GetKumulatifVergiMatrahiAsync(ApplicationDbContext context, int personelId, int yil, int ay)
+    {
+        // Önceki ayların gelir vergisi matrahı toplamını al
+        var oncekiAylarMatrahi = await context.BordroDetaylar
+            .Include(d => d.Bordro)
+            .Where(d => d.Bordro.Yil == yil && d.Bordro.Ay < ay && d.PersonelId == personelId)
+            .SumAsync(d => (decimal?)(d.SgkMaasi - d.SgkIssizlikKesinti)) ?? 0;
+
+        return oncekiAylarMatrahi;
+    }
+
+    /// <summary>
+    /// Kademeli gelir vergisi hesaplama (RaptinBordro gibi dilimli hesap)
+    /// </summary>
+    private static decimal HesaplaKademeliGelirVergisi(BordroAyar ayar, decimal kumulatifOnceki, decimal aylikMatrah, out int dilim)
+    {
+        var dilimler = new (decimal sinir, decimal oran)[]
+        {
+            (ayar.GelirVergisiDilim1Sinir, ayar.GelirVergisiDilim1Oran),
+            (ayar.GelirVergisiDilim2Sinir, ayar.GelirVergisiDilim2Oran),
+            (ayar.GelirVergisiDilim3Sinir, ayar.GelirVergisiDilim3Oran),
+            (ayar.GelirVergisiDilim4Sinir, ayar.GelirVergisiDilim4Oran),
+            (decimal.MaxValue, ayar.GelirVergisiDilim5Oran)
+        };
+
+        decimal vergi = 0;
+        decimal kalan = aylikMatrah;
+        decimal pozisyon = kumulatifOnceki;
+        dilim = 1;
+
+        foreach (var (sinir, oran) in dilimler)
+        {
+            if (kalan <= 0) break;
+
+            var dilimdeKalanBosluk = sinir - pozisyon;
+            if (dilimdeKalanBosluk <= 0)
+            {
+                dilim++;
+                continue;
+            }
+
+            var buDilimdekiTutar = Math.Min(kalan, dilimdeKalanBosluk);
+            vergi += buDilimdekiTutar * oran / 100;
+            kalan -= buDilimdekiTutar;
+            pozisyon += buDilimdekiTutar;
+
+            if (kalan > 0) dilim++;
+        }
+
+        return Math.Round(vergi, 2);
     }
 
     private static bool PersonelBordroyaDahilEdilsinMi(Sofor personel, DateTime donemBaslangic, DateTime donemBitis)

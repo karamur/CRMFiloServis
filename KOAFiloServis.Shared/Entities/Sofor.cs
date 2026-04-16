@@ -1,4 +1,4 @@
-namespace KOAFiloServis.Shared.Entities;
+﻿namespace KOAFiloServis.Shared.Entities;
 
 /// <summary>
 /// Personel bilgileri (Şoför, Ofis Çalışanı, Yönetici vb.)
@@ -57,6 +57,19 @@ public class Sofor : BaseEntity
     public decimal TopluMaas { get; set; } // SGK'ya bildirilen + ekstra ödeme toplamı
     public decimal SgkMaasi { get; set; } // SGK'ya bildirilen maaş
     public decimal EkOdeme => TopluMaas - SgkMaasi; // Geriye kalan ödeme
+
+    // Özel Kesintiler (Aylık Sabit)
+    public decimal IcraKesintisi { get; set; } // İcra kesintisi
+    public decimal BESKesintisi { get; set; } // Bireysel Emeklilik
+    public decimal SendikaKesintisi { get; set; } // Sendika aidatı
+    public decimal HayatSigortasi { get; set; } // Hayat sigortası
+    public decimal BireyselEmeklilik { get; set; } // Bireysel emeklilik (eski/2. kayıt)
+    public decimal DigerOzelKesinti { get; set; } // Diğer kesintiler
+
+    // Sosyal Yardımlar (Aylık Sabit)
+    public decimal YemekYardimi { get; set; }
+    public decimal YolYardimi { get; set; }
+    public decimal AileYardimi { get; set; }
 
     // Banka Bilgileri
     public string? BankaAdi { get; set; }
