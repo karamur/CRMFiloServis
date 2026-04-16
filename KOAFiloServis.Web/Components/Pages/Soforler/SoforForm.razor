@@ -688,7 +688,11 @@
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"Kayıt sırasında hata oluştu: {ex.Message}");
+            var fullMsg = ex.InnerException?.InnerException?.Message 
+                          ?? ex.InnerException?.Message 
+                          ?? ex.Message;
+            ToastService.ShowError($"Kayıt sırasında hata oluştu: {fullMsg}");
+            Console.WriteLine($"[PersonelKaydet HATA] {ex}");
         }
     }
 

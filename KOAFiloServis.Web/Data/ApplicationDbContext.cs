@@ -861,7 +861,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<MuhasebeHesap>(entity =>
         {
             entity.HasIndex(e => e.HesapKodu).IsUnique();
-            entity.Property(e => e.HesapKodu).HasMaxLength(10);
+            entity.Property(e => e.HesapKodu).HasMaxLength(50);
             entity.Property(e => e.HesapAdi).HasMaxLength(200);
             entity.HasOne(e => e.UstHesap)
                 .WithMany()
