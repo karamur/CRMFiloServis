@@ -1,4 +1,4 @@
-@page "/personel/maas"
+﻿@page "/personel/maas"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @using KOAFiloServis.Web.Services.Interfaces
@@ -54,7 +54,7 @@
                 <div class="card bg-info text-white">
                     <div class="card-body text-center py-2">
                         <h6 class="mb-0">Brüt Maaş</h6>
-                        <h5 class="mb-0">@maasRapor.ToplamBrutMaas.ToString("N0") ?</h5>
+                        <h5 class="mb-0">@maasRapor.ToplamBrutMaas.ToString("N0") ₺</h5>
                     </div>
                 </div>
             </div>
@@ -62,7 +62,7 @@
                 <div class="card bg-success text-white">
                     <div class="card-body text-center py-2">
                         <h6 class="mb-0">Net Maaş</h6>
-                        <h5 class="mb-0">@maasRapor.ToplamNetMaas.ToString("N0") ?</h5>
+                        <h5 class="mb-0">@maasRapor.ToplamNetMaas.ToString("N0") ₺</h5>
                     </div>
                 </div>
             </div>
@@ -70,7 +70,7 @@
                 <div class="card bg-warning text-dark">
                     <div class="card-body text-center py-2">
                         <h6 class="mb-0">SGK (İşçi)</h6>
-                        <h5 class="mb-0">@maasRapor.ToplamSGKIsci.ToString("N0") ?</h5>
+                        <h5 class="mb-0">@maasRapor.ToplamSGKIsci.ToString("N0") ₺</h5>
                     </div>
                 </div>
             </div>
@@ -78,7 +78,7 @@
                 <div class="card bg-danger text-white">
                     <div class="card-body text-center py-2">
                         <h6 class="mb-0">SGK (İşveren)</h6>
-                        <h5 class="mb-0">@maasRapor.ToplamSGKIsveren.ToString("N0") ?</h5>
+                        <h5 class="mb-0">@maasRapor.ToplamSGKIsveren.ToString("N0") ₺</h5>
                     </div>
                 </div>
             </div>
@@ -86,7 +86,35 @@
                 <div class="card bg-secondary text-white">
                     <div class="card-body text-center py-2">
                         <h6 class="mb-0">Toplam Ödeme</h6>
-                        <h5 class="mb-0">@maasRapor.ToplamOdeme.ToString("N0") ?</h5>
+                        <h5 class="mb-0">@maasRapor.ToplamOdeme.ToString("N0") ₺</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gelir Vergisi Özet -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card border-warning">
+                    <div class="card-body text-center py-2">
+                        <h6 class="mb-0 text-warning">Gelir Vergisi</h6>
+                        <h5 class="mb-0">@maasRapor.ToplamGelirVergisi.ToString("N0") ₺</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-info">
+                    <div class="card-body text-center py-2">
+                        <h6 class="mb-0 text-info">Damga Vergisi</h6>
+                        <h5 class="mb-0">@(maasRapor.Detaylar.Any() ? maasRapor.Detaylar.Sum(d => d.DamgaVergisi).ToString("N0") : "0") ₺</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-danger">
+                    <div class="card-body text-center py-2">
+                        <h6 class="mb-0 text-danger">İşveren Maliyeti</h6>
+                        <h5 class="mb-0">@(maasRapor.Detaylar.Any() ? (maasRapor.ToplamBrutMaas + maasRapor.ToplamSGKIsveren).ToString("N0") : "0") ₺</h5>
                     </div>
                 </div>
             </div>
@@ -101,6 +129,8 @@
                             <tr>
                                 <th>Personel</th>
                                 <th class="text-end">Brüt Maaş</th>
+                                <th class="text-end">SGK İşçi</th>
+                                <th class="text-end">G.Vergisi</th>
                                 <th class="text-end">Net Maaş</th>
                                 <th class="text-end">Eklemeler</th>
                                 <th class="text-end">Kesintiler</th>
@@ -114,11 +144,13 @@
                             {
                                 <tr>
                                     <td><strong>@maas.SoforAdSoyad</strong></td>
-                                    <td class="text-end">@maas.BrutMaas.ToString("N0") ?</td>
-                                    <td class="text-end">@maas.NetMaas.ToString("N0") ?</td>
-                                    <td class="text-end text-success">+@maas.ToplamEklemeler.ToString("N0") ?</td>
-                                    <td class="text-end text-danger">-@maas.ToplamKesintiler.ToString("N0") ?</td>
-                                    <td class="text-end"><strong>@maas.OdenecekTutar.ToString("N0") ?</strong></td>
+                                    <td class="text-end">@maas.BrutMaas.ToString("N0") ₺</td>
+                                    <td class="text-end text-warning">@maas.SGKIsciPayi.ToString("N0") ₺</td>
+                                    <td class="text-end text-danger">@maas.GelirVergisi.ToString("N0") ₺</td>
+                                    <td class="text-end">@maas.NetMaas.ToString("N0") ₺</td>
+                                    <td class="text-end text-success">+@maas.ToplamEklemeler.ToString("N0") ₺</td>
+                                    <td class="text-end text-danger">-@maas.ToplamKesintiler.ToString("N0") ₺</td>
+                                    <td class="text-end"><strong>@maas.OdenecekTutar.ToString("N0") ₺</strong></td>
                                     <td class="text-center">
                                         @if (maas.OdemeDurum == "Odendi")
                                         {
@@ -290,7 +322,7 @@
                             <table class="table table-sm">
                                 <tr>
                                     <td>Ödenecek Tutar:</td>
-                                    <td class="text-end"><strong>@duzenlenenMaas.OdenecekTutar.ToString("N0") ?</strong></td>
+                                    <td class="text-end"><strong>@duzenlenenMaas.OdenecekTutar.ToString("N0") ₺</strong></td>
                                 </tr>
                             </table>
                         </div>

@@ -1,4 +1,4 @@
-namespace KOAFiloServis.Shared.Entities;
+﻿namespace KOAFiloServis.Shared.Entities;
 
 /// <summary>
 /// Personel Avans İşlemleri
@@ -148,6 +148,19 @@ public class PersonelFinansAyar : BaseEntity
     
     public int? BankaHesapId { get; set; } // 102 - Bankalar
     public virtual MuhasebeHesap? BankaHesap { get; set; }
+
+    // Bordro muhasebe hesap kodları
+    public int? OdenecekVergiHesapId { get; set; } // 360 - Ödenecek Vergi ve Fonlar
+    public virtual MuhasebeHesap? OdenecekVergiHesap { get; set; }
+
+    public int? OdenecekSgkHesapId { get; set; } // 361 - Ödenecek SGK Primleri
+    public virtual MuhasebeHesap? OdenecekSgkHesap { get; set; }
+
+    public int? PersonelGiderHesapId { get; set; } // 770 - Genel Yönetim Giderleri
+    public virtual MuhasebeHesap? PersonelGiderHesap { get; set; }
+
+    public int? DigerYukumlulukHesapId { get; set; } // 368 - Ödenecek Diğer Yükümlülükler
+    public virtual MuhasebeHesap? DigerYukumlulukHesap { get; set; }
 
     // Otomatik fiş oluşturma ayarları
     public bool OtomatikFisOlustur { get; set; } = true;

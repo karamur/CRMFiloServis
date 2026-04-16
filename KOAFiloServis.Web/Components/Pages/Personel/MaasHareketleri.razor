@@ -1,4 +1,4 @@
-@page "/personel/maas-hareketleri"
+﻿@page "/personel/maas-hareketleri"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @using ClosedXML.Excel
@@ -115,6 +115,32 @@
                     </div>
                 </div>
             </div>
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card border-warning">
+                        <div class="card-body text-center py-2">
+                            <h6 class="mb-0 text-warning">SGK İşçi</h6>
+                            <h5 class="mb-0">@filtrelenmisHareketler.Sum(h => h.SGKIsciPayi).ToString("N0") ₺</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-danger">
+                        <div class="card-body text-center py-2">
+                            <h6 class="mb-0 text-danger">Gelir Vergisi</h6>
+                            <h5 class="mb-0">@filtrelenmisHareketler.Sum(h => h.GelirVergisi).ToString("N0") ₺</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-secondary">
+                        <div class="card-body text-center py-2">
+                            <h6 class="mb-0 text-secondary">Damga Vergisi</h6>
+                            <h5 class="mb-0">@filtrelenmisHareketler.Sum(h => h.DamgaVergisi).ToString("N0") ₺</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
         }
 
         <!-- Hareket Tablosu -->
@@ -128,6 +154,8 @@
                                 <th>Personel</th>
                                 <th class="text-center">Dönem</th>
                                 <th class="text-end">Brüt Maaş</th>
+                                <th class="text-end">SGK İşçi</th>
+                                <th class="text-end">G.Vergisi</th>
                                 <th class="text-end">Net Maaş</th>
                                 <th class="text-end">Eklemeler</th>
                                 <th class="text-end">Kesintiler</th>
@@ -150,6 +178,8 @@
                                         <span class="badge bg-light text-dark">@(new DateTime(h.Yil, h.Ay, 1).ToString("MMMM yyyy"))</span>
                                     </td>
                                     <td class="text-end">@h.BrutMaas.ToString("N0") ₺</td>
+                                    <td class="text-end text-warning">@h.SGKIsciPayi.ToString("N0") ₺</td>
+                                    <td class="text-end text-danger">@h.GelirVergisi.ToString("N0") ₺</td>
                                     <td class="text-end">@h.NetMaas.ToString("N0") ₺</td>
                                     <td class="text-end text-success">
                                         @if (h.ToplamEklemeler > 0)
@@ -213,6 +243,8 @@
                                 <tr>
                                     <td colspan="3" class="text-end">TOPLAM:</td>
                                     <td class="text-end">@filtrelenmisHareketler.Sum(h => h.BrutMaas).ToString("N0") ₺</td>
+                                    <td class="text-end text-warning">@filtrelenmisHareketler.Sum(h => h.SGKIsciPayi).ToString("N0") ₺</td>
+                                    <td class="text-end text-danger">@filtrelenmisHareketler.Sum(h => h.GelirVergisi).ToString("N0") ₺</td>
                                     <td class="text-end">@filtrelenmisHareketler.Sum(h => h.NetMaas).ToString("N0") ₺</td>
                                     <td class="text-end text-success">+@filtrelenmisHareketler.Sum(h => h.ToplamEklemeler).ToString("N0") ₺</td>
                                     <td class="text-end text-danger">-@filtrelenmisHareketler.Sum(h => h.ToplamKesintiler).ToString("N0") ₺</td>

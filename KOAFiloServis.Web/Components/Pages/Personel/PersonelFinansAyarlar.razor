@@ -1,4 +1,4 @@
-@page "/personel/finans/ayarlar"
+﻿@page "/personel/finans/ayarlar"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @using KOAFiloServis.Web.Services.Interfaces
@@ -135,6 +135,80 @@
                                 </div>
                             </div>
                         </div>
+
+                        <hr />
+
+                        <h6 class="text-info mb-3"><i class="bi bi-receipt-cutoff me-1"></i>Bordro Muhasebe Hesapları</h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">360 - Ödenecek Vergi ve Fonlar</label>
+                                    <select class="form-select" @bind="ayar.OdenecekVergiHesapId">
+                                        <option value="">Hesap Seçin...</option>
+                                        @if (muhasebeHesaplari != null)
+                                        {
+                                            @foreach (var hesap in muhasebeHesaplari.Where(h => h.HesapKodu.StartsWith("360") || h.HesapKodu.StartsWith("36")))
+                                            {
+                                                <option value="@hesap.Id">@hesap.HesapKodu - @hesap.HesapAdi</option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="text-muted">Gelir vergisi, damga vergisi tahakkuku</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">361 - Ödenecek SGK Primleri</label>
+                                    <select class="form-select" @bind="ayar.OdenecekSgkHesapId">
+                                        <option value="">Hesap Seçin...</option>
+                                        @if (muhasebeHesaplari != null)
+                                        {
+                                            @foreach (var hesap in muhasebeHesaplari.Where(h => h.HesapKodu.StartsWith("361") || h.HesapKodu.StartsWith("36")))
+                                            {
+                                                <option value="@hesap.Id">@hesap.HesapKodu - @hesap.HesapAdi</option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="text-muted">SGK işçi + işveren primi tahakkuku</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">770 - Genel Yönetim Giderleri</label>
+                                    <select class="form-select" @bind="ayar.PersonelGiderHesapId">
+                                        <option value="">Hesap Seçin...</option>
+                                        @if (muhasebeHesaplari != null)
+                                        {
+                                            @foreach (var hesap in muhasebeHesaplari.Where(h => h.HesapKodu.StartsWith("770") || h.HesapKodu.StartsWith("77")))
+                                            {
+                                                <option value="@hesap.Id">@hesap.HesapKodu - @hesap.HesapAdi</option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="text-muted">Personel brüt maaş gider kaydı</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">368 - Ödenecek Diğer Yükümlülükler</label>
+                                    <select class="form-select" @bind="ayar.DigerYukumlulukHesapId">
+                                        <option value="">Hesap Seçin...</option>
+                                        @if (muhasebeHesaplari != null)
+                                        {
+                                            @foreach (var hesap in muhasebeHesaplari.Where(h => h.HesapKodu.StartsWith("368") || h.HesapKodu.StartsWith("36")))
+                                            {
+                                                <option value="@hesap.Id">@hesap.HesapKodu - @hesap.HesapAdi</option>
+                                            }
+                                        }
+                                    </select>
+                                    <small class="text-muted">İcra, sendika, BES gibi özel kesintiler</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -214,6 +288,10 @@
                             <li><strong>335</strong> - Personele Borçlar (Borç Hesabı)</li>
                             <li><strong>100</strong> - Kasa</li>
                             <li><strong>102</strong> - Bankalar</li>
+                            <li><strong>360</strong> - Ödenecek Vergi ve Fonlar</li>
+                            <li><strong>361</strong> - Ödenecek SGK Primleri</li>
+                            <li><strong>368</strong> - Ödenecek Diğer Yükümlülükler</li>
+                            <li><strong>770</strong> - Genel Yönetim Giderleri</li>
                         </ul>
 
                         <h6 class="text-primary mt-3">Fiş Oluşturma Mantığı</h6>

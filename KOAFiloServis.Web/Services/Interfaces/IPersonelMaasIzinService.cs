@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 
 namespace KOAFiloServis.Web.Services;
 
@@ -57,6 +57,9 @@ public class MaasDetay
     public string SoforAdSoyad { get; set; } = string.Empty;
     public decimal BrutMaas { get; set; }
     public decimal NetMaas { get; set; }
+    public decimal SGKIsciPayi { get; set; }
+    public decimal GelirVergisi { get; set; }
+    public decimal DamgaVergisi { get; set; }
     public decimal ToplamEklemeler { get; set; }
     public decimal ToplamKesintiler { get; set; }
     public decimal OdenecekTutar { get; set; }
