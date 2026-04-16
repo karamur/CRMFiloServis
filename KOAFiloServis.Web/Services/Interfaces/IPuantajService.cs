@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 
 namespace KOAFiloServis.Web.Services;
 
@@ -12,12 +12,13 @@ public interface IPuantajService
     Task<PersonelPuantaj> OnayaGonderAsync(int id, string? not = null);
     Task<PersonelPuantaj> OnaylaAsync(int id, string onaylayanKullanici, string? not = null);
     Task<PersonelPuantaj> ReddetAsync(int id, string onaylayanKullanici, string? not = null);
+    Task<PersonelPuantaj> OnayGeriAlAsync(int id, string? not = null);
     Task DeletePuantajAsync(int id);
 
     // Günlük Puantaj
     Task<List<GunlukPuantaj>> GetGunlukPuantajlarAsync(int puantajId);
     Task<GunlukPuantaj> SaveGunlukPuantajAsync(GunlukPuantaj gunluk);
-    Task OtomatikGunlukPuantajOlusturAsync(int puantajId, int yil, int ay);
+    Task OtomatikGunlukPuantajOlusturAsync(int puantajId, int yil, int ay, bool cumartesiCalisir = true, bool pazarCalisir = false, List<DateTime>? resmiTatiller = null);
 
     // Hesaplamalar
     Task<PersonelPuantaj> HesaplaAsync(int puantajId);

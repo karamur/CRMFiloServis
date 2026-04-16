@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using KOAFiloServis.Web.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -1030,6 +1030,473 @@ public class BordroService : IBordroService
             ToplamEkOdeme = detaylar.Sum(d => d.EkOdeme),
             OnayliDönemSayisi = bordrolar.Count(b => b.Onaylandi),
             BekleyenDönemSayisi = bordrolar.Count(b => !b.Onaylandi)
+        };
+    }
+
+    #endregion
+
+    #region Ücret Bordrosu Export
+
+    public async Task<byte[]> ExportUcretBordrosuAsync(int bordroDetayId)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var detay = await context.BordroDetaylar
+            .Include(d => d.Bordro)
+                .ThenInclude(b => b.Firma)
+            .Include(d => d.Personel)
+            .Include(d => d.Firma)
+            .FirstOrDefaultAsync(d => d.Id == bordroDetayId);
+
+        if (detay == null)
+            throw new InvalidOperationException("Bordro detayı bulunamadı!");
+
+        using var workbook = new XLWorkbook();
+        CreateUcretBordrosuWorksheet(workbook, detay);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public async Task<byte[]> ExportTopluUcretBordrosuAsync(List<int> bordroDetayIds)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var detaylar = await context.BordroDetaylar
+            .Include(d => d.Bordro)
+                .ThenInclude(b => b.Firma)
+            .Include(d => d.Personel)
+            .Include(d => d.Firma)
+            .Where(d => bordroDetayIds.Contains(d.Id))
+            .OrderBy(d => d.Personel.SiralamaNo == 0 ? int.MaxValue : d.Personel.SiralamaNo)
+            .ThenBy(d => d.Personel.Ad)
+            .ToListAsync();
+
+        if (!detaylar.Any())
+            throw new InvalidOperationException("Bordro detayı bulunamadı!");
+
+        using var workbook = new XLWorkbook();
+        foreach (var detay in detaylar)
+        {
+            CreateUcretBordrosuWorksheet(workbook, detay);
+        }
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public async Task<byte[]> ExportTumUcretBordrolariAsync(int bordroId)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+
+        var detaylar = await context.BordroDetaylar
+            .Include(d => d.Bordro)
+                .ThenInclude(b => b.Firma)
+            .Include(d => d.Personel)
+            .Include(d => d.Firma)
+            .Where(d => d.BordroId == bordroId)
+            .OrderBy(d => d.Personel.SiralamaNo == 0 ? int.MaxValue : d.Personel.SiralamaNo)
+            .ThenBy(d => d.Personel.Ad)
+            .ToListAsync();
+
+        if (!detaylar.Any())
+            throw new InvalidOperationException("Bordro detayları bulunamadı!");
+
+        using var workbook = new XLWorkbook();
+        foreach (var detay in detaylar)
+        {
+            CreateUcretBordrosuWorksheet(workbook, detay);
+        }
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private void CreateUcretBordrosuWorksheet(XLWorkbook workbook, BordroDetay detay)
+    {
+        var personel = detay.Personel;
+        var firma = detay.Firma ?? detay.Bordro?.Firma;
+        var ayAdi = GetAyAdi(detay.Bordro?.Ay ?? 1);
+        var yil = detay.Bordro?.Yil ?? DateTime.Now.Year;
+
+        // Sayfa adı (max 31 karakter)
+        var sheetName = $"{personel.Ad} {personel.Soyad}".Length > 28 
+            ? $"{personel.Ad} {personel.Soyad}".Substring(0, 28) 
+            : $"{personel.Ad} {personel.Soyad}";
+
+        // Aynı isimde sayfa varsa numaralandır
+        var baseName = sheetName;
+        var counter = 1;
+        while (workbook.Worksheets.Any(ws => ws.Name == sheetName))
+        {
+            sheetName = $"{baseName}_{counter++}";
+            if (sheetName.Length > 31) sheetName = sheetName.Substring(0, 31);
+        }
+
+        var ws = workbook.Worksheets.Add(sheetName);
+
+        // Sayfa ayarları
+        ws.PageSetup.PageOrientation = XLPageOrientation.Landscape;
+        ws.PageSetup.PaperSize = XLPaperSize.A4Paper;
+        ws.PageSetup.FitToPages(1, 1);
+        ws.PageSetup.Margins.Top = 0.5;
+        ws.PageSetup.Margins.Bottom = 0.5;
+        ws.PageSetup.Margins.Left = 0.5;
+        ws.PageSetup.Margins.Right = 0.5;
+
+        // Sütun genişlikleri
+        ws.Column(1).Width = 15;
+        ws.Column(2).Width = 12;
+        ws.Column(3).Width = 12;
+        ws.Column(4).Width = 12;
+        ws.Column(5).Width = 12;
+        ws.Column(6).Width = 12;
+        ws.Column(7).Width = 12;
+        ws.Column(8).Width = 12;
+        ws.Column(9).Width = 15;
+        ws.Column(10).Width = 15;
+
+        var row = 1;
+
+        // BAŞLIK
+        ws.Cell(row, 1).Value = $"{ayAdi.ToUpper()} / {yil} ÜCRET BORDROSU";
+        ws.Range(row, 1, row, 10).Merge();
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Font.FontSize = 14;
+        ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        ws.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.LightGray;
+        row += 2;
+
+        // FİRMA BİLGİLERİ ve PERSONEL BİLGİLERİ (yan yana)
+        // Sol taraf - Firma bilgileri
+        ws.Cell(row, 1).Value = "Firma Ünvanı:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = firma?.FirmaAdi ?? "-";
+        ws.Range(row, 2, row, 4).Merge();
+
+        // Sağ taraf - Personel bilgileri
+        ws.Cell(row, 6).Value = "Ad-Soyadı:";
+        ws.Cell(row, 6).Style.Font.Bold = true;
+        ws.Cell(row, 7).Value = personel.TamAd;
+        ws.Range(row, 7, row, 10).Merge();
+        row++;
+
+        ws.Cell(row, 1).Value = "Şube Adres:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = firma?.Adres ?? "-";
+        ws.Range(row, 2, row, 4).Merge();
+
+        ws.Cell(row, 6).Value = "T.C. Kimlik No:";
+        ws.Cell(row, 6).Style.Font.Bold = true;
+        ws.Cell(row, 7).Value = personel.TcKimlikNo ?? "-";
+        ws.Range(row, 7, row, 10).Merge();
+        row++;
+
+        ws.Cell(row, 1).Value = "Vergi Dairesi:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = firma?.VergiDairesi ?? "-";
+        ws.Range(row, 2, row, 4).Merge();
+
+        ws.Cell(row, 6).Value = "Ünvanı/Sicil No:";
+        ws.Cell(row, 6).Style.Font.Bold = true;
+        ws.Cell(row, 7).Value = personel.SoforKodu ?? "-";
+        ws.Range(row, 7, row, 10).Merge();
+        row++;
+
+        ws.Cell(row, 1).Value = "Firma Vergi No:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = firma?.VergiNo ?? "-";
+        ws.Range(row, 2, row, 4).Merge();
+
+        ws.Cell(row, 6).Value = "İşe Giriş Tarihi:";
+        ws.Cell(row, 6).Style.Font.Bold = true;
+        ws.Cell(row, 7).Value = personel.IseBaslamaTarihi?.ToString("dd.MM.yyyy") ?? "-";
+        ws.Range(row, 7, row, 10).Merge();
+        row++;
+
+        ws.Cell(row, 1).Value = "SGK İşyeri No:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = "-";
+        ws.Range(row, 2, row, 4).Merge();
+
+        ws.Cell(row, 6).Value = "SSK/TİC Sicil No:";
+        ws.Cell(row, 6).Style.Font.Bold = true;
+        ws.Cell(row, 7).Value = personel.SoforKodu ?? "-";
+        ws.Range(row, 7, row, 10).Merge();
+        row++;
+
+        ws.Cell(row, 1).Value = "Firma İnternet Adresi:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = firma?.WebSite ?? "-";
+        ws.Range(row, 2, row, 4).Merge();
+        row += 2;
+
+        // ÇALIŞMA BİLGİLERİ TABLOSU
+        var calismaSatir = row;
+        ws.Cell(row, 1).Value = "S.No";
+        ws.Cell(row, 2).Value = "Sapmı No";
+        ws.Cell(row, 3).Value = "Gün";
+        ws.Cell(row, 4).Value = "Öğr.Tat.Gn.";
+        ws.Cell(row, 5).Value = "Saat";
+        ws.Cell(row, 6).Value = "İ.şt.Saat";
+        ws.Cell(row, 7).Value = "U.İzin Gn.";
+        ws.Cell(row, 8).Value = "Ü.İzin Saat";
+        ws.Cell(row, 9).Value = "Hafta Tatil";
+        ws.Cell(row, 10).Value = "Res.Tat.Gn";
+        ws.Range(row, 1, row, 10).Style.Font.Bold = true;
+        ws.Range(row, 1, row, 10).Style.Fill.BackgroundColor = XLColor.LightGray;
+        ws.Range(row, 1, row, 10).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        row++;
+
+        // Çalışma verileri (varsayılan değerler)
+        var gunSayisi = DateTime.DaysInMonth(yil, detay.Bordro?.Ay ?? 1);
+        var haftaTatilGunu = (int)Math.Floor(gunSayisi / 7.0);
+        ws.Cell(row, 1).Value = 1;
+        ws.Cell(row, 3).Value = gunSayisi - haftaTatilGunu; // İş günü
+        ws.Cell(row, 5).Value = (gunSayisi - haftaTatilGunu) * 7.5m; // Çalışma saati
+        ws.Cell(row, 9).Value = haftaTatilGunu;
+        ws.Range(row, 1, row, 10).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        row += 2;
+
+        // TAHAKKUK BİLGİLERİ ve SGK BİLGİLERİ
+        var tahakkukBaslik = row;
+        ws.Cell(row, 1).Value = "TAHAKKUK BİLGİLERİ";
+        ws.Range(row, 1, row, 5).Merge();
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.LightBlue;
+        ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        ws.Cell(row, 6).Value = "SGK BİLGİLERİ";
+        ws.Range(row, 6, row, 10).Merge();
+        ws.Cell(row, 6).Style.Font.Bold = true;
+        ws.Cell(row, 6).Style.Fill.BackgroundColor = XLColor.LightGreen;
+        ws.Cell(row, 6).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        row++;
+
+        // Tahakkuk detayları
+        ws.Cell(row, 1).Value = "Aylık Ücret Toplamı:";
+        ws.Cell(row, 2).Value = detay.BrutMaas;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Brüt Ücret:";
+        ws.Cell(row, 7).Value = detay.BrutMaas;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 9).Value = "Sigorta Matrahı:";
+        ws.Cell(row, 10).Value = detay.SgkMaasi;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Fazla Mesai Toplamı:";
+        ws.Cell(row, 2).Value = 0;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Fazla Mesai:";
+        ws.Cell(row, 7).Value = 0;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 9).Value = "Sigorta Primi İşçi:";
+        ws.Cell(row, 10).Value = detay.SgkIssizlikKesinti;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Sair Ödemeler Toplamı:";
+        ws.Cell(row, 2).Value = detay.ToplamEkOdeme;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Sair Ödeme:";
+        ws.Cell(row, 7).Value = detay.ToplamEkOdeme;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 9).Value = "İşsizlik Primi İşçi:";
+        var issizlikPrimi = detay.SgkMaasi * 0.01m;
+        ws.Cell(row, 10).Value = issizlikPrimi;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "SGK Hissesi:";
+        ws.Cell(row, 2).Value = detay.SgkIssizlikKesinti;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Vergi Matrahı:";
+        ws.Cell(row, 7).Value = detay.BrutMaas - detay.SgkIssizlikKesinti;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 9).Value = "Toplam SGK Primi:";
+        ws.Cell(row, 10).Value = detay.SgkIssizlikKesinti + issizlikPrimi;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "İşsizlik Sigorta Kesintisi:";
+        ws.Cell(row, 2).Value = issizlikPrimi;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Gelir Vergisi:";
+        ws.Cell(row, 7).Value = detay.GelirVergisi;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 9).Value = "Sigorta İşveren:";
+        var sgkIsverenPay = detay.SgkMaasi * 0.205m; // %20.5 işveren payı
+        ws.Cell(row, 10).Value = sgkIsverenPay;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Damga Vergisi:";
+        ws.Cell(row, 2).Value = detay.DamgaVergisi;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Damga Vergisi:";
+        ws.Cell(row, 7).Value = detay.DamgaVergisi;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 9).Value = "İşsizlik İşveren:";
+        var issizlikIsverenPay = detay.SgkMaasi * 0.02m; // %2 işveren payı
+        ws.Cell(row, 10).Value = issizlikIsverenPay;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Gelir Vergisi:";
+        ws.Cell(row, 2).Value = detay.GelirVergisi;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "SGK Kesintisi:";
+        ws.Cell(row, 7).Value = detay.SgkIssizlikKesinti;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 9).Value = "Toplam SGK İşveren:";
+        ws.Cell(row, 10).Value = sgkIsverenPay + issizlikIsverenPay;
+        ws.Cell(row, 10).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Sair Kesintiler:";
+        ws.Cell(row, 2).Value = 0;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Vergi İndirimi:";
+        ws.Cell(row, 7).Value = 0;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        // TOPLAM satırı
+        row++;
+        ws.Cell(row, 1).Value = "TOPLAM:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = detay.BrutMaas + detay.ToplamEkOdeme;
+        ws.Cell(row, 2).Style.Font.Bold = true;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 6).Value = "Ödenecek Tutar:";
+        ws.Cell(row, 6).Style.Font.Bold = true;
+        ws.Cell(row, 7).Value = detay.NetMaas + detay.ToplamEkOdeme;
+        ws.Cell(row, 7).Style.Font.Bold = true;
+        ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row += 2;
+
+        // ÖDENECEK NET ÜCRETLER
+        ws.Cell(row, 1).Value = "ÖDENECEK NET ÜCRETLER";
+        ws.Range(row, 1, row, 5).Merge();
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.LightYellow;
+        ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        row++;
+
+        ws.Cell(row, 1).Value = "Ödenecek Net Ücret:";
+        ws.Cell(row, 2).Value = detay.NetMaas;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+        ws.Cell(row, 2).Style.Font.Bold = true;
+
+        ws.Cell(row, 4).Value = "Net Ücret (Banka):";
+        ws.Cell(row, 5).Value = detay.SgkMaasi - detay.ToplamKesinti;
+        ws.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Ödenecek SGD Primi:";
+        ws.Cell(row, 2).Value = 0;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Ödenecek Gelir Vergisi:";
+        ws.Cell(row, 2).Value = detay.GelirVergisi;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Ödenecek Damga Vergisi:";
+        ws.Cell(row, 2).Value = detay.DamgaVergisi;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "Ödenecek İşsizlik Sig. Kesintisi:";
+        ws.Cell(row, 2).Value = issizlikPrimi;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row += 2;
+
+        // TOPLAM KESİNTİ ve NET ÖDENECEK
+        ws.Cell(row, 1).Value = "Toplam SGK İşveren Payı:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 2).Value = sgkIsverenPay + issizlikIsverenPay;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+        ws.Cell(row, 2).Style.Font.Bold = true;
+
+        ws.Cell(row, 4).Value = "İndirilecek Damga Vergisi:";
+        ws.Cell(row, 5).Value = detay.DamgaVergisi;
+        ws.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row++;
+
+        ws.Cell(row, 1).Value = "İndirilecek SGK İşveren Payı:";
+        ws.Cell(row, 2).Value = 0;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+
+        ws.Cell(row, 4).Value = "İndirilecek Gelir Vergisi:";
+        ws.Cell(row, 5).Value = 0;
+        ws.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row += 2;
+
+        // NET ÖDENECEK SGK PRİMİ
+        ws.Cell(row, 1).Value = "Net Ödenecek SGK Primi:";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+        ws.Cell(row, 1).Style.Fill.BackgroundColor = XLColor.LightGreen;
+        ws.Cell(row, 2).Value = detay.SgkIssizlikKesinti + issizlikPrimi + sgkIsverenPay + issizlikIsverenPay;
+        ws.Cell(row, 2).Style.NumberFormat.Format = "#,##0.00 ₺";
+        ws.Cell(row, 2).Style.Font.Bold = true;
+        ws.Cell(row, 2).Style.Fill.BackgroundColor = XLColor.LightGreen;
+
+        ws.Cell(row, 4).Value = "Asgari Geçim İndirimi Tutarı:";
+        ws.Cell(row, 5).Value = 0;
+        ws.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00 ₺";
+        row += 2;
+
+        // İMZA ALANI
+        ws.Cell(row, 1).Value = "İşveren Kaşe / İmza";
+        ws.Cell(row, 1).Style.Font.Bold = true;
+
+        ws.Cell(row, 5).Value = "İşçi İmza";
+        ws.Cell(row, 5).Style.Font.Bold = true;
+        row++;
+
+        // Çerçeve ekle
+        ws.Range(1, 1, row, 10).Style.Border.OutsideBorder = XLBorderStyleValues.Medium;
+    }
+
+    private static string GetAyAdi(int ay)
+    {
+        return ay switch
+        {
+            1 => "OCAK",
+            2 => "ŞUBAT",
+            3 => "MART",
+            4 => "NİSAN",
+            5 => "MAYIS",
+            6 => "HAZİRAN",
+            7 => "TEMMUZ",
+            8 => "AĞUSTOS",
+            9 => "EYLÜL",
+            10 => "EKİM",
+            11 => "KASIM",
+            12 => "ARALIK",
+            _ => "BİLİNMİYOR"
         };
     }
 

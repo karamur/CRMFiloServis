@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace KOAFiloServis.Shared.Entities;
 
@@ -140,8 +140,19 @@ public class GunlukPuantaj : BaseEntity
     [Required]
     public int PersonelPuantajId { get; set; }
 
+    /// <summary>
+    /// Ayın kaçıncı günü (1-31)
+    /// </summary>
+    [Required]
+    public int Gun { get; set; }
+
     [Required]
     public DateTime Tarih { get; set; }
+
+    /// <summary>
+    /// Puantaj durumu (0: Boş, 1: Çalıştı, 2: İzinli, 3: Mazeret/Rapor)
+    /// </summary>
+    public int Durum { get; set; } = 0;
 
     /// <summary>
     /// Çalıştı mı?
@@ -151,7 +162,12 @@ public class GunlukPuantaj : BaseEntity
     /// <summary>
     /// Fazla mesai saati
     /// </summary>
-    public decimal? FazlaMesaiSaat { get; set; }
+    public decimal FazlaMesaiSaat { get; set; }
+
+    /// <summary>
+    /// Çalışma saati (saatlik personeller için)
+    /// </summary>
+    public decimal CalismaSaati { get; set; }
 
     /// <summary>
     /// İzinli mi?

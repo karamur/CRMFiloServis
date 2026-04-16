@@ -2,12 +2,15 @@
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @using KOAFiloServis.Web.Models
+@using KOAFiloServis.Web.Data
+@using Microsoft.EntityFrameworkCore
 @inject IPuantajService PuantajService
 @inject IKullaniciService KullaniciService
 @inject ISoforService SoforService
 @inject IFirmaService FirmaService
 @inject IOllamaService OllamaService
 @inject IToastService ToastService
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject IJSRuntime JS
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
@@ -288,10 +291,20 @@
 
                                 <tr>
                                     <td class="sticky-start" style="position: sticky; left: 0; background: white; z-index: 3;">
-                                        <strong>@puantaj.Personel?.Ad @puantaj.Personel?.Soyad</strong>
+                                        @{
+                                            var capturedPersonel = puantaj.Personel;
+                                        }
+                                        <a href="javascript:void(0)" class="text-decoration-none text-dark"
+                                           @onclick="() => PersonelKartAc(capturedPersonel)" title="Personel kartını düzenle">
+                                            <strong>@puantaj.Personel?.Ad @puantaj.Personel?.Soyad</strong>
+                                        </a>
                                         @if (puantaj.Personel?.SoforKodu != null)
                                         {
                                             <br /><small class="text-muted">@puantaj.Personel.SoforKodu</small>
+                                        }
+                                        @if (puantaj.Personel?.BrutMaasHesaplamaTipi == BrutMaasHesaplamaTipi.Saatlik)
+                                        {
+                                            <br /><span class="badge bg-info" style="font-size: 0.6rem;">⏱ Saatlik @puantaj.Personel.BirimUcret.ToString("N2")₺</span>
                                         }
                                     </td>
                                     @for (int gun = 1; gun <= AyGunSayisi; gun++)
@@ -308,11 +321,17 @@
                                         var capturedPuantajId = puantaj.Id;
                                         var capturedTarih = tarih;
                                         var capturedGunluk = gunluk;
+                                        var isSaatlik = puantaj.Personel?.BrutMaasHesaplamaTipi == BrutMaasHesaplamaTipi.Saatlik;
 
                                         <td class="text-center p-0 @(pazar ? "table-danger" : haftaSonu ? "table-warning" : "")"
                                             style="cursor: pointer; vertical-align: middle;"
                                             @onclick="() => HucreTikla(capturedPuantajId, capturedTarih, capturedGunluk)">
-                                            @if (durumKisa != "-")
+                                            @if (isSaatlik && gunluk != null && gunluk.Calisti && gunluk.CalismaSaati > 0)
+                                            {
+                                                <span class="badge bg-info" style="font-size: 0.6rem; padding: 2px 4px;"
+                                                      title="@gunluk.CalismaSaati.ToString("0.#") saat">@gunluk.CalismaSaati.ToString("0.#")</span>
+                                            }
+                                            else if (durumKisa != "-")
                                             {
                                                 <span class="badge @badgeClass" style="font-size: 0.6rem; padding: 2px 4px;">@durumKisa</span>
                                             }
@@ -322,7 +341,17 @@
                                             }
                                         </td>
                                     }
-                                    <td class="text-center fw-bold text-success">@puantaj.CalisilanGun</td>
+                                    <td class="text-center fw-bold text-success">
+                                        @puantaj.CalisilanGun
+                                        @if (puantaj.Personel?.BrutMaasHesaplamaTipi == BrutMaasHesaplamaTipi.Saatlik)
+                                        {
+                                            var pSaat = gunlukler.Sum(g => g.CalismaSaati);
+                                            if (pSaat > 0)
+                                            {
+                                                <br /><span class="badge bg-info" style="font-size: 0.55rem;">@pSaat.ToString("0.#")s</span>
+                                            }
+                                        }
+                                    </td>
                                     <td class="text-center fw-bold text-warning">@puantaj.IzinGunu</td>
                                     <td class="text-center fw-bold text-danger">@puantaj.MazeretGunu</td>
                                     <td class="text-center fw-bold text-info">@puantaj.FazlaMesaiSaat.ToString("0.#")</td>
@@ -337,17 +366,23 @@
                                         <div class="btn-group btn-group-sm">
                                             @if (puantaj.OnayDurumu == PersonelPuantajOnayDurumu.Taslak || puantaj.OnayDurumu == PersonelPuantajOnayDurumu.Reddedildi)
                                             {
-                                                <button class="btn btn-outline-warning btn-sm" @onclick="() => OnayaGonder(puantaj.Id)">
+                                                <button class="btn btn-outline-warning btn-sm" @onclick="() => OnayaGonder(puantaj.Id)" title="Onaya Gönder">
                                                     <i class="bi bi-send"></i>
                                                 </button>
                                             }
                                             @if (puantaj.OnayDurumu == PersonelPuantajOnayDurumu.OnayBekliyor)
                                             {
-                                                <button class="btn btn-outline-success btn-sm" @onclick="() => Onayla(puantaj.Id)">
+                                                <button class="btn btn-outline-success btn-sm" @onclick="() => Onayla(puantaj.Id)" title="Onayla">
                                                     <i class="bi bi-check-lg"></i>
                                                 </button>
-                                                <button class="btn btn-outline-danger btn-sm" @onclick="() => Reddet(puantaj.Id)">
+                                                <button class="btn btn-outline-danger btn-sm" @onclick="() => Reddet(puantaj.Id)" title="Reddet">
                                                     <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            }
+                                            @if (puantaj.OnayDurumu == PersonelPuantajOnayDurumu.Onaylandi)
+                                            {
+                                                <button class="btn btn-outline-secondary btn-sm" @onclick="() => OnayGeriAl(puantaj.Id)" title="Onay Geri Al">
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
                                                 </button>
                                             }
                                         </div>
@@ -381,7 +416,17 @@
                                     <td class="text-center text-danger">@filtrelenmisListe.Sum(p => p.MazeretGunu)</td>
                                     <td class="text-center text-info">@filtrelenmisListe.Sum(p => p.FazlaMesaiSaat).ToString("0.#")</td>
                                     <td class="text-center">@filtrelenmisListe.Count(p => p.OnayDurumu == PersonelPuantajOnayDurumu.Onaylandi)</td>
-                                    <td></td>
+                                    <td class="text-center">
+                                        @{
+                                            var toplamSaat = filtrelenmisListe
+                                                .Where(p => p.Personel?.BrutMaasHesaplamaTipi == BrutMaasHesaplamaTipi.Saatlik)
+                                                .Sum(p => gunlukPuantajMap.ContainsKey(p.Id) ? gunlukPuantajMap[p.Id].Sum(g => g.CalismaSaati) : 0);
+                                        }
+                                        @if (toplamSaat > 0)
+                                        {
+                                            <span class="badge bg-info" style="font-size: 0.6rem;">⏱ @toplamSaat.ToString("0.#")s</span>
+                                        }
+                                    </td>
                                 </tr>
                             </tfoot>
                         }
@@ -427,6 +472,25 @@
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
+                        @if (editPersonelSaatlik)
+                        {
+                            <div class="col-12">
+                                <div class="alert alert-info py-2 mb-0">
+                                    <i class="bi bi-clock me-1"></i>
+                                    <strong>Saatlik personel</strong> - Birim ücret: <strong>@editPersonelBirimUcret.ToString("N2") ₺/saat</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small mb-1 fw-bold">Çalışma Saati</label>
+                                <input type="number" class="form-control form-control-sm" @bind="editCalismaSaati"
+                                       step="0.5" min="0" max="24" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small mb-1">Günlük Tutar</label>
+                                <input type="text" class="form-control form-control-sm" readonly
+                                       value="@((editCalismaSaati * editPersonelBirimUcret).ToString("N2")) ₺" />
+                            </div>
+                        }
                         <div class="col-md-6">
                             <div class="form-check form-switch mb-2">
                                 <input type="checkbox" class="form-check-input" id="calisti" @bind="editGunluk.Calisti"
@@ -470,6 +534,128 @@
                     <button type="button" class="btn btn-secondary btn-sm" @onclick="ModalKapat">İptal</button>
                     <button type="button" class="btn btn-primary btn-sm" @onclick="GunlukKaydet">
                         <i class="bi bi-check me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Personel Kart Düzenleme Modalı -->
+@if (showPersonelKartModal && editKartPersonel != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white py-2">
+                    <h6 class="modal-title"><i class="bi bi-person-gear me-2"></i>@editKartPersonel.TamAd</h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" @onclick="() => showPersonelKartModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Hesaplama Tipi</label>
+                            <input type="text" class="form-control form-control-sm" readonly
+                                   value="@editKartPersonel.BrutMaasHesaplamaTipi" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1 fw-bold">Birim Ücret (₺/saat)</label>
+                            <input type="number" class="form-control form-control-sm" @bind="editKartBirimUcret"
+                                   step="0.01" min="0" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Brüt Maaş</label>
+                            <input type="text" class="form-control form-control-sm" readonly
+                                   value="@editKartPersonel.BrutMaas.ToString("N2") ₺" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Net Maaş</label>
+                            <input type="text" class="form-control form-control-sm" readonly
+                                   value="@editKartPersonel.NetMaas.ToString("N2") ₺" />
+                        </div>
+                        @if (editKartPersonel.BrutMaasHesaplamaTipi == BrutMaasHesaplamaTipi.Saatlik)
+                        {
+                            var toplamSaatPersonel = gunlukPuantajMap
+                                .Where(kv => puantajListesi.Any(p => p.Id == kv.Key && p.PersonelId == editKartPersonel.Id))
+                                .SelectMany(kv => kv.Value)
+                                .Sum(g => g.CalismaSaati);
+                            <div class="col-12">
+                                <div class="alert alert-info py-2 mb-0">
+                                    <i class="bi bi-calculator me-1"></i>
+                                    Bu ay toplam: <strong>@toplamSaatPersonel.ToString("0.#") saat</strong> ×
+                                    <strong>@editKartBirimUcret.ToString("N2") ₺</strong> =
+                                    <strong>@((toplamSaatPersonel * editKartBirimUcret).ToString("N2")) ₺</strong>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => showPersonelKartModal = false">İptal</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="PersonelKartKaydet">
+                        <i class="bi bi-check me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Hafta Sonu / Bayram Seçenekleri Modalı -->
+@if (showHaftaSonuModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h6 class="modal-title"><i class="bi bi-calendar-week me-2"></i>Hafta Sonu ve Bayram Ayarları</h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" @onclick="() => showHaftaSonuModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Puantaj oluşturulurken aşağıdaki günler için varsayılan çalışma durumunu seçin:</p>
+                    <div class="list-group">
+                        <label class="list-group-item d-flex align-items-center gap-3">
+                            <input type="checkbox" class="form-check-input flex-shrink-0" @bind="cumartesiCalisir" />
+                            <div>
+                                <div class="fw-bold"><i class="bi bi-calendar-event text-info me-1"></i>Cumartesi</div>
+                                <small class="text-muted">Cumartesi günleri çalışıldı olarak işaretlensin</small>
+                            </div>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-3">
+                            <input type="checkbox" class="form-check-input flex-shrink-0" @bind="pazarCalisir" />
+                            <div>
+                                <div class="fw-bold"><i class="bi bi-calendar-x text-warning me-1"></i>Pazar</div>
+                                <small class="text-muted">Pazar günleri çalışıldı olarak işaretlensin</small>
+                            </div>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-3">
+                            <input type="checkbox" class="form-check-input flex-shrink-0" @bind="bayramlarCalisir" />
+                            <div>
+                                <div class="fw-bold"><i class="bi bi-flag text-danger me-1"></i>Resmi Tatiller</div>
+                                <small class="text-muted">Resmi tatil günleri çalışıldı olarak işaretlensin</small>
+                            </div>
+                        </label>
+                    </div>
+                    @{
+                        var tatiller = GetResmiTatiller(filtreYil, filtreAy);
+                        if (tatiller.Any())
+                        {
+                            <div class="mt-3 p-2 bg-light rounded">
+                                <small class="fw-bold text-muted"><i class="bi bi-info-circle me-1"></i>Bu aydaki resmi tatiller:</small>
+                                <ul class="mb-0 small mt-1">
+                                    @foreach (var t in tatiller)
+                                    {
+                                        <li>@t.ToString("dd MMMM dddd", turkce)</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => showHaftaSonuModal = false">İptal</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="HaftaSonuSecimOnay">
+                        <i class="bi bi-check-lg me-1"></i>Oluştur
                     </button>
                 </div>
             </div>
@@ -585,6 +771,9 @@
     private GunlukPuantaj? editGunluk;
     private string editPersonelAdi = "";
     private int editPuantajId = 0;
+    private bool editPersonelSaatlik = false;
+    private decimal editPersonelBirimUcret = 0;
+    private decimal editCalismaSaati = 0;
 
     // Toast
     private bool showToast = false;
@@ -600,6 +789,18 @@
     private string? aiSonuc;
     private string aiSure = "";
     private List<PuantajAIAksiyon> aiAksiyonlar = new();
+
+    // Hafta Sonu / Bayram Seçenekleri
+    private bool showHaftaSonuModal = false;
+    private bool cumartesiCalisir = true;
+    private bool pazarCalisir = false;
+    private bool bayramlarCalisir = false;
+    private bool haftaSonuSeciliMod = false; // true: seçili, false: toplu
+
+    // Personel Kart Düzenleme
+    private bool showPersonelKartModal = false;
+    private Sofor? editKartPersonel;
+    private decimal editKartBirimUcret = 0;
 
     private System.Globalization.CultureInfo turkce = new("tr-TR");
 
@@ -621,8 +822,18 @@
         if (firmalar.Any())
             filtreFirmaId = firmalar.First().Id;
 
-        tumSoforler = await SoforService.GetActiveAsync();
+        await LoadPersonellerAsync();
         await YenileAsync();
+    }
+
+    private async Task LoadPersonellerAsync()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        tumSoforler = await context.Soforler
+            .AsNoTracking()
+            .Where(s => !s.IsDeleted && s.Aktif)
+            .OrderBy(s => s.Ad).ThenBy(s => s.Soyad)
+            .ToListAsync();
     }
 
     private async Task YenileAsync()
@@ -682,36 +893,8 @@
             return;
         }
 
-        var mevcutSayisi = puantajListesi.Count;
-        var onay = await JS.InvokeAsync<bool>("confirm",
-            $"{GetAyAdi(filtreAy)} {filtreYil} için {olusturulacakPersoneller.Count} personele puantaj kaydı oluşturulacak" +
-            (mevcutSayisi > 0 ? $" (mevcut {mevcutSayisi} kayıt korunacak)" : "") +
-            ". Devam edilsin mi?");
-        if (!onay) return;
-
-        isLoading = true;
-        StateHasChanged();
-
-        try
-        {
-            var olusturulan = await PuantajlariOlusturAsync(olusturulacakPersoneller);
-
-            await YenileAsync();
-
-            // Oluşturulduktan sonra günlük verilerden çalışılan günü hesapla
-            await GunluklerdenOzetGuncelle();
-
-            ShowBildirim("Başarılı", $"{olusturulan} personel için puantaj oluşturuldu.", "success");
-        }
-        catch (Exception ex)
-        {
-            ShowBildirim("Hata", $"Puantaj oluşturma hatası: {ex.Message}", "danger");
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
+        haftaSonuSeciliMod = false;
+        showHaftaSonuModal = true;
     }
 
     private async Task SeciliPuantajOlustur()
@@ -726,23 +909,47 @@
             return;
         }
 
-        var onay = await JS.InvokeAsync<bool>("confirm",
-            $"{GetAyAdi(filtreAy)} {filtreYil} için seçili {seciliPersoneller.Count} personele puantaj oluşturulsun mu?");
-        if (!onay) return;
+        haftaSonuSeciliMod = true;
+        showHaftaSonuModal = true;
+    }
+
+    private async Task HaftaSonuSecimOnay()
+    {
+        showHaftaSonuModal = false;
+        StateHasChanged();
+
+        List<Sofor> hedefPersoneller;
+        if (haftaSonuSeciliMod)
+        {
+            hedefPersoneller = tumSoforler
+                .Where(s => s.Aktif && !s.IsDeleted && seciliPersonelIds.Contains(s.Id))
+                .Where(s => puantajListesi.All(p => p.PersonelId != s.Id))
+                .ToList();
+        }
+        else
+        {
+            hedefPersoneller = tumSoforler
+                .Where(s => s.Aktif && !s.IsDeleted)
+                .Where(s => puantajListesi.All(p => p.PersonelId != s.Id))
+                .ToList();
+        }
+
+        if (!hedefPersoneller.Any()) return;
 
         isLoading = true;
         StateHasChanged();
 
         try
         {
-            var olusturulan = await PuantajlariOlusturAsync(seciliPersoneller);
+            var olusturulan = await PuantajlariOlusturAsync(hedefPersoneller);
             await YenileAsync();
             await GunluklerdenOzetGuncelle();
             ShowBildirim("Başarılı", $"{olusturulan} personel için puantaj oluşturuldu.", "success");
         }
         catch (Exception ex)
         {
-            ShowBildirim("Hata", $"Puantaj oluşturma hatası: {ex.Message}", "danger");
+            var innerMsg = ex.InnerException?.InnerException?.Message ?? ex.InnerException?.Message ?? ex.Message;
+            ShowBildirim("Hata", $"Puantaj oluşturma hatası: {innerMsg}", "danger");
         }
         finally
         {
@@ -751,34 +958,87 @@
         }
     }
 
+    private List<DateTime> GetResmiTatiller(int yil, int ay)
+    {
+        var tatiller = new List<DateTime>
+        {
+            new(yil, 1, 1),   // Yılbaşı
+            new(yil, 4, 23),  // Ulusal Egemenlik ve Çocuk Bayramı
+            new(yil, 5, 1),   // Emek ve Dayanışma Günü
+            new(yil, 5, 19),  // Atatürk'ü Anma, Gençlik ve Spor Bayramı
+            new(yil, 7, 15),  // Demokrasi ve Milli Birlik Günü
+            new(yil, 8, 30),  // Zafer Bayramı
+            new(yil, 10, 29), // Cumhuriyet Bayramı
+        };
+
+        // Dini bayramlar (yaklaşık tarihler - her yıl güncellenmeli)
+        var diniBayramlar = yil switch
+        {
+            2024 => new List<DateTime>
+            {
+                new(2024, 4, 10), new(2024, 4, 11), new(2024, 4, 12), // Ramazan Bayramı
+                new(2024, 6, 17), new(2024, 6, 18), new(2024, 6, 19), new(2024, 6, 20), // Kurban Bayramı
+            },
+            2025 => new List<DateTime>
+            {
+                new(2025, 3, 30), new(2025, 3, 31), new(2025, 4, 1), // Ramazan Bayramı
+                new(2025, 6, 6), new(2025, 6, 7), new(2025, 6, 8), new(2025, 6, 9), // Kurban Bayramı
+            },
+            2026 => new List<DateTime>
+            {
+                new(2026, 3, 20), new(2026, 3, 21), new(2026, 3, 22), // Ramazan Bayramı
+                new(2026, 5, 27), new(2026, 5, 28), new(2026, 5, 29), new(2026, 5, 30), // Kurban Bayramı
+            },
+            _ => new List<DateTime>()
+        };
+
+        tatiller.AddRange(diniBayramlar);
+        return tatiller.Where(t => t.Month == ay).OrderBy(t => t.Day).ToList();
+    }
+
     private async Task<int> PuantajlariOlusturAsync(List<Sofor> personeller)
     {
         int olusturulan = 0;
+
+        if (filtreFirmaId <= 0)
+        {
+            throw new InvalidOperationException("Lütfen önce bir firma seçin.");
+        }
 
         foreach (var personel in personeller)
         {
             var mevcut = puantajListesi.FirstOrDefault(p => p.PersonelId == personel.Id);
             if (mevcut == null)
             {
-                var yeniPuantaj = new PersonelPuantaj
+                try
                 {
-                    FirmaId = filtreFirmaId,
-                    PersonelId = personel.Id,
-                    Yil = filtreYil,
-                    Ay = filtreAy,
-                    CalisilanGun = 0,
-                    BrutMaas = personel.BrutMaas,
-                    NetOdeme = personel.NetMaas,
-                    BankaHesapNo = personel.IBAN
-                };
+                    var yeniPuantaj = new PersonelPuantaj
+                    {
+                        FirmaId = filtreFirmaId,
+                        PersonelId = personel.Id,
+                        Yil = filtreYil,
+                        Ay = filtreAy,
+                        CalisilanGun = 0,
+                        BrutMaas = personel.BrutMaas,
+                        NetOdeme = personel.NetMaas,
+                        BankaHesapNo = personel.IBAN
+                    };
 
-                var kaydedilen = await PuantajService.CreateOrUpdatePuantajAsync(yeniPuantaj);
-                await PuantajService.OtomatikGunlukPuantajOlusturAsync(kaydedilen.Id, filtreYil, filtreAy);
-                olusturulan++;
+                    var kaydedilen = await PuantajService.CreateOrUpdatePuantajAsync(yeniPuantaj);
+                    var tatiller = bayramlarCalisir ? null : GetResmiTatiller(filtreYil, filtreAy);
+                    await PuantajService.OtomatikGunlukPuantajOlusturAsync(kaydedilen.Id, filtreYil, filtreAy, cumartesiCalisir, pazarCalisir, tatiller);
+                    olusturulan++;
+                }
+                catch (Exception ex)
+                {
+                    var innerMsg = ex.InnerException?.Message ?? ex.Message;
+                    throw new InvalidOperationException($"{personel.TamAd} için puantaj oluşturulamadı: {innerMsg}", ex);
+                }
             }
             else if (!gunlukPuantajMap.ContainsKey(mevcut.Id) || !gunlukPuantajMap[mevcut.Id].Any())
             {
-                await PuantajService.OtomatikGunlukPuantajOlusturAsync(mevcut.Id, filtreYil, filtreAy);
+                var tatiller = bayramlarCalisir ? null : GetResmiTatiller(filtreYil, filtreAy);
+                await PuantajService.OtomatikGunlukPuantajOlusturAsync(mevcut.Id, filtreYil, filtreAy, cumartesiCalisir, pazarCalisir, tatiller);
                 olusturulan++;
             }
         }
@@ -817,6 +1077,8 @@
         }
 
         editPersonelAdi = puantaj?.Personel != null ? $"{puantaj.Personel.Ad} {puantaj.Personel.Soyad}" : "Personel";
+        editPersonelSaatlik = puantaj?.Personel?.BrutMaasHesaplamaTipi == BrutMaasHesaplamaTipi.Saatlik;
+        editPersonelBirimUcret = puantaj?.Personel?.BirimUcret ?? 0;
 
         if (gunluk != null)
         {
@@ -824,28 +1086,67 @@
             {
                 Id = gunluk.Id,
                 PersonelPuantajId = gunluk.PersonelPuantajId,
+                Gun = gunluk.Gun,
                 Tarih = gunluk.Tarih,
+                Durum = gunluk.Durum,
                 Calisti = gunluk.Calisti,
                 FazlaMesaiSaat = gunluk.FazlaMesaiSaat,
                 Izinli = gunluk.Izinli,
                 Mazeret = gunluk.Mazeret,
                 ServisCalismaId = gunluk.ServisCalismaId,
-                Notlar = gunluk.Notlar
+                Notlar = gunluk.Notlar,
+                CalismaSaati = gunluk.CalismaSaati
             };
+            editCalismaSaati = gunluk.CalismaSaati > 0 ? gunluk.CalismaSaati : (editPersonelSaatlik && gunluk.Calisti ? (puantaj?.Personel?.CalismaMiktari ?? 8) : 0);
         }
         else
         {
+            var gunNo = tarih.Day;
             editGunluk = new GunlukPuantaj
             {
                 PersonelPuantajId = puantajId,
+                Gun = gunNo,
                 Tarih = tarih,
                 Calisti = tarih.DayOfWeek != DayOfWeek.Sunday,
                 Izinli = false,
                 Mazeret = false
             };
+            editCalismaSaati = editPersonelSaatlik && tarih.DayOfWeek != DayOfWeek.Sunday ? (puantaj?.Personel?.CalismaMiktari ?? 8) : 0;
         }
 
         showModal = true;
+    }
+
+    private void PersonelKartAc(Sofor? personel)
+    {
+        if (personel == null) return;
+        editKartPersonel = personel;
+        editKartBirimUcret = personel.BirimUcret;
+        showPersonelKartModal = true;
+    }
+
+    private async Task PersonelKartKaydet()
+    {
+        if (editKartPersonel == null) return;
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            var personel = await context.Soforler.FindAsync(editKartPersonel.Id);
+            if (personel != null)
+            {
+                personel.BirimUcret = editKartBirimUcret;
+                personel.UpdatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync();
+                editKartPersonel.BirimUcret = editKartBirimUcret;
+            }
+            showPersonelKartModal = false;
+            ShowBildirim("Kaydedildi", $"{editKartPersonel.TamAd} birim ücret güncellendi.", "success");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ShowBildirim("Hata", $"Kaydetme hatası: {ex.Message}", "danger");
+        }
     }
 
     private void CalistiDegisti()
@@ -884,6 +1185,14 @@
 
         try
         {
+            // Saatlik personel için saat bilgisini kaydet
+            if (editPersonelSaatlik)
+            {
+                editGunluk.CalismaSaati = editCalismaSaati;
+                if (editCalismaSaati > 0)
+                    editGunluk.Calisti = true;
+            }
+
             await PuantajService.SaveGunlukPuantajAsync(editGunluk);
 
             // Günlük map güncelle
@@ -925,7 +1234,7 @@
         puantaj.CalisilanGun = gunlukler.Count(g => g.Calisti);
         puantaj.IzinGunu = gunlukler.Count(g => g.Izinli);
         puantaj.MazeretGunu = gunlukler.Count(g => g.Mazeret);
-        puantaj.FazlaMesaiSaat = gunlukler.Where(g => g.FazlaMesaiSaat.HasValue).Sum(g => g.FazlaMesaiSaat!.Value);
+        puantaj.FazlaMesaiSaat = gunlukler.Sum(g => g.FazlaMesaiSaat);
 
         await PuantajService.CreateOrUpdatePuantajAsync(puantaj);
     }
@@ -1042,6 +1351,23 @@
         ShowBildirim("Başarılı", "Puantaj reddedildi.", "warning");
     }
 
+    private async Task OnayGeriAl(int puantajId)
+    {
+        var onay = await JS.InvokeAsync<bool>("confirm", "Onayı geri almak istediğinize emin misiniz? Puantaj tekrar düzenlenebilir hale gelecektir.");
+        if (!onay) return;
+
+        try
+        {
+            await PuantajService.OnayGeriAlAsync(puantajId, "Onay geri alındı");
+            await YenileAsync();
+            ShowBildirim("Başarılı", "Puantaj onayı geri alındı.", "info");
+        }
+        catch (Exception ex)
+        {
+            ShowBildirim("Hata", $"Onay geri alma hatası: {ex.Message}", "danger");
+        }
+    }
+
     // Durum Helper Metodları
     private string GetGunlukDurum(GunlukPuantaj? gunluk)
     {
@@ -1050,7 +1376,7 @@
         if (gunluk.Mazeret) return "mazeret";
         if (gunluk.Calisti)
         {
-            if (gunluk.FazlaMesaiSaat.HasValue && gunluk.FazlaMesaiSaat.Value > 0)
+            if (gunluk.FazlaMesaiSaat > 0)
                 return "mesai";
             return "calisti";
         }

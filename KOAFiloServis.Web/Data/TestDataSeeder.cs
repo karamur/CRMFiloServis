@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace KOAFiloServis.Web.Data;
@@ -48,6 +48,9 @@ public class TestDataSeeder
             result.GuzergahSayisi = await SeedGuzergahlarAsync();
             result.FaturaSayisi = await SeedFaturalarAsync();
             result.ServisCalismasiSayisi = await SeedServisCalismalarıAsync();
+            result.IhaleHazirlikSayisi = await SeedIhaleHazirlikAsync();
+            result.ProformaFaturaSayisi = await SeedProformaFaturalarAsync();
+            result.PuantajKayitSayisi = await SeedPuantajKayitlarAsync();
 
             result.Basarili = true;
             result.Mesajlar.Add($"Toplam {result.ToplamKayit} örnek kayıt oluşturuldu");
@@ -69,6 +72,34 @@ public class TestDataSeeder
     /// </summary>
     public async Task TemizleAsync()
     {
+        // Puantaj Kayıtları
+        var puantajlar = await _context.PuantajKayitlar
+            .Where(x => x.GuzergahAdi != null && x.GuzergahAdi.Contains("[TEST]"))
+            .ToListAsync();
+        _context.PuantajKayitlar.RemoveRange(puantajlar);
+
+        // Proforma Faturalar ve kalemleri
+        var proformalari = await _context.ProformaFaturalar
+            .Include(x => x.Kalemler)
+            .Where(x => x.Aciklama != null && x.Aciklama.Contains("[TEST]"))
+            .ToListAsync();
+        foreach (var pf in proformalari)
+        {
+            _context.ProformaFaturaKalemler.RemoveRange(pf.Kalemler);
+        }
+        _context.ProformaFaturalar.RemoveRange(proformalari);
+
+        // İhale projeleri ve kalemleri
+        var ihaleler = await _context.IhaleProjeleri
+            .Include(x => x.Kalemler)
+            .Where(x => x.Notlar != null && x.Notlar.Contains("[TEST]"))
+            .ToListAsync();
+        foreach (var ihale in ihaleler)
+        {
+            _context.IhaleGuzergahKalemleri.RemoveRange(ihale.Kalemler);
+        }
+        _context.IhaleProjeleri.RemoveRange(ihaleler);
+
         // Servis çalışmaları
         var servisler = await _context.ServisCalismalari
             .Where(x => x.Notlar != null && x.Notlar.Contains("[TEST]"))
@@ -535,6 +566,612 @@ public class TestDataSeeder
 
     #endregion
 
+    #region İhale Hazırlık Seed
+
+    private async Task<int> SeedIhaleHazirlikAsync()
+    {
+        if (await _context.IhaleProjeleri.AnyAsync(p => p.Notlar != null && p.Notlar.Contains("[TEST]")))
+            return 0;
+
+        var firma = await _context.Firmalar.FirstOrDefaultAsync();
+        var musteriler = await _context.Cariler.Where(c => c.CariTipi == CariTipi.Musteri && c.Aktif).Take(5).ToListAsync();
+        var guzergahlar = await _context.Guzergahlar.Where(g => g.Aktif).ToListAsync();
+
+        var projeler = new List<IhaleProje>();
+
+        // Proje 1: Büyük kurumsal taşımacılık
+        var proje1 = new IhaleProje
+        {
+            ProjeKodu = "IHL-2025-001",
+            ProjeAdi = "ABC Holding Personel Servis İhalesi",
+            Aciklama = "[TEST] ABC Holding merkez ve 3 fabrika lokasyonu için personel servis hizmeti",
+            FirmaId = firma?.Id,
+            CariId = musteriler.FirstOrDefault()?.Id,
+            BaslangicTarihi = new DateTime(2025, 9, 1),
+            BitisTarihi = new DateTime(2027, 8, 31),
+            SozlesmeSuresiAy = 24,
+            Durum = IhaleProjeDurum.Hazirlaniyor,
+            EnflasyonOrani = 30,
+            YakitZamOrani = 35,
+            AylikCalismGunu = 22,
+            GunlukCalismaSaati = 8,
+            Notlar = "[TEST] Demo ihale projesi",
+            CreatedAt = DateTime.Now.AddDays(-15)
+        };
+
+        // Hat 1: Kadıköy - Levent
+        proje1.Kalemler.Add(new IhaleGuzergahKalem
+        {
+            GuzergahId = guzergahlar.FirstOrDefault()?.Id,
+            HatAdi = "Kadıköy - Levent (Sabah/Akşam)",
+            BaslangicNoktasi = "Kadıköy",
+            BitisNoktasi = "Levent",
+            MesafeKm = 28.5m,
+            TahminiSureDakika = 65,
+            SeferTipi = SeferTipi.SabahAksam,
+            GunlukSeferSayisi = 2,
+            AylikSeferGunu = 22,
+            PersonelSayisi = 35,
+            SahiplikDurumu = AracSahiplikKalem.Ozmal,
+            AracModelBilgi = "2023 Mercedes Sprinter 516",
+            AracKoltukSayisi = 22,
+            YakitTuketimi = 18,
+            YakitFiyati = 44.50m,
+            GunlukYakitMaliyeti = 456.30m,
+            AylikYakitMaliyeti = 10038.60m,
+            AylikBakimMasrafi = 3500,
+            AylikLastikMasrafi = 1200,
+            AylikSigortaMasrafi = 2800,
+            AylikKaskoMasrafi = 1500,
+            AylikMuayeneMasrafi = 200,
+            AylikYedekParcaMasrafi = 1800,
+            AylikDigerMasraf = 500,
+            SoforBrutMaas = 35000,
+            SoforNetMaas = 28500,
+            SoforSGKIsverenPay = 8750,
+            SoforToplamMaliyet = 43750,
+            AracDegeri = 2800000,
+            AmortismanYili = 5,
+            AylikAmortisman = 46666.67m,
+            AylikMaliyet = 122455.27m,
+            ToplamMaliyet = 2938926.48m,
+            SeferBasiMaliyet = 2782.62m,
+            SaatlikMaliyet = 696.00m,
+            KmBasiMaliyet = 97.58m,
+            KarMarjiOrani = 15,
+            AylikKarTutari = 18368.29m,
+            AylikTeklifFiyati = 140823.56m,
+            SeferBasiTeklifFiyati = 3200.01m,
+            SaatlikTeklifFiyati = 800.40m,
+            CreatedAt = DateTime.Now.AddDays(-15)
+        });
+
+        // Hat 2: Pendik - Maslak
+        proje1.Kalemler.Add(new IhaleGuzergahKalem
+        {
+            GuzergahId = guzergahlar.Skip(1).FirstOrDefault()?.Id,
+            HatAdi = "Pendik - Maslak (Sabah/Akşam)",
+            BaslangicNoktasi = "Pendik",
+            BitisNoktasi = "Maslak",
+            MesafeKm = 52.0m,
+            TahminiSureDakika = 95,
+            SeferTipi = SeferTipi.SabahAksam,
+            GunlukSeferSayisi = 2,
+            AylikSeferGunu = 22,
+            PersonelSayisi = 42,
+            SahiplikDurumu = AracSahiplikKalem.Ozmal,
+            AracModelBilgi = "2022 Ford Transit 19+1",
+            AracKoltukSayisi = 19,
+            YakitTuketimi = 16,
+            YakitFiyati = 44.50m,
+            GunlukYakitMaliyeti = 742.40m,
+            AylikYakitMaliyeti = 16332.80m,
+            AylikBakimMasrafi = 4200,
+            AylikLastikMasrafi = 1500,
+            AylikSigortaMasrafi = 2500,
+            AylikKaskoMasrafi = 1800,
+            AylikMuayeneMasrafi = 200,
+            AylikYedekParcaMasrafi = 2200,
+            AylikDigerMasraf = 600,
+            SoforBrutMaas = 38000,
+            SoforNetMaas = 30500,
+            SoforSGKIsverenPay = 9500,
+            SoforToplamMaliyet = 47500,
+            AracDegeri = 2200000,
+            AmortismanYili = 5,
+            AylikAmortisman = 36666.67m,
+            AylikMaliyet = 113499.47m,
+            ToplamMaliyet = 2723987.28m,
+            SeferBasiMaliyet = 2579.53m,
+            SaatlikMaliyet = 644.88m,
+            KmBasiMaliyet = 49.57m,
+            KarMarjiOrani = 15,
+            AylikKarTutari = 17024.92m,
+            AylikTeklifFiyati = 130524.39m,
+            SeferBasiTeklifFiyati = 2966.46m,
+            SaatlikTeklifFiyati = 741.62m,
+            CreatedAt = DateTime.Now.AddDays(-15)
+        });
+
+        // Hat 3: Bakırköy - Ataşehir (Kira araç)
+        proje1.Kalemler.Add(new IhaleGuzergahKalem
+        {
+            HatAdi = "Bakırköy - Ataşehir (Sabah/Akşam)",
+            BaslangicNoktasi = "Bakırköy",
+            BitisNoktasi = "Ataşehir",
+            MesafeKm = 32.0m,
+            TahminiSureDakika = 70,
+            SeferTipi = SeferTipi.SabahAksam,
+            GunlukSeferSayisi = 2,
+            AylikSeferGunu = 22,
+            PersonelSayisi = 28,
+            SahiplikDurumu = AracSahiplikKalem.Kiralik,
+            AracModelBilgi = "2024 Iveco Daily 16+1",
+            AracKoltukSayisi = 16,
+            YakitTuketimi = 14,
+            YakitFiyati = 44.50m,
+            GunlukYakitMaliyeti = 399.84m,
+            AylikYakitMaliyeti = 8796.48m,
+            AylikBakimMasrafi = 0,
+            AylikLastikMasrafi = 0,
+            AylikSigortaMasrafi = 0,
+            AylikKaskoMasrafi = 0,
+            AylikKiraBedeli = 45000,
+            SoforBrutMaas = 32000,
+            SoforNetMaas = 26000,
+            SoforSGKIsverenPay = 8000,
+            SoforToplamMaliyet = 40000,
+            AylikMaliyet = 93796.48m,
+            ToplamMaliyet = 2251115.52m,
+            SeferBasiMaliyet = 2131.74m,
+            SaatlikMaliyet = 532.93m,
+            KmBasiMaliyet = 66.62m,
+            KarMarjiOrani = 18,
+            AylikKarTutari = 16883.37m,
+            AylikTeklifFiyati = 110679.85m,
+            SeferBasiTeklifFiyati = 2515.45m,
+            SaatlikTeklifFiyati = 628.86m,
+            CreatedAt = DateTime.Now.AddDays(-15)
+        });
+
+        projeler.Add(proje1);
+
+        // Proje 2: Küçük ölçekli okul servisi
+        var proje2 = new IhaleProje
+        {
+            ProjeKodu = "IHL-2025-002",
+            ProjeAdi = "Marmara Üniversitesi Kampüs Servisi",
+            Aciklama = "[TEST] Göztepe ve Maltepe kampüsleri arası öğrenci/personel ulaşım",
+            FirmaId = firma?.Id,
+            CariId = musteriler.Skip(1).FirstOrDefault()?.Id,
+            BaslangicTarihi = new DateTime(2025, 10, 1),
+            BitisTarihi = new DateTime(2026, 6, 30),
+            SozlesmeSuresiAy = 9,
+            Durum = IhaleProjeDurum.TeklifVerildi,
+            EnflasyonOrani = 25,
+            YakitZamOrani = 30,
+            AylikCalismGunu = 20,
+            GunlukCalismaSaati = 10,
+            Notlar = "[TEST] Demo ihale projesi",
+            CreatedAt = DateTime.Now.AddDays(-30)
+        };
+
+        proje2.Kalemler.Add(new IhaleGuzergahKalem
+        {
+            HatAdi = "Göztepe Kampüs - Maltepe Kampüs",
+            BaslangicNoktasi = "Göztepe",
+            BitisNoktasi = "Maltepe",
+            MesafeKm = 12.0m,
+            TahminiSureDakika = 35,
+            SeferTipi = SeferTipi.SabahAksam,
+            GunlukSeferSayisi = 4,
+            AylikSeferGunu = 20,
+            PersonelSayisi = 60,
+            SahiplikDurumu = AracSahiplikKalem.Ozmal,
+            AracModelBilgi = "2023 Mercedes Sprinter 22+1",
+            AracKoltukSayisi = 22,
+            YakitTuketimi = 18,
+            YakitFiyati = 44.50m,
+            GunlukYakitMaliyeti = 384.48m,
+            AylikYakitMaliyeti = 7689.60m,
+            AylikBakimMasrafi = 2800,
+            AylikLastikMasrafi = 900,
+            AylikSigortaMasrafi = 2200,
+            AylikKaskoMasrafi = 1200,
+            SoforBrutMaas = 34000,
+            SoforNetMaas = 27500,
+            SoforSGKIsverenPay = 8500,
+            SoforToplamMaliyet = 42500,
+            AracDegeri = 2800000,
+            AmortismanYili = 5,
+            AylikAmortisman = 46666.67m,
+            AylikMaliyet = 103956.27m,
+            ToplamMaliyet = 935606.43m,
+            SeferBasiMaliyet = 1299.45m,
+            SaatlikMaliyet = 519.78m,
+            KmBasiMaliyet = 108.29m,
+            KarMarjiOrani = 20,
+            AylikKarTutari = 20791.25m,
+            AylikTeklifFiyati = 124747.52m,
+            SeferBasiTeklifFiyati = 1559.34m,
+            SaatlikTeklifFiyati = 623.74m,
+            CreatedAt = DateTime.Now.AddDays(-30)
+        });
+
+        projeler.Add(proje2);
+
+        // Proje 3: Kazanılmış proje
+        var proje3 = new IhaleProje
+        {
+            ProjeKodu = "IHL-2024-015",
+            ProjeAdi = "Tuzla OSB Personel Taşıma",
+            Aciklama = "[TEST] Tuzla Organize Sanayi Bölgesi fabrikalar arası personel taşıma",
+            FirmaId = firma?.Id,
+            CariId = musteriler.Skip(2).FirstOrDefault()?.Id,
+            BaslangicTarihi = new DateTime(2025, 1, 1),
+            BitisTarihi = new DateTime(2025, 12, 31),
+            SozlesmeSuresiAy = 12,
+            Durum = IhaleProjeDurum.Kazanildi,
+            EnflasyonOrani = 28,
+            YakitZamOrani = 32,
+            Notlar = "[TEST] Demo ihale projesi",
+            CreatedAt = DateTime.Now.AddDays(-90)
+        };
+
+        proje3.Kalemler.Add(new IhaleGuzergahKalem
+        {
+            HatAdi = "Pendik Metro - Tuzla OSB",
+            BaslangicNoktasi = "Pendik",
+            BitisNoktasi = "Tuzla OSB",
+            MesafeKm = 18.0m,
+            TahminiSureDakika = 40,
+            SeferTipi = SeferTipi.SabahAksam,
+            GunlukSeferSayisi = 6,
+            AylikSeferGunu = 26,
+            PersonelSayisi = 120,
+            SahiplikDurumu = AracSahiplikKalem.Ozmal,
+            AracModelBilgi = "2021 Mercedes Sprinter 22+1",
+            AracKoltukSayisi = 22,
+            YakitTuketimi = 19,
+            YakitFiyati = 44.50m,
+            GunlukYakitMaliyeti = 912.60m,
+            AylikYakitMaliyeti = 23727.60m,
+            AylikBakimMasrafi = 5000,
+            AylikLastikMasrafi = 2000,
+            AylikSigortaMasrafi = 3000,
+            AylikKaskoMasrafi = 1800,
+            AylikMuayeneMasrafi = 250,
+            AylikYedekParcaMasrafi = 3000,
+            AylikDigerMasraf = 800,
+            SoforBrutMaas = 36000,
+            SoforNetMaas = 29000,
+            SoforSGKIsverenPay = 9000,
+            SoforToplamMaliyet = 45000,
+            AracDegeri = 2200000,
+            AmortismanYili = 5,
+            AylikAmortisman = 36666.67m,
+            AylikMaliyet = 121244.27m,
+            ToplamMaliyet = 1454931.24m,
+            SeferBasiMaliyet = 777.21m,
+            SaatlikMaliyet = 689.00m,
+            KmBasiMaliyet = 43.18m,
+            KarMarjiOrani = 12,
+            AylikKarTutari = 14549.31m,
+            AylikTeklifFiyati = 135793.58m,
+            SeferBasiTeklifFiyati = 870.47m,
+            SaatlikTeklifFiyati = 771.68m,
+            CreatedAt = DateTime.Now.AddDays(-90)
+        });
+
+        projeler.Add(proje3);
+
+        _context.IhaleProjeleri.AddRange(projeler);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("{Count} ihale projesi ve güzergah kalemi oluşturuldu", projeler.Count);
+        return projeler.Count + projeler.Sum(p => p.Kalemler.Count);
+    }
+
+    #endregion
+
+    #region Proforma Fatura Seed
+
+    private async Task<int> SeedProformaFaturalarAsync()
+    {
+        if (await _context.ProformaFaturalar.AnyAsync(p => p.Aciklama != null && p.Aciklama.Contains("[TEST]")))
+            return 0;
+
+        var firma = await _context.Firmalar.FirstOrDefaultAsync();
+        var musteriler = await _context.Cariler
+            .Where(c => c.CariTipi == CariTipi.Musteri && c.Aktif)
+            .Take(5).ToListAsync();
+
+        if (!musteriler.Any())
+        {
+            _logger.LogWarning("Müşteri bulunamadı, proforma fatura seed atlanıyor");
+            return 0;
+        }
+
+        var proformalari = new List<ProformaFatura>();
+
+        // Proforma 1: Taslak - Aylık personel servis teklifi
+        var pf1 = new ProformaFatura
+        {
+            ProformaNo = "PF-2025-000001",
+            ProformaTarihi = DateTime.Now.AddDays(-5),
+            GecerlilikTarihi = DateTime.Now.AddDays(25),
+            Durum = ProformaDurum.Taslak,
+            CariId = musteriler[0].Id,
+            FirmaId = firma?.Id,
+            KdvOrani = 20,
+            OdemeKosulu = "30 gün vadeli",
+            TeslimKosulu = "Kapıda teslim",
+            VadeGun = 30,
+            IlgiliKisi = musteriler[0].YetkiliKisi,
+            Email = musteriler[0].Email,
+            Aciklama = "[TEST] Temmuz 2025 aylık personel servis hizmeti proforması",
+            OzelNotlar = "Müşteri ile telefonda görüşüldü, fiyatlar onaya sunulacak",
+            CreatedAt = DateTime.Now.AddDays(-5)
+        };
+
+        pf1.Kalemler.Add(new ProformaFaturaKalem
+        {
+            SiraNo = 1,
+            UrunAdi = "Kadıköy - Levent Personel Servis (S/A)",
+            UrunKodu = "SRV-001",
+            Aciklama = "Sabah-akşam servis, 22 iş günü",
+            Miktar = 44, Birim = "Sefer", BirimFiyat = 3200m,
+            KdvOrani = 20,
+            AraToplam = 140800m, IskontoOrani = 0, IskontoTutar = 0,
+            NetTutar = 140800m, KdvTutar = 28160m, ToplamTutar = 168960m,
+            CreatedAt = DateTime.Now.AddDays(-5)
+        });
+        pf1.Kalemler.Add(new ProformaFaturaKalem
+        {
+            SiraNo = 2,
+            UrunAdi = "Pendik - Maslak Personel Servis (S/A)",
+            UrunKodu = "SRV-002",
+            Aciklama = "Sabah-akşam servis, 22 iş günü",
+            Miktar = 44, Birim = "Sefer", BirimFiyat = 2966m,
+            KdvOrani = 20,
+            AraToplam = 130504m, IskontoOrani = 0, IskontoTutar = 0,
+            NetTutar = 130504m, KdvTutar = 26100.80m, ToplamTutar = 156604.80m,
+            CreatedAt = DateTime.Now.AddDays(-5)
+        });
+
+        pf1.AraToplam = 271304m;
+        pf1.KdvTutar = 54260.80m;
+        pf1.GenelToplam = 325564.80m;
+        proformalari.Add(pf1);
+
+        // Proforma 2: Gönderildi - Okul servisi teklifi
+        var pf2 = new ProformaFatura
+        {
+            ProformaNo = "PF-2025-000002",
+            ProformaTarihi = DateTime.Now.AddDays(-10),
+            GecerlilikTarihi = DateTime.Now.AddDays(20),
+            Durum = ProformaDurum.Gonderildi,
+            CariId = musteriler.Count > 1 ? musteriler[1].Id : musteriler[0].Id,
+            FirmaId = firma?.Id,
+            KdvOrani = 20,
+            OdemeKosulu = "Peşin",
+            VadeGun = 0,
+            Aciklama = "[TEST] Ekim-Haziran kampüs servis hizmeti proforması",
+            CreatedAt = DateTime.Now.AddDays(-10)
+        };
+
+        pf2.Kalemler.Add(new ProformaFaturaKalem
+        {
+            SiraNo = 1,
+            UrunAdi = "Göztepe - Maltepe Kampüs Servis",
+            UrunKodu = "SRV-003",
+            Aciklama = "Günde 4 sefer, 20 iş günü x 9 ay",
+            Miktar = 720, Birim = "Sefer", BirimFiyat = 1559m,
+            KdvOrani = 20,
+            AraToplam = 1122480m, IskontoOrani = 5, IskontoTutar = 56124m,
+            NetTutar = 1066356m, KdvTutar = 213271.20m, ToplamTutar = 1279627.20m,
+            CreatedAt = DateTime.Now.AddDays(-10)
+        });
+
+        pf2.AraToplam = 1122480m;
+        pf2.IskontoOrani = 5;
+        pf2.IskontoTutar = 56124m;
+        pf2.KdvTutar = 213271.20m;
+        pf2.GenelToplam = 1279627.20m;
+        proformalari.Add(pf2);
+
+        // Proforma 3: Onaylandı (faturaya dönüştürülmeye hazır)
+        var pf3 = new ProformaFatura
+        {
+            ProformaNo = "PF-2025-000003",
+            ProformaTarihi = DateTime.Now.AddDays(-20),
+            GecerlilikTarihi = DateTime.Now.AddDays(10),
+            Durum = ProformaDurum.Onaylandi,
+            CariId = musteriler.Count > 2 ? musteriler[2].Id : musteriler[0].Id,
+            FirmaId = firma?.Id,
+            KdvOrani = 20,
+            OdemeKosulu = "15 gün vadeli",
+            VadeGun = 15,
+            IlgiliKisi = "Ahmet Bey",
+            Aciklama = "[TEST] Tuzla OSB personel taşıma hizmeti - onaylanmış proforma",
+            CreatedAt = DateTime.Now.AddDays(-20)
+        };
+
+        pf3.Kalemler.Add(new ProformaFaturaKalem
+        {
+            SiraNo = 1,
+            UrunAdi = "Pendik Metro - Tuzla OSB Servis",
+            UrunKodu = "SRV-004",
+            Aciklama = "Günde 6 sefer, 26 iş günü",
+            Miktar = 156, Birim = "Sefer", BirimFiyat = 870m,
+            KdvOrani = 20,
+            AraToplam = 135720m, IskontoOrani = 0, IskontoTutar = 0,
+            NetTutar = 135720m, KdvTutar = 27144m, ToplamTutar = 162864m,
+            CreatedAt = DateTime.Now.AddDays(-20)
+        });
+
+        pf3.AraToplam = 135720m;
+        pf3.KdvTutar = 27144m;
+        pf3.GenelToplam = 162864m;
+        proformalari.Add(pf3);
+
+        _context.ProformaFaturalar.AddRange(proformalari);
+        await _context.SaveChangesAsync();
+
+        var totalKalem = proformalari.Sum(p => p.Kalemler.Count);
+        _logger.LogInformation("{Count} proforma fatura ve {KalemCount} kalem oluşturuldu", proformalari.Count, totalKalem);
+        return proformalari.Count + totalKalem;
+    }
+
+    #endregion
+
+    #region Puantaj Kayıt Seed (Toplu Fatura İçin)
+
+    private async Task<int> SeedPuantajKayitlarAsync()
+    {
+        // Fatura kesilmemiş puantaj kayıtları (toplu fatura demo için)
+        if (await _context.PuantajKayitlar.AnyAsync(p => p.GuzergahAdi != null && p.GuzergahAdi.Contains("[TEST]")))
+            return 0;
+
+        var musteriler = await _context.Cariler
+            .Where(c => c.CariTipi == CariTipi.Musteri && c.Aktif)
+            .Take(3).ToListAsync();
+        var soforler = await _context.Soforler.Where(s => s.Aktif).Take(5).ToListAsync();
+        var araclar = await _context.Araclar.Where(a => a.Aktif).Take(5).ToListAsync();
+        var guzergahlar = await _context.Guzergahlar.Where(g => g.Aktif).Take(4).ToListAsync();
+
+        if (!musteriler.Any())
+        {
+            _logger.LogWarning("Müşteri bulunamadı, puantaj seed atlanıyor");
+            return 0;
+        }
+
+        var yil = DateTime.Now.Year;
+        var ay = DateTime.Now.Month;
+        var kayitlar = new List<PuantajKayit>();
+
+        // Müşteri 1: 2 güzergah, fatura kesilmemiş
+        for (int g = 0; g < Math.Min(2, guzergahlar.Count); g++)
+        {
+            var guzergah = guzergahlar[g];
+            var musteri = musteriler[0];
+            var sofor = soforler.Count > g ? soforler[g] : null;
+            var arac = araclar.Count > g ? araclar[g] : null;
+
+            var kayit = new PuantajKayit
+            {
+                Yil = yil,
+                Ay = ay,
+                Bolge = "Anadolu",
+                SiraNo = g + 1,
+                KurumCariId = musteri.Id,
+                KurumAdi = musteri.Unvan,
+                GuzergahId = guzergah.Id,
+                GuzergahAdi = $"[TEST] {guzergah.GuzergahAdi}",
+                Yon = PuantajYon.SabahAksam,
+                AracId = arac?.Id,
+                Plaka = arac?.AktifPlaka ?? "34 AA 001",
+                SoforId = sofor?.Id,
+                SoforAdi = sofor != null ? $"{sofor.Ad} {sofor.Soyad}" : "Test Şoför",
+                SoforOdemeTipi = SoforOdemeTipi.Ozmal,
+                Gun = 22,
+                SeferSayisi = 2,
+                BirimGelir = 3200m + (g * 500m),
+                ToplamGelir = (3200m + (g * 500m)) * 22,
+                GelirKdvOrani = 20,
+                GelirKdvTutari = (3200m + (g * 500m)) * 22 * 0.20m,
+                GelirToplam = (3200m + (g * 500m)) * 22 * 1.20m,
+                Alinacak = (3200m + (g * 500m)) * 22 * 1.20m,
+                BirimGider = 2400m + (g * 300m),
+                ToplamGider = (2400m + (g * 300m)) * 22,
+                Odenecek = (2400m + (g * 300m)) * 22,
+                GelirFaturaKesildi = false,
+                GiderFaturaAlindi = false,
+                OnayDurum = PuantajOnayDurum.Onaylandi,
+                Kaynak = PuantajKaynak.Manuel,
+                CreatedAt = DateTime.Now.AddDays(-5)
+            };
+
+            // 22 iş günü puantaj doldur (hafta içi)
+            int gunSayac = 0;
+            for (int d = 1; d <= 28 && gunSayac < 22; d++)
+            {
+                var tarih = new DateTime(yil, ay, d);
+                if (tarih.DayOfWeek != DayOfWeek.Saturday && tarih.DayOfWeek != DayOfWeek.Sunday)
+                {
+                    kayit.SetGunDeger(d, 2); // 2 = S+A
+                    gunSayac++;
+                }
+            }
+
+            kayitlar.Add(kayit);
+        }
+
+        // Müşteri 2: 1 güzergah, fatura kesilmemiş
+        if (musteriler.Count > 1 && guzergahlar.Count > 2)
+        {
+            var musteri2 = musteriler[1];
+            var guz = guzergahlar[2];
+            var sofor = soforler.Count > 2 ? soforler[2] : null;
+            var arac = araclar.Count > 2 ? araclar[2] : null;
+
+            var kayit2 = new PuantajKayit
+            {
+                Yil = yil,
+                Ay = ay,
+                Bolge = "Avrupa",
+                SiraNo = 1,
+                KurumCariId = musteri2.Id,
+                KurumAdi = musteri2.Unvan,
+                GuzergahId = guz.Id,
+                GuzergahAdi = $"[TEST] {guz.GuzergahAdi}",
+                Yon = PuantajYon.SabahAksam,
+                AracId = arac?.Id,
+                Plaka = arac?.AktifPlaka ?? "34 BB 002",
+                SoforId = sofor?.Id,
+                SoforAdi = sofor != null ? $"{sofor.Ad} {sofor.Soyad}" : "Test Şoför 2",
+                SoforOdemeTipi = SoforOdemeTipi.Ozmal,
+                Gun = 20,
+                SeferSayisi = 4,
+                BirimGelir = 1560m,
+                ToplamGelir = 1560m * 20,
+                GelirKdvOrani = 20,
+                GelirKdvTutari = 1560m * 20 * 0.20m,
+                GelirToplam = 1560m * 20 * 1.20m,
+                Alinacak = 1560m * 20 * 1.20m,
+                BirimGider = 1100m,
+                ToplamGider = 1100m * 20,
+                Odenecek = 1100m * 20,
+                GelirFaturaKesildi = false,
+                GiderFaturaAlindi = false,
+                OnayDurum = PuantajOnayDurum.Onaylandi,
+                Kaynak = PuantajKaynak.Manuel,
+                CreatedAt = DateTime.Now.AddDays(-3)
+            };
+
+            int gunSayac2 = 0;
+            for (int d = 1; d <= 28 && gunSayac2 < 20; d++)
+            {
+                var tarih = new DateTime(yil, ay, d);
+                if (tarih.DayOfWeek != DayOfWeek.Saturday && tarih.DayOfWeek != DayOfWeek.Sunday)
+                {
+                    kayit2.SetGunDeger(d, 2);
+                    gunSayac2++;
+                }
+            }
+
+            kayitlar.Add(kayit2);
+        }
+
+        _context.PuantajKayitlar.AddRange(kayitlar);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("{Count} puantaj kayıtı oluşturuldu (toplu fatura demo için)", kayitlar.Count);
+        return kayitlar.Count;
+    }
+
+    #endregion
+
     #region Yardımcı Metodlar
 
     private string RastgeleIsim()
@@ -561,6 +1198,9 @@ public class TestDataResult
     public int GuzergahSayisi { get; set; }
     public int FaturaSayisi { get; set; }
     public int ServisCalismasiSayisi { get; set; }
+    public int IhaleHazirlikSayisi { get; set; }
+    public int ProformaFaturaSayisi { get; set; }
+    public int PuantajKayitSayisi { get; set; }
 
-    public int ToplamKayit => CariSayisi + SoforSayisi + AracSayisi + GuzergahSayisi + FaturaSayisi + ServisCalismasiSayisi;
+    public int ToplamKayit => CariSayisi + SoforSayisi + AracSayisi + GuzergahSayisi + FaturaSayisi + ServisCalismasiSayisi + IhaleHazirlikSayisi + ProformaFaturaSayisi + PuantajKayitSayisi;
 }

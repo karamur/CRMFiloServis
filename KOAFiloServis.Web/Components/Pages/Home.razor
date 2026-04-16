@@ -91,7 +91,7 @@ else
                 @if (HasYetki("servis.ekle"))
                 {
                     <div class="col-6 col-md-2">
-                        <a href="/servis-calisma/yeni" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                        <a href="/servis-calismalari/yeni" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
                             <i class="bi bi-plus-circle fs-4 mb-1"></i>
                             <small>Yeni Sefer</small>
                         </a>
@@ -109,7 +109,7 @@ else
                 @if (HasYetki("kesilenfatura.ekle"))
                 {
                     <div class="col-6 col-md-2">
-                        <a href="/efatura/giden/yeni" class="btn btn-outline-success w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                        <a href="/faturalar/yeni" class="btn btn-outline-success w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
                             <i class="bi bi-receipt fs-4 mb-1"></i>
                             <small>Fatura Kes</small>
                         </a>
@@ -118,7 +118,7 @@ else
                 @if (HasYetki("tahsilat.ekle"))
                 {
                     <div class="col-6 col-md-2">
-                        <a href="/banka-kasa/yeni?tur=tahsilat" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                        <a href="/banka-hareketleri/yeni?tur=tahsilat" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
                             <i class="bi bi-cash-stack fs-4 mb-1"></i>
                             <small>Tahsilat</small>
                         </a>
@@ -127,7 +127,7 @@ else
                 @if (HasYetki("odeme.ekle"))
                 {
                     <div class="col-6 col-md-2">
-                        <a href="/banka-kasa/yeni?tur=odeme" class="btn btn-outline-danger w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                        <a href="/banka-hareketleri/yeni?tur=odeme" class="btn btn-outline-danger w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
                             <i class="bi bi-credit-card fs-4 mb-1"></i>
                             <small>Ödeme</small>
                         </a>
@@ -289,7 +289,7 @@ else
                     </div>
                 </div>
                 <div class="card-footer bg-transparent">
-                    <a href="/banka-kasa" class="btn btn-outline-primary btn-sm w-100">
+                    <a href="/banka-hareketleri" class="btn btn-outline-primary btn-sm w-100">
                         <i class="bi bi-arrow-right me-1"></i>Detay Görüntüle
                     </a>
                 </div>
@@ -766,7 +766,7 @@ else
             <div class="card h-100">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Son Kasa/Banka Hareketleri</h6>
-                    <a href="/banka-kasa" class="btn btn-sm btn-outline-primary">Tümü</a>
+                    <a href="/banka-hareketleri" class="btn btn-sm btn-outline-primary">Tümü</a>
                 </div>
                 <div class="card-body" style="max-height: 300px; overflow-y: auto;">
                     @if (sonHareketler != null && sonHareketler.Any())

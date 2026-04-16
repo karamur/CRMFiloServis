@@ -160,8 +160,10 @@
                                                         <li><a class="dropdown-item" @onclick="() => ExportBanka(bordro.Id)">Banka Ödeme Listesi</a></li>
                                                         <li><a class="dropdown-item" @onclick="() => ExportEkOdeme(bordro.Id)">Ek Ödeme Listesi</a></li>
                                                         <li><a class="dropdown-item" @onclick="() => ExportTumBordro(bordro.Id)">Tam Bordro</a></li>
-                                                         <li><a class="dropdown-item" @onclick="() => HesapPusulasinaGit(bordro)">Hesap Pusulası</a></li>
-                                                         <li><a class="dropdown-item" @onclick="() => BordroIcmalineGit(bordro)">Bordro İcmali</a></li>
+                                                        <li><hr class="dropdown-divider" /></li>
+                                                        <li><a class="dropdown-item" @onclick="() => ExportTumUcretBordrolari(bordro.Id)"><i class="bi bi-file-earmark-pdf me-2 text-danger"></i>Tüm Ücret Bordroları</a></li>
+                                                        <li><a class="dropdown-item" @onclick="() => HesapPusulasinaGit(bordro)">Hesap Pusulası</a></li>
+                                                        <li><a class="dropdown-item" @onclick="() => BordroIcmalineGit(bordro)">Bordro İcmali</a></li>
                                                     </ul>
                                                 </div>
                                             </div>
@@ -210,6 +212,9 @@
                                     <table class="table table-sm table-bordered">
                                         <thead class="table-light">
                                             <tr>
+                                                <th style="width: 35px;">
+                                                    <input type="checkbox" class="form-check-input" @onchange="TumunuSecDetay" />
+                                                </th>
                                                 <th style="width: 40px;">Sıra</th>
                                                 <th>Personel</th>
                                                 <th class="text-end">Brüt</th>
@@ -221,13 +226,16 @@
                                                 <th class="text-end">Ek Ödeme</th>
                                                 <th class="text-end">Toplam</th>
                                                 <th>Durum</th>
-                                                <th class="text-center" style="width:50px;">İşlem</th>
+                                                <th class="text-center" style="width:80px;">İşlem</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach (var detay in bordroDetaylar)
                                             {
-                                                <tr>
+                                                <tr class="@(detay.Secili ? "table-info" : "")">
+                                                    <td class="text-center">
+                                                        <input type="checkbox" class="form-check-input" @bind="detay.Secili" />
+                                                    </td>
                                                     <td class="text-center text-muted">@(detay.Personel.SiralamaNo > 0 ? detay.Personel.SiralamaNo.ToString() : "-")</td>
                                                     <td>
                                                         <strong>@detay.Personel.TamAd</strong><br />
@@ -260,18 +268,24 @@
                                                         }
                                                     </td>
                                                     <td class="text-center">
-                                                        @if (secilenBordro != null && !secilenBordro.Onaylandi)
-                                                        {
-                                                            <button class="btn btn-outline-dark btn-sm" @onclick="() => DetayDuzenleAc(detay)" title="Düzenle">
-                                                                <i class="bi bi-pencil"></i>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <button class="btn btn-outline-danger" @onclick="() => ExportTekUcretBordrosu(detay.Id)" title="Ücret Bordrosu">
+                                                                <i class="bi bi-file-earmark-text"></i>
                                                             </button>
-                                                        }
+                                                            @if (secilenBordro != null && !secilenBordro.Onaylandi)
+                                                            {
+                                                                <button class="btn btn-outline-dark" @onclick="() => DetayDuzenleAc(detay)" title="Düzenle">
+                                                                    <i class="bi bi-pencil"></i>
+                                                                </button>
+                                                            }
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             }
                                         </tbody>
                                         <tfoot class="table-light">
                                             <tr>
+                                                <td></td>
                                                 <td></td>
                                                 <td><strong>TOPLAM</strong></td>
                                                 <td class="text-end"><strong>@FormatPara(bordroDetaylar.Sum(d => d.BrutMaas))</strong></td>
@@ -291,13 +305,28 @@
                             }
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-primary" @onclick="SecilenBordrolariAc">
-                                <i class="bi bi-file-earmark-text me-1"></i>Seçilenleri Bordrola
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" @onclick="SecilenIcmalAc">
-                                <i class="bi bi-table me-1"></i>Seçilenleri İcmale Al
-                            </button>
-                            <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
+                            <div class="d-flex justify-content-between w-100">
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-danger" @onclick="ExportSeciliUcretBordrolari" title="Seçili personellerin ücret bordrolarını indir">
+                                        <i class="bi bi-file-earmark-text me-1"></i>Seçili Ücret Bordroları
+                                    </button>
+                                    @if (secilenBordro != null)
+                                    {
+                                        <button type="button" class="btn btn-outline-danger" @onclick="() => ExportTumUcretBordrolari(secilenBordro.Id)" title="Tüm personellerin ücret bordrolarını indir">
+                                            <i class="bi bi-files me-1"></i>Tümü
+                                        </button>
+                                    }
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-primary" @onclick="SecilenBordrolariAc">
+                                        <i class="bi bi-file-earmark-text me-1"></i>Hesap Pusulası
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="SecilenIcmalAc">
+                                        <i class="bi bi-table me-1"></i>İcmal
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">Kapat</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1012,6 +1041,16 @@
         }
     }
 
+    private void TumunuSecDetay(ChangeEventArgs e)
+    {
+        var secili = (bool)(e.Value ?? false);
+        if (bordroDetaylar != null)
+        {
+            foreach (var detay in bordroDetaylar)
+                detay.Secili = secili;
+        }
+    }
+
     private async Task BankaOdemesiYap()
     {
         if (bordroDetaylar == null || secilenBordro == null)
@@ -1028,7 +1067,7 @@
         {
             await BordroService.BankaOdemesiYapAsync(seciliIds, bankaOdemeTarihi, null, "Bordro banka ödemesi");
             ToastService.ShowSuccess($"{seciliIds.Count} personele banka ödemesi yapıldı!");
-            
+
             // Listeyi yenile
             bordroDetaylar = await BordroService.GetBordroDetaylarAsync(secilenBordro.Id);
             StateHasChanged();
@@ -1104,6 +1143,61 @@
             var fileName = $"Bordro_{bordroId}_{DateTime.Now:yyyyMMdd}.xlsx";
             await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, Convert.ToBase64String(bytes));
             ToastService.ShowSuccess("Excel dosyası indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+    }
+
+    private async Task ExportTumUcretBordrolari(int bordroId)
+    {
+        try
+        {
+            var bytes = await BordroService.ExportTumUcretBordrolariAsync(bordroId);
+            var fileName = $"UcretBordrolari_{bordroId}_{DateTime.Now:yyyyMMdd}.xlsx";
+            await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, Convert.ToBase64String(bytes));
+            ToastService.ShowSuccess("Tüm ücret bordroları indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+    }
+
+    private async Task ExportSeciliUcretBordrolari()
+    {
+        if (secilenBordro == null || bordroDetaylar == null)
+            return;
+
+        var seciliIds = bordroDetaylar.Where(d => d.Secili).Select(d => d.Id).ToList();
+        if (!seciliIds.Any())
+        {
+            ToastService.ShowWarning("Lütfen en az bir personel seçiniz.");
+            return;
+        }
+
+        try
+        {
+            var bytes = await BordroService.ExportTopluUcretBordrosuAsync(seciliIds);
+            var fileName = $"SeciliUcretBordrolari_{secilenBordro.Id}_{DateTime.Now:yyyyMMdd}.xlsx";
+            await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, Convert.ToBase64String(bytes));
+            ToastService.ShowSuccess($"{seciliIds.Count} personelin ücret bordroları indirildi!");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Hata: {ex.Message}");
+        }
+    }
+
+    private async Task ExportTekUcretBordrosu(int bordroDetayId)
+    {
+        try
+        {
+            var bytes = await BordroService.ExportUcretBordrosuAsync(bordroDetayId);
+            var fileName = $"UcretBordrosu_{bordroDetayId}_{DateTime.Now:yyyyMMdd}.xlsx";
+            await JS.InvokeVoidAsync("downloadFileFromBase64", fileName, Convert.ToBase64String(bytes));
+            ToastService.ShowSuccess("Ücret bordrosu indirildi!");
         }
         catch (Exception ex)
         {

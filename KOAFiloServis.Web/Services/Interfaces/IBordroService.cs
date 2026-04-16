@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 
 namespace KOAFiloServis.Web.Services.Interfaces;
 
@@ -34,11 +34,26 @@ public interface IBordroService
     Task<List<BordroKalanOdemeSatir>> GetKalanOdemeRaporuAsync(int bordroId);
     Task<byte[]> ExportKalanOdemeRaporuAsync(int bordroId);
     Task<byte[]> ExportBordroOzetAsync(int? firmaId, int? yil);
-    
+
+    /// <summary>
+    /// Tek personel için detaylı ücret bordrosu PDF (resmi format)
+    /// </summary>
+    Task<byte[]> ExportUcretBordrosuAsync(int bordroDetayId);
+
+    /// <summary>
+    /// Seçili personeller için toplu ücret bordrosu PDF
+    /// </summary>
+    Task<byte[]> ExportTopluUcretBordrosuAsync(List<int> bordroDetayIds);
+
+    /// <summary>
+    /// Tüm bordro için ücret bordroları PDF
+    /// </summary>
+    Task<byte[]> ExportTumUcretBordrolariAsync(int bordroId);
+
     // Ayarlar
     Task<BordroAyar> GetBordroAyarAsync(int? firmaId);
     Task SaveBordroAyarAsync(BordroAyar ayar);
-    
+
     // Özet Bilgiler
     Task<BordroOzet> GetBordroOzetAsync(int? firmaId, int? yil, int? ay);
 }

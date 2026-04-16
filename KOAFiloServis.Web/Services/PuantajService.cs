@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
@@ -139,6 +139,22 @@ public class PuantajService : IPuantajService
         return puantaj;
     }
 
+    public async Task<PersonelPuantaj> OnayGeriAlAsync(int id, string? not = null)
+    {
+        using var context = await _contextFactory.CreateDbContextAsync();
+        var puantaj = await context.PersonelPuantajlar.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+        if (puantaj == null)
+            throw new InvalidOperationException("Puantaj bulunamadı.");
+
+        puantaj.OnayDurumu = PersonelPuantajOnayDurumu.Taslak;
+        puantaj.OnaylayanKullanici = null;
+        puantaj.OnayTarihi = null;
+        puantaj.OnayNotu = not;
+        puantaj.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+        return puantaj;
+    }
+
     public async Task DeletePuantajAsync(int id)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
@@ -182,7 +198,7 @@ public class PuantajService : IPuantajService
         return gunluk;
     }
 
-    public async Task OtomatikGunlukPuantajOlusturAsync(int puantajId, int yil, int ay)
+    public async Task OtomatikGunlukPuantajOlusturAsync(int puantajId, int yil, int ay, bool cumartesiCalisir = true, bool pazarCalisir = false, List<DateTime>? resmiTatiller = null)
     {
         using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -196,15 +212,27 @@ public class PuantajService : IPuantajService
             var tarih = new DateTime(yil, ay, gun);
 
             var mevcut = await context.GunlukPuantajlar
-                .AnyAsync(g => g.PersonelPuantajId == puantajId && g.Tarih.Date == tarih.Date);
+                .AnyAsync(g => g.PersonelPuantajId == puantajId && g.Gun == gun);
 
             if (!mevcut)
             {
+                var isTatil = false;
+
+                if (tarih.DayOfWeek == DayOfWeek.Sunday && !pazarCalisir)
+                    isTatil = true;
+                else if (tarih.DayOfWeek == DayOfWeek.Saturday && !cumartesiCalisir)
+                    isTatil = true;
+                else if (resmiTatiller != null && resmiTatiller.Any(t => t.Date == tarih.Date))
+                    isTatil = true;
+
                 var gunluk = new GunlukPuantaj
                 {
                     PersonelPuantajId = puantajId,
+                    Gun = gun,
                     Tarih = tarih,
-                    Calisti = tarih.DayOfWeek != DayOfWeek.Sunday, // Pazar çalışmasız
+                    Durum = isTatil ? 0 : 1,
+                    Calisti = !isTatil,
+                    FazlaMesaiSaat = 0,
                     CreatedAt = DateTime.UtcNow
                 };
                 context.GunlukPuantajlar.Add(gunluk);

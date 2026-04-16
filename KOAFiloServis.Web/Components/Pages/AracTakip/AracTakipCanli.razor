@@ -1,4 +1,4 @@
-@page "/arac-takip"
+﻿@page "/arac-takip"
 @page "/arac-takip/{AracId:int}"
 @using KOAFiloServis.Web.Services.Interfaces
 @using KOAFiloServis.Web.Hubs
@@ -173,7 +173,7 @@
                                     <a href="/arac-takip/gecmis/@seciliArac.AracId" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-clock-history"></i> Geçmiş
                                     </a>
-                                    <a href="/araclar/duzenle/@seciliArac.AracId" class="btn btn-sm btn-outline-secondary">
+                                    <a href="/araclar/@seciliArac.AracId" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-pencil"></i> Düzenle
                                     </a>
                                 </div>
@@ -198,7 +198,7 @@
             </div>
             <div class="toast-body">
                 @okunmamisAlarmSayisi adet okunmamış alarm var.
-                <a href="/ayarlar/arac-takip-alarmlar" class="text-white fw-bold ms-2">Görüntüle</a>
+                <a href="/ayarlar/arac-takip-cihaz" class="text-white fw-bold ms-2">Görüntüle</a>
             </div>
         </div>
     </div>
