@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KOAFiloServis.Shared.Entities;
 
@@ -20,6 +20,28 @@ public class BankaKasaHareket : BaseEntity
     public string? Aciklama { get; set; }
     public string? BelgeNo { get; set; } // Dekont, makbuz no vb.
     public IslemKaynak IslemKaynak { get; set; } = IslemKaynak.Manuel;
+
+    /// <summary>
+    /// Personel Cebinden Harcama: Personel kendi cebinden ödeme yaptıysa bu alan dolu olur
+    /// Bu durumda BankaHesapId kullanılmaz, personele geri ödeme yapılması gerekir
+    /// </summary>
+    public int? PersonelCebindenId { get; set; }
+    public virtual Sofor? PersonelCebinden { get; set; }
+
+    /// <summary>
+    /// Personele geri ödeme yapıldı mı?
+    /// </summary>
+    public bool PersoneleOdendi { get; set; } = false;
+
+    /// <summary>
+    /// Geri ödeme tarihi
+    /// </summary>
+    public DateTime? PersonelOdemeTarihi { get; set; }
+
+    /// <summary>
+    /// Geri ödeme yapılan banka/kasa hesabı
+    /// </summary>
+    public int? PersonelOdemeHesapId { get; set; }
 
     // Mahsup islemleri icin
     public int? MahsupHareketId { get; set; } // Iliskili karsi hareket (transfer/mahsup)
@@ -49,6 +71,12 @@ public class BankaKasaHareket : BaseEntity
     public virtual BankaHesap BankaHesap { get; set; } = null!;
     public virtual Cari? Cari { get; set; }
     public virtual ICollection<OdemeEslestirme> OdemeEslestirmeleri { get; set; } = new List<OdemeEslestirme>();
+
+    /// <summary>
+    /// Personel cebinden harcama mı?
+    /// </summary>
+    [NotMapped]
+    public bool IsPersonelCebinden => PersonelCebindenId.HasValue;
 }
 
 public enum HareketTipi
@@ -68,5 +96,6 @@ public enum IslemKaynak
     Butce = 7,
     EFatura = 8,
     Mahsup = 9,         // Hesaplar arasi transfer
-    CariMahsup = 10     // Cari hesap mahsubu
+    CariMahsup = 10,    // Cari hesap mahsubu
+    PersonelCebinden = 11 // Personel cebinden harcama
 }

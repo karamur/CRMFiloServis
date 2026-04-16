@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
@@ -11,15 +11,15 @@ namespace KOAFiloServis.Web.Services;
 /// </summary>
 public class EbysBelgeAramaService : IEbysBelgeAramaService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
     private readonly ILogger<EbysBelgeAramaService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public EbysBelgeAramaService(
-        ApplicationDbContext context,
+        IDbContextFactory<ApplicationDbContext> contextFactory,
         ILogger<EbysBelgeAramaService> logger)
     {
-        _context = context;
+        _contextFactory = contextFactory;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions 
         { 
@@ -42,20 +42,36 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
                 ? filtre.Kaynaklar 
                 : [EbysAramaKaynak.PersonelOzluk, EbysAramaKaynak.AracEvrak, EbysAramaKaynak.GelenEvrak, EbysAramaKaynak.GidenEvrak];
 
-            // Her kaynakta paralel arama
+            // Her kaynakta paralel arama - her task için ayrı DbContext
             var tasks = new List<Task<List<EbysAramaSonucItem>>>();
 
             if (kaynaklar.Contains(EbysAramaKaynak.PersonelOzluk))
-                tasks.Add(AraPersonelOzlukAsync(filtre));
+                tasks.Add(Task.Run(async () =>
+                {
+                    await using var context = await _contextFactory.CreateDbContextAsync();
+                    return await AraPersonelOzlukAsync(context, filtre);
+                }));
 
             if (kaynaklar.Contains(EbysAramaKaynak.AracEvrak))
-                tasks.Add(AraAracEvrakAsync(filtre));
+                tasks.Add(Task.Run(async () =>
+                {
+                    await using var context = await _contextFactory.CreateDbContextAsync();
+                    return await AraAracEvrakAsync(context, filtre);
+                }));
 
             if (kaynaklar.Contains(EbysAramaKaynak.GelenEvrak))
-                tasks.Add(AraGelenEvrakAsync(filtre));
+                tasks.Add(Task.Run(async () =>
+                {
+                    await using var context = await _contextFactory.CreateDbContextAsync();
+                    return await AraGelenEvrakAsync(context, filtre);
+                }));
 
             if (kaynaklar.Contains(EbysAramaKaynak.GidenEvrak))
-                tasks.Add(AraGidenEvrakAsync(filtre));
+                tasks.Add(Task.Run(async () =>
+                {
+                    await using var context = await _contextFactory.CreateDbContextAsync();
+                    return await AraGidenEvrakAsync(context, filtre);
+                }));
 
             var tümSonuclar = await Task.WhenAll(tasks);
             foreach (var kaynak in tümSonuclar)
@@ -123,9 +139,9 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     #region Kaynak Bazlı Arama
 
-    private async Task<List<EbysAramaSonucItem>> AraPersonelOzlukAsync(EbysGelismisAramaFiltre filtre)
+    private async Task<List<EbysAramaSonucItem>> AraPersonelOzlukAsync(ApplicationDbContext context, EbysGelismisAramaFiltre filtre)
     {
-        var query = _context.PersonelOzlukEvraklar
+        var query = context.PersonelOzlukEvraklar
             .AsNoTracking()
             .Include(x => x.Sofor)
             .Include(x => x.EvrakTanim)
@@ -194,9 +210,9 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
         }).ToList();
     }
 
-    private async Task<List<EbysAramaSonucItem>> AraAracEvrakAsync(EbysGelismisAramaFiltre filtre)
+    private async Task<List<EbysAramaSonucItem>> AraAracEvrakAsync(ApplicationDbContext context, EbysGelismisAramaFiltre filtre)
     {
-        var query = _context.AracEvraklari
+        var query = context.AracEvraklari
             .AsNoTracking()
             .Include(x => x.Arac)
             .Include(x => x.Dosyalar.Where(d => !d.IsDeleted))
@@ -282,19 +298,19 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
         }).ToList();
     }
 
-    private async Task<List<EbysAramaSonucItem>> AraGelenEvrakAsync(EbysGelismisAramaFiltre filtre)
+    private async Task<List<EbysAramaSonucItem>> AraGelenEvrakAsync(ApplicationDbContext context, EbysGelismisAramaFiltre filtre)
     {
-        return await AraEbysEvrakAsync(filtre, EvrakYonu.Gelen);
+        return await AraEbysEvrakAsync(context, filtre, EvrakYonu.Gelen);
     }
 
-    private async Task<List<EbysAramaSonucItem>> AraGidenEvrakAsync(EbysGelismisAramaFiltre filtre)
+    private async Task<List<EbysAramaSonucItem>> AraGidenEvrakAsync(ApplicationDbContext context, EbysGelismisAramaFiltre filtre)
     {
-        return await AraEbysEvrakAsync(filtre, EvrakYonu.Giden);
+        return await AraEbysEvrakAsync(context, filtre, EvrakYonu.Giden);
     }
 
-    private async Task<List<EbysAramaSonucItem>> AraEbysEvrakAsync(EbysGelismisAramaFiltre filtre, EvrakYonu yon)
+    private async Task<List<EbysAramaSonucItem>> AraEbysEvrakAsync(ApplicationDbContext context, EbysGelismisAramaFiltre filtre, EvrakYonu yon)
     {
-        var query = _context.EbysEvraklar
+        var query = context.EbysEvraklar
             .AsNoTracking()
             .Include(e => e.Kategori)
             .Include(e => e.AtananKullanici)
@@ -395,6 +411,7 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<List<EbysAramaOnerisi>> GetAramaOnerileriAsync(string metin, int kullaniciId)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var oneriler = new List<EbysAramaOnerisi>();
 
         if (string.IsNullOrWhiteSpace(metin) || metin.Length < 2)
@@ -414,7 +431,7 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
         var aramaLower = metin.ToLower();
 
         // Son aramalardan eşleşenler
-        var gecmisOneriler = await _context.Set<EbysAramaGecmisi>()
+        var gecmisOneriler = await context.Set<EbysAramaGecmisi>()
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId && x.AramaMetni.ToLower().Contains(aramaLower))
             .OrderByDescending(x => x.AramaTarihi)
@@ -447,7 +464,8 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<List<string>> GetPopulerAramalarAsync(int adet = 10)
     {
-        return await _context.Set<EbysAramaGecmisi>()
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Set<EbysAramaGecmisi>()
             .AsNoTracking()
             .Where(x => x.AramaTarihi > DateTime.Now.AddDays(-30))
             .GroupBy(x => x.AramaMetni.ToLower())
@@ -462,9 +480,10 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
         if (string.IsNullOrWhiteSpace(aramaMetni))
             return [];
 
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var kelimeler = aramaMetni.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        
-        return await _context.Set<EbysAramaGecmisi>()
+
+        return await context.Set<EbysAramaGecmisi>()
             .AsNoTracking()
             .Where(x => kelimeler.Any(k => x.AramaMetni.ToLower().Contains(k)))
             .GroupBy(x => x.AramaMetni)
@@ -480,7 +499,8 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<List<EbysAramaGecmisi>> GetAramaGecmisiAsync(int kullaniciId, int adet = 20)
     {
-        return await _context.Set<EbysAramaGecmisi>()
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Set<EbysAramaGecmisi>()
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId && !x.IsDeleted)
             .OrderByDescending(x => x.AramaTarihi)
@@ -493,8 +513,10 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
         if (string.IsNullOrWhiteSpace(filtre.AramaMetni))
             return;
 
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         // Aynı aramayı tekrar kaydetme
-        var mevcutArama = await _context.Set<EbysAramaGecmisi>()
+        var mevcutArama = await context.Set<EbysAramaGecmisi>()
             .Where(x => x.KullaniciId == kullaniciId && 
                 x.AramaMetni.ToLower() == filtre.AramaMetni.ToLower() &&
                 x.AramaTarihi > DateTime.Now.AddHours(-1))
@@ -515,13 +537,13 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
                 SonucSayisi = sonucSayisi,
                 AramaTarihi = DateTime.Now
             };
-            _context.Set<EbysAramaGecmisi>().Add(gecmis);
+            context.Set<EbysAramaGecmisi>().Add(gecmis);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         // Eski kayıtları temizle (max 100 kayıt)
-        var eskiKayitlar = await _context.Set<EbysAramaGecmisi>()
+        var eskiKayitlar = await context.Set<EbysAramaGecmisi>()
             .Where(x => x.KullaniciId == kullaniciId)
             .OrderByDescending(x => x.AramaTarihi)
             .Skip(100)
@@ -529,19 +551,20 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
         if (eskiKayitlar.Count > 0)
         {
-            _context.Set<EbysAramaGecmisi>().RemoveRange(eskiKayitlar);
-            await _context.SaveChangesAsync();
+            context.Set<EbysAramaGecmisi>().RemoveRange(eskiKayitlar);
+            await context.SaveChangesAsync();
         }
     }
 
     public async Task TemizleAramaGecmisiAsync(int kullaniciId)
     {
-        var kayitlar = await _context.Set<EbysAramaGecmisi>()
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var kayitlar = await context.Set<EbysAramaGecmisi>()
             .Where(x => x.KullaniciId == kullaniciId)
             .ToListAsync();
 
-        _context.Set<EbysAramaGecmisi>().RemoveRange(kayitlar);
-        await _context.SaveChangesAsync();
+        context.Set<EbysAramaGecmisi>().RemoveRange(kayitlar);
+        await context.SaveChangesAsync();
     }
 
     #endregion
@@ -550,7 +573,8 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<List<EbysKayitliArama>> GetKayitliAramalarAsync(int kullaniciId)
     {
-        return await _context.Set<EbysKayitliArama>()
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Set<EbysKayitliArama>()
             .AsNoTracking()
             .Where(x => x.KullaniciId == kullaniciId && !x.IsDeleted)
             .OrderBy(x => x.SiraNo)
@@ -560,35 +584,38 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<EbysKayitliArama> AramaKaydetAsync(int kullaniciId, string aramaAdi, EbysGelismisAramaFiltre filtre)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var kayitli = new EbysKayitliArama
         {
             KullaniciId = kullaniciId,
             AramaAdi = aramaAdi,
             FiltreJson = FiltreToJson(filtre),
-            SiraNo = await _context.Set<EbysKayitliArama>()
+            SiraNo = await context.Set<EbysKayitliArama>()
                 .Where(x => x.KullaniciId == kullaniciId)
                 .CountAsync() + 1
         };
 
-        _context.Set<EbysKayitliArama>().Add(kayitli);
-        await _context.SaveChangesAsync();
+        context.Set<EbysKayitliArama>().Add(kayitli);
+        await context.SaveChangesAsync();
 
         return kayitli;
     }
 
     public async Task SilKayitliAramaAsync(int id)
     {
-        var kayitli = await _context.Set<EbysKayitliArama>().FindAsync(id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var kayitli = await context.Set<EbysKayitliArama>().FindAsync(id);
         if (kayitli != null)
         {
             kayitli.IsDeleted = true;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
     }
 
     public async Task GuncelleKayitliAramaAsync(EbysKayitliArama arama)
     {
-        var mevcut = await _context.Set<EbysKayitliArama>().FindAsync(arama.Id);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var mevcut = await context.Set<EbysKayitliArama>().FindAsync(arama.Id);
         if (mevcut != null)
         {
             mevcut.AramaAdi = arama.AramaAdi;
@@ -596,7 +623,7 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
             mevcut.FiltreJson = arama.FiltreJson;
             mevcut.BildirimAktif = arama.BildirimAktif;
             mevcut.SiraNo = arama.SiraNo;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
     }
 
@@ -606,18 +633,19 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<EbysAramaIstatistik> GetGenelIstatistiklerAsync()
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var istatistik = new EbysAramaIstatistik();
 
-        istatistik.PersonelOzlukSayisi = await _context.PersonelOzlukEvraklar
+        istatistik.PersonelOzlukSayisi = await context.PersonelOzlukEvraklar
             .CountAsync(x => !x.IsDeleted);
 
-        istatistik.AracEvrakSayisi = await _context.AracEvraklari
+        istatistik.AracEvrakSayisi = await context.AracEvraklari
             .CountAsync(x => !x.IsDeleted);
 
-        istatistik.GelenEvrakSayisi = await _context.EbysEvraklar
+        istatistik.GelenEvrakSayisi = await context.EbysEvraklar
             .CountAsync(x => !x.IsDeleted && x.Yon == EvrakYonu.Gelen);
 
-        istatistik.GidenEvrakSayisi = await _context.EbysEvraklar
+        istatistik.GidenEvrakSayisi = await context.EbysEvraklar
             .CountAsync(x => !x.IsDeleted && x.Yon == EvrakYonu.Giden);
 
         istatistik.KategoriBazliSayilar = await GetKategoriBazliSayilarAsync();
@@ -628,10 +656,11 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<Dictionary<string, int>> GetKategoriBazliSayilarAsync()
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var sonuc = new Dictionary<string, int>();
 
         // Araç evrak kategorileri
-        var aracKategoriler = await _context.AracEvraklari
+        var aracKategoriler = await context.AracEvraklari
             .Where(x => !x.IsDeleted)
             .GroupBy(x => x.EvrakKategorisi)
             .Select(g => new { Kategori = g.Key, Sayi = g.Count() })
@@ -644,7 +673,7 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
         }
 
         // EBYS evrak kategorileri
-        var ebysKategoriler = await _context.EbysEvraklar
+        var ebysKategoriler = await context.EbysEvraklar
             .Where(x => !x.IsDeleted && x.KategoriId.HasValue)
             .Include(x => x.Kategori)
             .GroupBy(x => x.Kategori!.KategoriAdi)
@@ -667,9 +696,10 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<int> GetRiskliBelgeSayisiAsync(int yaklasanGunSayisi = 30)
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var sinirTarih = DateTime.Today.AddDays(yaklasanGunSayisi);
 
-        var aracRiskli = await _context.AracEvraklari
+        var aracRiskli = await context.AracEvraklari
             .CountAsync(x => !x.IsDeleted && x.BitisTarihi.HasValue && 
                 x.BitisTarihi.Value.Date <= sinirTarih);
 
@@ -682,10 +712,11 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
 
     public async Task<List<string>> GetTumKategorilerAsync()
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
         var kategoriler = new List<string>();
 
         // Araç evrak kategorileri
-        var aracKategoriler = await _context.AracEvraklari
+        var aracKategoriler = await context.AracEvraklari
             .Where(x => !x.IsDeleted)
             .Select(x => x.EvrakKategorisi)
             .Distinct()
@@ -693,7 +724,7 @@ public class EbysBelgeAramaService : IEbysBelgeAramaService
         kategoriler.AddRange(aracKategoriler.Where(k => !string.IsNullOrWhiteSpace(k))!);
 
         // EBYS evrak kategorileri
-        var ebysKategoriler = await _context.EbysEvrakKategoriler
+        var ebysKategoriler = await context.EbysEvrakKategoriler
             .Where(x => !x.IsDeleted && x.Aktif)
             .Select(x => x.KategoriAdi)
             .ToListAsync();

@@ -715,34 +715,42 @@
         {
             if (personelListesi == null || !personelListesi.Any()) return;
 
+            // Sadece IBAN'ı olan ve bankaya yatan miktarı > 0 olan personeller
             var ibanliPersoneller = personelListesi.Where(p => !string.IsNullOrWhiteSpace(p.Personel.IBAN) && p.BankayaYatan > 0).ToList();
             var ibansizPersoneller = personelListesi.Where(p => string.IsNullOrWhiteSpace(p.Personel.IBAN) && p.BankayaYatan > 0).ToList();
 
-            // Banka EFT dosyası oluştur (Türk bankaları genel format - semicolon delimited)
+            if (!ibanliPersoneller.Any())
+            {
+                ToastService.ShowWarning("Bankaya yatacak miktarı olan ve IBAN bilgisi mevcut personel bulunamadı.");
+                return;
+            }
+
+            // Banka EFT dosyası - sadece IBAN, Ad Soyad ve Bankaya Yatan miktar
             var sb = new System.Text.StringBuilder();
-            // Header: Tarih, Toplam Tutar, Toplam Adet
+            // Header
             sb.AppendLine($"BASLIK;{DateTime.Now:dd.MM.yyyy};{ibanliPersoneller.Count};{ibanliPersoneller.Sum(p => p.BankayaYatan):F2};TRY;MAAS {new DateTime(secilenYil, secilenAy, 1):MMMM yyyy}");
-            sb.AppendLine("IBAN;AD_SOYAD;TUTAR;ACIKLAMA;PERSONEL_KODU");
+            sb.AppendLine("IBAN;AD_SOYAD;TUTAR;ACIKLAMA");
 
             foreach (var item in ibanliPersoneller)
             {
                 var iban = item.Personel.IBAN!.Replace(" ", string.Empty).Trim();
                 var adSoyad = item.Personel.TamAd.Replace(";", " ");
-                var aciklama = $"{new DateTime(secilenYil, secilenAy, 1):yyyy-MM} Maas Odemesi";
-                sb.AppendLine($"{iban};{adSoyad};{item.BankayaYatan:F2};{aciklama};{item.Personel.SoforKodu}");
+                var aciklama = $"{new DateTime(secilenYil, secilenAy, 1):yyyy-MM} Maas";
+                // Sadece bankaya yatan miktar
+                sb.AppendLine($"{iban};{adSoyad};{item.BankayaYatan:F2};{aciklama}");
             }
 
             // Toplam satırı
-            sb.AppendLine($"TOPLAM;;;{ibanliPersoneller.Sum(p => p.BankayaYatan):F2};;");
+            sb.AppendLine($"TOPLAM;;{ibanliPersoneller.Sum(p => p.BankayaYatan):F2};");
 
             var bytes = System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
             var dosyaAdi = $"eft_maas_odeme_{secilenYil}_{secilenAy:00}.csv";
             await JS.InvokeVoidAsync("downloadFileFromBase64", dosyaAdi, Convert.ToBase64String(bytes));
 
-            var mesaj = $"EFT dosyası oluşturuldu: {ibanliPersoneller.Count} personel.";
+            var mesaj = $"EFT dosyası oluşturuldu: {ibanliPersoneller.Count} personel, Toplam: {ibanliPersoneller.Sum(p => p.BankayaYatan):N2} ₺";
             if (ibansizPersoneller.Any())
             {
-                mesaj += $" ⚠ {ibansizPersoneller.Count} personelin IBAN bilgisi eksik: {string.Join(", ", ibansizPersoneller.Select(p => p.Personel.TamAd))}";
+                mesaj += $" ⚠ {ibansizPersoneller.Count} personelin IBAN bilgisi eksik.";
                 ToastService.ShowWarning(mesaj);
             }
             else

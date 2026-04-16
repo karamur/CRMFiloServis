@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using KOAFiloServis.Web.Models;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +24,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         return await QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
+            .Include(h => h.PersonelCebinden)
             .OrderByDescending(h => h.IslemTarihi)
             .ToListAsync();
     }
@@ -33,6 +34,7 @@ public class BankaKasaHareketService : IBankaKasaHareketService
         var query = QueryHareketler()
             .Include(h => h.BankaHesap)
             .Include(h => h.Cari)
+            .Include(h => h.PersonelCebinden)
             .AsQueryable();
 
         // Arama filtresi

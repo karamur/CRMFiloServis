@@ -6,11 +6,11 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEdit ? "Masraf Kalemi D�zenle" : "Yeni Masraf Kalemi")</PageTitle>
+<PageTitle>@(IsEdit ? "Masraf Kalemi Düzenle" : "Yeni Masraf Kalemi")</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3><i class="bi bi-list-task me-2"></i>@(IsEdit ? "Masraf Kalemi D�zenle" : "Yeni Masraf Kalemi")</h3>
+        <h3><i class="bi bi-list-task me-2"></i>@(IsEdit ? "Masraf Kalemi Düzenle" : "Yeni Masraf Kalemi")</h3>
         <button class="btn btn-secondary" @onclick="Geri">
             <i class="bi bi-arrow-left me-1"></i>Geri
         </button>
@@ -30,7 +30,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label">Masraf Ad� *</label>
+                            <label class="form-label">Masraf Adı *</label>
                             <InputText @bind-Value="kalem.MasrafAdi" class="form-control" />
                         </div>
                     </div>
@@ -64,7 +64,7 @@
                         <i class="bi bi-check-lg me-1"></i>Kaydet
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Geri">
-                        <i class="bi bi-x-lg me-1"></i>�ptal
+                        <i class="bi bi-x-lg me-1"></i>İptal
                     </button>
                 </div>
             </EditForm>
@@ -124,15 +124,21 @@
 
     private string GetKategoriText(MasrafKategori kategori) => kategori switch
     {
-        MasrafKategori.Yakit => "Yak�t",
-        MasrafKategori.Bakim => "Bak�m",
+        MasrafKategori.Yakit => "Yakıt",
+        MasrafKategori.Bakim => "Bakım",
         MasrafKategori.Tamir => "Tamir",
         MasrafKategori.Sigorta => "Sigorta",
         MasrafKategori.Vergi => "Vergi",
-        MasrafKategori.Personel => "Personel Ula��m",
+        MasrafKategori.Personel => "Personel Ulaşım",
         MasrafKategori.Lastik => "Lastik",
-        MasrafKategori.YedekParca => "Yedek Par�a",
-        MasrafKategori.Diger => "Di�er",
+        MasrafKategori.YedekParca => "Yedek Parça",
+        MasrafKategori.Diger => "Diğer",
         _ => kategori.ToString()
     };
 }
+
+
+
+
+
+

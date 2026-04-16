@@ -5,11 +5,11 @@
 @inject ISoforService SoforService
 @rendermode InteractiveServer
 
-<PageTitle>Personel �zin Y�netimi</PageTitle>
+<PageTitle>Personel İzin Yönetimi</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-calendar-check me-2"></i>Personel �zin Y�netimi</h3>
+        <h3><i class="bi bi-calendar-check me-2"></i>Personel İzin Yönetimi</h3>
         <div class="d-flex gap-2">
             <select class="form-select" style="width: 120px;" @bind="secilenYil" @bind:after="YenileData">
                 @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
@@ -18,10 +18,10 @@
                 }
             </select>
             <button class="btn btn-info" @onclick="IzinHaklariOlustur">
-                <i class="bi bi-arrow-repeat me-1"></i>�zin Haklar� Olu�tur
+                <i class="bi bi-arrow-repeat me-1"></i>İzin Hakları oluştur
             </button>
             <button class="btn btn-success" @onclick="YeniIzinAc">
-                <i class="bi bi-plus-circle me-1"></i>Yeni �zin Talebi
+                <i class="bi bi-plus-circle me-1"></i>Yeni İzin Talebi
             </button>
         </div>
     </div>
@@ -34,7 +34,7 @@
     }
     else if (izinRapor != null)
     {
-        <!-- �zet Kartlar� -->
+        <!-- Özet Kartları -->
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card bg-primary text-white">
@@ -47,16 +47,16 @@
             <div class="col-md-3">
                 <div class="card bg-warning text-dark">
                     <div class="card-body text-center py-2">
-                        <h6 class="mb-0">Kullan�lan �zin</h6>
-                        <h3 class="mb-0">@izinRapor.ToplamKullanilanIzin g�n</h3>
+                        <h6 class="mb-0">Kullanİlan İzin</h6>
+                        <h3 class="mb-0">@izinRapor.ToplamKullanilanIzin Gün</h3>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card bg-success text-white">
                     <div class="card-body text-center py-2">
-                        <h6 class="mb-0">Kalan �zin</h6>
-                        <h3 class="mb-0">@izinRapor.ToplamKalanIzin g�n</h3>
+                        <h6 class="mb-0">Kalan İzin</h6>
+                        <h3 class="mb-0">@izinRapor.ToplamKalanIzin Gün</h3>
                     </div>
                 </div>
             </div>
@@ -70,12 +70,12 @@
             </div>
         </div>
 
-        <!-- �zin Tipi �zeti -->
+        <!-- İzin Tipi Özeti -->
         @if (izinRapor.TipBazliOzet.Any())
         {
             <div class="card mb-4">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>�zin T�r� Da��l�m�</h6>
+                    <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>İzin Türü Dağılımı</h6>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -84,7 +84,7 @@
                             <div class="col-md-3 mb-2">
                                 <div class="d-flex justify-content-between align-items-center p-2 border rounded">
                                     <span>@tip.IzinTipiAdi</span>
-                                    <span class="badge bg-primary">@tip.ToplamGun g�n (@tip.Adet talep)</span>
+                                    <span class="badge bg-primary">@tip.ToplamGun Gün (@tip.Adet talep)</span>
                                 </div>
                             </div>
                         }
@@ -93,12 +93,12 @@
             </div>
         }
 
-        <!-- Bekleyen �zin Talepleri -->
+        <!-- Bekleyen İzin Talepleri -->
         @if (bekleyenIzinler.Any())
         {
             <div class="card mb-4">
                 <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="bi bi-hourglass-split me-2"></i>Bekleyen �zin Talepleri</h6>
+                    <h6 class="mb-0"><i class="bi bi-hourglass-split me-2"></i>Bekleyen İzin Talepleri</h6>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -106,12 +106,12 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Personel</th>
-                                    <th>�zin T�r�</th>
-                                    <th>Ba�lang��</th>
-                                    <th>Biti�</th>
-                                    <th class="text-center">G�n</th>
-                                    <th>A��klama</th>
-                                    <th class="text-center">��lem</th>
+                                    <th>İzin Türü</th>
+                                    <th>Başlangıç</th>
+                                    <th>Bitiş</th>
+                                    <th class="text-center">Gün</th>
+                                    <th>Açıklama</th>
+                                    <th class="text-center">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -143,10 +143,10 @@
             </div>
         }
 
-        <!-- Personel �zin Haklar� -->
+        <!-- Personel İzin Hakları -->
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-people me-2"></i>Personel �zin Haklar� - @secilenYil</h6>
+                <h6 class="mb-0"><i class="bi bi-people me-2"></i>Personel İzin Hakları - @secilenYil</h6>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -154,12 +154,12 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Personel</th>
-                                <th class="text-center">Y�ll�k Hak</th>
+                                <th class="text-center">Yıllık Hak</th>
                                 <th class="text-center">Devreden</th>
                                 <th class="text-center">Toplam Hak</th>
-                                <th class="text-center">Kullan�lan</th>
+                                <th class="text-center">Kullanİlan</th>
                                 <th class="text-center">Kalan</th>
-                                <th>�zin Ge�mi�i</th>
+                                <th>İzin Geçmişi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -180,7 +180,7 @@
                                         @if (detay.IzinKayitlari.Any())
                                         {
                                             <button class="btn btn-sm btn-outline-info" @onclick="() => IzinGecmisiGoster(detay.SoforId)">
-                                                <i class="bi bi-eye me-1"></i>@detay.IzinKayitlari.Count kay�t
+                                                <i class="bi bi-eye me-1"></i>@detay.IzinKayitlari.Count kayıt
                                             </button>
                                         }
                                         else
@@ -198,21 +198,21 @@
     }
 </div>
 
-<!-- Yeni �zin Modal -->
+<!-- Yeni İzin Modal -->
 @if (showYeniIzinModal)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Yeni �zin Talebi</h5>
+                    <h5 class="modal-title">Yeni İzin Talebi</h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Personel</label>
                         <select class="form-select" @bind="yeniIzin.SoforId">
-                            <option value="0">-- Se�iniz --</option>
+                            <option value="0">-- seçiniz --</option>
                             @foreach (var sofor in soforler)
                             {
                                 <option value="@sofor.Id">@sofor.TamAd</option>
@@ -220,7 +220,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">�zin T�r�</label>
+                        <label class="form-label">İzin Türü</label>
                         <select class="form-select" @bind="yeniIzin.IzinTipi">
                             @foreach (IzinTipi tip in Enum.GetValues(typeof(IzinTipi)))
                             {
@@ -230,21 +230,21 @@
                     </div>
                     <div class="row">
                         <div class="col-6 mb-3">
-                            <label class="form-label">Ba�lang��</label>
+                            <label class="form-label">Başlangıç</label>
                             <input type="date" class="form-control" @bind="yeniIzin.BaslangicTarihi" />
                         </div>
                         <div class="col-6 mb-3">
-                            <label class="form-label">Biti�</label>
+                            <label class="form-label">Bitiş</label>
                             <input type="date" class="form-control" @bind="yeniIzin.BitisTarihi" />
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">A��klama</label>
+                        <label class="form-label">Açıklama</label>
                         <textarea class="form-control" rows="2" @bind="yeniIzin.Aciklama"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="ModalKapat">�ptal</button>
+                    <button class="btn btn-secondary" @onclick="ModalKapat">İptal</button>
                     <button class="btn btn-primary" @onclick="IzinKaydet">Kaydet</button>
                 </div>
             </div>
@@ -329,22 +329,33 @@
 
     private void IzinGecmisiGoster(int soforId)
     {
-        // �leride detayl� modal a��labilir
+        // ©leride detayl© modal a©©labilir
     }
 
     private string GetIzinTipiAdi(IzinTipi tip)
     {
         return tip switch
         {
-            IzinTipi.YillikIzin => "Y�ll�k �zin",
-            IzinTipi.UcretsizIzin => "�cretsiz �zin",
-            IzinTipi.RaporluIzin => "Raporlu �zin",
-            IzinTipi.MazeretIzni => "Mazeret �zni",
-            IzinTipi.EvlilikIzni => "Evlilik �zni",
-            IzinTipi.DogumIzni => "Do�um �zni",
-            IzinTipi.OlumIzni => "�l�m �zni",
-            IzinTipi.IdariIzin => "�dari �zin",
+            IzinTipi.YillikIzin => "Yıllık İzin",
+            IzinTipi.UcretsizIzin => "©cretsiz İzin",
+            IzinTipi.RaporluIzin => "Raporlu İzin",
+            IzinTipi.MazeretIzni => "Mazeret ©zni",
+            IzinTipi.EvlilikIzni => "Evlilik ©zni",
+            IzinTipi.DogumIzni => "Do©um ©zni",
+            IzinTipi.OlumIzni => "©l©m ©zni",
+            IzinTipi.IdariIzin => "©dari İzin",
             _ => tip.ToString()
         };
     }
 }
+
+
+
+
+
+
+
+
+
+
+

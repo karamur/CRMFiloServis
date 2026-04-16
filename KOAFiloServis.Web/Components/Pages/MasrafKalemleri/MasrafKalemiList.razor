@@ -19,14 +19,14 @@
     {
         <div class="text-center">
             <div class="spinner-border" role="status">
-                <span class="visually-hidden">Y�kleniyor...</span>
+                <span class="visually-hidden">Yükleniyor...</span>
             </div>
         </div>
     }
     else if (!kalemler.Any())
     {
         <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>Hen�z masraf kalemi bulunmamaktad�r.
+            <i class="bi bi-info-circle me-2"></i>Henüz masraf kalemi bulunmamaktAdır.
         </div>
     }
     else
@@ -38,10 +38,10 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>Masraf Kodu</th>
-                                <th>Masraf Ad�</th>
+                                <th>Masraf Adı</th>
                                 <th>Kategori</th>
                                 <th>Durum</th>
-                                <th style="width: 120px;">��lemler</th>
+                                <th style="width: 120px;">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -66,7 +66,7 @@
                                         }
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(kalem.Id)" title="D�zenle">
+                                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Duzenle(kalem.Id)" title="Düzenle">
                                             <i class="bi bi-pencil"></i>
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger" @onclick="() => SilOnay(kalem)" title="Sil">
@@ -89,14 +89,14 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Silme Onay�</h5>
+                    <h5 class="modal-title">silme Onayı</h5>
                     <button type="button" class="btn-close" @onclick="() => showDeleteModal = false"></button>
                 </div>
                 <div class="modal-body">
-                    <p><strong>@silinecekKalem?.MasrafAdi</strong> masraf kalemini silmek istedi�inize emin misiniz?</p>
+                    <p><strong>@silinecekKalem?.MasrafAdi</strong> masraf kalemini silmek istediğinize emin misiniz?</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">�ptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">İptal</button>
                     <button type="button" class="btn btn-danger" @onclick="Sil">Sil</button>
                 </div>
             </div>
@@ -148,15 +148,15 @@
 
     private string GetKategoriText(MasrafKategori kategori) => kategori switch
     {
-        MasrafKategori.Yakit => "Yak�t",
-        MasrafKategori.Bakim => "Bak�m",
+        MasrafKategori.Yakit => "Yakıt",
+        MasrafKategori.Bakim => "Bakım",
         MasrafKategori.Tamir => "Tamir",
         MasrafKategori.Sigorta => "Sigorta",
         MasrafKategori.Vergi => "Vergi",
-        MasrafKategori.Personel => "Personel Ula��m",
+        MasrafKategori.Personel => "Personel Ulaşım",
         MasrafKategori.Lastik => "Lastik",
-        MasrafKategori.YedekParca => "Yedek Par�a",
-        MasrafKategori.Diger => "Di�er",
+        MasrafKategori.YedekParca => "Yedek Parça",
+        MasrafKategori.Diger => "Diğer",
         _ => kategori.ToString()
     };
 
@@ -171,3 +171,9 @@
         _ => "bg-secondary"
     };
 }
+
+
+
+
+
+

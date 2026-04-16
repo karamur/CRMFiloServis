@@ -12,21 +12,21 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="mb-0"><i class="bi bi-bell-fill me-2 text-warning"></i>Bildirimler</h3>
-            <small class="text-muted">Sistem bildirimleri ve uyar�lar�</small>
+            <small class="text-muted">Sistem bildirimleri ve uyarıları</small>
         </div>
         <div>
             @if (bildirimler.Any(b => !b.Okundu))
             {
                 <button class="btn btn-outline-primary btn-sm me-2" @onclick="TumunuOkunduIsaretle">
-                    <i class="bi bi-check-all me-1"></i>T�m�n� Okundu ��aretle
+                    <i class="bi bi-check-all me-1"></i>Tümünü Okundu İşaretle
                 </button>
             }
             <div class="btn-group">
                 <button class="btn btn-sm @(filtre == "tumu" ? "btn-primary" : "btn-outline-primary")" @onclick="FiltreTumu">
-                    T�m�
+                    Tümü
                 </button>
                 <button class="btn btn-sm @(filtre == "okunmamis" ? "btn-primary" : "btn-outline-primary")" @onclick="FiltreOkunmamis">
-                    Okunmam�� (@okunmamisSayisi)
+                    Okunmamış (@okunmamisSayisi)
                 </button>
             </div>
         </div>
@@ -36,7 +36,7 @@
     {
         <div class="d-flex justify-content-center p-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Y�kleniyor...</span>
+                <span class="visually-hidden">Yükleniyor...</span>
             </div>
         </div>
     }
@@ -46,7 +46,7 @@
             <div class="card-body text-center py-5">
                 <i class="bi bi-bell-slash text-muted" style="font-size: 4rem;"></i>
                 <h5 class="mt-3 text-muted">Bildirim Yok</h5>
-                <p class="text-muted">Hen�z bildiriminiz bulunmuyor.</p>
+                <p class="text-muted">Henüz bildiriminiz bulunmuyor.</p>
             </div>
         </div>
     }
@@ -87,7 +87,7 @@
                                 }
                                 else if (bildirim.Oncelik == BildirimOncelik.Yuksek)
                                 {
-                                    <span class="badge bg-warning text-dark me-2">Y�ksek</span>
+                                    <span class="badge bg-warning text-dark me-2">Yüksek</span>
                                 }
                                 <button class="btn btn-sm btn-outline-danger" @onclick:stopPropagation="true" @onclick="() => BildirimSil(bildirim.Id)">
                                     <i class="bi bi-trash"></i>
@@ -135,7 +135,7 @@
         }
         catch (Exception ex)
         {
-            ToastService.ShowError("Bildirimler y�klenirken hata: " + ex.Message);
+            ToastService.ShowError("Bildirimler Yüklenirken hata: " + ex.Message);
         }
         finally
         {
@@ -161,10 +161,10 @@
             okunmamisSayisi = Math.Max(0, okunmamisSayisi - 1);
         }
 
-        // Link varsa y�nlendir
+        // Link varsa yönlendir
         if (!string.IsNullOrEmpty(bildirim.Link))
         {
-            // NavigationManager ile y�nlendirme yap�labilir
+            // NavigationManager ile yönlendirme yapılabilir
         }
     }
 
@@ -179,7 +179,7 @@
                 b.OkunmaTarihi = DateTime.UtcNow;
             }
             okunmamisSayisi = 0;
-            ToastService.ShowSuccess("T�m bildirimler okundu olarak i�aretlendi.");
+            ToastService.ShowSuccess("tüm bildirimler okundu olarak işaretlendi.");
         }
     }
 
@@ -220,11 +220,20 @@
     {
         var fark = DateTime.UtcNow - tarih;
 
-        if (fark.TotalMinutes < 1) return "Az �nce";
-        if (fark.TotalMinutes < 60) return $"{(int)fark.TotalMinutes} dakika �nce";
-        if (fark.TotalHours < 24) return $"{(int)fark.TotalHours} saat �nce";
-        if (fark.TotalDays < 7) return $"{(int)fark.TotalDays} g�n �nce";
+        if (fark.TotalMinutes < 1) return "Az önce";
+        if (fark.TotalMinutes < 60) return $"{(int)fark.TotalMinutes} dakika önce";
+        if (fark.TotalHours < 24) return $"{(int)fark.TotalHours} saat önce";
+        if (fark.TotalDays < 7) return $"{(int)fark.TotalDays} Gün önce";
 
         return tarih.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
     }
 }
+
+
+
+
+
+
+
+
+

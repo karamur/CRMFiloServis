@@ -8,16 +8,16 @@
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
-<PageTitle>Cari E�le�tirme - CRM</PageTitle>
+<PageTitle>Cari Eşleştirme - CRM</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h3 class="mb-0"><i class="bi bi-person-lines-fill me-2 text-secondary"></i>Cari E�le�tirme</h3>
-            <small class="text-muted">Kullan�c�n�za ba�l� carileri y�netin ve ekstre g�r�nt�leyin</small>
+            <h3 class="mb-0"><i class="bi bi-person-lines-fill me-2 text-secondary"></i>Cari Eşleştirme</h3>
+            <small class="text-muted">Kullanıcınıza bağlı carileri yönetin ve ekstre Görüntüleyin</small>
         </div>
         <button class="btn btn-primary" @onclick="YeniEslestirmeBaslat">
-            <i class="bi bi-link-45deg me-1"></i>Cari Ba�la
+            <i class="bi bi-link-45deg me-1"></i>Cari Bağla
         </button>
     </div>
 
@@ -25,31 +25,31 @@
     {
         <div class="d-flex justify-content-center p-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Y�kleniyor...</span>
+                <span class="visually-hidden">Yükleniyor...</span>
             </div>
         </div>
     }
     else
     {
         <div class="row">
-            <!-- Ba�l� Cariler -->
+            <!-- bağlı Cariler -->
             <div class="col-12">
                 <div class="card shadow-sm">
                     <div class="card-header bg-white">
                         <ul class="nav nav-tabs card-header-tabs">
                             <li class="nav-item">
                                 <button class="nav-link @(aktifTab == "tumu" ? "active" : "")" @onclick="TabTumu">
-                                    <i class="bi bi-list me-1"></i>T�m� (@bagliCariler.Count)
+                                    <i class="bi bi-list me-1"></i>Tümü (@bagliCariler.Count)
                                 </button>
                             </li>
                             <li class="nav-item">
                                 <button class="nav-link @(aktifTab == "musteri" ? "active" : "")" @onclick="TabMusteri">
-                                    <i class="bi bi-person me-1"></i>M��teriler (@bagliCariler.Count(c => c.Tip == KullaniciCariTip.Musteri))
+                                    <i class="bi bi-person me-1"></i>Müşteriler (@bagliCariler.Count(c => c.Tip == KullaniciCariTip.Musteri))
                                 </button>
                             </li>
                             <li class="nav-item">
                                 <button class="nav-link @(aktifTab == "tedarikci" ? "active" : "")" @onclick="TabTedarikci">
-                                    <i class="bi bi-building me-1"></i>Tedarik�iler (@bagliCariler.Count(c => c.Tip == KullaniciCariTip.Tedarikci))
+                                    <i class="bi bi-building me-1"></i>Tedarikçiler (@bagliCariler.Count(c => c.Tip == KullaniciCariTip.Tedarikci))
                                 </button>
                             </li>
                             <li class="nav-item">
@@ -64,9 +64,9 @@
                         {
                             <div class="text-center p-5 text-muted">
                                 <i class="bi bi-person-x" style="font-size: 3rem;"></i>
-                                <p class="mt-2">Hen�z ba�l� cari yok</p>
+                                <p class="mt-2">Henüz bağlı cari yok</p>
                                 <button class="btn btn-primary" @onclick="YeniEslestirmeBaslat">
-                                    <i class="bi bi-link-45deg me-1"></i>Cari Ba�la
+                                    <i class="bi bi-link-45deg me-1"></i>Cari Bağla
                                 </button>
                             </div>
                         }
@@ -81,10 +81,10 @@
                                             <th>Bakiye</th>
                                             <th class="text-center">Ekstre</th>
                                             <th class="text-center">Fatura</th>
-                                            <th class="text-center">�deme</th>
-                                            <th class="text-center">D�zenleme</th>
+                                            <th class="text-center">Ödeme</th>
+                                            <th class="text-center">Düzenleme</th>
                                             <th>Not</th>
-                                            <th class="text-end">��lem</th>
+                                            <th class="text-end">İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -155,10 +155,10 @@
                                                             <i class="bi bi-file-earmark-text"></i>
                                                         </button>
                                                     }
-                                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EslestirmeDuzenle(kc)" title="D�zenle">
+                                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EslestirmeDuzenle(kc)" title="Düzenle">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
-                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => EslestirmeSil(kc.Id)" title="Ba�lant�y� Kald�r">
+                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => EslestirmeSil(kc.Id)" title="Bağlantıyı Kaldır">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </td>
@@ -175,7 +175,7 @@
     }
 </div>
 
-<!-- E�le�tirme Modal -->
+<!-- Eşleştirme Modal -->
 @if (showModal)
 {
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);">
@@ -184,7 +184,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title">
                         <i class="bi bi-link-45deg me-2"></i>
-                        @(editingEslestirme?.Id > 0 ? "E�le�tirme D�zenle" : "Cari Ba�la")
+                        @(editingEslestirme?.Id > 0 ? "Eşleştirme Düzenle" : "Cari Bağla")
                     </h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
@@ -192,9 +192,9 @@
                     @if (editingEslestirme?.Id == 0)
                     {
                         <div class="mb-3">
-                            <label class="form-label">Cari Se�in *</label>
+                            <label class="form-label">Cari seçin *</label>
                             <select class="form-select" @bind="editingEslestirme!.CariId">
-                                <option value="0">Se�iniz</option>
+                                <option value="0">seçiniz</option>
                                 @foreach (var cari in mevcutCariler)
                                 {
                                     <option value="@cari.Id">@cari.CariKodu - @cari.Unvan</option>
@@ -221,30 +221,30 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">�zinler</label>
+                        <label class="form-label">İzinler</label>
                         <div class="border rounded p-3">
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" @bind="editingEslestirme.EkstreGorebilir" />
                                 <label class="form-check-label">
-                                    <i class="bi bi-file-earmark-text me-1"></i>Ekstre G�r�nt�leyebilir
+                                    <i class="bi bi-file-earmark-text me-1"></i>Ekstre Görüntüleyebilir
                                 </label>
                             </div>
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" @bind="editingEslestirme.FaturaGorebilir" />
                                 <label class="form-check-label">
-                                    <i class="bi bi-receipt me-1"></i>Faturalar� G�r�nt�leyebilir
+                                    <i class="bi bi-receipt me-1"></i>Faturaları Görüntüleyebilir
                                 </label>
                             </div>
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" @bind="editingEslestirme.OdemeYapabilir" />
                                 <label class="form-check-label">
-                                    <i class="bi bi-credit-card me-1"></i>�deme Kayd� Yapabilir
+                                    <i class="bi bi-credit-card me-1"></i>Ödeme kaydı Yapabilir
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" @bind="editingEslestirme.DuzenlemeYapabilir" />
                                 <label class="form-check-label">
-                                    <i class="bi bi-pencil me-1"></i>Cari Bilgilerini D�zenleyebilir
+                                    <i class="bi bi-pencil me-1"></i>Cari Bilgilerini Düzenleyebilir
                                 </label>
                             </div>
                         </div>
@@ -252,11 +252,11 @@
 
                     <div class="mb-3">
                         <label class="form-label">Not</label>
-                        <textarea class="form-control" rows="2" @bind="editingEslestirme.Not" placeholder="�ste�e ba�l� not"></textarea>
+                        <textarea class="form-control" rows="2" @bind="editingEslestirme.Not" placeholder="İsteğe bağlı not"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">�ptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">İptal</button>
                     <button type="button" class="btn btn-primary" @onclick="EslestirmeKaydet" disabled="@isSaving">
                         @if (isSaving)
                         {
@@ -323,7 +323,7 @@
         }
         catch (Exception ex)
         {
-            ToastService.ShowError("Veriler y�klenirken hata: " + ex.Message);
+            ToastService.ShowError("Veriler Yüklenirken hata: " + ex.Message);
         }
         finally
         {
@@ -373,7 +373,7 @@
     {
         if (editingEslestirme == null || editingEslestirme.CariId == 0)
         {
-            ToastService.ShowWarning("Cari se�imi zorunludur.");
+            ToastService.ShowWarning("Cari seçimi zorunludur.");
             return;
         }
 
@@ -383,12 +383,12 @@
             if (editingEslestirme.Id == 0)
             {
                 await CRMService.AddKullaniciCariAsync(editingEslestirme);
-                ToastService.ShowSuccess("Cari ba�land�.");
+                ToastService.ShowSuccess("Cari Bağlandı.");
             }
             else
             {
                 await CRMService.UpdateKullaniciCariAsync(editingEslestirme);
-                ToastService.ShowSuccess("E�le�tirme g�ncellendi.");
+                ToastService.ShowSuccess("Eşleştirme güncellendi.");
             }
 
             ModalKapat();
@@ -408,7 +408,7 @@
     {
         await CRMService.DeleteKullaniciCariAsync(id);
         bagliCariler.RemoveAll(x => x.Id == id);
-        ToastService.ShowSuccess("Cari ba�lant�s� kald�r�ld�.");
+        ToastService.ShowSuccess("Cari Bağlantısı Kaldırıldı.");
     }
 
     private void EkstreGoruntule(int cariId)
@@ -418,10 +418,10 @@
 
     private string GetTipAdi(KullaniciCariTip tip) => tip switch
     {
-        KullaniciCariTip.Musteri => "M��teri",
-        KullaniciCariTip.Tedarikci => "Tedarik�i",
+        KullaniciCariTip.Musteri => "Müşteri",
+        KullaniciCariTip.Tedarikci => "Tedarikçi",
         KullaniciCariTip.Personel => "Personel",
-        KullaniciCariTip.Ozel => "�zel",
+        KullaniciCariTip.Ozel => "Özel",
         _ => "Bilinmiyor"
     };
 
@@ -434,3 +434,14 @@
         _ => "bg-light text-dark"
     };
 }
+
+
+
+
+
+
+
+
+
+
+

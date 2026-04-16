@@ -5,11 +5,11 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
-<PageTitle>Veritaban� Yedekleme</PageTitle>
+<PageTitle>Veritabanı Yedekleme</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-database-fill-gear me-2"></i>Veritaban� Yedekleme</h3>
+        <h3><i class="bi bi-database-fill-gear me-2"></i>Veritabanı Yedekleme</h3>
         <button class="btn btn-primary" @onclick="YedekAl" disabled="@isBackingUp">
             @if (isBackingUp)
             {
@@ -25,11 +25,11 @@
     </div>
 
     <div class="row mb-4">
-        <!-- Ayarlar Kart� -->
+        <!-- Ayarlar Kartı -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header">
-                    <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Otomatik Yedekleme Ayarlar�</h6>
+                    <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Otomatik Yedekleme Ayarları</h6>
                 </div>
                 <div class="card-body">
                     <div class="form-check form-switch mb-3">
@@ -39,18 +39,18 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Yedekleme Aral���</label>
+                        <label class="form-label">Yedekleme Aralığı</label>
                         <select class="form-select" @bind="settings.AutoBackupIntervalHours" @bind:after="SaveSettings">
                             <option value="6">Her 6 Saatte</option>
                             <option value="12">Her 12 Saatte</option>
-                            <option value="24">G�nde Bir</option>
-                            <option value="48">2 G�nde Bir</option>
+                            <option value="24">Günde Bir</option>
+                            <option value="48">2 Günde Bir</option>
                             <option value="168">Haftada Bir</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Saklanacak Yedek Say�s�</label>
+                        <label class="form-label">Saklanacak Yedek sayısı</label>
                         <select class="form-select" @bind="settings.KeepBackupCount" @bind:after="SaveSettings">
                             <option value="5">5 Yedek</option>
                             <option value="10">10 Yedek</option>
@@ -72,7 +72,7 @@
             </div>
         </div>
 
-        <!-- Durum Kart� -->
+        <!-- Durum Kartı -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header">
@@ -97,14 +97,14 @@
                         }
                         else
                         {
-                            <span class="badge bg-warning text-dark"><i class="bi bi-pause-circle me-1"></i>Otomatik Yedekleme Kapal�</span>
+                            <span class="badge bg-warning text-dark"><i class="bi bi-pause-circle me-1"></i>Otomatik Yedekleme Kapalı</span>
                         }
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Son Yedek Kart� -->
+        <!-- Son Yedek Kartı -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header">
@@ -122,7 +122,7 @@
                         </div>
                         <div class="d-grid gap-2 mt-3">
                             <button class="btn btn-outline-primary btn-sm" @onclick="() => DownloadBackup(lastBackup)">
-                                <i class="bi bi-download me-1"></i>�ndir
+                                <i class="bi bi-download me-1"></i>İndir
                             </button>
                         </div>
                     }
@@ -130,7 +130,7 @@
                     {
                         <div class="text-center text-muted py-4">
                             <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">Hen�z yedek yok</p>
+                            <p class="mb-0 mt-2">Henüz yedek yok</p>
                         </div>
                     }
                 </div>
@@ -154,10 +154,10 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Dosya Ad�</th>
+                            <th>Dosya Adı</th>
                             <th>Boyut</th>
-                            <th>Olu�turulma Tarihi</th>
-                            <th class="text-center" style="width: 200px;">��lemler</th>
+                            <th>Oluşturulma Tarihi</th>
+                            <th class="text-center" style="width: 200px;">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -172,10 +172,10 @@
                                 <td>@backup.CreatedAt.ToString("dd.MM.yyyy HH:mm:ss")</td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary" title="�ndir" @onclick="() => DownloadBackup(backup)">
+                                        <button class="btn btn-outline-primary" title="İndir" @onclick="() => DownloadBackup(backup)">
                                             <i class="bi bi-download"></i>
                                         </button>
-                                        <button class="btn btn-outline-success" title="Geri Y�kle" @onclick="() => RestoreBackup(backup)">
+                                        <button class="btn btn-outline-success" title="Geri Yükle" @onclick="() => RestoreBackup(backup)">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                         <button class="btn btn-outline-danger" title="Sil" @onclick="() => DeleteBackup(backup)">
@@ -190,7 +190,7 @@
                             <tr>
                                 <td colspan="4" class="text-center text-muted py-4">
                                     <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                                    <p class="mb-0 mt-2">Hen�z yedek bulunmuyor. "Yeni Yedek Al" butonuna t�klayarak ilk yede�inizi olu�turun.</p>
+                                    <p class="mb-0 mt-2">Henüz yedek bulunmuyor. "Yeni Yedek Al" butonuna tıklayarak ilk yedeğinizi oluşturun.</p>
                                 </td>
                             </tr>
                         }
@@ -201,36 +201,36 @@
     </div>
 </div>
 
-<!-- Geri Y�kleme Onay Modal -->
+<!-- Geri Yükleme Onay Modal -->
 @if (showRestoreModal)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-warning">
-                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Geri Y�kleme Onay�</h5>
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Geri Yükleme Onayı</h5>
                     <button type="button" class="btn-close" @onclick="() => showRestoreModal = false"></button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-danger">
-                        <strong>Dikkat!</strong> Bu i�lem mevcut veritaban�n� silecek ve se�ilen yedekten geri y�kleyecektir. 
-                        Bu i�lem geri al�namaz!
+                        <strong>Dikkat!</strong> Bu işlem mevcut veritabanını silecek ve seçilen yedekten geri yükleyecektir. 
+                        Bu işlem geri alınamaz!
                     </div>
-                    <p>Geri y�klenecek yedek: <strong>@selectedBackup?.FileName</strong></p>
+                    <p>Geri yüklenecek yedek: <strong>@selectedBackup?.FileName</strong></p>
                     <p>Tarih: @selectedBackup?.CreatedAt.ToString("dd.MM.yyyy HH:mm")</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showRestoreModal = false">�ptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => showRestoreModal = false">İptal</button>
                     <button type="button" class="btn btn-danger" @onclick="ConfirmRestore" disabled="@isRestoring">
                         @if (isRestoring)
                         {
                             <span class="spinner-border spinner-border-sm me-1"></span>
-                            <text>Geri Y�kleniyor...</text>
+                            <text>Geri Yükleniyor...</text>
                         }
                         else
                         {
                             <i class="bi bi-arrow-counterclockwise me-1"></i>
-                            <text>Geri Y�kle</text>
+                            <text>Geri Yükle</text>
                         }
                     </button>
                 </div>
@@ -269,12 +269,12 @@
 
             if (result.Success)
             {
-                ToastService.ShowSuccess($"Yedek ba�ar�yla olu�turuldu: {result.FileName}");
+                ToastService.ShowSuccess($"Yedek başarıyla oluşturuldu: {result.FileName}");
                 await LoadData();
             }
             else
             {
-                ToastService.ShowError($"Yedekleme hatas�: {result.ErrorMessage}");
+                ToastService.ShowError($"Yedekleme hatası: {result.ErrorMessage}");
             }
         }
         finally
@@ -303,12 +303,12 @@
             }
             else
             {
-                ToastService.ShowError("Dosya bulunamad�!");
+                ToastService.ShowError("Dosya bulunamadı!");
             }
         }
         catch (Exception ex)
         {
-            ToastService.ShowError($"�ndirme hatas�: {ex.Message}");
+            ToastService.ShowError($"İndirme hatası: {ex.Message}");
         }
     }
 
@@ -331,16 +331,16 @@
 
             if (success)
             {
-                ToastService.ShowSuccess("Veritaban� ba�ar�yla geri y�klendi. Sayfa yenileniyor...");
+                ToastService.ShowSuccess("Veritabanı başarıyla geri Yüklendi. Sayfa yenileniyor...");
                 showRestoreModal = false;
 
-                // Sayfay� yenile
+                // Sayfayı yenile
                 await Task.Delay(2000);
                 await JS.InvokeVoidAsync("location.reload");
             }
             else
             {
-                ToastService.ShowError("Geri y�kleme ba�ar�s�z!");
+                ToastService.ShowError("Geri Yükleme başarısız!");
             }
         }
         finally
@@ -362,7 +362,7 @@
         }
         else
         {
-            ToastService.ShowError("Silme i�lemi ba�ar�s�z!");
+            ToastService.ShowError("silme işlemi başarısız!");
         }
     }
 
@@ -381,3 +381,13 @@
         return $"{total / (1024.0 * 1024.0):F2} MB";
     }
 }
+
+
+
+
+
+
+
+
+
+

@@ -427,10 +427,24 @@ await RunScopedSafeAsync(app, "SoforMaasMigration", async services =>
     await KOAFiloServis.Web.Data.Migrations.SoforMaasMigrationHelper.ApplySoforMaasAlanlariAsync(context);
 });
 
+// PersonelPuantajlar ve GunlukPuantajlar tablolarini olustur
+await RunScopedSafeAsync(app, "PersonelPuantajTableMigration", async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await KOAFiloServis.Web.Data.Migrations.PersonelPuantajTableMigrationHelper.EnsurePersonelPuantajTablesAsync(context);
+});
+
 await RunScopedSafeAsync(app, "PersonelPuantajOnayMigration", async services =>
 {
     var context = services.GetRequiredService<ApplicationDbContext>();
     await KOAFiloServis.Web.Data.Migrations.PersonelPuantajOnayMigrationHelper.ApplyPersonelPuantajOnayAsync(context);
+});
+
+// BudgetOdemeler tablosuna KalanSonrakiDonemeAktarilsin kolonunu ekle
+await RunScopedSafeAsync(app, "BudgetOdemeKalanMigration", async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    await KOAFiloServis.Web.Data.Migrations.BudgetOdemeKalanMigrationHelper.EnsureBudgetOdemeKalanColumnAsync(context);
 });
 
 await RunScopedSafeAsync(app, "FaturaGibDurumMigration", async services =>
@@ -541,6 +555,13 @@ await RunScopedSafeAsync(app, "MuhasebeAyarMigration", async services =>
 {
     var context = services.GetRequiredService<ApplicationDbContext>();
     await KOAFiloServis.Web.Data.Migrations.MuhasebeAyarMigrationHelper.ApplyStokMasrafAyarlariAsync(context);
+});
+
+await RunScopedSafeAsync(app, "BankaHareketPersonelCebindenMigration", async services =>
+{
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    await KOAFiloServis.Web.Data.Migrations.BankaHareketPersonelCebindenMigrationHelper.EnsurePersonelCebindenColumnsAsync(context, logger);
 });
 
 await RunScopedSafeAsync(app, "SeedDefaultEvrakTanimlari", async services =>

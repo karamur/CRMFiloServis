@@ -509,6 +509,22 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.MuhasebeFisId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // Personel cebinden harcama ilişkisi
+            entity.HasOne(e => e.PersonelCebinden)
+                .WithMany()
+                .HasForeignKey(e => e.PersonelCebindenId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Banka hesap ilişkisi
+            entity.HasOne(e => e.BankaHesap)
+                .WithMany()
+                .HasForeignKey(e => e.BankaHesapId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Personel cebinden index
+            entity.HasIndex(e => new { e.PersonelCebindenId, e.PersoneleOdendi });
+
             entity.HasQueryFilter(e => !e.IsDeleted);
         });
 
@@ -654,6 +670,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.CariId, e.IslemTarihi });
             entity.HasIndex(e => new { e.HareketTipi, e.IslemTarihi });
             entity.HasIndex(e => new { e.SirketId, e.IslemTarihi });
+            entity.HasIndex(e => new { e.PersonelCebindenId, e.PersoneleOdendi }); // Personel cebinden index
             entity.Property(e => e.IslemNo).HasMaxLength(50);
             entity.Property(e => e.Tutar).HasPrecision(18, 2);
             entity.HasOne(e => e.BankaHesap)
@@ -663,6 +680,12 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(e => e.Cari)
                 .WithMany(c => c.BankaKasaHareketler)
                 .HasForeignKey(e => e.CariId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Personel cebinden harcama ilişkisi
+            entity.HasOne(e => e.PersonelCebinden)
+                .WithMany()
+                .HasForeignKey(e => e.PersonelCebindenId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             // Sirket iliskisi (Multi-tenant)

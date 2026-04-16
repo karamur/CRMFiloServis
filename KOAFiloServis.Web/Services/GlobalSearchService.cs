@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,11 +6,11 @@ namespace KOAFiloServis.Web.Services;
 
 public class GlobalSearchService : IGlobalSearchService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
 
-    public GlobalSearchService(ApplicationDbContext context)
+    public GlobalSearchService(IDbContextFactory<ApplicationDbContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<GlobalSearchResult> SearchAsync(string searchTerm, int maxResults = 10)
@@ -21,12 +21,36 @@ public class GlobalSearchService : IGlobalSearchService
         var result = new GlobalSearchResult();
         var term = searchTerm.ToLower().Trim();
 
-        // Paralel arama
-        var cariTask = SearchCarilerAsync(term, maxResults);
-        var aracTask = SearchAraclarAsync(term, maxResults);
-        var personelTask = SearchPersonellerAsync(term, maxResults);
-        var faturaTask = SearchFaturalarAsync(term, maxResults);
-        var guzergahTask = SearchGuzergahlarAsync(term, maxResults);
+        // Her paralel çağrı için ayrı DbContext kullan (thread-safe)
+        var cariTask = Task.Run(async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await SearchCarilerAsync(context, term, maxResults);
+        });
+
+        var aracTask = Task.Run(async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await SearchAraclarAsync(context, term, maxResults);
+        });
+
+        var personelTask = Task.Run(async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await SearchPersonellerAsync(context, term, maxResults);
+        });
+
+        var faturaTask = Task.Run(async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await SearchFaturalarAsync(context, term, maxResults);
+        });
+
+        var guzergahTask = Task.Run(async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await SearchGuzergahlarAsync(context, term, maxResults);
+        });
 
         await Task.WhenAll(cariTask, aracTask, personelTask, faturaTask, guzergahTask);
 
@@ -39,9 +63,9 @@ public class GlobalSearchService : IGlobalSearchService
         return result;
     }
 
-    private async Task<List<SearchResultItem>> SearchCarilerAsync(string term, int max)
+    private async Task<List<SearchResultItem>> SearchCarilerAsync(ApplicationDbContext context, string term, int max)
     {
-        var cariler = await _context.Cariler
+        var cariler = await context.Cariler
             .Where(c => c.CariKodu.ToLower().Contains(term) ||
                        c.Unvan.ToLower().Contains(term) ||
                        (c.VergiNo != null && c.VergiNo.Contains(term)) ||
@@ -62,9 +86,9 @@ public class GlobalSearchService : IGlobalSearchService
         }).ToList();
     }
 
-    private async Task<List<SearchResultItem>> SearchAraclarAsync(string term, int max)
+    private async Task<List<SearchResultItem>> SearchAraclarAsync(ApplicationDbContext context, string term, int max)
     {
-        var araclar = await _context.Araclar
+        var araclar = await context.Araclar
             .Where(a => (a.AktifPlaka != null && a.AktifPlaka.ToLower().Contains(term)) ||
                        (a.Marka != null && a.Marka.ToLower().Contains(term)) ||
                        (a.Model != null && a.Model.ToLower().Contains(term)))
@@ -84,9 +108,9 @@ public class GlobalSearchService : IGlobalSearchService
         }).ToList();
     }
 
-    private async Task<List<SearchResultItem>> SearchPersonellerAsync(string term, int max)
+    private async Task<List<SearchResultItem>> SearchPersonellerAsync(ApplicationDbContext context, string term, int max)
     {
-        var personeller = await _context.Soforler
+        var personeller = await context.Soforler
             .Where(s => s.SoforKodu.ToLower().Contains(term) ||
                        s.Ad.ToLower().Contains(term) ||
                        s.Soyad.ToLower().Contains(term) ||
@@ -108,9 +132,9 @@ public class GlobalSearchService : IGlobalSearchService
         }).ToList();
     }
 
-    private async Task<List<SearchResultItem>> SearchFaturalarAsync(string term, int max)
+    private async Task<List<SearchResultItem>> SearchFaturalarAsync(ApplicationDbContext context, string term, int max)
     {
-        var faturalar = await _context.Faturalar
+        var faturalar = await context.Faturalar
             .Include(f => f.Cari)
             .Where(f => f.FaturaNo.ToLower().Contains(term) ||
                        f.Cari.Unvan.ToLower().Contains(term))
@@ -121,7 +145,7 @@ public class GlobalSearchService : IGlobalSearchService
         {
             Id = f.Id,
             Baslik = f.FaturaNo,
-            AltBaslik = $"{f.Cari?.Unvan} - {f.GenelToplam:N0} ?",
+            AltBaslik = $"{f.Cari?.Unvan} - {f.GenelToplam:N0} ₺",
             Kategori = "Fatura",
             Icon = "bi-receipt",
             Url = $"/faturalar/{f.Id}",
@@ -130,9 +154,9 @@ public class GlobalSearchService : IGlobalSearchService
         }).ToList();
     }
 
-    private async Task<List<SearchResultItem>> SearchGuzergahlarAsync(string term, int max)
+    private async Task<List<SearchResultItem>> SearchGuzergahlarAsync(ApplicationDbContext context, string term, int max)
     {
-        var guzergahlar = await _context.Guzergahlar
+        var guzergahlar = await context.Guzergahlar
             .Include(g => g.Cari)
             .Where(g => g.GuzergahKodu.ToLower().Contains(term) ||
                        g.GuzergahAdi.ToLower().Contains(term) ||

@@ -4,11 +4,11 @@
 @inject IMaliAnalizService MaliAnalizService
 @rendermode InteractiveServer
 
-<PageTitle>Ayl�k Checklist</PageTitle>
+<PageTitle>Aylık Checklist</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-clipboard-check me-2"></i>Ayl�k Checklist</h3>
+        <h3><i class="bi bi-clipboard-check me-2"></i>Aylık Checklist</h3>
         <div class="d-flex gap-2">
             <select class="form-select" style="width: 120px;" @bind="secilenYil" @bind:after="YenileData">
                 @for (int y = DateTime.Today.Year; y >= DateTime.Today.Year - 3; y--)
@@ -29,19 +29,19 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Y�kleniyor...</span>
+                <span class="visually-hidden">Yükleniyor...</span>
             </div>
         </div>
     }
     else if (ozet != null)
     {
-        <!-- �zet Kartlar� -->
+        <!-- Özet Kartları -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="card border-danger">
                     <div class="card-body text-center">
                         <h1 class="text-danger">@ozet.ToplamKritik</h1>
-                        <h6 class="text-muted">Kritik Uyar�</h6>
+                        <h6 class="text-muted">Kritik Uyarı</h6>
                     </div>
                 </div>
             </div>
@@ -49,7 +49,7 @@
                 <div class="card border-warning">
                     <div class="card-body text-center">
                         <h1 class="text-warning">@ozet.ToplamUyari</h1>
-                        <h6 class="text-muted">Uyar�</h6>
+                        <h6 class="text-muted">Uyarı</h6>
                     </div>
                 </div>
             </div>
@@ -65,21 +65,21 @@
             </div>
         </div>
 
-        <!-- �of�r Checklist -->
+        <!-- Şoför Checklist -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>�of�r Checklist</h5>
+                <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Şoför Checklist</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>�of�r</th>
+                                <th>Şoför</th>
                                 <th class="text-center">Ehliyet</th>
                                 <th class="text-center">SRC</th>
                                 <th class="text-center">Psikoteknik</th>
-                                <th class="text-center">Sa�l�k</th>
+                                <th class="text-center">Sa©l©k</th>
                                 <th class="text-center">Durum</th>
                             </tr>
                         </thead>
@@ -104,21 +104,21 @@
             </div>
         </div>
 
-        <!-- Ara� Checklist -->
+        <!-- Araç Checklist -->
         <div class="card mb-4">
             <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="bi bi-truck me-2"></i>Ara� Checklist</h5>
+                <h5 class="mb-0"><i class="bi bi-truck me-2"></i>Araç Checklist</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Ara�</th>
+                                <th>Araç</th>
                                 <th class="text-center">Muayene</th>
                                 <th class="text-center">Sigorta</th>
                                 <th class="text-center">Kasko</th>
-                                <th class="text-center">Bak�m</th>
+                                <th class="text-center">Bakım</th>
                                 <th class="text-center">Durum</th>
                             </tr>
                         </thead>
@@ -161,22 +161,22 @@
             </div>
         </div>
 
-        <!-- G�zergah Checklist -->
+        <!-- Güzergah Checklist -->
         <div class="card mb-4">
             <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-signpost me-2"></i>G�zergah Checklist</h5>
+                <h5 class="mb-0"><i class="bi bi-signpost me-2"></i>Güzergah Checklist</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>G�zergah</th>
-                                <th>M��teri</th>
-                                <th class="text-center">S�zle�me</th>
+                                <th>Güzergah</th>
+                                <th>Müşteri</th>
+                                <th class="text-center">S©zle©me</th>
                                 <th class="text-center">Fiyat</th>
                                 <th class="text-center">Sefer</th>
-                                <th class="text-center">�deme</th>
+                                <th class="text-center">Ödeme</th>
                                 <th class="text-center">Durum</th>
                             </tr>
                         </thead>
@@ -208,14 +208,14 @@
             </div>
         </div>
 
-        <!-- A��klama -->
+        <!-- Açıklama -->
         <div class="card">
             <div class="card-body">
-                <h6>Durum A��klamalar�</h6>
+                <h6>Durum Açıklamalar©</h6>
                 <div class="d-flex gap-4">
                     <span>@GetDurumBadge("Tamam") Sorun Yok</span>
-                    <span>@GetDurumBadge("Uyari") 30 G�n ��inde S�resi Dolacak</span>
-                    <span>@GetDurumBadge("Kritik") S�resi Ge�mi� / Acil Aksiyon Gerekli</span>
+                    <span>@GetDurumBadge("Uyari") 30 Gün ©©inde süresi Dolacak</span>
+                    <span>@GetDurumBadge("Kritik") süresi Ge©mi© / Acil Aksiyon Gerekli</span>
                     <span>@GetDurumBadge("Bekliyor") Kontrol Edilmedi</span>
                 </div>
             </div>
@@ -260,3 +260,14 @@
         return new MarkupString($"<span class=\"badge bg-{renk}\"><i class=\"bi bi-{ikon} me-1\"></i>{durum}</span>");
     }
 }
+
+
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-@page "/araclar/{AracId:int}/evraklar"
+﻿@page "/araclar/{AracId:int}/evraklar"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
 @using Microsoft.AspNetCore.Components.Forms
@@ -56,7 +56,7 @@
                             @if (aktifEvrak != null)
                             {
                                 <span class="badge @(suresiDolmus ? "bg-light text-danger" : suresiDolacak ? "bg-dark" : "bg-light text-success")">
-                                    @(suresiDolmus ? "Suresi Dolmus" : suresiDolacak ? "Yaklas�yor" : "Aktif")
+                                    @(suresiDolmus ? "Süresi Dolmuş" : suresiDolacak ? "Yaklaşıyor" : "Aktif")
                                 </span>
                             }
                             else

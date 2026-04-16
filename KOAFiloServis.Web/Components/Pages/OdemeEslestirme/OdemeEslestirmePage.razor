@@ -8,17 +8,17 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>�deme E�le�tirme</PageTitle>
+<PageTitle>Ödeme Eşleştirme</PageTitle>
 
 <div class="container-fluid">
-    <h3 class="mb-3"><i class="bi bi-link-45deg me-2"></i>Fatura / �deme E�le�tirme</h3>
+    <h3 class="mb-3"><i class="bi bi-link-45deg me-2"></i>Fatura / Ödeme Eşleştirme</h3>
 
     <div class="row mb-3">
         <div class="col-md-4">
             <div class="mb-3">
-                <label class="form-label">Cari Se�iniz</label>
+                <label class="form-label">Cari seçiniz</label>
                 <select class="form-select" @onchange="CariSecildi">
-                    <option value="">-- Cari Se�iniz --</option>
+                    <option value="">-- Cari seçiniz --</option>
                     @foreach (var cari in cariler)
                     {
                         <option value="@cari.Id">@cari.Unvan</option>
@@ -34,12 +34,12 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header bg-danger text-white">
-                        <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>�denmemi� Faturalar</h6>
+                        <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Ödenmemiş Faturalar</h6>
                     </div>
                     <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                         @if (odenmemisFaturalar == null || !odenmemisFaturalar.Any())
                         {
-                            <p class="text-muted">�denmemi� fatura bulunmuyor.</p>
+                            <p class="text-muted">Ödenmemiş fatura bulunmuyor.</p>
                         }
                         else
                         {
@@ -64,12 +64,12 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header bg-success text-white">
-                        <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>E�le�tirilmemi� Hareketler</h6>
+                        <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Eşleştirilmemiş Hareketler</h6>
                     </div>
                     <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                         @if (eslestirmeyeUygunHareketler == null || !eslestirmeyeUygunHareketler.Any())
                         {
-                            <p class="text-muted">E�le�tirilmemi� hareket bulunmuyor.</p>
+                            <p class="text-muted">Eşleştirilmemiş hareket bulunmuyor.</p>
                         }
                         else
                         {
@@ -96,22 +96,22 @@
         {
             <div class="card mt-3">
                 <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0">E�le�tirme Yap</h6>
+                    <h6 class="mb-0">Eşleştirme Yap</h6>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-4">
                             <label class="form-label">Fatura Kalan Tutar</label>
-                            <input type="text" class="form-control" readonly value="@secilenFatura?.KalanTutar.ToString("N2") ?" />
+                            <input type="text" class="form-control" readonly value="@secilenFatura?.KalanTutar.ToString("N2") ₺" />
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">E�le�tirilecek Tutar (?)</label>
+                            <label class="form-label">Eşleştirilecek Tutar (₺)</label>
                             <input type="number" class="form-control" @bind="eslestirmeTutar" step="0.01" />
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">&nbsp;</label>
                             <button class="btn btn-primary d-block w-100" @onclick="Eslestir">
-                                <i class="bi bi-link-45deg me-1"></i>E�le�tir
+                                <i class="bi bi-link-45deg me-1"></i>Eşleştir
                             </button>
                         </div>
                     </div>
@@ -121,7 +121,7 @@
 
         <div class="card mt-3">
             <div class="card-header">
-                <h6 class="mb-0">Son E�le�tirmeler</h6>
+                <h6 class="mb-0">Son Eşleştirmeler</h6>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -253,3 +253,11 @@
         await LoadCariData();
     }
 }
+
+
+
+
+
+
+
+

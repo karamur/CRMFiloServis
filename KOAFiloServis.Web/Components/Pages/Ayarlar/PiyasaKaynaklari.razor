@@ -6,17 +6,17 @@
 @inject IToastService ToastService
 @rendermode InteractiveServer
 
-<PageTitle>Piyasa Ara�t�rma Kaynaklar�</PageTitle>
+<PageTitle>Piyasa Araştırma Kaynakları</PageTitle>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h3 class="mb-1"><i class="bi bi-globe me-2"></i>Piyasa Ara�t�rma Kaynaklar�</h3>
-            <small class="text-muted">Ara� piyasa ara�t�rmas�nda kullan�lacak web sitelerini y�netin</small>
+            <h3 class="mb-1"><i class="bi bi-globe me-2"></i>Piyasa Araştırma Kaynakları</h3>
+            <small class="text-muted">Araç piyasa Araştırmasında kullanılacak web sitelerini yönetin</small>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary" @onclick="VarsayilanlariYukle" disabled="@isLoading">
-                <i class="bi bi-arrow-clockwise me-1"></i>Varsay�lanlar� Y�kle
+                <i class="bi bi-arrow-clockwise me-1"></i>Varsayılanları Yükle
             </button>
             <button class="btn btn-primary" @onclick="YeniKaynakEkle">
                 <i class="bi bi-plus-lg me-1"></i>Yeni Kaynak Ekle
@@ -37,7 +37,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary"></div>
-            <p class="mt-2">Y�kleniyor...</p>
+            <p class="mt-2">Yükleniyor...</p>
         </div>
     }
     else
@@ -46,7 +46,7 @@
         <ul class="nav nav-tabs mb-4">
             <li class="nav-item">
                 <button class="nav-link @(activeTab == "tumu" ? "active" : "")" @onclick='() => activeTab = "tumu"'>
-                    <i class="bi bi-list me-1"></i>T�m� <span class="badge bg-secondary ms-1">@kaynaklar.Count</span>
+                    <i class="bi bi-list me-1"></i>Tümü <span class="badge bg-secondary ms-1">@kaynaklar.Count</span>
                 </button>
             </li>
             <li class="nav-item">
@@ -66,7 +66,7 @@
             </li>
             <li class="nav-item">
                 <button class="nav-link @(activeTab == "Sifir" ? "active" : "")" @onclick='() => activeTab = "Sifir"'>
-                    <i class="bi bi-car-front me-1"></i>S�f�r Ara� <span class="badge bg-warning text-dark ms-1">@kaynaklar.Count(x => x.KaynakTipi == "Sifir")</span>
+                    <i class="bi bi-car-front me-1"></i>Sıfır Araç <span class="badge bg-warning text-dark ms-1">@kaynaklar.Count(x => x.KaynakTipi == "Sifir")</span>
                 </button>
             </li>
         </ul>
@@ -80,7 +80,7 @@
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center gap-2">
                                 <span class="badge @GetKaynakTipiBadge(kaynak.KaynakTipi)">@kaynak.KaynakTipi</span>
-                                <span class="badge bg-secondary">S�ra: @kaynak.Sira</span>
+                                <span class="badge bg-secondary">Sıra: @kaynak.Sira</span>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" checked="@kaynak.Aktif" 
@@ -117,7 +117,7 @@
                             <small class="text-muted">
                                 @if (kaynak.GuncellemeTarihi.HasValue)
                                 {
-                                    <span>G�ncelleme: @kaynak.GuncellemeTarihi.Value.ToString("dd.MM.yyyy")</span>
+                                    <span>Güncelleme: @kaynak.GuncellemeTarihi.Value.ToString("dd.MM.yyyy")</span>
                                 }
                                 else
                                 {
@@ -125,7 +125,7 @@
                                 }
                             </small>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" @onclick="() => KaynakDuzenle(kaynak)" title="D�zenle">
+                                <button class="btn btn-outline-primary" @onclick="() => KaynakDuzenle(kaynak)" title="Düzenle">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button class="btn btn-outline-danger" @onclick="() => KaynakSil(kaynak)" title="Sil">
@@ -142,13 +142,13 @@
         {
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-inbox display-1"></i>
-                <p class="mt-2">Bu kategoride kaynak bulunamad�.</p>
+                <p class="mt-2">Bu kategoride kaynak bulunamadı.</p>
             </div>
         }
     }
 </div>
 
-<!-- Kaynak Ekleme/D�zenleme Modal -->
+<!-- Kaynak Ekleme/Düzenleme Modal -->
 @if (showModal)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
@@ -157,20 +157,20 @@
                 <div class="modal-header">
                     <h5 class="modal-title">
                         <i class="bi bi-globe me-2"></i>
-                        @(editingKaynak.Id == 0 ? "Yeni Kaynak Ekle" : "Kayna�� D�zenle")
+                        @(editingKaynak.Id == 0 ? "Yeni Kaynak Ekle" : "Kaynağı Düzenle")
                     </h5>
                     <button type="button" class="btn-close" @onclick="ModalKapat"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Kaynak Ad� <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" @bind="editingKaynak.Ad" placeholder="�rn: Sahibinden.com" />
+                            <label class="form-label">Kaynak Adı <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" @bind="editingKaynak.Ad" placeholder="Örn: Sahibinden.com" />
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Kod <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" @bind="editingKaynak.Kod" placeholder="�rn: sahibinden" />
-                            <small class="text-muted">K���k harf, bo�luksuz</small>
+                            <input type="text" class="form-control" @bind="editingKaynak.Kod" placeholder="Örn: sahibinden" />
+                            <small class="text-muted">Küçük harf, boşluksuz</small>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Web Sitesi URL <span class="text-danger">*</span></label>
@@ -187,47 +187,47 @@
                                 <option value="Genel">Genel (Pazaryeri)</option>
                                 <option value="YetkiliBayi">Yetkili Bayi</option>
                                 <option value="Galeri">Galeri</option>
-                                <option value="Sifir">S�f�r Ara�</option>
+                                <option value="Sifir">Sıfır Araç</option>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">S�ra</label>
+                            <label class="form-label">Sıra</label>
                             <input type="number" class="form-control" @bind="editingKaynak.Sira" min="1" max="100" />
                         </div>
                         <div class="col-12">
                             <label class="form-label">Desteklenen Markalar (Opsiyonel)</label>
                             <input type="text" class="form-control" @bind="editingKaynak.DesteklenenMarkalar" 
-                                   placeholder="BMW,Mercedes,Audi (virg�lle ay�r�n)" />
-                            <small class="text-muted">Bo� b�rak�l�rsa t�m markalar i�in �al���r</small>
+                                   placeholder="BMW,Mercedes,Audi (virgülle ayırın)" />
+                            <small class="text-muted">Boş bırakılırsa tüm markalar için çalışır</small>
                         </div>
 
-                        <!-- Geli�mi� Ayarlar -->
+                        <!-- Gelişmiş Ayarlar -->
                         <div class="col-12">
                             <div class="accordion" id="advancedSettings">
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
                                         <button class="accordion-button collapsed" type="button" 
                                                 data-bs-toggle="collapse" data-bs-target="#selectorsCollapse">
-                                            <i class="bi bi-code-slash me-2"></i>Geli�mi� Ayarlar (CSS Selectors)
+                                            <i class="bi bi-code-slash me-2"></i>Gelişmiş Ayarlar (CSS Selectors)
                                         </button>
                                     </h2>
                                     <div id="selectorsCollapse" class="accordion-collapse collapse">
                                         <div class="accordion-body">
                                             <div class="row g-3">
                                                 <div class="col-md-6">
-                                                    <label class="form-label">�lan Listesi Selector</label>
+                                                    <label class="form-label">İlan Listesi Selector</label>
                                                     <input type="text" class="form-control form-control-sm" 
                                                            @bind="editingSelector.IlanListesi" 
                                                            placeholder=".car-card, .listing-item" />
                                                 </div>
                                                 <div class="col-md-6">
-                                                    <label class="form-label">�lan Link Selector</label>
+                                                    <label class="form-label">İlan Link Selector</label>
                                                     <input type="text" class="form-control form-control-sm" 
                                                            @bind="editingSelector.IlanLink" 
                                                            placeholder="a[href*='/ilan']" />
                                                 </div>
                                                 <div class="col-md-6">
-                                                    <label class="form-label">Ba�l�k Selector</label>
+                                                    <label class="form-label">Başlık Selector</label>
                                                     <input type="text" class="form-control form-control-sm" 
                                                            @bind="editingSelector.IlanBaslik" 
                                                            placeholder="h3, .title" />
@@ -261,14 +261,14 @@
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" @bind="editingKaynak.Aktif" id="aktifSwitch" />
                                 <label class="form-check-label" for="aktifSwitch">
-                                    Aktif (Piyasa ara�t�rmas�nda kullan�ls�n)
+                                    Aktif (Piyasa Araştırmasında kullanılsın)
                                 </label>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">�ptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ModalKapat">İptal</button>
                     <button type="button" class="btn btn-primary" @onclick="KaynakKaydet" disabled="@isSaving">
                         @if (isSaving)
                         {
@@ -289,15 +289,15 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Kayna�� Sil</h5>
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Kaynağı Sil</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="() => showDeleteModal = false"></button>
                 </div>
                 <div class="modal-body">
-                    <p><strong>@deletingKaynak.Ad</strong> kayna��n� silmek istedi�inize emin misiniz?</p>
-                    <p class="text-muted mb-0">Bu i�lem geri al�namaz.</p>
+                    <p><strong>@deletingKaynak.Ad</strong> kaynağını silmek istediğinize emin misiniz?</p>
+                    <p class="text-muted mb-0">Bu işlem geri alınamaz.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">�ptal</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => showDeleteModal = false">İptal</button>
                     <button type="button" class="btn btn-danger" @onclick="SilmeOnayla">
                         <i class="bi bi-trash me-1"></i>Sil
                     </button>
@@ -328,7 +328,7 @@
     {
         await KaynaklariYukle();
         
-        // E�er kaynak yoksa otomatik olarak varsay�lanlar� y�kle
+        // Eğer kaynak yoksa otomatik olarak Varsayılanları Yükle
         if (!kaynaklar.Any())
         {
             await VarsayilanlariYukle();
@@ -345,7 +345,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Kaynaklar y�klenemedi: {ex.Message}";
+            errorMessage = $"Kaynaklar Yüklenemedi: {ex.Message}";
             ToastService.ShowError(errorMessage);
             kaynaklar = new List<PiyasaKaynak>();
         }
@@ -361,7 +361,7 @@
         {
             await KaynakService.SeedDefaultKaynaklarAsync();
             await KaynaklariYukle();
-            ToastService.ShowSuccess("Varsay�lan kaynaklar y�klendi.");
+            ToastService.ShowSuccess("Varsayİlan kaynaklar Yüklendi.");
         }
         catch (Exception ex)
         {
@@ -392,7 +392,7 @@
             Selectors = kaynak.Selectors
         };
 
-        // Selector'lar� parse et
+        // Selector'ları parse et
         if (!string.IsNullOrEmpty(kaynak.Selectors))
         {
             try
@@ -416,7 +416,7 @@
     {
         if (string.IsNullOrWhiteSpace(editingKaynak.Ad))
         {
-            ToastService.ShowWarning("Kaynak ad� gerekli.");
+            ToastService.ShowWarning("Kaynak Adı gerekli.");
             return;
         }
         if (string.IsNullOrWhiteSpace(editingKaynak.Kod))
@@ -430,17 +430,17 @@
             return;
         }
 
-        // Kod kontrol�
+        // Kod kontrolü
         if (await KaynakService.KodVarMiAsync(editingKaynak.Kod, editingKaynak.Id == 0 ? null : editingKaynak.Id))
         {
-            ToastService.ShowWarning("Bu kod zaten kullan�l�yor.");
+            ToastService.ShowWarning("Bu kod zaten kullanılıyor.");
             return;
         }
 
         isSaving = true;
         try
         {
-            // Selector'lar� JSON'a �evir
+            // Selector'ları JSON'a çevir
             editingKaynak.Selectors = JsonSerializer.Serialize(editingSelector);
 
             if (editingKaynak.Id == 0)
@@ -451,7 +451,7 @@
             else
             {
                 await KaynakService.UpdateAsync(editingKaynak);
-                ToastService.ShowSuccess("Kaynak g�ncellendi.");
+                ToastService.ShowSuccess("Kaynak güncellendi.");
             }
 
             await KaynaklariYukle();
@@ -498,7 +498,7 @@
     {
         kaynak.Aktif = !kaynak.Aktif;
         await KaynakService.UpdateAsync(kaynak);
-        ToastService.ShowInfo(kaynak.Aktif ? $"{kaynak.Ad} aktifle�tirildi." : $"{kaynak.Ad} devre d��� b�rak�ld�.");
+        ToastService.ShowInfo(kaynak.Aktif ? $"{kaynak.Ad} aktifleştirildi." : $"{kaynak.Ad} devre dışı bırakıldı.");
     }
 
     private void ModalKapat()
@@ -517,3 +517,6 @@
         _ => "bg-secondary"
     };
 }
+
+
+
