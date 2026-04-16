@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace KOAFiloServis.Web.Data.Migrations;
 
@@ -54,11 +55,14 @@ BEGIN
             ""DamgaVergisi"" numeric(18,2) NOT NULL DEFAULT 0,
             ""DigerKesinti"" numeric(18,2) NOT NULL DEFAULT 0,
             ""NetOdeme"" numeric(18,2) NOT NULL DEFAULT 0,
+            ""OdemeTarihi"" timestamp without time zone NULL,
+            ""Odendi"" boolean NOT NULL DEFAULT FALSE,
             ""Aciklama"" text NULL,
             ""OnayDurumu"" integer NOT NULL DEFAULT 0,
             ""OnaylayanKullanici"" text NULL,
             ""OnayTarihi"" timestamp without time zone NULL,
             ""OnayNotu"" text NULL,
+            ""BankaHesapNo"" text NULL,
             ""IsDeleted"" boolean NOT NULL DEFAULT FALSE,
             ""CreatedAt"" timestamp without time zone NOT NULL DEFAULT NOW(),
             ""UpdatedAt"" timestamp without time zone NULL,
@@ -77,6 +81,27 @@ END $$;";
 
         await context.Database.ExecuteSqlRawAsync(createPersonelPuantajSql);
 
+        var ensurePersonelPuantajColumnsSql = @"
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'PersonelPuantajlar') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PersonelPuantajlar' AND column_name = 'OdemeTarihi') THEN
+            ALTER TABLE ""PersonelPuantajlar"" ADD COLUMN ""OdemeTarihi"" timestamp without time zone NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PersonelPuantajlar' AND column_name = 'Odendi') THEN
+            ALTER TABLE ""PersonelPuantajlar"" ADD COLUMN ""Odendi"" boolean NOT NULL DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PersonelPuantajlar' AND column_name = 'BankaHesapNo') THEN
+            ALTER TABLE ""PersonelPuantajlar"" ADD COLUMN ""BankaHesapNo"" text NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'PersonelPuantajlar' AND column_name = 'Aciklama') THEN
+            ALTER TABLE ""PersonelPuantajlar"" ADD COLUMN ""Aciklama"" text NULL;
+        END IF;
+    END IF;
+END $$;";
+
+        await context.Database.ExecuteSqlRawAsync(ensurePersonelPuantajColumnsSql);
+
         // GunlukPuantajlar tablosu
         var createGunlukPuantajSql = @"
 DO $$
@@ -86,10 +111,12 @@ BEGIN
             ""Id"" SERIAL PRIMARY KEY,
             ""SirketId"" integer NOT NULL DEFAULT 1,
             ""PersonelPuantajId"" integer NOT NULL,
-            ""Gun"" integer NOT NULL,
             ""Tarih"" date NOT NULL,
-            ""Durum"" integer NOT NULL DEFAULT 0,
-            ""FazlaMesaiSaat"" numeric(18,2) NOT NULL DEFAULT 0,
+            ""Calisti"" boolean NOT NULL DEFAULT FALSE,
+            ""FazlaMesaiSaat"" numeric(18,2) NULL,
+            ""Izinli"" boolean NOT NULL DEFAULT FALSE,
+            ""Mazeret"" boolean NOT NULL DEFAULT FALSE,
+            ""ServisCalismaId"" integer NULL,
             ""Notlar"" text NULL,
             ""IsDeleted"" boolean NOT NULL DEFAULT FALSE,
             ""CreatedAt"" timestamp without time zone NOT NULL DEFAULT NOW(),
@@ -106,6 +133,30 @@ BEGIN
 END $$;";
 
         await context.Database.ExecuteSqlRawAsync(createGunlukPuantajSql);
+
+        var ensureGunlukPuantajColumnsSql = @"
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'GunlukPuantajlar') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'GunlukPuantajlar' AND column_name = 'Calisti') THEN
+            ALTER TABLE ""GunlukPuantajlar"" ADD COLUMN ""Calisti"" boolean NOT NULL DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'GunlukPuantajlar' AND column_name = 'Izinli') THEN
+            ALTER TABLE ""GunlukPuantajlar"" ADD COLUMN ""Izinli"" boolean NOT NULL DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'GunlukPuantajlar' AND column_name = 'Mazeret') THEN
+            ALTER TABLE ""GunlukPuantajlar"" ADD COLUMN ""Mazeret"" boolean NOT NULL DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'GunlukPuantajlar' AND column_name = 'ServisCalismaId') THEN
+            ALTER TABLE ""GunlukPuantajlar"" ADD COLUMN ""ServisCalismaId"" integer NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'GunlukPuantajlar' AND column_name = 'Notlar') THEN
+            ALTER TABLE ""GunlukPuantajlar"" ADD COLUMN ""Notlar"" text NULL;
+        END IF;
+    END IF;
+END $$;";
+
+        await context.Database.ExecuteSqlRawAsync(ensureGunlukPuantajColumnsSql);
     }
 
     private static async Task EnsureSqliteTablesAsync(ApplicationDbContext context)
@@ -133,11 +184,14 @@ CREATE TABLE IF NOT EXISTS ""PersonelPuantajlar"" (
     ""DamgaVergisi"" REAL NOT NULL DEFAULT 0,
     ""DigerKesinti"" REAL NOT NULL DEFAULT 0,
     ""NetOdeme"" REAL NOT NULL DEFAULT 0,
+    ""OdemeTarihi"" TEXT NULL,
+    ""Odendi"" INTEGER NOT NULL DEFAULT 0,
     ""Aciklama"" TEXT NULL,
     ""OnayDurumu"" INTEGER NOT NULL DEFAULT 0,
     ""OnaylayanKullanici"" TEXT NULL,
     ""OnayTarihi"" TEXT NULL,
     ""OnayNotu"" TEXT NULL,
+    ""BankaHesapNo"" TEXT NULL,
     ""IsDeleted"" INTEGER NOT NULL DEFAULT 0,
     ""CreatedAt"" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ""UpdatedAt"" TEXT NULL,
@@ -148,6 +202,10 @@ CREATE TABLE IF NOT EXISTS ""PersonelPuantajlar"" (
 );";
 
         await context.Database.ExecuteSqlRawAsync(createPersonelPuantajSql);
+        await EnsureSqliteColumnAsync(context, "PersonelPuantajlar", "OdemeTarihi", "TEXT NULL");
+        await EnsureSqliteColumnAsync(context, "PersonelPuantajlar", "Odendi", "INTEGER NOT NULL DEFAULT 0");
+        await EnsureSqliteColumnAsync(context, "PersonelPuantajlar", "BankaHesapNo", "TEXT NULL");
+        await EnsureSqliteColumnAsync(context, "PersonelPuantajlar", "Aciklama", "TEXT NULL");
 
         // Index'ler (SQLite)
         await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_PersonelPuantajlar_FirmaId"" ON ""PersonelPuantajlar"" (""FirmaId"");");
@@ -160,10 +218,12 @@ CREATE TABLE IF NOT EXISTS ""GunlukPuantajlar"" (
     ""Id"" INTEGER PRIMARY KEY AUTOINCREMENT,
     ""SirketId"" INTEGER NOT NULL DEFAULT 1,
     ""PersonelPuantajId"" INTEGER NOT NULL,
-    ""Gun"" INTEGER NOT NULL,
     ""Tarih"" TEXT NOT NULL,
-    ""Durum"" INTEGER NOT NULL DEFAULT 0,
-    ""FazlaMesaiSaat"" REAL NOT NULL DEFAULT 0,
+    ""Calisti"" INTEGER NOT NULL DEFAULT 0,
+    ""FazlaMesaiSaat"" REAL NULL,
+    ""Izinli"" INTEGER NOT NULL DEFAULT 0,
+    ""Mazeret"" INTEGER NOT NULL DEFAULT 0,
+    ""ServisCalismaId"" INTEGER NULL,
     ""Notlar"" TEXT NULL,
     ""IsDeleted"" INTEGER NOT NULL DEFAULT 0,
     ""CreatedAt"" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -174,9 +234,53 @@ CREATE TABLE IF NOT EXISTS ""GunlukPuantajlar"" (
 );";
 
         await context.Database.ExecuteSqlRawAsync(createGunlukPuantajSql);
+        await EnsureSqliteColumnAsync(context, "GunlukPuantajlar", "Calisti", "INTEGER NOT NULL DEFAULT 0");
+        await EnsureSqliteColumnAsync(context, "GunlukPuantajlar", "Izinli", "INTEGER NOT NULL DEFAULT 0");
+        await EnsureSqliteColumnAsync(context, "GunlukPuantajlar", "Mazeret", "INTEGER NOT NULL DEFAULT 0");
+        await EnsureSqliteColumnAsync(context, "GunlukPuantajlar", "ServisCalismaId", "INTEGER NULL");
+        await EnsureSqliteColumnAsync(context, "GunlukPuantajlar", "Notlar", "TEXT NULL");
 
         // Index'ler (SQLite)
         await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_GunlukPuantajlar_PersonelPuantajId"" ON ""GunlukPuantajlar"" (""PersonelPuantajId"");");
         await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_GunlukPuantajlar_Tarih"" ON ""GunlukPuantajlar"" (""Tarih"");");
+    }
+
+    private static async Task EnsureSqliteColumnAsync(ApplicationDbContext context, string tableName, string columnName, string columnDefinition)
+    {
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
+
+        try
+        {
+            await using var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = $"SELECT 1 FROM pragma_table_info('{tableName}') WHERE name = $columnName LIMIT 1";
+
+            var parameter = checkCommand.CreateParameter();
+            parameter.ParameterName = "$columnName";
+            parameter.Value = columnName;
+            checkCommand.Parameters.Add(parameter);
+
+            var exists = await checkCommand.ExecuteScalarAsync() is not null;
+            if (exists)
+            {
+                return;
+            }
+
+            await using var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{columnName}\" {columnDefinition}";
+            await alterCommand.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 }

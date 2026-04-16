@@ -807,11 +807,11 @@ public class BudgetService : IBudgetService
             Yil = yil,
             Ay = ay,
             ToplamOdeme = odemeler.Sum(o => o.Miktar),
-            OdenenToplam = odemeler.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.NetOdenenTutar),
-            BekleyenToplam = odemeler.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
+            OdenenToplam = odemeler.Where(IsGerceklesenDurumu).Sum(GetGerceklesenTutar),
+            BekleyenToplam = odemeler.Where(IsBekleyenDurumu).Sum(GetBekleyenTutar),
             ToplamKayit = odemeler.Count,
-            OdenenKayit = odemeler.Count(o => o.Durum == OdemeDurum.Odendi),
-            BekleyenKayit = odemeler.Count(o => o.Durum == OdemeDurum.Bekliyor)
+            OdenenKayit = odemeler.Count(IsGerceklesenDurumu),
+            BekleyenKayit = odemeler.Count(IsBekleyenDurumu)
         };
 
         ozet.KategoriOzetleri = odemeler
@@ -858,8 +858,8 @@ public class BudgetService : IBudgetService
                 Ay = ay,
                 AyAdi = AyAdlari[ay],
                 Toplam = aylikOdemeler.Sum(o => o.Miktar),
-                Odenen = aylikOdemeler.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.NetOdenenTutar),
-                Bekleyen = aylikOdemeler.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar)
+                Odenen = aylikOdemeler.Where(IsGerceklesenDurumu).Sum(GetGerceklesenTutar),
+                Bekleyen = aylikOdemeler.Where(IsBekleyenDurumu).Sum(GetBekleyenTutar)
             });
         }
 
@@ -880,6 +880,20 @@ public class BudgetService : IBudgetService
 
     private static decimal RoundCurrency(decimal value)
         => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    private static bool IsGerceklesenDurumu(BudgetOdeme odeme)
+        => odeme.Durum == OdemeDurum.Odendi || odeme.Durum == OdemeDurum.KismiOdendi || odeme.FaturaIleKapatildi;
+
+    private static bool IsBekleyenDurumu(BudgetOdeme odeme)
+        => odeme.Durum == OdemeDurum.Bekliyor || odeme.Durum == OdemeDurum.KismiOdendi;
+
+    private static decimal GetGerceklesenTutar(BudgetOdeme odeme)
+        => odeme.Durum == OdemeDurum.KismiOdendi
+            ? odeme.NetOdenenTutar
+            : (odeme.OdenenTutar ?? odeme.NetOdenenTutar);
+
+    private static decimal GetBekleyenTutar(BudgetOdeme odeme)
+        => odeme.Durum == OdemeDurum.KismiOdendi ? odeme.KalanTutar : odeme.Miktar;
 
     private static string? BirlestirNotlar(string? notlar, string? ekNot)
     {
@@ -1312,7 +1326,8 @@ public class BudgetService : IBudgetService
                 var ilkTaksit = taksitler.First();
                 var sonTaksit = taksitler.Last();
                 var odenenTaksitler = taksitler.Where(t => t.Durum == OdemeDurum.Odendi).ToList();
-                var bekleyenTaksitler = taksitler.Where(t => t.Durum == OdemeDurum.Bekliyor).ToList();
+                var kismiOdenenTaksitler = taksitler.Where(t => t.Durum == OdemeDurum.KismiOdendi).ToList();
+                var bekleyenTaksitler = taksitler.Where(IsBekleyenDurumu).ToList();
                 var sonrakiTaksit = bekleyenTaksitler.OrderBy(t => t.OdemeTarihi).FirstOrDefault();
 
                 return new KrediOzet
@@ -1327,10 +1342,10 @@ public class BudgetService : IBudgetService
                     KalanTaksitSayisi = bekleyenTaksitler.Count,
                     TaksitTutari = taksitler.First().Miktar,
                     ToplamTutar = taksitler.Sum(t => t.Miktar),
-                    OdenenTutar = odenenTaksitler.Sum(t => t.Miktar),
-                    KalanTutar = bekleyenTaksitler.Sum(t => t.Miktar),
-                    TamamlanmaYuzdesi = taksitler.Count > 0 
-                        ? Math.Round((decimal)odenenTaksitler.Count / taksitler.Count * 100, 1) 
+                    OdenenTutar = odenenTaksitler.Sum(GetGerceklesenTutar) + kismiOdenenTaksitler.Sum(GetGerceklesenTutar),
+                    KalanTutar = bekleyenTaksitler.Sum(GetBekleyenTutar),
+                    TamamlanmaYuzdesi = taksitler.Sum(t => t.Miktar) > 0
+                        ? Math.Round((odenenTaksitler.Sum(GetGerceklesenTutar) + kismiOdenenTaksitler.Sum(GetGerceklesenTutar)) / taksitler.Sum(t => t.Miktar) * 100, 1)
                         : 0,
                     SonrakiTaksitTarihi = sonrakiTaksit?.OdemeTarihi
                 };
@@ -1361,8 +1376,8 @@ public class BudgetService : IBudgetService
                 Ay = ay,
                 AyAdi = AyAdlari[ay],
                 ToplamTaksitTutari = aylikTaksitler.Sum(t => t.Miktar),
-                OdenenTutar = aylikTaksitler.Where(t => t.Durum == OdemeDurum.Odendi).Sum(t => t.Miktar),
-                BekleyenTutar = aylikTaksitler.Where(t => t.Durum == OdemeDurum.Bekliyor).Sum(t => t.Miktar),
+                OdenenTutar = aylikTaksitler.Where(IsGerceklesenDurumu).Sum(GetGerceklesenTutar),
+                BekleyenTutar = aylikTaksitler.Where(IsBekleyenDurumu).Sum(GetBekleyenTutar),
                 TaksitSayisi = aylikTaksitler.Count,
                 Taksitler = aylikTaksitler.Select(t => new KrediTaksitDetay
                 {
@@ -1452,8 +1467,8 @@ public class BudgetService : IBudgetService
                     Etiket = gun.Key.ToString("dd.MM"),
                     Tarih = gun.Key,
                     Toplam = gun.Sum(o => o.Miktar),
-                    Odenen = gun.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
-                    Bekleyen = gun.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
+                    Odenen = gun.Where(IsGerceklesenDurumu).Sum(GetGerceklesenTutar),
+                    Bekleyen = gun.Where(IsBekleyenDurumu).Sum(GetBekleyenTutar),
                     OdemeSayisi = gun.Count()
                 });
             }
@@ -1468,8 +1483,8 @@ public class BudgetService : IBudgetService
                     Etiket = AyAdlari[ay.Key.OdemeAy],
                     Tarih = new DateTime(ay.Key.OdemeYil, ay.Key.OdemeAy, 1),
                     Toplam = ay.Sum(o => o.Miktar),
-                    Odenen = ay.Where(o => o.Durum == OdemeDurum.Odendi).Sum(o => o.Miktar),
-                    Bekleyen = ay.Where(o => o.Durum == OdemeDurum.Bekliyor).Sum(o => o.Miktar),
+                    Odenen = ay.Where(IsGerceklesenDurumu).Sum(GetGerceklesenTutar),
+                    Bekleyen = ay.Where(IsBekleyenDurumu).Sum(GetBekleyenTutar),
                     OdemeSayisi = ay.Count()
                 });
             }
