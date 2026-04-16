@@ -11,13 +11,9 @@ namespace KOAFiloServis.Web.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Faturalar_FaturaNo",
-                table: "Faturalar");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Faturalar_FaturaNo\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Faturalar_FirmaId",
-                table: "Faturalar");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Faturalar_FirmaId\";");
 
             migrationBuilder.AddColumn<decimal>(
                 name: "AileYardimi",
