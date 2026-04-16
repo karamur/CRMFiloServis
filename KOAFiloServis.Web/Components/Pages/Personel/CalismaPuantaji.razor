@@ -102,6 +102,9 @@
                     <button class="btn btn-outline-secondary btn-sm" @onclick="OlusturulabilirSecimiTemizle" disabled="@(isLoading || !seciliPersonelIds.Any())">
                         <i class="bi bi-x-lg me-1"></i>Temizle
                     </button>
+                    <button class="btn btn-success btn-sm" @onclick="SeciliPuantajOlustur" disabled="@(isLoading || !seciliPersonelIds.Any())">
+                        <i class="bi bi-calendar-plus me-1"></i>Seçilileri Oluştur (@seciliPersonelIds.Count)
+                    </button>
                 </div>
             </div>
             <div class="card-body py-2">
@@ -606,7 +609,7 @@
         .Where(s => puantajListesi.All(p => p.PersonelId != s.Id))
         .Where(s => string.IsNullOrWhiteSpace(aramaMetni)
             || s.TamAd.Contains(aramaMetni, StringComparison.OrdinalIgnoreCase)
-            || s.SoforKodu.Contains(aramaMetni, StringComparison.OrdinalIgnoreCase))
+            || (s.SoforKodu != null && s.SoforKodu.Contains(aramaMetni, StringComparison.OrdinalIgnoreCase)))
         .OrderBy(s => s.SiralamaNo == 0 ? int.MaxValue : s.SiralamaNo)
         .ThenBy(s => s.Ad)
         .ThenBy(s => s.Soyad)
