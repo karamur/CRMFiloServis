@@ -2165,7 +2165,8 @@ public class BudgetService : IBudgetService
         if (request.OdenecekTutar <= 0)
             throw new Exception("Ödenecek tutar 0'dan büyük olmalıdır.");
 
-        var kalanTutar = odeme.Miktar - odeme.ToplamKismiOdenen;
+        var orijinalMiktar = odeme.Miktar;
+        var kalanTutar = orijinalMiktar - odeme.ToplamKismiOdenen;
         if (request.OdenecekTutar > kalanTutar)
             throw new Exception($"Ödenecek tutar kalan tutardan ({kalanTutar:N2} TL) fazla olamaz.");
 
@@ -2205,45 +2206,92 @@ public class BudgetService : IBudgetService
             }
         }
 
-        // Ödeme bilgilerini güncelle
-        odeme.ToplamKismiOdenen = RoundCurrency(odeme.ToplamKismiOdenen + odenecekTutar);
-        odeme.KismiOdemeMi = true;
-        odeme.OdenenTutar = odeme.ToplamKismiOdenen;
-        odeme.BankaKasaHareketId = bankaKasaHareketId ?? odeme.BankaKasaHareketId;
-        odeme.MasrafKesintisi = RoundCurrency(odeme.MasrafKesintisi + masrafKesintisi);
-        odeme.CezaKesintisi = RoundCurrency(odeme.CezaKesintisi + cezaKesintisi);
-        odeme.DigerKesinti = RoundCurrency(odeme.DigerKesinti + digerKesinti);
-        odeme.KesintiAciklamasi = request.KesintiAciklamasi;
-        odeme.KalanSonrakiDonemeAktarilsin = request.KalanSonrakiDonemeAktarilsin;
-        odeme.OdemeYapildigiHesapId = request.BankaHesapId;
-        odeme.GercekOdemeTarihi = odemeTarihi;
-        odeme.UpdatedAt = DateTime.UtcNow;
+        // Kalan tutarı hesapla (ödeme sonrası)
+        var yeniToplamOdenen = RoundCurrency(odeme.ToplamKismiOdenen + odenecekTutar);
+        var odemeSonrasiKalan = RoundCurrency(orijinalMiktar - yeniToplamOdenen);
 
-        // Tamamı ödendiyse durumu güncelle
-        if (odeme.ToplamKismiOdenen >= odeme.Miktar)
+        // Sonraki döneme aktarma: devir kaydını doğrudan burada oluştur
+        int? sonrakiDonemOdemeId = null;
+        if (request.KalanSonrakiDonemeAktarilsin && odemeSonrasiKalan > 0)
         {
-            odeme.Durum = OdemeDurum.Odendi;
-            odeme.OdenenTutar = odeme.ToplamKismiOdenen;
-        }
-        else
-        {
-            odeme.Durum = OdemeDurum.KismiOdendi;
-        }
+            // Hedef ay/yıl hesapla
+            var hedefAy = request.HedefAy ?? (odeme.OdemeAy == 12 ? 1 : odeme.OdemeAy + 1);
+            var hedefYil = request.HedefYil ?? (odeme.OdemeAy == 12 ? odeme.OdemeYil + 1 : odeme.OdemeYil);
 
-        // Kalan tutarı sonraki döneme aktarma işlemi
-        if (request.KalanSonrakiDonemeAktarilsin && odeme.Durum == OdemeDurum.KismiOdendi)
-        {
-            var sonrakiOdeme = await KalanTutariSonrakiDonemeAktarAsync(odeme.Id, request.HedefAy, request.HedefYil);
-            if (sonrakiOdeme != null)
+            // Mevcut devir kaydı var mı kontrol et
+            var mevcutDevir = await _context.BudgetOdemeler
+                .FirstOrDefaultAsync(o => o.OncekiDonemOdemeId == odeme.Id && !o.IsDeleted);
+
+            if (mevcutDevir != null)
             {
-                odeme.SonrakiDonemOdemeId = sonrakiOdeme.Id;
-                odeme.Miktar = odeme.ToplamKismiOdenen;
-                odeme.Durum = OdemeDurum.Odendi;
-                odeme.OdenenTutar = odeme.ToplamKismiOdenen;
+                mevcutDevir.Miktar = odemeSonrasiKalan;
+                mevcutDevir.OdemeAy = hedefAy;
+                mevcutDevir.OdemeYil = hedefYil;
+                mevcutDevir.OdemeTarihi = DateTime.SpecifyKind(new DateTime(hedefYil, hedefAy, 1), DateTimeKind.Utc);
+                mevcutDevir.Aciklama = BuildDevirAciklama(odeme.Aciklama);
+                mevcutDevir.UpdatedAt = DateTime.UtcNow;
+                sonrakiDonemOdemeId = mevcutDevir.Id;
+            }
+            else
+            {
+                var yeniDevir = new BudgetOdeme
+                {
+                    OdemeTarihi = DateTime.SpecifyKind(new DateTime(hedefYil, hedefAy, 1), DateTimeKind.Utc),
+                    OdemeAy = hedefAy,
+                    OdemeYil = hedefYil,
+                    MasrafKalemi = odeme.MasrafKalemi,
+                    Aciklama = BuildDevirAciklama(odeme.Aciklama),
+                    Miktar = odemeSonrasiKalan,
+                    FirmaId = odeme.FirmaId,
+                    Durum = OdemeDurum.Bekliyor,
+                    OncekiDonemOdemeId = odeme.Id,
+                    Notlar = $"Önceki dönem ödeme ID: {odeme.Id}, Orijinal tutar: {orijinalMiktar:N2} TL, Ödenen: {yeniToplamOdenen:N2} TL",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.BudgetOdemeler.Add(yeniDevir);
+                // Flush ile ID alalım
+                await _context.SaveChangesAsync();
+                sonrakiDonemOdemeId = yeniDevir.Id;
             }
         }
 
-        await _context.SaveChangesAsync();
+        // Ana ödemeyi ExecuteUpdateAsync ile doğrudan güncelle (tracking sorunlarını önler)
+        var yeniDurum = sonrakiDonemOdemeId.HasValue
+            ? OdemeDurum.Odendi   // Kalan aktarıldı → bu kayıt kapansın
+            : (yeniToplamOdenen >= orijinalMiktar ? OdemeDurum.Odendi : OdemeDurum.KismiOdendi);
+
+        var yeniMiktar = sonrakiDonemOdemeId.HasValue ? yeniToplamOdenen : orijinalMiktar;
+        var updatedAt = DateTime.UtcNow;
+
+        await _context.BudgetOdemeler
+            .Where(o => o.Id == odemeId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(o => o.ToplamKismiOdenen, yeniToplamOdenen)
+                .SetProperty(o => o.KismiOdemeMi, true)
+                .SetProperty(o => o.OdenenTutar, yeniToplamOdenen)
+                .SetProperty(o => o.BankaKasaHareketId, bankaKasaHareketId ?? odeme.BankaKasaHareketId)
+                .SetProperty(o => o.MasrafKesintisi, RoundCurrency(odeme.MasrafKesintisi + masrafKesintisi))
+                .SetProperty(o => o.CezaKesintisi, RoundCurrency(odeme.CezaKesintisi + cezaKesintisi))
+                .SetProperty(o => o.DigerKesinti, RoundCurrency(odeme.DigerKesinti + digerKesinti))
+                .SetProperty(o => o.KesintiAciklamasi, request.KesintiAciklamasi)
+                .SetProperty(o => o.KalanSonrakiDonemeAktarilsin, request.KalanSonrakiDonemeAktarilsin)
+                .SetProperty(o => o.OdemeYapildigiHesapId, request.BankaHesapId)
+                .SetProperty(o => o.GercekOdemeTarihi, odemeTarihi)
+                .SetProperty(o => o.Durum, yeniDurum)
+                .SetProperty(o => o.Miktar, yeniMiktar)
+                .SetProperty(o => o.SonrakiDonemOdemeId, sonrakiDonemOdemeId ?? odeme.SonrakiDonemOdemeId)
+                .SetProperty(o => o.UpdatedAt, updatedAt));
+
+        // In-memory entity'yi de güncelle (UI'a döndürmek için)
+        odeme.ToplamKismiOdenen = yeniToplamOdenen;
+        odeme.KismiOdemeMi = true;
+        odeme.OdenenTutar = yeniToplamOdenen;
+        odeme.Durum = yeniDurum;
+        odeme.Miktar = yeniMiktar;
+        odeme.SonrakiDonemOdemeId = sonrakiDonemOdemeId ?? odeme.SonrakiDonemOdemeId;
+        odeme.KalanSonrakiDonemeAktarilsin = request.KalanSonrakiDonemeAktarilsin;
+        odeme.UpdatedAt = updatedAt;
+
         return odeme;
     }
 
