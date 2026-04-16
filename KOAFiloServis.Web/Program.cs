@@ -16,7 +16,6 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using OfficeOpenXml;
 using Quartz;
 using System.Net;
@@ -365,45 +364,7 @@ builder.Services.AddAuthentication(options =>
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "CRM Filo Servis API",
-        Version = "v1",
-        Description = "Filo Yönetim Sistemi REST API - Araç, Şoför, Cari, Fatura ve daha fazlası",
-        Contact = new OpenApiContact
-        {
-            Name = "Koa Yazılım",
-            Email = "destek@koayazilim.com"
-        }
-    });
-
-    // JWT Bearer Authentication şeması
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization header. Örnek: \"Bearer {token}\"",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
-    });
-
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
-});
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
