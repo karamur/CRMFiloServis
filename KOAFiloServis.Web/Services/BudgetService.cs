@@ -2102,15 +2102,24 @@ public class BudgetService : IBudgetService
         if (request.OdenecekTutar > kalanTutar)
             throw new Exception($"Ödenecek tutar kalan tutardan ({kalanTutar:N2} TL) fazla olamaz.");
 
+        var odenecekTutar = RoundCurrency(Math.Abs(request.OdenecekTutar));
+        var masrafKesintisi = RoundCurrency(Math.Abs(request.MasrafKesintisi));
+        var cezaKesintisi = RoundCurrency(Math.Abs(request.CezaKesintisi));
+        var digerKesinti = RoundCurrency(Math.Abs(request.DigerKesinti));
+        var odemeTarihi = DateTime.SpecifyKind(request.OdemeTarihi, DateTimeKind.Utc);
+        int? bankaKasaHareketId = null;
+
         // Banka/Kasa hareketi oluştur
         if (request.BankaHesapId.HasValue && request.BankaHesapId > 0)
         {
+            var islemNo = await _bankaKasaHareketService.GenerateNextIslemNoAsync();
             var hareket = new BankaKasaHareket
             {
+                IslemNo = islemNo,
                 BankaHesapId = request.BankaHesapId.Value,
-                IslemTarihi = DateTime.SpecifyKind(request.OdemeTarihi, DateTimeKind.Utc),
+                IslemTarihi = odemeTarihi,
                 HareketTipi = HareketTipi.Cikis,
-                Tutar = request.OdenecekTutar + Math.Abs(request.MasrafKesintisi) + Math.Abs(request.CezaKesintisi) + Math.Abs(request.DigerKesinti),
+                Tutar = odenecekTutar + masrafKesintisi + cezaKesintisi + digerKesinti,
                 IslemKaynak = IslemKaynak.Butce,
                 Aciklama = $"[Kısmi Ödeme] {odeme.MasrafKalemi} - {odeme.Aciklama}",
                 BelgeNo = $"KO-{odeme.Id}-{DateTime.Now:yyyyMMddHHmmss}",
@@ -2118,19 +2127,22 @@ public class BudgetService : IBudgetService
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _bankaKasaHareketService.CreateAsync(hareket);
+            var kaydedilenHareket = await _bankaKasaHareketService.CreateAsync(hareket);
+            bankaKasaHareketId = kaydedilenHareket.Id;
         }
 
         // Ödeme bilgilerini güncelle
-        odeme.ToplamKismiOdenen += request.OdenecekTutar;
+        odeme.ToplamKismiOdenen = RoundCurrency(odeme.ToplamKismiOdenen + odenecekTutar);
         odeme.KismiOdemeMi = true;
-        odeme.MasrafKesintisi += request.MasrafKesintisi;
-        odeme.CezaKesintisi += request.CezaKesintisi;
-        odeme.DigerKesinti += request.DigerKesinti;
+        odeme.OdenenTutar = odeme.ToplamKismiOdenen;
+        odeme.BankaKasaHareketId = bankaKasaHareketId ?? odeme.BankaKasaHareketId;
+        odeme.MasrafKesintisi = RoundCurrency(odeme.MasrafKesintisi + masrafKesintisi);
+        odeme.CezaKesintisi = RoundCurrency(odeme.CezaKesintisi + cezaKesintisi);
+        odeme.DigerKesinti = RoundCurrency(odeme.DigerKesinti + digerKesinti);
         odeme.KesintiAciklamasi = request.KesintiAciklamasi;
         odeme.KalanSonrakiDonemeAktarilsin = request.KalanSonrakiDonemeAktarilsin;
         odeme.OdemeYapildigiHesapId = request.BankaHesapId;
-        odeme.GercekOdemeTarihi = DateTime.SpecifyKind(request.OdemeTarihi, DateTimeKind.Utc);
+        odeme.GercekOdemeTarihi = odemeTarihi;
         odeme.UpdatedAt = DateTime.UtcNow;
 
         // Tamamı ödendiyse durumu güncelle

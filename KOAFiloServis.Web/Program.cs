@@ -19,6 +19,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OfficeOpenXml;
 using Quartz;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
@@ -62,7 +64,30 @@ if (File.Exists(dbSettingsPath))
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")) &&
     !args.Any(a => a.StartsWith("--urls")))
 {
-    builder.WebHost.UseUrls("http://0.0.0.0:5190");
+    static bool PortKullanilabilirMi(int port)
+    {
+        try
+        {
+            using var listener = new TcpListener(IPAddress.Any, port);
+            listener.Start();
+            listener.Stop();
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
+    }
+
+    var baslangicPortu = 5190;
+    var secilenPort = baslangicPortu;
+
+    while (secilenPort < baslangicPortu + 10 && !PortKullanilabilirMi(secilenPort))
+    {
+        secilenPort++;
+    }
+
+    builder.WebHost.UseUrls($"http://0.0.0.0:{secilenPort}");
 }
 
 // Add services to the container.

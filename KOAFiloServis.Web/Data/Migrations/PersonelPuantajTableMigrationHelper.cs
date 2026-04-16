@@ -65,7 +65,7 @@ BEGIN
             ""CreatedBy"" text NULL,
             ""UpdatedBy"" text NULL,
             CONSTRAINT ""FK_PersonelPuantajlar_Firmalar"" FOREIGN KEY (""FirmaId"") REFERENCES ""Firmalar"" (""Id"") ON DELETE CASCADE,
-            CONSTRAINT ""FK_PersonelPuantajlar_Soforler"" FOREIGN KEY (""PersonelId"") REFERENCES ""Soforler"" (""Id"") ON DELETE CASCADE
+            CONSTRAINT ""FK_PersonelPuantajlar_Personeller"" FOREIGN KEY (""PersonelId"") REFERENCES ""Personeller"" (""Id"") ON DELETE CASCADE
         );
 
         CREATE INDEX ""IX_PersonelPuantajlar_FirmaId"" ON ""PersonelPuantajlar"" (""FirmaId"");
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS ""PersonelPuantajlar"" (
     ""CreatedBy"" TEXT NULL,
     ""UpdatedBy"" TEXT NULL,
     FOREIGN KEY (""FirmaId"") REFERENCES ""Firmalar"" (""Id"") ON DELETE CASCADE,
-    FOREIGN KEY (""PersonelId"") REFERENCES ""Soforler"" (""Id"") ON DELETE CASCADE
+    FOREIGN KEY (""PersonelId"") REFERENCES ""Personeller"" (""Id"") ON DELETE CASCADE
 );";
 
         await context.Database.ExecuteSqlRawAsync(createPersonelPuantajSql);

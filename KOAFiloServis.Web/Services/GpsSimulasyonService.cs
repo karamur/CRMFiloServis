@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using KOAFiloServis.Web.Hubs;
 using KOAFiloServis.Web.Services.Interfaces;
@@ -50,13 +50,24 @@ public class GpsSimulasyonService : BackgroundService
                 {
                     await SimulasyonDongusuAsync(stoppingToken);
                 }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "GPS simülasyon hatası");
                 }
             }
-            
-            await Task.Delay(TimeSpan.FromSeconds(_guncellemeAraligiSaniye), stoppingToken);
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_guncellemeAraligiSaniye), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 
