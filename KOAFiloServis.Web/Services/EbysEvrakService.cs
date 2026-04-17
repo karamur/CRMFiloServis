@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
@@ -10,16 +10,16 @@ namespace KOAFiloServis.Web.Services;
 /// </summary>
 public class EbysEvrakService : IEbysEvrakService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<EbysEvrakService> _logger;
 
     public EbysEvrakService(
-        ApplicationDbContext context,
+        IDbContextFactory<ApplicationDbContext> contextFactory,
         IWebHostEnvironment environment,
         ILogger<EbysEvrakService> logger)
     {
-        _context = context;
+        _contextFactory = contextFactory;
         _environment = environment;
         _logger = logger;
     }
@@ -28,6 +28,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<List<EbysEvrak>> GetEvraklarAsync(EbysEvrakFiltre? filtre = null)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var query = _context.EbysEvraklar
             .Include(e => e.Kategori)
             .Include(e => e.AtananKullanici)
@@ -79,6 +80,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrak?> GetEvrakByIdAsync(int id)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         return await _context.EbysEvraklar
             .Include(e => e.Kategori)
             .Include(e => e.AtananKullanici)
@@ -96,6 +98,7 @@ public class EbysEvrakService : IEbysEvrakService
     {
         var evrakNo = await YeniEvrakNoOlusturAsync(model.Yon);
 
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var evrak = new EbysEvrak
         {
             EvrakNo = evrakNo,
@@ -133,6 +136,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrak> UpdateEvrakAsync(EbysEvrakGuncelleModel model)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var evrak = await _context.EbysEvraklar.FindAsync(model.Id)
             ?? throw new InvalidOperationException("Evrak bulunamadı");
 
@@ -164,6 +168,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task DeleteEvrakAsync(int id)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var evrak = await _context.EbysEvraklar.FindAsync(id)
             ?? throw new InvalidOperationException("Evrak bulunamadı");
 
@@ -180,6 +185,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<List<EbysEvrakKategori>> GetKategorilerAsync()
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         return await _context.EbysEvrakKategoriler
             .Where(k => k.Aktif)
             .OrderBy(k => k.SiraNo)
@@ -189,6 +195,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrakKategori> CreateKategoriAsync(EbysEvrakKategori kategori)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         _context.EbysEvrakKategoriler.Add(kategori);
         await _context.SaveChangesAsync();
         return kategori;
@@ -196,12 +203,14 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task UpdateKategoriAsync(EbysEvrakKategori kategori)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         _context.EbysEvrakKategoriler.Update(kategori);
         await _context.SaveChangesAsync();
     }
 
     public async Task DeleteKategoriAsync(int id)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var kategori = await _context.EbysEvrakKategoriler.FindAsync(id);
         if (kategori != null)
         {
@@ -216,6 +225,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrakDosya> DosyaYukleAsync(int evrakId, IBrowserFile file, bool asilNusha = false)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var evrak = await _context.EbysEvraklar.FindAsync(evrakId)
             ?? throw new InvalidOperationException("Evrak bulunamadı");
 
@@ -252,11 +262,13 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrakDosya?> GetDosyaAsync(int dosyaId)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         return await _context.EbysEvrakDosyalar.FindAsync(dosyaId);
     }
 
     public async Task DosyaSilAsync(int dosyaId)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var dosya = await _context.EbysEvrakDosyalar.FindAsync(dosyaId);
         if (dosya != null)
         {
@@ -276,6 +288,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrakDosya> DosyaGuncelleAsync(int dosyaId, IBrowserFile file, string? degisiklikNotu = null)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var dosya = await _context.EbysEvrakDosyalar.FindAsync(dosyaId)
             ?? throw new InvalidOperationException("Dosya bulunamadı");
 
@@ -321,6 +334,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrakAtama> AtamaYapAsync(EbysEvrakAtamaModel model)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var evrak = await _context.EbysEvraklar.FindAsync(model.EvrakId)
             ?? throw new InvalidOperationException("Evrak bulunamadı");
 
@@ -354,6 +368,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task AtamaTamamlaAsync(int atamaId, string sonuc)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var atama = await _context.EbysEvrakAtamalar
             .Include(a => a.Evrak)
             .FirstOrDefaultAsync(a => a.Id == atamaId)
@@ -377,6 +392,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task AtamaReddetAsync(int atamaId, string sebep)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var atama = await _context.EbysEvrakAtamalar
             .Include(a => a.Evrak)
             .FirstOrDefaultAsync(a => a.Id == atamaId)
@@ -400,6 +416,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<List<EbysEvrakAtama>> GetEvrakAtalamariAsync(int evrakId)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         return await _context.EbysEvrakAtamalar
             .Include(a => a.AtananKullanici)
             .Include(a => a.AtayanKullanici)
@@ -410,6 +427,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<List<EbysEvrakAtama>> GetKullaniciAtamalariAsync(int kullaniciId)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         return await _context.EbysEvrakAtamalar
             .Include(a => a.Evrak)
             .Include(a => a.AtayanKullanici)
@@ -424,6 +442,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task DurumDegistirAsync(int evrakId, EbysEvrakDurum yeniDurum, string? aciklama = null)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var evrak = await _context.EbysEvraklar.FindAsync(evrakId)
             ?? throw new InvalidOperationException("Evrak bulunamadı");
 
@@ -445,6 +464,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<List<EbysEvrakHareket>> GetEvrakHareketleriAsync(int evrakId)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         return await _context.EbysEvrakHareketler
             .Include(h => h.Kullanici)
             .Where(h => h.EvrakId == evrakId)
@@ -455,6 +475,7 @@ public class EbysEvrakService : IEbysEvrakService
     private async Task HareketEkleAsync(int evrakId, int kullaniciId, EbysHareketTipi hareketTipi,
         string aciklama, string? eskiDeger = null, string? yeniDeger = null)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var hareket = new EbysEvrakHareket
         {
             EvrakId = evrakId,
@@ -476,6 +497,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<EbysEvrakIstatistik> GetIstatistiklerAsync()
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var bugun = DateTime.Today;
 
         var evraklar = await _context.EbysEvraklar.ToListAsync();
@@ -537,6 +559,7 @@ public class EbysEvrakService : IEbysEvrakService
 
     public async Task<string> YeniEvrakNoOlusturAsync(EvrakYonu yon)
     {
+        await using var _context = await _contextFactory.CreateDbContextAsync();
         var yil = DateTime.Now.Year;
         var prefix = yon == EvrakYonu.Gelen ? "GE" : "GI";
 
