@@ -145,7 +145,7 @@ Onayladıktan sonra "şu maddeyi uygula" demen yeterli.
 **Etki:** ⭐⭐⭐⭐⭐
 **Maliyet:** Orta.
 
-### 4.2 WhatsApp ile Günlük Özet Gönderimi (Patrona) `[ ]`
+### 4.2 WhatsApp ile Günlük Özet Gönderimi (Patrona) `[x]`
 **Öneri:** Her sabah 08:00'de "Bugün: 3 sefer planlı, 2 fatura vadesi geçti, 1 belge süresi doldu" özetini WhatsApp'tan yöneticiye yolla.
 **Etki:** ⭐⭐⭐⭐⭐
 **Maliyet:** Düşük (mevcut servislerle).
@@ -184,13 +184,13 @@ Onayladıktan sonra "şu maddeyi uygula" demen yeterli.
 
 ## 🛠 6. TEKNİK BORÇ AZALTMA / PERFORMANS
 
-### 6.1 Tüm Servislerde IDbContextFactory Pattern Standardizasyonu `[ ]`
+### 6.1 Tüm Servislerde IDbContextFactory Pattern Standardizasyonu `[x]`
 **Sorun:** Bugün `EbysEvrakService`'te yaşadığımız "concurrency" hatası — başka servislerde de var olabilir.
 **Öneri:** Tüm servisleri tarayıp scoped DbContext kullananları factory pattern'ine çevir (otomatik refactor script).
 **Etki:** ⭐⭐⭐⭐⭐ (kararlılık)
 **Maliyet:** Orta.
 
-### 6.2 Dashboard Yüklemelerini Paralel Yap `[ ]`
+### 6.2 Dashboard Yüklemelerini Paralel Yap `[x]`
 **Sorun:** Home.razor'da bölümler sırayla yükleniyor — toplam 5-10 saniye sürebilir.
 **Öneri:** `Task.WhenAll` ile paralel yükle (factory pattern düzeltmesinden sonra güvenli olur).
 **Etki:** ⭐⭐⭐⭐

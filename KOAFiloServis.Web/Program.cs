@@ -1,4 +1,4 @@
-﻿using KOAFiloServis.Web.Components;
+using KOAFiloServis.Web.Components;
 using KOAFiloServis.Web.Data;
 using KOAFiloServis.Web.Helpers;
 using KOAFiloServis.Web.Jobs;
@@ -303,6 +303,7 @@ builder.Services.AddSignalR(); // SignalR Hub'ları için
 builder.Services.AddHttpClient("SMS"); // SMS provider'lar için HttpClient
 builder.Services.AddHttpClient("Webhook"); // Webhook gönderimi için HttpClient
 builder.Services.AddScoped<AutoBackupService>(); // Quartz job tarafından tetiklenen otomatik yedek servisi
+builder.Services.AddScoped<GunlukOzetService>(); // Quartz job tarafından tetiklenen günlük WhatsApp özet servisi
 builder.Services.AddHttpContextAccessor();
 
 var belgeUyariCheckIntervalHours = Math.Max(1, builder.Configuration.GetValue("BelgeUyari:CheckIntervalHours", 24));
@@ -338,6 +339,16 @@ builder.Services.AddQuartz(q =>
             .WithIdentity("belge-uyari-trigger")
             .StartAt(DateBuilder.FutureDate(1, IntervalUnit.Minute))
             .WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromHours(belgeUyariCheckIntervalHours)).RepeatForever()));
+    }
+    var gunlukOzetEnabled = builder.Configuration.GetValue("GunlukOzet:Enabled", false);
+    if (gunlukOzetEnabled)
+    {
+        q.AddJob<GunlukOzetJob>(opts => opts.WithIdentity("gunluk-ozet-job"));
+        var gunlukOzetSaat = builder.Configuration.GetValue("GunlukOzet:GonderimSaati", 8);
+        q.AddTrigger(opts => opts
+            .ForJob("gunluk-ozet-job")
+            .WithIdentity("gunluk-ozet-trigger")
+            .WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(gunlukOzetSaat, 0)));
     }
 });
 builder.Services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
