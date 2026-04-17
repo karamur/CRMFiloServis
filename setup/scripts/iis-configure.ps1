@@ -1,8 +1,10 @@
 ﻿<#
-    KOAFiloServis — IIS otomatik yapilandirma
-    - Web sitesi + AppPool olusturur/gunceller
-    - ACL: IIS AppPool\<SiteName> kullanicisina yazma izni
-    - Idempotent (tekrar tekrar calistirilsa sorun cikmaz)
+    KOAFiloServis — IIS otomatik yapilandirma (v1.0.2)
+    - IIS site + AppPool olusturur/gunceller (idempotent)
+    - ACL: IIS AppPool\<SiteName> -> Modify (data/uploads/logs/Backups)
+    - iisreset (AspNetCoreModule cache yenilemesi icin)
+    - Port dolu mu kontrol + 3 deneme ile alternatif port (5191, 5192)
+    - Smoke test: http://localhost:<port>
 #>
 [CmdletBinding()]
 param(
@@ -29,10 +31,29 @@ function Ensure-AppPool {
     } else {
         Write-Host "AppPool zaten var: $Name"
     }
-    Set-ItemProperty "IIS:\AppPools\$Name" -Name managedRuntimeVersion -Value ''   # No Managed Code
+    Set-ItemProperty "IIS:\AppPools\$Name" -Name managedRuntimeVersion -Value ''
     Set-ItemProperty "IIS:\AppPools\$Name" -Name processModel.identityType -Value 'ApplicationPoolIdentity'
     Set-ItemProperty "IIS:\AppPools\$Name" -Name startMode -Value 'AlwaysRunning'
     Set-ItemProperty "IIS:\AppPools\$Name" -Name autoStart -Value $true
+    Set-ItemProperty "IIS:\AppPools\$Name" -Name enable32BitAppOnWin64 -Value $false
+}
+
+function Test-PortFree {
+    param([int] $P)
+    try {
+        $c = Get-NetTCPConnection -LocalPort $P -State Listen -ErrorAction SilentlyContinue
+        # IIS kendi site'imize aitse (kendi dinliyorsa) "boş" say
+        return (-not $c)
+    } catch { return $true }
+}
+
+function Find-FreePort {
+    param([int] $Start, [int] $Tries = 5)
+    for ($i = 0; $i -lt $Tries; $i++) {
+        $candidate = $Start + $i
+        if (Test-PortFree -P $candidate) { return $candidate }
+    }
+    throw "Bos port bulunamadi ($Start ile $($Start + $Tries - 1) arasinda)."
 }
 
 function Ensure-Site {
@@ -48,9 +69,12 @@ function Ensure-Site {
     } else {
         Set-ItemProperty "IIS:\Sites\$Name" -Name physicalPath -Value $Path
         Set-ItemProperty "IIS:\Sites\$Name" -Name applicationPool -Value $AppPool
-        # Port kontrol
         $bindings = Get-WebBinding -Name $Name
-        if (-not ($bindings | Where-Object { $_.bindingInformation -like "*:$Port:*" })) {
+        if (-not ($bindings | Where-Object { $_.bindingInformation -like "*:$($Port):*" })) {
+            # Eski port binding'lerini temizle (yalnizca HTTP)
+            $bindings | Where-Object { $_.protocol -eq 'http' } | ForEach-Object {
+                Remove-WebBinding -Name $Name -BindingInformation $_.bindingInformation -ErrorAction SilentlyContinue
+            }
             New-WebBinding -Name $Name -Protocol http -Port $Port | Out-Null
         }
         Write-Host "Site guncellendi: $Name (:$Port)"
@@ -72,24 +96,70 @@ function Grant-Acl {
     }
 }
 
+function Test-Site {
+    param([int] $P, [int] $TimeoutSec = 15)
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $r = Invoke-WebRequest -Uri "http://localhost:$P" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+            if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) {
+                Write-Host "Smoke test OK: http://localhost:$P ($($r.StatusCode))" -ForegroundColor Green
+                return $true
+            }
+        } catch {
+            Start-Sleep -Seconds 2
+        }
+    }
+    Write-Host "Smoke test basarisiz: http://localhost:$P" -ForegroundColor Yellow
+    return $false
+}
+
 try {
     Write-Host "=== KOAFiloServis IIS yapilandirma ==="
     Write-Host "Klasor : $InstallPath"
     Write-Host "Site   : $SiteName"
-    Write-Host "Port   : $Port"
+    Write-Host "Port   : $Port (istenen)"
 
     Ensure-Module
+
+    # Port kullanilabilir mi? Mevcut site'imiza aitse gec, degilse alternatif bul
+    $siteVar = Test-Path "IIS:\Sites\$SiteName"
+    $gerçekPort = $Port
+    if (-not $siteVar) {
+        if (-not (Test-PortFree -P $Port)) {
+            Write-Host "Port $Port dolu; alternatif araniyor..." -ForegroundColor Yellow
+            $gerçekPort = Find-FreePort -Start $Port -Tries 5
+            Write-Host "Alternatif port: $gerçekPort" -ForegroundColor Yellow
+        }
+    }
+
     Ensure-AppPool -Name $SiteName
-    Ensure-Site -Name $SiteName -Path $InstallPath -Port $Port -AppPool $SiteName
+    Ensure-Site -Name $SiteName -Path $InstallPath -Port $gerçekPort -AppPool $SiteName
 
     foreach ($sub in @($InstallPath, "$InstallPath\data", "$InstallPath\uploads", "$InstallPath\logs", "$InstallPath\Backups")) {
         if (Test-Path $sub) { Grant-Acl -Path $sub -AppPool $SiteName }
     }
 
+    # Hosting Bundle yeni yuklendiyse module kaydi icin iisreset gerekli
+    Write-Host "iisreset /noforce ..."
+    & iisreset.exe /noforce | Out-Host
+
     Start-WebAppPool -Name $SiteName -ErrorAction SilentlyContinue
     Start-Website    -Name $SiteName -ErrorAction SilentlyContinue
 
-    Write-Host "=== IIS yapilandirma tamam ===" -ForegroundColor Green
+    # Kullanilan portu diska yaz (postinstall mesaji icin)
+    Set-Content -Path (Join-Path $InstallPath 'active-port.txt') -Value $gerçekPort -Encoding ASCII
+
+    Write-Host "Smoke test baslatiliyor..."
+    $ok = Test-Site -P $gerçekPort -TimeoutSec 20
+    if (-not $ok) {
+        Write-Host "IIS site acildi ama HTTP cevap vermedi. Logs:" -ForegroundColor Yellow
+        Get-ChildItem "$InstallPath\logs\stdout*.log" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1 |
+            ForEach-Object { Get-Content $_.FullName -Tail 30 | Write-Host }
+    }
+
+    Write-Host "=== IIS yapilandirma tamam (port: $gerçekPort) ===" -ForegroundColor Green
     exit 0
 }
 catch {

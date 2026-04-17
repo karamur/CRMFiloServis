@@ -68,6 +68,17 @@ if (-not $SkipPublish) {
     dotnet publish $Web -c Release -o "$Payload\Web" /p:Version=$Version /p:UseAppHost=true --nologo | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "Web publish basarisiz." }
 
+    # web.config: stdoutLogEnabled=true (IIS sorunlarini tanilayabilmek icin)
+    $webConfigPath = Join-Path $Payload 'Web\web.config'
+    if (Test-Path $webConfigPath) {
+        $wc = Get-Content $webConfigPath -Raw
+        $wc2 = $wc -replace 'stdoutLogEnabled="false"', 'stdoutLogEnabled="true"'
+        if ($wc -ne $wc2) {
+            Set-Content -Path $webConfigPath -Value $wc2 -Encoding UTF8 -NoNewline
+            Write-Host "       web.config: stdoutLogEnabled=true yapildi" -ForegroundColor DarkGray
+        }
+    }
+
     Write-Host "[2/4] LisansDesktop publish..." -ForegroundColor Green
     dotnet publish $Lisans -c Release -r win-x64 --self-contained `
         -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `

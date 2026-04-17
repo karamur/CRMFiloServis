@@ -88,12 +88,6 @@ Name: "{group}\Kaldır"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName} Web"; Filename: "http://localhost:5190"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: ; Flags: createonlyiffileexists
 
 [Run]
-; Ön kontrol (IIS + Hosting Bundle)
-Filename: "powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\scripts\preinstall-check.ps1"""; \
-    StatusMsg: "Gereksinimler kontrol ediliyor..."; \
-    Flags: runhidden waituntilterminated
-
 ; IIS yapılandırma (seçildiyse)
 Filename: "powershell.exe"; \
     Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\scripts\iis-configure.ps1"" -InstallPath ""{app}"" -SiteName ""KOAFiloServis"" -Port 5190"; \
