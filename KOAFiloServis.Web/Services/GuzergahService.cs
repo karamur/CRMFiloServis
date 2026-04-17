@@ -1,5 +1,6 @@
 using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
+using KOAFiloServis.Web.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace KOAFiloServis.Web.Services;
@@ -7,36 +8,40 @@ namespace KOAFiloServis.Web.Services;
 public class GuzergahService : IGuzergahService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+    private readonly ICacheService _cache;
 
-    public GuzergahService(IDbContextFactory<ApplicationDbContext> contextFactory)
+    public GuzergahService(IDbContextFactory<ApplicationDbContext> contextFactory, ICacheService cache)
     {
         _contextFactory = contextFactory;
+        _cache = cache;
     }
 
-    public async Task<List<Guzergah>> GetAllAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Guzergahlar
-            .AsNoTracking()
-            .Include(g => g.Cari)
-            .Include(g => g.Firma)
-            .Where(g => g.Cari == null || !g.Cari.IsDeleted)
-            .OrderBy(g => g.GuzergahAdi)
-            .ToListAsync();
-    }
+    public Task<List<Guzergah>> GetAllAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.GuzergahListesi, async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Guzergahlar
+                .AsNoTracking()
+                .Include(g => g.Cari)
+                .Include(g => g.Firma)
+                .Where(g => g.Cari == null || !g.Cari.IsDeleted)
+                .OrderBy(g => g.GuzergahAdi)
+                .ToListAsync();
+        }, CacheDurations.Long);
 
-    public async Task<List<Guzergah>> GetActiveAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.Guzergahlar
-            .AsNoTracking()
-            .Include(g => g.Cari)
-            .Include(g => g.Firma)
-            .Where(g => g.Aktif)
-            .Where(g => g.Cari == null || !g.Cari.IsDeleted)
-            .OrderBy(g => g.GuzergahAdi)
-            .ToListAsync();
-    }
+    public Task<List<Guzergah>> GetActiveAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.GuzergahAktif, async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Guzergahlar
+                .AsNoTracking()
+                .Include(g => g.Cari)
+                .Include(g => g.Firma)
+                .Where(g => g.Aktif)
+                .Where(g => g.Cari == null || !g.Cari.IsDeleted)
+                .OrderBy(g => g.GuzergahAdi)
+                .ToListAsync();
+        }, CacheDurations.Long);
 
     public async Task<List<Guzergah>> GetByCariIdAsync(int cariId)
     {
@@ -77,6 +82,7 @@ public class GuzergahService : IGuzergahService
         await using var context = await _contextFactory.CreateDbContextAsync();
         context.Guzergahlar.Add(guzergah);
         await context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync(CacheKeys.GuzergahPrefix);
         return guzergah;
     }
 
@@ -109,6 +115,7 @@ public class GuzergahService : IGuzergahService
         existing.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync(CacheKeys.GuzergahPrefix);
         return existing;
     }
 
@@ -121,6 +128,7 @@ public class GuzergahService : IGuzergahService
             guzergah.IsDeleted = true;
             guzergah.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync(CacheKeys.GuzergahPrefix);
         }
     }
 

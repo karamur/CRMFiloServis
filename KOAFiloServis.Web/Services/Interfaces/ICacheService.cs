@@ -91,7 +91,18 @@ public static class CacheKeys
     public static string FaturaDetay(int id) => $"{Prefix}Fatura:Detay:{id}";
     
     // Masraf Kalemleri
+    public const string MasrafKalemiPrefix = Prefix + "MasrafKalemi:";
     public static string MasrafKalemiListesi => Prefix + "MasrafKalemi:Liste";
+    public static string MasrafKalemiAktif => Prefix + "MasrafKalemi:Aktif";
+
+    // Güzergah (prefix ile invalidate)
+    public const string GuzergahPrefix = Prefix + "Guzergah:";
+
+    // Araç (prefix ile invalidate)
+    public const string AracPrefix = Prefix + "Arac:";
+
+    // Şoför (prefix ile invalidate)
+    public const string SoforPrefix = Prefix + "Sofor:";
     
     // İstatistikler
     public static string AylikIstatistik(int yil, int ay) => $"{Prefix}Istatistik:Aylik:{yil}:{ay}";

@@ -1,5 +1,6 @@
 using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
+using KOAFiloServis.Web.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace KOAFiloServis.Web.Services;
@@ -7,32 +8,36 @@ namespace KOAFiloServis.Web.Services;
 public class MasrafKalemiService : IMasrafKalemiService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+    private readonly ICacheService _cache;
 
-    public MasrafKalemiService(IDbContextFactory<ApplicationDbContext> contextFactory)
+    public MasrafKalemiService(IDbContextFactory<ApplicationDbContext> contextFactory, ICacheService cache)
     {
         _contextFactory = contextFactory;
+        _cache = cache;
     }
 
-    public async Task<List<MasrafKalemi>> GetAllAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.MasrafKalemleri
-            .AsNoTracking()
-            .OrderBy(m => m.Kategori)
-            .ThenBy(m => m.MasrafAdi)
-            .ToListAsync();
-    }
+    public Task<List<MasrafKalemi>> GetAllAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.MasrafKalemiListesi, async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.MasrafKalemleri
+                .AsNoTracking()
+                .OrderBy(m => m.Kategori)
+                .ThenBy(m => m.MasrafAdi)
+                .ToListAsync();
+        }, CacheDurations.Long);
 
-    public async Task<List<MasrafKalemi>> GetActiveAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        return await context.MasrafKalemleri
-            .AsNoTracking()
-            .Where(m => m.Aktif)
-            .OrderBy(m => m.Kategori)
-            .ThenBy(m => m.MasrafAdi)
-            .ToListAsync();
-    }
+    public Task<List<MasrafKalemi>> GetActiveAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.MasrafKalemiAktif, async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.MasrafKalemleri
+                .AsNoTracking()
+                .Where(m => m.Aktif)
+                .OrderBy(m => m.Kategori)
+                .ThenBy(m => m.MasrafAdi)
+                .ToListAsync();
+        }, CacheDurations.Long);
 
     public async Task<List<MasrafKalemi>> GetByKategoriAsync(MasrafKategori kategori)
     {
@@ -57,6 +62,7 @@ public class MasrafKalemiService : IMasrafKalemiService
         await using var context = await _contextFactory.CreateDbContextAsync();
         context.MasrafKalemleri.Add(masrafKalemi);
         await context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync(CacheKeys.MasrafKalemiPrefix);
         return masrafKalemi;
     }
 
@@ -76,6 +82,7 @@ public class MasrafKalemiService : IMasrafKalemiService
         existing.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync(CacheKeys.MasrafKalemiPrefix);
         return existing;
     }
 
@@ -88,6 +95,7 @@ public class MasrafKalemiService : IMasrafKalemiService
             masrafKalemi.IsDeleted = true;
             masrafKalemi.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync(CacheKeys.MasrafKalemiPrefix);
         }
     }
 

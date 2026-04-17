@@ -1,5 +1,6 @@
 using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
+using KOAFiloServis.Web.Services.Interfaces;
 using KOAFiloServis.Web.Helpers;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
@@ -10,69 +11,71 @@ public class AracService : IAracService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
     private readonly ISecureFileService _secureFileService;
+    private readonly ICacheService _cache;
 
-    public AracService(IDbContextFactory<ApplicationDbContext> contextFactory, ISecureFileService secureFileService)
+    public AracService(IDbContextFactory<ApplicationDbContext> contextFactory, ISecureFileService secureFileService, ICacheService cache)
     {
         _contextFactory = contextFactory;
         _secureFileService = secureFileService;
+        _cache = cache;
     }
 
     #region Araç CRUD İşlemleri
 
-    public async Task<List<Arac>> GetAllAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var araclar = await context.Araclar
-            .AsNoTracking()
-            .Include(a => a.PlakaGecmisi.Where(p => !p.IsDeleted))
-            .Where(a => !a.IsDeleted)
-            .ToListAsync();
-
-        // Aktif plakaları güncelle (CikisTarihi null veya gelecek tarihli olanlar)
-        foreach (var arac in araclar)
+    public Task<List<Arac>> GetAllAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.AracListesi, async () =>
         {
-            var aktifPlaka = arac.PlakaGecmisi
-                .Where(p => p.CikisTarihi == null || p.CikisTarihi > DateTime.Today)
-                .OrderByDescending(p => p.GirisTarihi)
-                .FirstOrDefault();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var araclar = await context.Araclar
+                .AsNoTracking()
+                .Include(a => a.PlakaGecmisi.Where(p => !p.IsDeleted))
+                .Where(a => !a.IsDeleted)
+                .ToListAsync();
 
-            if (aktifPlaka != null && arac.AktifPlaka != aktifPlaka.Plaka)
+            foreach (var arac in araclar)
             {
-                arac.AktifPlaka = aktifPlaka.Plaka;
-                arac.Plaka = aktifPlaka.Plaka;
+                var aktifPlaka = arac.PlakaGecmisi
+                    .Where(p => p.CikisTarihi == null || p.CikisTarihi > DateTime.Today)
+                    .OrderByDescending(p => p.GirisTarihi)
+                    .FirstOrDefault();
+
+                if (aktifPlaka != null && arac.AktifPlaka != aktifPlaka.Plaka)
+                {
+                    arac.AktifPlaka = aktifPlaka.Plaka;
+                    arac.Plaka = aktifPlaka.Plaka;
+                }
             }
-        }
 
-        return araclar.OrderBy(a => a.AktifPlaka ?? a.SaseNo).ToList();
-    }
+            return araclar.OrderBy(a => a.AktifPlaka ?? a.SaseNo).ToList();
+        }, CacheDurations.Medium);
 
-    public async Task<List<Arac>> GetActiveAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var araclar = await context.Araclar
-            .AsNoTracking()
-            .Include(a => a.PlakaGecmisi.Where(p => !p.IsDeleted))
-            .Where(a => a.Aktif && !a.IsDeleted)
-            .ToListAsync();
-            
-        // Aktif plakaları güncelle
-        foreach (var arac in araclar)
+    public Task<List<Arac>> GetActiveAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.AracAktif, async () =>
         {
-            var aktifPlaka = arac.PlakaGecmisi
-                .Where(p => p.CikisTarihi == null || p.CikisTarihi > DateTime.Today)
-                .OrderByDescending(p => p.GirisTarihi)
-                .FirstOrDefault();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var araclar = await context.Araclar
+                .AsNoTracking()
+                .Include(a => a.PlakaGecmisi.Where(p => !p.IsDeleted))
+                .Where(a => a.Aktif && !a.IsDeleted)
+                .ToListAsync();
             
-            if (aktifPlaka != null && arac.AktifPlaka != aktifPlaka.Plaka)
+            // Aktif plakaları güncelle
+            foreach (var arac in araclar)
             {
-                arac.AktifPlaka = aktifPlaka.Plaka;
-                arac.Plaka = aktifPlaka.Plaka;
+                var aktifPlaka = arac.PlakaGecmisi
+                    .Where(p => p.CikisTarihi == null || p.CikisTarihi > DateTime.Today)
+                    .OrderByDescending(p => p.GirisTarihi)
+                    .FirstOrDefault();
+            
+                if (aktifPlaka != null && arac.AktifPlaka != aktifPlaka.Plaka)
+                {
+                    arac.AktifPlaka = aktifPlaka.Plaka;
+                    arac.Plaka = aktifPlaka.Plaka;
+                }
             }
-        }
-        
-        return araclar.OrderBy(a => a.AktifPlaka ?? a.SaseNo).ToList();
-    }
-
+            
+            return araclar.OrderBy(a => a.AktifPlaka ?? a.SaseNo).ToList();
+        }, CacheDurations.Medium);
     public async Task<int> GetActiveCountAsync()
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
@@ -208,6 +211,7 @@ public class AracService : IAracService
             arac.PlakaGecmisi.Add(aracPlaka);
             await context.SaveChangesAsync();
             await transaction.CommitAsync();
+            await _cache.RemoveByPrefixAsync(CacheKeys.AracPrefix);
 
             return arac;
             }); // ExecutionStrategy lambda sonu

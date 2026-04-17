@@ -1,5 +1,6 @@
 using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Data;
+using KOAFiloServis.Web.Services.Interfaces;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,37 +10,39 @@ public class SoforService : ISoforService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
     private readonly IMuhasebeService _muhasebeService;
+    private readonly ICacheService _cache;
 
-    public SoforService(IDbContextFactory<ApplicationDbContext> contextFactory, IMuhasebeService muhasebeService)
+    public SoforService(IDbContextFactory<ApplicationDbContext> contextFactory, IMuhasebeService muhasebeService, ICacheService cache)
     {
         _contextFactory = contextFactory;
         _muhasebeService = muhasebeService;
+        _cache = cache;
     }
 
-    public async Task<List<Sofor>> GetAllAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var personeller = await QuerySoforler(context)
-            .OrderBy(s => s.Ad)
-            .ThenBy(s => s.Soyad)
-            .ToListAsync();
+    public Task<List<Sofor>> GetAllAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.SoforListesi, async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var personeller = await QuerySoforler(context)
+                .OrderBy(s => s.Ad)
+                .ThenBy(s => s.Soyad)
+                .ToListAsync();
+            personeller.ForEach(NormalizeMaasBilgileri);
+            return personeller;
+        }, CacheDurations.Medium);
 
-        personeller.ForEach(NormalizeMaasBilgileri);
-        return personeller;
-    }
-
-    public async Task<List<Sofor>> GetActiveAsync()
-    {
-        await using var context = await _contextFactory.CreateDbContextAsync();
-        var personeller = await QuerySoforler(context)
-            .Where(s => s.Aktif)
-            .OrderBy(s => s.Ad)
-            .ThenBy(s => s.Soyad)
-            .ToListAsync();
-
-        personeller.ForEach(NormalizeMaasBilgileri);
-        return personeller;
-    }
+    public Task<List<Sofor>> GetActiveAsync() =>
+        _cache.GetOrSetAsync(CacheKeys.SoforAktif, async () =>
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var personeller = await QuerySoforler(context)
+                .Where(s => s.Aktif)
+                .OrderBy(s => s.Ad)
+                .ThenBy(s => s.Soyad)
+                .ToListAsync();
+            personeller.ForEach(NormalizeMaasBilgileri);
+            return personeller;
+        }, CacheDurations.Medium);
 
     public async Task<int> GetActiveCountAsync()
     {
@@ -125,6 +128,7 @@ public class SoforService : ISoforService
 
         // existing zaten tracked durumda, SaveChanges değişiklikleri otomatik kaydeder
         await context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync(CacheKeys.SoforPrefix);
         return existing;
     }
 
@@ -139,6 +143,7 @@ public class SoforService : ISoforService
             sofor.UpdatedAt = DateTime.UtcNow;
             context.Soforler.Update(sofor);
             await context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync(CacheKeys.SoforPrefix);
         }
     }
 

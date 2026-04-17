@@ -202,7 +202,7 @@ Onayladıktan sonra "şu maddeyi uygula" demen yeterli.
 **Etki:** ⭐⭐⭐⭐
 **Maliyet:** Orta.
 
-### 6.4 Cache Stratejisi (Kategoriler, Kurullar, Sabit Listeler) `[ ]`
+### 6.4 Cache Stratejisi (Kategoriler, Kurullar, Sabit Listeler) `[x]``
 **Mevcut:** `CacheService` var ama az kullanılıyor.
 **Öneri:** Kategori/şehir/birim/vergi oranı gibi nadiren değişen veriler IMemoryCache'e alınsın.
 **Etki:** ⭐⭐⭐⭐
