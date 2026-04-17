@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # 🚚 KOAFiloServis
 
@@ -57,9 +57,12 @@
 - Excel (ClosedXML/EPPlus) ve PDF (QuestPDF) dışa aktarım
 
 ### 🧾 EBYS & Belge Yönetimi
-- Gelen/giden evrak takibi
-- Evrak kategorileri, arama, detay görüntüleme
-- Belge uyarı ve hatırlatma motoru
+- Gelen/giden evrak takibi ve atama iş akışı
+- Evrak kategorileri, gelişmiş arama ve detay görüntüleme
+- Çoklu dosya yükleme ve versiyon geçmişi (asıl nüsha takibi)
+- Kullanıcı/departman bazlı evrak atama ve hareket geçmişi
+- **Dashboard entegrasyonu:** Giriş yapan kullanıcıya atanmış bekleyen evraklar için uyarı banner'ı (acil/gecikmiş ayırımı) ve hızlı erişim modal'ı
+- Belge uyarı ve hatırlatma motoru (ruhsat, sigorta, muayene vb.)
 
 ### 🤖 AI & Otomasyon
 - Fatura AI içe aktarımı

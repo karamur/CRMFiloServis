@@ -12,6 +12,7 @@
 @inject IServisCalismaService ServisCalismaService
 @inject IBankaKasaHareketService BankaKasaService
 @inject IBelgeUyariService BelgeUyariService
+@inject IEbysEvrakService EbysEvrakService
 @inject IBudgetService BudgetService
 @inject IFirmaService FirmaService
 @inject IKullaniciService KullaniciService
@@ -78,6 +79,35 @@ else
             <button class="btn btn-outline-danger btn-sm" @onclick="() => showBelgeModal = true">
                 <i class="bi bi-eye me-1"></i>Görüntüle
             </button>
+        </div>
+    }
+
+    <!-- Bana Atanan EBYS Evrakları Banner -->
+    @if (CanViewEbys && atananEvraklar != null && atananEvraklar.Count > 0)
+    {
+        var acilSayisi = atananEvraklar.Count(a => a.Evrak != null && a.Evrak.Oncelik == EvrakOncelik.Acil);
+        var gecikmisSayisi = atananEvraklar.Count(a => a.TeslimTarihi.HasValue && a.TeslimTarihi.Value.Date < DateTime.Today);
+        var alertClass = (acilSayisi > 0 || gecikmisSayisi > 0) ? "alert-danger" : "alert-info";
+        var btnClass = (acilSayisi > 0 || gecikmisSayisi > 0) ? "btn-outline-danger" : "btn-outline-primary";
+        <div class="alert @alertClass d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-inbox-fill me-2" style="font-size: 1.5rem;"></i>
+            <div class="flex-grow-1">
+                <strong>Size atanmış @atananEvraklar.Count bekleyen evrak var!</strong>
+                @if (acilSayisi > 0)
+                {
+                    <span class="badge bg-danger ms-2">@acilSayisi acil</span>
+                }
+                @if (gecikmisSayisi > 0)
+                {
+                    <span class="badge bg-warning text-dark ms-2">@gecikmisSayisi gecikmiş</span>
+                }
+            </div>
+            <button class="btn @btnClass btn-sm me-2" @onclick="() => showAtananEvraklarModal = true">
+                <i class="bi bi-eye me-1"></i>Görüntüle
+            </button>
+            <a href="/ebys/takip" class="btn @btnClass btn-sm">
+                <i class="bi bi-arrow-right me-1"></i>Evrak Takip
+            </a>
         </div>
     }
 
@@ -937,6 +967,98 @@ else
         </div>
     </div>
 }
+
+<!-- Bana Atanan Evraklar Modal -->
+@if (showAtananEvraklarModal && atananEvraklar != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-inbox-fill me-2"></i>Bana Atanan Evraklar (@atananEvraklar.Count)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => showAtananEvraklarModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    @if (atananEvraklar.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Öncelik</th>
+                                        <th>Evrak No</th>
+                                        <th>Konu</th>
+                                        <th>Atayan</th>
+                                        <th>Atama Tarihi</th>
+                                        <th>Teslim Tarihi</th>
+                                        <th class="text-center">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var atama in atananEvraklar)
+                                    {
+                                        var oncelik = atama.Evrak?.Oncelik ?? EvrakOncelik.Normal;
+                                        var oncelikBadge = oncelik switch
+                                        {
+                                            EvrakOncelik.Acil => "bg-danger",
+                                            EvrakOncelik.Yuksek => "bg-warning text-dark",
+                                            EvrakOncelik.Dusuk => "bg-secondary",
+                                            _ => "bg-info"
+                                        };
+                                        var gecikmis = atama.TeslimTarihi.HasValue && atama.TeslimTarihi.Value.Date < DateTime.Today;
+                                        <tr>
+                                            <td><span class="badge @oncelikBadge">@oncelik</span></td>
+                                            <td><code>@(atama.Evrak?.EvrakNo ?? "-")</code></td>
+                                            <td><strong>@(atama.Evrak?.Konu ?? "-")</strong></td>
+                                            <td>@(atama.AtayanKullanici?.AdSoyad ?? "-")</td>
+                                            <td>@atama.AtamaTarihi.ToString("dd.MM.yyyy HH:mm")</td>
+                                            <td>
+                                                @if (atama.TeslimTarihi.HasValue)
+                                                {
+                                                    <span class="@(gecikmis ? "text-danger fw-bold" : "")">
+                                                        @atama.TeslimTarihi.Value.ToString("dd.MM.yyyy")
+                                                        @if (gecikmis)
+                                                        {
+                                                            <i class="bi bi-exclamation-triangle-fill ms-1"></i>
+                                                        }
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="/ebys/evrak/@atama.EvrakId" class="btn btn-sm btn-outline-primary" title="Detay">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-success py-4">
+                            <i class="bi bi-check-circle" style="font-size: 3rem;"></i>
+                            <p class="mb-0 mt-2">Bekleyen atanmış evrak yok!</p>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <a href="/ebys/takip" class="btn btn-primary">
+                        <i class="bi bi-list-ul me-1"></i>Tüm Evrakları Görüntüle
+                    </a>
+                    <button type="button" class="btn btn-secondary" @onclick="() => showAtananEvraklarModal = false">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 }
 
 @code {
@@ -957,9 +1079,11 @@ else
     private List<BudgetOdeme> gecmisOdenmemisBorclar = new();
     
     private BelgeUyariOzet? belgeUyarilar;
+    private List<EbysEvrakAtama>? atananEvraklar;
     private BudgetOzet? butceOzet;
     private BudgetOdeme? seciliGecmisBorc;
     private bool showBelgeModal = false;
+    private bool showAtananEvraklarModal = false;
     private bool showGecmisBorcModal = false;
     private bool isLoading = true;
     private bool dashboardLoadInProgress;
@@ -994,6 +1118,7 @@ else
         kullaniciYetkileri.Contains(Yetkiler.TopluCalismaOku) ||
         kullaniciYetkileri.Contains("*");
     private bool CanViewBelgeUyarilari => kullaniciYetkileri.Contains(Yetkiler.BelgeUyarilariOku) || kullaniciYetkileri.Contains("*");
+    private bool CanViewEbys => kullaniciYetkileri.Contains("menu.ebys") || kullaniciYetkileri.Contains("*");
 
     protected override async Task OnInitializedAsync()
     {
@@ -1057,6 +1182,7 @@ else
         sonHareketler = null;
         gecmisOdenmemisBorclar = new();
         belgeUyarilar = null;
+        atananEvraklar = null;
         butceOzet = null;
     }
 
@@ -1162,6 +1288,20 @@ else
                     var belgeUyariService = sp.GetRequiredService<IBelgeUyariService>();
                     belgeUyarilar = await belgeUyariService.GetBelgeUyarilarAsync(30);
                 }, "Belge uyarıları");
+            }
+
+            if (CanViewEbys)
+            {
+                await TryLoadDashboardSectionAsync(async sp =>
+                {
+                    var kullaniciService = sp.GetRequiredService<IKullaniciService>();
+                    var aktifKullanici = await kullaniciService.GetAktifKullaniciAsync();
+                    if (aktifKullanici != null)
+                    {
+                        var ebysService = sp.GetRequiredService<IEbysEvrakService>();
+                        atananEvraklar = await ebysService.GetKullaniciAtamalariAsync(aktifKullanici.Id);
+                    }
+                }, "EBYS atanan evraklar");
             }
 
             // Grafik verilerini yükle
