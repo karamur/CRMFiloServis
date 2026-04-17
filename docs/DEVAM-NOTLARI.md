@@ -1,6 +1,7 @@
 ﻿# KOAFiloServis — Çalışma Notları (Devam Noktası)
 
-> Son güncelleme: **v1.0.2 paketi üretildi** — IIS otomasyonu sertleştirildi, Hosting Bundle zorunlu.
+> Son güncelleme: **v1.0.3 paketi üretildi** — Dosya şifreleme (AES-256-GCM + DPAPI) tamamlandı, migration aracı eklendi.
+> Sonraki oturumda: kurulum doğrulama + migration çalıştırma + sonraki sprint. — IIS otomasyonu sertleştirildi, Hosting Bundle zorunlu.
 > Sonraki oturumda test PC'de doğrulama + GitHub Release.
 
 ---
