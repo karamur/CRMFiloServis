@@ -1,105 +1,216 @@
-﻿# CRM Filo Servis - Sunucu Güncelleme Scripti
-# Kullanım: .\update-server.ps1 -ZipPath "C:\path\to\CRMFiloServis_Update_YYYYMMDD.zip"
+<#
+.SYNOPSIS
+    KOAFiloServis sunucu guncelleme scripti (ZIP tabanli, IIS).
 
+.DESCRIPTION
+    Yayinlanan Web publish ZIP'ini mevcut IIS kurulumunun uzerine uygular.
+    Adimlar:
+      1) Guncelleme ZIP'i dogrula
+      2) Veritabani yedekle (Backups\db-<tarih>)
+      3) IIS AppPool'u durdur (dosya kilidi onleme)
+      4) Eski dosyalari temizle (konfigurasyonlara DOKUNMA)
+      5) Yeni dosyalari kopyala
+      6) IIS AppPool'u baslat
+      7) Smoke test (HTTP 200 kontrolu)
+
+.PARAMETER ZipPath
+    Web publish ZIP dosyasinin tam yolu.
+    (build.ps1 -ZipOutput ile olusturulur veya manuel publish ZIP'i)
+
+.PARAMETER InstallPath
+    Uygulama kurulu dizin. Varsayilan: C:\KOAFiloServis
+
+.PARAMETER SiteName
+    IIS site ve AppPool adi. Varsayilan: KOAFiloServis
+
+.PARAMETER Port
+    Smoke test icin port. Varsayilan: 5190
+
+.PARAMETER NoBackup
+    Veritabani yedegini atla (tavsiye edilmez).
+
+.PARAMETER NoSmokeTest
+    HTTP smoke testini atla.
+
+.EXAMPLE
+    .\update-server.ps1 -ZipPath "C:\dist\KOAFiloServisWeb-1.0.4.zip"
+    .\update-server.ps1 -ZipPath "...\web.zip" -InstallPath "D:\KOAFiloServis"
+#>
+[CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$ZipPath,
-    
-    [string]$AppPath = "C:\inetpub\wwwroot\CRMFiloServis",  # IIS için varsayılan
-    [string]$ServiceName = "CRMFiloServis",                 # Windows Service adı (varsa)
-    [string]$AppPoolName = "CRMFiloServis",                 # IIS App Pool adı (varsa)
-    [switch]$NoBackup
+    [Parameter(Mandatory)] [string] $ZipPath,
+    [string] $InstallPath = 'C:\KOAFiloServis',
+    [string] $SiteName    = 'KOAFiloServis',
+    [int]    $Port        = 5190,
+    [switch] $NoBackup,
+    [switch] $NoSmokeTest
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
+$ProgressPreference    = 'SilentlyContinue'
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  CRM Filo Servis - Sunucu Güncellemesi" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
+$stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+
+Write-Host ""
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "  KOAFiloServis — Sunucu Guncelleme" -ForegroundColor Cyan
+Write-Host "  $stamp" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ZIP dosyasını kontrol et
+# ---- 1) ZIP dogrula ----
+Write-Host "[1/7] Guncelleme paketi kontrol ediliyor..." -ForegroundColor Yellow
 if (-not (Test-Path $ZipPath)) {
-    Write-Host "HATA: ZIP dosyası bulunamadı: $ZipPath" -ForegroundColor Red
+    Write-Host "HATA: ZIP bulunamadi: $ZipPath" -ForegroundColor Red
+    exit 1
+}
+$zipBoyut = [math]::Round((Get-Item $ZipPath).Length / 1MB, 1)
+Write-Host "      OK: $ZipPath ($zipBoyut MB)" -ForegroundColor Green
+
+if (-not (Test-Path $InstallPath)) {
+    Write-Host "HATA: Kurulum dizini bulunamadi: $InstallPath" -ForegroundColor Red
+    Write-Host "      Once ana kurulum paketini (KOAFiloServisKurulum-*.exe) calistirin." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[1/6] Güncelleme paketi: $ZipPath" -ForegroundColor Yellow
-
-# Yedekleme
-$BackupPath = "$AppPath.backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+# ---- 2) Veritabani yedekle ----
 if (-not $NoBackup) {
-    Write-Host "[2/6] Yedekleme yapılıyor: $BackupPath" -ForegroundColor Yellow
-    if (Test-Path $AppPath) {
-        Copy-Item -Path $AppPath -Destination $BackupPath -Recurse -Force
-        Write-Host "      Yedekleme tamamlandı" -ForegroundColor Green
+    Write-Host "[2/7] Veritabani yedekleniyor..." -ForegroundColor Yellow
+    $dbScript = Join-Path $InstallPath 'scripts\backup-db.ps1'
+    if (Test-Path $dbScript) {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $dbScript `
+            -InstallPath $InstallPath
+    } else {
+        # Script yoksa manuel yedekle
+        $DbFile = Join-Path $InstallPath 'KOAFiloServis'
+        if (Test-Path $DbFile) {
+            $BackupDir = Join-Path $InstallPath "Backups\db-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+            New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+            Copy-Item $DbFile (Join-Path $BackupDir 'KOAFiloServis') -Force
+            @('KOAFiloServis-shm', 'KOAFiloServis-wal') | ForEach-Object {
+                $f = Join-Path $InstallPath $_
+                if (Test-Path $f) { Copy-Item $f (Join-Path $BackupDir $_) -Force }
+            }
+            Write-Host "      Yedek: $BackupDir" -ForegroundColor Green
+        } else {
+            Write-Host "      Veritabani dosyasi bulunamadi, yedekleme atlandi." -ForegroundColor DarkGray
+        }
     }
 } else {
-    Write-Host "[2/6] Yedekleme atlandı (-NoBackup)" -ForegroundColor Gray
+    Write-Host "[2/7] Veritabani yedekleme ATLANDI (-NoBackup)" -ForegroundColor DarkGray
 }
 
-# IIS App Pool durdur
-$appPoolStopped = $false
+# ---- 3) IIS AppPool durdur ----
+Write-Host "[3/7] IIS AppPool durduruluyor: $SiteName..." -ForegroundColor Yellow
+$poolDurduruldu = $false
 try {
-    Import-Module WebAdministration -ErrorAction SilentlyContinue
-    if (Get-IISAppPool -Name $AppPoolName -ErrorAction SilentlyContinue) {
-        Write-Host "[3/6] IIS App Pool durduruluyor: $AppPoolName" -ForegroundColor Yellow
-        Stop-WebAppPool -Name $AppPoolName
-        $appPoolStopped = $true
-        Start-Sleep -Seconds 3
-        Write-Host "      App Pool durduruldu" -ForegroundColor Green
+    Import-Module WebAdministration -ErrorAction Stop
+    if (Test-Path "IIS:\AppPools\$SiteName") {
+        $pool = Get-WebAppPoolState -Name $SiteName
+        if ($pool.Value -ne 'Stopped') {
+            Stop-WebAppPool -Name $SiteName
+            # AppPool durmasini bekle (max 10s)
+            $bekle = 0
+            while ((Get-WebAppPoolState -Name $SiteName).Value -ne 'Stopped' -and $bekle -lt 10) {
+                Start-Sleep -Milliseconds 500
+                $bekle++
+            }
+        }
+        $poolDurduruldu = $true
+        Write-Host "      AppPool durduruldu." -ForegroundColor Green
+    } else {
+        Write-Host "      AppPool bulunamadi: $SiteName (atlandi)" -ForegroundColor DarkGray
     }
 } catch {
-    Write-Host "[3/6] IIS App Pool bulunamadı veya durdurulamadı" -ForegroundColor Gray
+    Write-Host "      IIS modulu yuklenemedi veya AppPool durdurulamadi: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# Windows Service durdur
-$serviceStopped = $false
-try {
-    $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    if ($service -and $service.Status -eq 'Running') {
-        Write-Host "[3/6] Windows Service durduruluyor: $ServiceName" -ForegroundColor Yellow
-        Stop-Service -Name $ServiceName -Force
-        $serviceStopped = $true
-        Start-Sleep -Seconds 3
-        Write-Host "      Service durduruldu" -ForegroundColor Green
+# ---- 4) ZIP'i gecici klasore ac ----
+Write-Host "[4/7] Guncelleme paketi aciliyor..." -ForegroundColor Yellow
+$tempDir = Join-Path $env:TEMP "KOAFiloServis_update_$(Get-Date -Format 'yyyyMMddHHmmss')"
+Expand-Archive -Path $ZipPath -DestinationPath $tempDir -Force
+Write-Host "      Acildi: $tempDir" -ForegroundColor Green
+
+# ---- 5) Korunacak dosya/klasorleri belirle ----
+$korunanlar = @(
+    'dbsettings.json',
+    'appsettings.json',
+    'appsettings.Production.json',
+    'appsettings.Development.json',
+    'portalsettings.json',
+    'backup_settings.json',
+    'KOAFiloServis',      # SQLite DB
+    'KOAFiloServis-shm',
+    'KOAFiloServis-wal',
+    'logs',
+    'uploads',
+    'Backups',
+    'scripts'
+)
+
+# ---- 6) Eski uygulama dosyalarini temizle (korunanlar haric) ----
+Write-Host "[5/7] Eski dosyalar temizleniyor..." -ForegroundColor Yellow
+Get-ChildItem -Path $InstallPath | Where-Object {
+    $korunanlar -notcontains $_.Name
+} | ForEach-Object {
+    Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+}
+Write-Host "      Temizlik tamamlandi." -ForegroundColor Green
+
+# ---- 7) Yeni dosyalari kopyala ----
+Write-Host "[6/7] Yeni dosyalar kopyalaniyor..." -ForegroundColor Yellow
+$kaynaklar = Get-ChildItem -Path $tempDir | Where-Object {
+    $korunanlar -notcontains $_.Name
+}
+foreach ($kaynak in $kaynaklar) {
+    $hedef = Join-Path $InstallPath $kaynak.Name
+    Copy-Item $kaynak.FullName $hedef -Recurse -Force
+}
+# Gecici klasoru temizle
+Remove-Item $tempDir -Recurse -Force
+Write-Host "      Kopyalama tamamlandi." -ForegroundColor Green
+
+# ---- 8) IIS AppPool baslat ----
+Write-Host "[7/7] IIS AppPool baslatiliyor..." -ForegroundColor Yellow
+if ($poolDurduruldu) {
+    try {
+        Start-WebAppPool -Name $SiteName
+        Write-Host "      AppPool baslatildi." -ForegroundColor Green
+    } catch {
+        Write-Host "      AppPool baslatma hatasi: $($_.Exception.Message)" -ForegroundColor Yellow
     }
-} catch {
-    Write-Host "[3/6] Windows Service bulunamadı" -ForegroundColor Gray
+} else {
+    Write-Host "      AppPool zaten durdurulmustu, atlandi." -ForegroundColor DarkGray
 }
 
-# ZIP'i aç
-Write-Host "[4/6] Güncelleme paketi açılıyor..." -ForegroundColor Yellow
-$tempPath = "$env:TEMP\CRMFiloServis_Update_$(Get-Date -Format 'yyyyMMddHHmmss')"
-Expand-Archive -Path $ZipPath -DestinationPath $tempPath -Force
-Write-Host "      Paket açıldı: $tempPath" -ForegroundColor Green
-
-# Dosyaları kopyala
-Write-Host "[5/6] Dosyalar kopyalanıyor..." -ForegroundColor Yellow
-if (-not (Test-Path $AppPath)) {
-    New-Item -ItemType Directory -Path $AppPath -Force | Out-Null
-}
-Copy-Item -Path "$tempPath\*" -Destination $AppPath -Recurse -Force
-Write-Host "      Dosyalar kopyalandı" -ForegroundColor Green
-
-# Temp klasörünü temizle
-Remove-Item -Path $tempPath -Recurse -Force
-
-# Servisleri başlat
-Write-Host "[6/6] Servisler başlatılıyor..." -ForegroundColor Yellow
-if ($appPoolStopped) {
-    Start-WebAppPool -Name $AppPoolName
-    Write-Host "      IIS App Pool başlatıldı" -ForegroundColor Green
-}
-if ($serviceStopped) {
-    Start-Service -Name $ServiceName
-    Write-Host "      Windows Service başlatıldı" -ForegroundColor Green
+# ---- Smoke test ----
+if (-not $NoSmokeTest) {
+    Write-Host ""
+    Write-Host "Smoke test: http://localhost:$Port ..." -ForegroundColor Cyan
+    $ok = $false
+    for ($i = 1; $i -le 6; $i++) {
+        Start-Sleep -Milliseconds 2000
+        try {
+            $resp = Invoke-WebRequest -Uri "http://localhost:$Port" -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+            if ($resp.StatusCode -lt 500) {
+                Write-Host "      HTTP $($resp.StatusCode) — BASARILI!" -ForegroundColor Green
+                $ok = $true
+                break
+            }
+        } catch {
+            Write-Host "      Deneme $i/6 — bekleniyor..." -ForegroundColor DarkGray
+        }
+    }
+    if (-not $ok) {
+        Write-Host "UYARI: Smoke test basarisiz. Uygulama henuz ayaga kalkmamis olabilir." -ForegroundColor Yellow
+        Write-Host "       Loglari kontrol edin: $InstallPath\logs\" -ForegroundColor Yellow
+    }
 }
 
 Write-Host ""
-Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Güncelleme başarıyla tamamlandı!" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "  GUNCELLEME TAMAMLANDI" -ForegroundColor Green
+Write-Host "  http://localhost:$Port" -ForegroundColor Green
+Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Yedek dizini: $BackupPath" -ForegroundColor Cyan
-Write-Host ""
+

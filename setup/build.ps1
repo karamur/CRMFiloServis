@@ -113,12 +113,16 @@ if (-not $SkipPublish) {
 
 # ---- Inno Setup derlemeleri ----
 if (-not $LisansOnly) {
-    Write-Host "[4/5] Inno Setup - Ana paket (Setup.iss)..." -ForegroundColor Green
+    Write-Host "[4/6] Inno Setup - Ana paket (Setup.iss)..." -ForegroundColor Green
     & $IsccExe "/DMyAppVersion=$Version" (Join-Path $Root 'Setup.iss')
     if ($LASTEXITCODE -ne 0) { throw "Inno Setup (Setup.iss) derleme basarisiz." }
+
+    Write-Host "[5/6] Inno Setup - Guncelleme paketi (GuncelleSetup.iss)..." -ForegroundColor Green
+    & $IsccExe "/DMyAppVersion=$Version" (Join-Path $Root 'GuncelleSetup.iss')
+    if ($LASTEXITCODE -ne 0) { throw "Inno Setup (GuncelleSetup.iss) derleme basarisiz." }
 }
 
-Write-Host "[5/5] Inno Setup - Lisans araci (LisansSetup.iss)..." -ForegroundColor Green
+Write-Host "[6/6] Inno Setup - Lisans araci (LisansSetup.iss)..." -ForegroundColor Green
 & $IsccExe "/DLisansAppVersion=$Version" (Join-Path $Root 'LisansSetup.iss')
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup (LisansSetup.iss) derleme basarisiz." }
 
@@ -129,14 +133,21 @@ if (-not $LisansOnly) {
     $exePath = Join-Path $Output $exeAdi
     if (-not (Test-Path $exePath)) { throw "Beklenen cikti bulunamadi: $exePath" }
     $boyut = [math]::Round((Get-Item $exePath).Length / 1MB, 2)
-    $sonuclar += "  Ana paket   : $exePath ($boyut MB)"
+    $sonuclar += "  Ana paket       : $exePath ($boyut MB)"
+
+    $guncelleAdi = "KOAFiloServisGuncelle-$Version.exe"
+    $guncellePath = Join-Path $Output $guncelleAdi
+    if (Test-Path $guncellePath) {
+        $guncelleBoyut = [math]::Round((Get-Item $guncellePath).Length / 1MB, 2)
+        $sonuclar += "  Guncelleme paketi: $guncellePath ($guncelleBoyut MB)"
+    }
 }
 
 $lisansExeAdi = "KOALisansArac-$Version.exe"
 $lisansExePath = Join-Path $Output $lisansExeAdi
 if (-not (Test-Path $lisansExePath)) { throw "Beklenen cikti bulunamadi: $lisansExePath" }
 $lisansBoyut = [math]::Round((Get-Item $lisansExePath).Length / 1MB, 2)
-$sonuclar += "  Lisans araci: $lisansExePath ($lisansBoyut MB)"
+$sonuclar += "  Lisans araci    : $lisansExePath ($lisansBoyut MB)"
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Cyan
@@ -150,9 +161,14 @@ if ($CopyToPublish) {
         Write-Host "UYARI: F:\publish yok, kopyalama atlandi." -ForegroundColor Yellow
     } else {
         New-Item -ItemType Directory -Force $hedef | Out-Null
-        if (-not $LisansOnly -and (Test-Path (Join-Path $Output "KOAFiloServisKurulum-$Version.exe"))) {
-            Copy-Item (Join-Path $Output "KOAFiloServisKurulum-$Version.exe") $hedef -Force
-            Write-Host "Kopyalandi: $hedef\KOAFiloServisKurulum-$Version.exe" -ForegroundColor Green
+        if (-not $LisansOnly) {
+            foreach ($dosyaAdi in @("KOAFiloServisKurulum-$Version.exe", "KOAFiloServisGuncelle-$Version.exe")) {
+                $src = Join-Path $Output $dosyaAdi
+                if (Test-Path $src) {
+                    Copy-Item $src $hedef -Force
+                    Write-Host "Kopyalandi: $hedef\$dosyaAdi" -ForegroundColor Green
+                }
+            }
         }
         Copy-Item $lisansExePath $hedef -Force
         Write-Host "Kopyalandi: $hedef\$lisansExeAdi" -ForegroundColor Green
