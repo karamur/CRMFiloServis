@@ -70,6 +70,7 @@ public class Arac : BaseEntity
     public virtual ICollection<AracPlaka> PlakaGecmisi { get; set; } = new List<AracPlaka>();
     public virtual ICollection<AracMasraf> Masraflar { get; set; } = new List<AracMasraf>();
     public virtual ICollection<ServisCalisma> ServisCalismalari { get; set; } = new List<ServisCalisma>();
+    public virtual ICollection<BakimPeriyot> BakimPeriyotlari { get; set; } = new List<BakimPeriyot>();
     
     // Hesaplanan Özellik - Aktif plakayı döner (CikisTarihi null veya bugünden sonra)
     public AracPlaka? AktifPlakaKaydi => PlakaGecmisi?

@@ -94,7 +94,7 @@ Onayladıktan sonra "şu maddeyi uygula" demen yeterli.
 **Etki:** ⭐⭐⭐⭐
 **Maliyet:** Orta.
 
-### 2.6 Araç Bakım Periyot Otomatik Bildirimi (Km Bazlı) `[ ]`
+### 2.6 Araç Bakım Periyot Otomatik Bildirimi (Km Bazlı) `[x]`
 **Sorun:** "10.000 km'de yağ değişimi" gibi periyodik bakımları kimse takip etmiyor.
 **Öneri:** Araç son km girildiğinde otomatik kontrol → bakım periyodu yaklaşıyorsa bildirim.
 **Etki:** ⭐⭐⭐⭐

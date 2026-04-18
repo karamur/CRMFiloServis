@@ -304,6 +304,7 @@ builder.Services.AddHttpClient("SMS"); // SMS provider'lar için HttpClient
 builder.Services.AddHttpClient("Webhook"); // Webhook gönderimi için HttpClient
 builder.Services.AddScoped<AutoBackupService>(); // Quartz job tarafından tetiklenen otomatik yedek servisi
 builder.Services.AddScoped<GunlukOzetService>(); // Quartz job tarafından tetiklenen günlük WhatsApp özet servisi
+builder.Services.AddScoped<IBakimPeriyotService, BakimPeriyotService>();
 builder.Services.AddHttpContextAccessor();
 
 var belgeUyariCheckIntervalHours = Math.Max(1, builder.Configuration.GetValue("BelgeUyari:CheckIntervalHours", 24));
@@ -349,6 +350,16 @@ builder.Services.AddQuartz(q =>
             .ForJob("gunluk-ozet-job")
             .WithIdentity("gunluk-ozet-trigger")
             .WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(gunlukOzetSaat, 0)));
+    }
+    var bakimEnabled = builder.Configuration.GetValue("BakimPeriyot:Enabled", true);
+    if (bakimEnabled)
+    {
+        q.AddJob<BakimPeriyotJob>(opts => opts.WithIdentity("bakim-periyot-job"));
+        var bakimSaat = builder.Configuration.GetValue("BakimPeriyot:GunlukKontrolSaati", 9);
+        q.AddTrigger(opts => opts
+            .ForJob("bakim-periyot-job")
+            .WithIdentity("bakim-periyot-trigger")
+            .WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(bakimSaat, 30)));
     }
 });
 builder.Services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);

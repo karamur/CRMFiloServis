@@ -1,4 +1,4 @@
-﻿using KOAFiloServis.Shared.Entities;
+using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -275,6 +275,8 @@ public class ApplicationDbContext : DbContext
 
     // Audit Log Modülü (Tüm İşlem Takibi)
     public DbSet<AuditLog> AuditLoglar { get; set; }
+    public DbSet<BakimPeriyot> BakimPeriyotlar { get; set; }
+    public DbSet<AracBakimUyari> AracBakimUyarilari { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
