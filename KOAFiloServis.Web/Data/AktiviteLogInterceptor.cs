@@ -158,7 +158,16 @@ public sealed class AktiviteLogInterceptor : SaveChangesInterceptor
             IsWritingLog.Value = true;
 
             // Lazy olarak DbContextFactory'ye eriş
-            var contextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            IDbContextFactory<ApplicationDbContext> contextFactory;
+            try
+            {
+                contextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Uygulama kapatılıyor, sessizce çık
+                return;
+            }
             await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
             var httpContextAccessor = _serviceProvider.GetService<IHttpContextAccessor>();

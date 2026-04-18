@@ -43,7 +43,16 @@ public class ApplicationDbContext : DbContext
     {
         if (_tenantService == null && _serviceProvider != null)
         {
-            _tenantService = _serviceProvider.GetService<ITenantService>();
+            try
+            {
+                _tenantService = _serviceProvider.GetService<ITenantService>();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Scope dispose edilmiş (örn. Blazor circuit kapatıldı ya da fire-and-forget görev)
+                _serviceProvider = null;
+                return null;
+            }
         }
         return _tenantService;
     }
