@@ -2694,7 +2694,7 @@ public class BudgetService : IBudgetService
         {
             var anaKayit = await context.BudgetOdemeler
                 .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == devir.OncekiDonemOdemeId.Value);
+                .FirstOrDefaultAsync(o => o.Id == devir.OncekiDonemOdemeId!.Value);
 
             if (anaKayit == null) continue;
 

@@ -1,6 +1,7 @@
 @page "/ayarlar/firmalar"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
 @inject IFirmaService FirmaService
 @inject IToastService ToastService
 @rendermode InteractiveServer
@@ -29,7 +30,11 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 @(firma.VarsayilanFirma ? "border-primary" : "")">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <div>
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrEmpty(firma.Logo))
+                                {
+                                    <img src="@firma.Logo" alt="Logo" style="height:32px;max-width:80px;object-fit:contain;" />
+                                }
                                 <h5 class="mb-0">
                                     @firma.FirmaAdi
                                     @if (firma.VarsayilanFirma)
@@ -167,6 +172,37 @@
                             <label class="form-label">Adres</label>
                             <textarea class="form-control" @bind="editFirma.Adres" rows="2"></textarea>
                         </div>
+
+                        <!-- Logo Yükleme -->
+                        <div class="col-12">
+                            <label class="form-label"><i class="bi bi-image me-1"></i>Firma Logosu</label>
+                            <div class="d-flex align-items-start gap-3">
+                                @if (!string.IsNullOrEmpty(editFirma.Logo))
+                                {
+                                    <div class="border rounded p-2 bg-light" style="min-width:120px;text-align:center;">
+                                        <img src="@editFirma.Logo" alt="Logo" style="max-height:60px;max-width:120px;object-fit:contain;" />
+                                        <div class="mt-1">
+                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="LogoKaldir">
+                                                <i class="bi bi-trash me-1"></i>Kaldir
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                                <div class="flex-grow-1">
+                                    <InputFile OnChange="LogoYukle" accept="image/*" class="form-control" />
+                                    <div class="form-text">PNG, JPG veya SVG. Maks 2 MB. Proforma fatura yazdirmada gorunur.</div>
+                                    @if (logoYukleniyor)
+                                    {
+                                        <div class="text-primary mt-1"><i class="bi bi-hourglass-split me-1"></i>Yukleniyor...</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(logoHata))
+                                    {
+                                        <div class="text-danger mt-1">@logoHata</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-md-6">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" @bind="editFirma.Aktif" id="chkAktif" />
@@ -191,6 +227,51 @@
     private bool isLoading = true;
     private bool showModal = false;
     private Firma editFirma = new();
+    private bool logoYukleniyor = false;
+    private string? logoHata;
+
+    private async Task LogoYukle(InputFileChangeEventArgs e)
+    {
+        logoHata = null;
+        var file = e.File;
+        if (file == null) return;
+
+        if (file.Size > 2 * 1024 * 1024)
+        {
+            logoHata = "Dosya 2 MB'dan buyuk olamaz.";
+            return;
+        }
+
+        var izinliTipler = new[] { "image/png", "image/jpeg", "image/jpg", "image/svg+xml", "image/webp" };
+        if (!izinliTipler.Contains(file.ContentType))
+        {
+            logoHata = "Sadece PNG, JPG, SVG veya WebP dosyasi yukleyebilirsiniz.";
+            return;
+        }
+
+        try
+        {
+            logoYukleniyor = true;
+            using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            editFirma.Logo = $"data:{file.ContentType};base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+            logoHata = "Logo yuklenemedi: " + ex.Message;
+        }
+        finally
+        {
+            logoYukleniyor = false;
+        }
+    }
+
+    private void LogoKaldir()
+    {
+        editFirma.Logo = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -242,8 +323,10 @@
             Il = firma.Il,
             Ilce = firma.Ilce,
             Aktif = firma.Aktif,
-            VarsayilanFirma = firma.VarsayilanFirma
+            VarsayilanFirma = firma.VarsayilanFirma,
+            Logo = firma.Logo
         };
+        logoHata = null;
         showModal = true;
     }
 

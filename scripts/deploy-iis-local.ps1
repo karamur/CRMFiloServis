@@ -22,9 +22,9 @@ $ErrorActionPreference = 'Stop'
 # --- Admin yetkisi kontrolu; yoksa yeniden baslat ---
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "Admin yetkisi gerekli, yeniden baslatiliyor..." -ForegroundColor Yellow
-    $myArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-    if ($SkipPublish) { $myArgs += " -SkipPublish" }
-    Start-Process powershell -ArgumentList $myArgs -Verb RunAs -Wait
+    $startCmd = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath)
+    if ($SkipPublish) { $startCmd += "-SkipPublish" }
+    Start-Process powershell -ArgumentList $startCmd -Verb RunAs -Wait
     exit 0
 }
 

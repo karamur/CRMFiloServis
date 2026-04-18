@@ -14,7 +14,7 @@
     body {
         margin: 0;
         background: #e8e8e8;
-        font-family: Arial, Helvetica, sans-serif;
+        font-family: 'Century Gothic', 'Trebuchet MS', Calibri, Arial, sans-serif;
     }
 
     .page-controls {
@@ -71,23 +71,25 @@
     }
 
     .header-logo-block img {
-        max-height: 60px;
-        max-width: 120px;
+        max-height: 70px;
+        max-width: 140px;
         object-fit: contain;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
     }
 
     .header-logo-block .firma-adi {
-        font-size: 22pt;
+        font-family: 'Century Gothic', 'Trebuchet MS', Calibri, Arial, sans-serif;
+        font-size: 24pt;
         font-weight: 900;
         color: #1e3a5f;
-        letter-spacing: 2px;
+        letter-spacing: 6px;
         line-height: 1.1;
         text-transform: uppercase;
     }
 
     .header-logo-block .firma-tagline {
-        font-size: 9pt;
+        font-family: 'Century Gothic', 'Trebuchet MS', Calibri, Arial, sans-serif;
+        font-size: 8.5pt;
         letter-spacing: 4px;
         color: #1e3a5f;
         border-top: 1px solid #1e3a5f;
@@ -101,21 +103,22 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        margin-top: 2px;
+        gap: 8px;
+        margin-top: 5px;
         color: #1e3a5f;
+        font-family: 'Century Gothic', 'Trebuchet MS', Calibri, Arial, sans-serif;
         font-size: 8pt;
         letter-spacing: 5px;
+        font-weight: 600;
     }
 
     .header-tagline-deco::before,
     .header-tagline-deco::after {
         content: '';
-        display: inline-block;
-        width: 8px;
-        height: 8px;
+        flex: 1;
+        height: 1px;
         background: #1e3a5f;
-        transform: rotate(45deg);
+        max-width: 40px;
     }
 
     /* ---- WATERMARK ---- */
@@ -162,10 +165,11 @@
     }
 
     .doc-title h1 {
-        font-size: 16pt;
+        font-family: 'Century Gothic', 'Trebuchet MS', Calibri, Arial, sans-serif;
+        font-size: 15pt;
         font-weight: 700;
         color: #1e3a5f;
-        letter-spacing: 3px;
+        letter-spacing: 4px;
         text-transform: uppercase;
         margin: 0;
         border-bottom: 1px solid #1e3a5f;
@@ -189,14 +193,16 @@
         border: 1px solid #ccc;
         padding: 5mm;
         font-size: 9pt;
+        font-family: 'Century Gothic', 'Trebuchet MS', Calibri, Arial, sans-serif;
     }
 
     .meta-box .meta-title {
+        font-family: 'Century Gothic', 'Trebuchet MS', Calibri, Arial, sans-serif;
         font-size: 8pt;
         font-weight: 700;
         color: #1e3a5f;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
         border-bottom: 1px solid #eee;
         margin-bottom: 4px;
         padding-bottom: 3px;
@@ -352,10 +358,33 @@
         flex-shrink: 0;
     }
 
+    /* ---- ANTETSİZ MOD ---- */
+    .a4-page.antetsiz-mod .letterhead-header { display: none !important; }
+    .a4-page.antetsiz-mod .letterhead-footer { display: none !important; }
+    .a4-page.antetsiz-mod .doc-body { padding-top: 38mm; padding-bottom: 28mm; }
+
+    .mod-badge {
+        position: absolute;
+        top: 6px;
+        left: 15mm;
+        font-size: 7pt;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 2px 10px;
+        border-radius: 3px;
+    }
+    .mod-badge.antetli { background: #1e3a5f; color: #fff; }
+    .mod-badge.antetsiz { background: #f5f5f5; color: #888; border: 1px dashed #aaa; }
+
+    .btn-mod { background: #5a6e8a; color: #fff; }
+    .btn-mod.aktif { background: #2e7d32; color: #fff; }
+
     /* ---- PRINT MEDIA ---- */
     @@media print {
         body { margin: 0; background: #fff; }
         .page-controls { display: none; }
+        .mod-badge { display: none; }
         .a4-page { margin: 0; width: 100%; box-shadow: none; }
         .watermark { opacity: 0.045; }
         @@page { size: A4; margin: 0; }
@@ -378,6 +407,22 @@ else if (proforma == null)
 else
 {
     <div class="page-controls no-print">
+        <button class="btn-mod @(antetsiz ? "aktif" : "")" @onclick="ToggleMod">
+            @if (antetsiz)
+            {
+                <span>📋 Antetli Mod</span>
+            }
+            else
+            {
+                <span>📄 Antetsiz Mod</span>
+            }
+        </button>
+        <button class="btn-mod @(logoGoster ? "aktif" : "")" @onclick="() => logoGoster = !logoGoster" title="Logoyu göster/gizle">
+            @(logoGoster ? "🖼️ Logo Açık" : "🖼️ Logo Kapalı")
+        </button>
+        <button class="btn-mod @(firmaAdiGoster ? "aktif" : "")" @onclick="() => firmaAdiGoster = !firmaAdiGoster" title="Firma adını göster/gizle">
+            @(firmaAdiGoster ? "🏢 Ad Açık" : "🏢 Ad Kapalı")
+        </button>
         <button class="btn-print" onclick="window.print()">
             🖨️ Yazdır / PDF Al
         </button>
@@ -386,25 +431,33 @@ else
         </button>
     </div>
 
-    <div class="a4-page">
+    <div class="a4-page @(antetsiz ? "antetsiz-mod" : "")">
+
+        <!-- MOD GÖSTERGESİ (yalnızca ekranda) -->
+        <div class="mod-badge @(antetsiz ? "antetsiz" : "antetli") no-print">
+            @(antetsiz ? "Antetsiz — Antetli Kağıda Yazdırılacak" : "Antetli — Düz Kağıda Yazdırılacak")
+        </div>
 
         <!-- ANTET BAŞLIK -->
         <div class="letterhead-header">
             <div class="header-inner">
                 <div class="header-logo-block">
-                    @if (!string.IsNullOrEmpty(firma?.Logo))
+                    @if (logoGoster && !string.IsNullOrEmpty(firma?.Logo))
                     {
                         @if (firma.Logo.StartsWith("data:") || firma.Logo.StartsWith("/uploads/"))
                         {
                             <img src="@firma.Logo" alt="Logo" />
                         }
                     }
-                    <div class="firma-adi">@(firma?.FirmaAdi ?? "FİRMA ADI")</div>
-                    @if (!string.IsNullOrEmpty(firma?.UnvanTam) && firma.UnvanTam != firma.FirmaAdi)
+                    @if (firmaAdiGoster)
                     {
-                        <div class="header-tagline-deco">
-                            @firma.UnvanTam.ToUpperInvariant()
-                        </div>
+                        <div class="firma-adi">@(firma?.FirmaAdi ?? "FİRMA ADI")</div>
+                        @if (!string.IsNullOrEmpty(firma?.UnvanTam) && firma.UnvanTam != firma.FirmaAdi)
+                        {
+                            <div class="header-tagline-deco">
+                                @firma.UnvanTam.ToUpperInvariant()
+                            </div>
+                        }
                     }
                 </div>
             </div>
@@ -671,6 +724,11 @@ else
     private ProformaFatura? proforma;
     private Firma? firma;
     private bool isLoading = true;
+    private bool antetsiz = false;
+    private bool logoGoster = true;
+    private bool firmaAdiGoster = true;
+
+    private void ToggleMod() => antetsiz = !antetsiz;
 
     protected override async Task OnInitializedAsync()
     {
