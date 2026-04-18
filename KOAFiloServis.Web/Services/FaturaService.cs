@@ -1737,10 +1737,18 @@ public class FaturaService : IFaturaService
 
             // Fatura kalemlerini yükle
             await context.Entry(fatura).Collection(f => f.FaturaKalemleri).LoadAsync();
+
+            // Cari bilgisini yükle
+            if (fatura.Cari == null)
+                await context.Entry(fatura).Reference(f => f.Cari).LoadAsync();
+
+            // Muhasebe fişini oluştur (MuhasebeService tam muhasebe kaydını oluşturur)
+            await _muhasebeService.CreateFaturaFisiAsync(fatura);
         }
-        catch
+        catch (Exception ex)
         {
-            // Muhasebe fişi oluşturma hatası fatura kaydını engellemesin
+            // Muhasebe fişi oluşturma hatası fatura kaydını engellemesin, loglansın
+            System.Diagnostics.Debug.WriteLine($"[UYARI] Otomatik muhasebe fişi oluşturulamadı (Fatura: {fatura.FaturaNo}): {ex.Message}");
         }
     }
 
@@ -2398,29 +2406,13 @@ public class FaturaService : IFaturaService
             .FirstOrDefaultAsync(f => f.Id == faturaId);
 
         if (fatura == null)
-            throw new Exception("Fatura bulunamadi.");
+            throw new Exception("Fatura bulunamadı.");
 
-        var fisNo = await GenerateNextFisNoAsync(context);
+        if (fatura.MuhasebeFisiOlusturuldu)
+            throw new InvalidOperationException($"Fatura {fatura.FaturaNo} zaten muhasebeleştirilmiş.");
 
-        var fis = new MuhasebeFis
-        {
-            FisNo = fisNo,
-            FisTarihi = fatura.FaturaTarihi,
-            FisTipi = fatura.FaturaYonu == FaturaYonu.Giden ? FisTipi.Tahsilat : FisTipi.Tediye,
-            Aciklama = $"{fatura.FaturaNo} nolu fatura muhasebe kaydı",
-            ToplamBorc = fatura.GenelToplam,
-            ToplamAlacak = fatura.GenelToplam,
-            Durum = FisDurum.Taslak,
-            Kaynak = FisKaynak.Fatura,
-            KaynakId = fatura.Id,
-            KaynakTip = "Fatura",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        context.MuhasebeFisleri.Add(fis);
-        await context.SaveChangesAsync();
-
-        return fis;
+        // Tam muhasebe kaydını (120/320/600/770/191/391 kalemleri dahil) MuhasebeService oluşturur
+        return await _muhasebeService.CreateFaturaFisiAsync(fatura);
     }
 
     private async Task<string> GenerateNextFisNoAsync(ApplicationDbContext context)

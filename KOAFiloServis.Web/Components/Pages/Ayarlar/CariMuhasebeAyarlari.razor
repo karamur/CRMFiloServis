@@ -32,6 +32,14 @@
                     </div>
                     <div class="card-body">
                         <p class="text-muted"><small>Cari için hesap planında kod yoksa üretilecek önekleri belirleyin.</small></p>
+                        @* Hesap planı autocomplete datalist *@
+                        <datalist id="hesap-list">
+                            @foreach (var h in muhasebeHesaplar)
+                            {
+                                <option value="@h.HesapKodu">@h.HesapKodu - @h.HesapAdi</option>
+                            }
+                        </datalist>
+
                         <form @onsubmit="Kaydet">
                             <div class="mb-3 form-check form-switch px-4">
                                 <input class="form-check-input" type="checkbox" id="otoHesap" style="transform: scale(1.5); margin-left: -2em;" @bind="ayar.OtomatikHesapDuzenlensin">
@@ -42,20 +50,32 @@
                             {
                                 <div class="mb-3">
                                     <label class="form-label">Müşteri Hesap Kodu Öneki</label>
-                                    <input type="text" class="form-control" @bind="ayar.MusteriPrefix" />
-                                    <div class="form-text">Ör: 120.01 -> 120.01.001</div>
+                                    <input type="text" class="form-control" list="hesap-list" @bind="ayar.MusteriPrefix" placeholder="120.01" />
+                                    <div class="form-text">
+                                        Ör: 120.01 → 120.01.001
+                                        @if (!string.IsNullOrWhiteSpace(ayar.MusteriPrefix) && GetHesapAdi(ayar.MusteriPrefix) != null)
+                                        { <span class="text-success ms-2"><i class="bi bi-check-circle me-1"></i>@GetHesapAdi(ayar.MusteriPrefix)</span> }
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">
                                     <label class="form-label">Tedarikçi Hesap Kodu Öneki</label>
-                                    <input type="text" class="form-control" @bind="ayar.TedarikciPrefix" />
-                                    <div class="form-text">Ör: 320.01 -> 320.01.001</div>
+                                    <input type="text" class="form-control" list="hesap-list" @bind="ayar.TedarikciPrefix" placeholder="320.01" />
+                                    <div class="form-text">
+                                        Ör: 320.01 → 320.01.001
+                                        @if (!string.IsNullOrWhiteSpace(ayar.TedarikciPrefix) && GetHesapAdi(ayar.TedarikciPrefix) != null)
+                                        { <span class="text-success ms-2"><i class="bi bi-check-circle me-1"></i>@GetHesapAdi(ayar.TedarikciPrefix)</span> }
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">
                                     <label class="form-label">Personel Hesap Kodu Öneki</label>
-                                    <input type="text" class="form-control" @bind="ayar.PersonelPrefix" />
-                                    <div class="form-text">Ör: 335.01 -> 335.01.001</div>
+                                    <input type="text" class="form-control" list="hesap-list" @bind="ayar.PersonelPrefix" placeholder="335.01" />
+                                    <div class="form-text">
+                                        Ör: 335.01 → 335.01.001
+                                        @if (!string.IsNullOrWhiteSpace(ayar.PersonelPrefix) && GetHesapAdi(ayar.PersonelPrefix) != null)
+                                        { <span class="text-success ms-2"><i class="bi bi-check-circle me-1"></i>@GetHesapAdi(ayar.PersonelPrefix)</span> }
+                                    </div>
                                 </div>
                             }
 
@@ -73,15 +93,19 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">Satış Gelir Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.SatisGelirHesabi" />
-                                            <div class="form-text">Ör: 600.01</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.SatisGelirHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.SatisGelirHesabi" placeholder="600.01" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.SatisGelirHesabi) != null ? $"✓ {GetHesapAdi(ayar.SatisGelirHesabi)}" : "Ör: 600.01 — Yurtiçi Satışlar")
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">Alış Gider Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.AlisGiderHesabi" />
-                                            <div class="form-text">Ör: 153.01 veya 740.01</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.AlisGiderHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.AlisGiderHesabi" placeholder="153.01" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.AlisGiderHesabi) != null ? $"✓ {GetHesapAdi(ayar.AlisGiderHesabi)}" : "Ör: 153.01 veya 740.01")
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -89,15 +113,19 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">Hesaplanan KDV Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.HesaplananKdvHesabi" />
-                                            <div class="form-text">Ör: 391.01</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.HesaplananKdvHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.HesaplananKdvHesabi" placeholder="391.01" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.HesaplananKdvHesabi) != null ? $"✓ {GetHesapAdi(ayar.HesaplananKdvHesabi)}" : "Ör: 391.01")
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">İndirilecek KDV Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.IndirilecekKdvHesabi" />
-                                            <div class="form-text">Ör: 191.01</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.IndirilecekKdvHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.IndirilecekKdvHesabi" placeholder="191.01" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.IndirilecekKdvHesabi) != null ? $"✓ {GetHesapAdi(ayar.IndirilecekKdvHesabi)}" : "Ör: 191.01")
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -105,15 +133,19 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">Tevkifat KDV Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.TevkifatKdvHesabi" />
-                                            <div class="form-text">Ör: 360.01 (Sorumlu Sıfatıyla Ödenen KDV)</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.TevkifatKdvHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.TevkifatKdvHesabi" placeholder="360.01" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.TevkifatKdvHesabi) != null ? $"✓ {GetHesapAdi(ayar.TevkifatKdvHesabi)}" : "Ör: 360.01 (Sorumlu Sıfatıyla Ödenen KDV)")
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">Tevkifat Alacak Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.TevkifatAlacakHesabi" />
-                                            <div class="form-text">Ör: 136.01 (Tevkifattan Alacak)</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.TevkifatAlacakHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.TevkifatAlacakHesabi" placeholder="136.01" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.TevkifatAlacakHesabi) != null ? $"✓ {GetHesapAdi(ayar.TevkifatAlacakHesabi)}" : "Ör: 136.01 (Tevkifattan Alacak)")
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -149,10 +181,14 @@
                                                             <input type="number" class="form-control form-control-sm" @bind="e.KdvOrani" min="0" max="100" />
                                                         </td>
                                                         <td>
-                                                            <input type="text" class="form-control form-control-sm" @bind="e.HesaplananKdvHesabi" placeholder="391.20" />
+                                                            <input type="text" class="form-control form-control-sm @(GetHesapAdi(e.HesaplananKdvHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="e.HesaplananKdvHesabi" placeholder="391.20" />
+                                                            @if (GetHesapAdi(e.HesaplananKdvHesabi) is { } ad1)
+                                                            { <div class="form-text text-success">@ad1</div> }
                                                         </td>
                                                         <td>
-                                                            <input type="text" class="form-control form-control-sm" @bind="e.IndirilecekKdvHesabi" placeholder="191.20" />
+                                                            <input type="text" class="form-control form-control-sm @(GetHesapAdi(e.IndirilecekKdvHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="e.IndirilecekKdvHesabi" placeholder="191.20" />
+                                                            @if (GetHesapAdi(e.IndirilecekKdvHesabi) is { } ad2)
+                                                            { <div class="form-text text-success">@ad2</div> }
                                                         </td>
                                                         <td class="text-center">
                                                             <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => KdvEslestirmeSil(e)" title="Sil">
@@ -185,22 +221,28 @@
                                     <div class="col-md-4">
                                         <div class="mb-3">
                                             <label class="form-label">Ticari Mal Masraf Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.MalMasrafHesabi" />
-                                            <div class="form-text">Ör: 740.99.001</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.MalMasrafHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.MalMasrafHesabi" placeholder="740.99.001" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.MalMasrafHesabi) != null ? $"✓ {GetHesapAdi(ayar.MalMasrafHesabi)}" : "Ör: 740.99.001")
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <div class="mb-3">
                                             <label class="form-label">Sarf Malzeme Masraf Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.SarfMalzemeMasrafHesabi" />
-                                            <div class="form-text">Ör: 740.99.002</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.SarfMalzemeMasrafHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.SarfMalzemeMasrafHesabi" placeholder="740.99.002" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.SarfMalzemeMasrafHesabi) != null ? $"✓ {GetHesapAdi(ayar.SarfMalzemeMasrafHesabi)}" : "Ör: 740.99.002")
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <div class="mb-3">
                                             <label class="form-label">Stok Çıkış Hesabı</label>
-                                            <input type="text" class="form-control" @bind="ayar.StokCikisHesabi" />
-                                            <div class="form-text">Ör: 153 (Ticari Mallar)</div>
+                                            <input type="text" class="form-control @(GetHesapAdi(ayar.StokCikisHesabi) != null ? "is-valid" : "")" list="hesap-list" @bind="ayar.StokCikisHesabi" placeholder="153" />
+                                            <div class="form-text">
+                                                @(GetHesapAdi(ayar.StokCikisHesabi) != null ? $"✓ {GetHesapAdi(ayar.StokCikisHesabi)}" : "Ör: 153 (Ticari Mallar)")
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -654,5 +696,14 @@
     private void KdvEslestirmeSil(KdvHesapEslestirme e)
     {
         kdvEslestirmeleri.Remove(e);
+    }
+
+    /// <summary>Girilen hesap koduna karşılık gelen hesap adını döndürür. Bulunamazsa null.</summary>
+    private string? GetHesapAdi(string? kod)
+    {
+        if (string.IsNullOrWhiteSpace(kod) || !muhasebeHesaplar.Any()) return null;
+        var hesap = muhasebeHesaplar.FirstOrDefault(h =>
+            h.HesapKodu.Equals(kod.Trim(), StringComparison.OrdinalIgnoreCase));
+        return hesap?.HesapAdi;
     }
 }

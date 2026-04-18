@@ -1,4 +1,4 @@
-using KOAFiloServis.Shared.Entities;
+﻿using KOAFiloServis.Shared.Entities;
 using KOAFiloServis.Web.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +17,7 @@ public class ApplicationDbContext : DbContext
     {
         get
         {
-            var ts = ResolveTenantService();
+            ITenantService? ts = ResolveTenantService();
             return ts == null || ts.IsSuperAdmin;
         }
     }
@@ -1803,6 +1803,12 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<AracBolgeAtama>()
             .HasQueryFilter(e => !e.IsDeleted && !e.Arac.IsDeleted);
+
+        modelBuilder.Entity<BakimPeriyot>()
+            .HasQueryFilter(e => !e.IsDeleted && (e.Arac == null || !e.Arac.IsDeleted));
+
+        modelBuilder.Entity<AracBakimUyari>()
+            .HasQueryFilter(e => !e.IsDeleted && (e.Arac == null || !e.Arac.IsDeleted));
 
         modelBuilder.Entity<AracTakipCihaz>()
             .HasQueryFilter(e => !e.IsDeleted && !e.Arac.IsDeleted);
