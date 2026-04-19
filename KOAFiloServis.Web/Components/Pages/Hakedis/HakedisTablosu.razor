@@ -5,6 +5,8 @@
 @inject IHakedisService HakedisService
 @inject ICariService CariService
 @inject IGuzergahService GuzergahService
+@inject ISoforService SoforService
+@inject IAracService AracService
 @inject IToastService ToastService
 @inject NavigationManager NavigationManager
 @attribute [Authorize]
@@ -330,11 +332,23 @@
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <label class="form-label small">Kurum *</label>
-                                    <input type="text" class="form-control form-control-sm" @bind="editKayit.KurumAdi" placeholder="Kurum adı" />
+                                    <select class="form-select form-select-sm" value="@editKayit.KurumCariId" @onchange="OnKurumChanged">
+                                        <option value="">-- Kurum Seçin --</option>
+                                        @foreach (var kurum in kurumlar)
+                                        {
+                                            <option value="@kurum.Id">@kurum.Unvan</option>
+                                        }
+                                    </select>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small">Güzergah *</label>
-                                    <input type="text" class="form-control form-control-sm" @bind="editKayit.GuzergahAdi" placeholder="Güzergah adı" />
+                                    <select class="form-select form-select-sm" value="@editKayit.GuzergahId" @onchange="OnGuzergahChanged">
+                                        <option value="">-- Güzergah Seçin --</option>
+                                        @foreach (var g in modalGuzergahlar)
+                                        {
+                                            <option value="@g.Id">@g.GuzergahAdi</option>
+                                        }
+                                    </select>
                                 </div>
                             </div>
 
@@ -349,19 +363,32 @@
                                     </select>
                                 </div>
                                 <div class="col-4">
-                                    <label class="form-label small">Plaka</label>
-                                    <input type="text" class="form-control form-control-sm" @bind="editKayit.Plaka" />
+                                    <label class="form-label small">Araç / Plaka</label>
+                                    <select class="form-select form-select-sm" value="@editKayit.AracId" @onchange="OnAracChanged">
+                                        <option value="">-- Plaka Seçin --</option>
+                                        @foreach (var a in araclar)
+                                        {
+                                            <option value="@a.Id">@a.AktifPlaka</option>
+                                        }
+                                    </select>
                                 </div>
                                 <div class="col-4">
                                     <label class="form-label small">Gün</label>
-                                    <input type="number" step="0.5" class="form-control form-control-sm" @bind="editKayit.Gun" />
+                                    <input type="number" step="0.5" class="form-control form-control-sm" value="@editKayit.Gun"
+                                           @onchange="OnGunChanged" />
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <label class="form-label small">Şoför</label>
-                                    <input type="text" class="form-control form-control-sm" @bind="editKayit.SoforAdi" />
+                                    <select class="form-select form-select-sm" value="@editKayit.SoforId" @onchange="OnSoforChanged">
+                                        <option value="">-- Şoför Seçin --</option>
+                                        @foreach (var s in soforler)
+                                        {
+                                            <option value="@s.Id">@s.TamAd</option>
+                                        }
+                                    </select>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small">Şoför Telefon</label>
@@ -405,7 +432,8 @@
                                     <div class="row g-2">
                                         <div class="col-3">
                                             <label class="form-label small">Birim Gelir</label>
-                                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="editKayit.BirimGelir" />
+                                            <input type="number" step="0.01" class="form-control form-control-sm" value="@editKayit.BirimGelir"
+                                                   @onchange="OnBirimGelirChanged" />
                                         </div>
                                         <div class="col-3">
                                             <label class="form-label small">Toplam Gelir</label>
@@ -447,7 +475,8 @@
                                     <div class="row g-2">
                                         <div class="col-3">
                                             <label class="form-label small">Birim Gider</label>
-                                            <input type="number" step="0.01" class="form-control form-control-sm" @bind="editKayit.BirimGider" />
+                                            <input type="number" step="0.01" class="form-control form-control-sm" value="@editKayit.BirimGider"
+                                                   @onchange="OnBirimGiderChanged" />
                                         </div>
                                         <div class="col-3">
                                             <label class="form-label small">Toplam Gider</label>
@@ -633,6 +662,10 @@
     private List<PuantajKayit> kayitlar = new();
     private List<PuantajKayit> filteredKayitlar = new();
     private List<Cari> kurumlar = new();
+    private List<Guzergah> tumGuzergahlar = new();
+    private List<Guzergah> modalGuzergahlar = new();
+    private List<Sofor> soforler = new();
+    private List<Arac> araclar = new();
     private HakedisIstatistikleri? istatistikler;
     private PuantajKayit editKayit = new();
     private PuantajKayit? deleteKayit;
@@ -660,6 +693,9 @@
             filterAy = ay;
 
         kurumlar = await CariService.GetByTipAsync(CariTipi.Musteri);
+        tumGuzergahlar = await GuzergahService.GetActiveAsync();
+        soforler = await SoforService.GetActiveSoforlerAsync();
+        araclar = await AracService.GetActiveAsync();
         await LoadData();
     }
 
@@ -714,7 +750,140 @@
             Gun = 1,
             GelirKdvOrani = 20
         };
+        modalGuzergahlar = tumGuzergahlar.ToList();
         showModal = true;
+    }
+
+    private void OnKurumChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var cariId))
+        {
+            var kurum = kurumlar.FirstOrDefault(k => k.Id == cariId);
+            editKayit.KurumCariId = cariId;
+            editKayit.KurumAdi = kurum?.Unvan ?? "";
+            // Güzergahları bu kuruma göre filtrele
+            modalGuzergahlar = tumGuzergahlar.Where(g => g.CariId == cariId).ToList();
+        }
+        else
+        {
+            editKayit.KurumCariId = null;
+            editKayit.KurumAdi = "";
+            modalGuzergahlar = tumGuzergahlar.ToList();
+        }
+        // Güzergah seçimini sıfırla
+        editKayit.GuzergahId = null;
+        editKayit.GuzergahAdi = "";
+    }
+
+    private void OnGuzergahChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var guzId))
+        {
+            var g = tumGuzergahlar.FirstOrDefault(x => x.Id == guzId);
+            if (g != null)
+            {
+                editKayit.GuzergahId = guzId;
+                editKayit.GuzergahAdi = g.GuzergahAdi;
+
+                // Birim geliri güzergahtan otomatik doldur
+                if (g.BirimFiyat > 0)
+                {
+                    editKayit.BirimGelir = g.BirimFiyat;
+                    editKayit.HesaplaGelir();
+                }
+
+                // Varsayılan araç (ID ile bak)
+                if (g.VarsayilanAracId.HasValue)
+                {
+                    var varsayilanArac = araclar.FirstOrDefault(a => a.Id == g.VarsayilanAracId.Value);
+                    if (varsayilanArac != null)
+                    {
+                        editKayit.AracId = varsayilanArac.Id;
+                        editKayit.Plaka = varsayilanArac.AktifPlaka;
+                    }
+                }
+
+                // Varsayılan şoför (ID ile bak)
+                if (g.VarsayilanSoforId.HasValue)
+                {
+                    var varsayilanSofor = soforler.FirstOrDefault(s => s.Id == g.VarsayilanSoforId.Value);
+                    if (varsayilanSofor != null)
+                    {
+                        editKayit.SoforId = varsayilanSofor.Id;
+                        editKayit.SoforAdi = varsayilanSofor.TamAd;
+                        editKayit.SoforTelefon = varsayilanSofor.Telefon;
+                    }
+                }
+            }
+        }
+        else
+        {
+            editKayit.GuzergahId = null;
+            editKayit.GuzergahAdi = "";
+        }
+    }
+
+    private void OnSoforChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var soforId))
+        {
+            var s = soforler.FirstOrDefault(x => x.Id == soforId);
+            editKayit.SoforId = soforId;
+            editKayit.SoforAdi = s?.TamAd ?? "";
+            editKayit.SoforTelefon = s?.Telefon ?? "";
+        }
+        else
+        {
+            editKayit.SoforId = null;
+            editKayit.SoforAdi = "";
+            editKayit.SoforTelefon = "";
+        }
+    }
+
+    private void OnAracChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var aracId))
+        {
+            var a = araclar.FirstOrDefault(x => x.Id == aracId);
+            editKayit.AracId = aracId;
+            editKayit.Plaka = a?.AktifPlaka ?? "";
+        }
+        else
+        {
+            editKayit.AracId = null;
+            editKayit.Plaka = "";
+        }
+    }
+
+    private void OnGunChanged(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var gun))
+        {
+            editKayit.Gun = gun;
+            editKayit.HesaplaGelir();
+            editKayit.HesaplaGider();
+        }
+    }
+
+    private void OnBirimGelirChanged(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var val))
+        {
+            editKayit.BirimGelir = val;
+            editKayit.HesaplaGelir();
+        }
+    }
+
+    private void OnBirimGiderChanged(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var val))
+        {
+            editKayit.BirimGider = val;
+            editKayit.HesaplaGider();
+        }
     }
 
     private void Duzenle(PuantajKayit kayit)
@@ -761,6 +930,11 @@
             GiderOdemeDurumu = kayit.GiderOdemeDurumu,
             Notlar = kayit.Notlar
         };
+        // Kuruma göre güzergah listesini filtrele
+        if (editKayit.KurumCariId.HasValue)
+            modalGuzergahlar = tumGuzergahlar.Where(g => g.CariId == editKayit.KurumCariId.Value).ToList();
+        else
+            modalGuzergahlar = tumGuzergahlar.ToList();
         showModal = true;
     }
 

@@ -880,7 +880,7 @@
                                         <td>
                                             <input type="number" class="form-control form-control-sm"
                                                    style="width:95px"
-                                                   value="@(saatVal > 0 ? saatVal.ToString("0.##") : "")"
+                                                   value="@(saatVal > 0 ? saatVal.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : "")"
                                                    step="0.5" min="0" max="24"
                                                    placeholder="—"
                                                    @oninput="e => TopluSaatGunGuncelle(gn, e.Value?.ToString())" />
