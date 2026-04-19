@@ -531,13 +531,34 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         var kalemler = new List<MuhasebeKalemOnizleme>();
         var siraNo = 1;
 
-        // 195 İş Avansları BORÇ
+        // 195 İş Avansları BORÇ — personelin özgü hesabı varsa onu kullan
+        string avansHesapKodu = "195.01";
+        string avansHesapAdi = "Personel Avansları";
+        int? avansHesapId = null;
+
+        if (giris.PersonelAvansHesapId.HasValue)
+        {
+            var ozguHesap = await context.MuhasebeHesaplari.AsNoTracking()
+                .FirstOrDefaultAsync(h => h.Id == giris.PersonelAvansHesapId.Value && !h.IsDeleted);
+            if (ozguHesap != null)
+            {
+                avansHesapKodu = ozguHesap.HesapKodu;
+                avansHesapAdi = ozguHesap.HesapAdi;
+                avansHesapId = ozguHesap.Id;
+            }
+        }
+
+        if (avansHesapId == null)
+        {
+            avansHesapId = await GetHesapIdAsync(context, avansHesapKodu);
+        }
+
         kalemler.Add(new MuhasebeKalemOnizleme
         {
             SiraNo = siraNo++,
-            HesapKodu = "195.01",
-            HesapAdi = "Personel Avansları",
-            HesapId = await GetHesapIdAsync(context, "195.01"),
+            HesapKodu = avansHesapKodu,
+            HesapAdi = avansHesapAdi,
+            HesapId = avansHesapId,
             Borc = giris.GenelToplam,
             Alacak = 0,
             Aciklama = giris.Aciklama ?? "Personel avansı",
@@ -645,7 +666,10 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         catch (Exception ex)
         {
             sonuc.Basarili = false;
-            sonuc.Mesaj = $"Hata: {ex.Message}";
+            var msg = ex.Message;
+            var inner = ex.InnerException;
+            while (inner != null) { msg += $" → {inner.Message}"; inner = inner.InnerException; }
+            sonuc.Mesaj = $"Hata: {msg}";
         }
 
         return sonuc;
@@ -1148,10 +1172,13 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         // Kalemleri ekle
         foreach (var kalem in onizleme.Kalemler)
         {
+            if (!kalem.HesapId.HasValue || kalem.HesapId == 0)
+                throw new InvalidOperationException($"Muhasebe kalemi '{kalem.HesapKodu} - {kalem.HesapAdi}' için hesap ID bulunamadı. Lütfen muhasebe hesaplarının tanımlı olduğunu kontrol edin.");
+
             var fisKalem = new MuhasebeFisKalem
             {
                 FisId = fis.Id,
-                HesapId = kalem.HesapId ?? 0,
+                HesapId = kalem.HesapId.Value,
                 SiraNo = kalem.SiraNo,
                 Borc = kalem.Borc,
                 Alacak = kalem.Alacak,

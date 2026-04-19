@@ -68,7 +68,7 @@
                     {
                         <div class="mb-3">
                             <label class="form-label fw-bold"><i class="bi bi-person-badge me-1"></i>Personel *</label>
-                            <select class="form-select" @bind="avansPersonelId" @bind:after="OnizlemeGuncelle">
+                            <select class="form-select" @bind="avansPersonelId" @bind:after="AvansPersonelDegisti">
                                 <option value="0">-- Personel Seçin --</option>
                                 @foreach (var p in avansPersonelListesi.OrderBy(x => x.SiralamaNo == 0 ? int.MaxValue : x.SiralamaNo).ThenBy(x => x.Ad))
                                 {
@@ -80,6 +80,58 @@
                                 <small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Kayıtlı aktif personel bulunamadı.</small>
                             }
                         </div>
+
+                        @if (avansPersonelId > 0)
+                        {
+                            <div class="card mb-3 border-secondary">
+                                <div class="card-header py-1 bg-secondary bg-opacity-10 small fw-semibold">
+                                    <i class="bi bi-diagram-3 me-1"></i>Personel Muhasebe Hesapları
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-success">195</span>
+                                                <span class="small text-muted">Avans Hesabı:</span>
+                                            </div>
+                                            @if (avansPersonel195Hesap != null)
+                                            {
+                                                <div class="mt-1">
+                                                    <span class="badge bg-success-subtle text-success border border-success fw-normal">@avansPersonel195Hesap.HesapKodu</span>
+                                                    <small class="text-muted ms-1">@avansPersonel195Hesap.HesapAdi</small>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="mt-1">
+                                                    <span class="badge bg-warning-subtle text-warning border border-warning fw-normal">Atanmamış</span>
+                                                    <small class="text-muted ms-1">195.01 genel kullanılacak</small>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-primary">335</span>
+                                                <span class="small text-muted">Borç Hesabı:</span>
+                                            </div>
+                                            @if (avansPersonel335Hesap != null)
+                                            {
+                                                <div class="mt-1">
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary fw-normal">@avansPersonel335Hesap.HesapKodu</span>
+                                                    <small class="text-muted ms-1">@avansPersonel335Hesap.HesapAdi</small>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="mt-1">
+                                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary fw-normal">Atanmamış</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     }
 
                     <!-- Cari Seçimi -->
@@ -981,6 +1033,8 @@
     // Avans - Personel
     private List<Sofor> avansPersonelListesi = new();
     private int avansPersonelId = 0;
+    private MuhasebeHesap? avansPersonel195Hesap;
+    private MuhasebeHesap? avansPersonel335Hesap;
 
     // Son kayıtlar
     private List<SonKayitItem> sonKayitlar = new();
@@ -1078,7 +1132,11 @@
         giris.CariUnvan = null;
         giris.PersonelId = null;
         giris.PersonelAdSoyad = null;
+        giris.PersonelAvansHesapId = null;
+        giris.PersonelBorcHesapId = null;
         avansPersonelId = 0;
+        avansPersonel195Hesap = null;
+        avansPersonel335Hesap = null;
         cariArama = "";
         personelArama = "";
         arananCariler = new();
@@ -1130,6 +1188,24 @@
             personelArama = cari.Unvan;
             await CariSec(cari);
         }
+    }
+
+    private async Task AvansPersonelDegisti()
+    {
+        avansPersonel195Hesap = null;
+        avansPersonel335Hesap = null;
+        giris.PersonelAvansHesapId = null;
+        giris.PersonelBorcHesapId = null;
+
+        if (avansPersonelId > 0)
+        {
+            avansPersonel195Hesap = await SoforService.GetPersonelAvansHesabiAsync(avansPersonelId);
+            avansPersonel335Hesap = await SoforService.GetPersonelBorcHesabiAsync(avansPersonelId);
+            giris.PersonelAvansHesapId = avansPersonel195Hesap?.Id;
+            giris.PersonelBorcHesapId = avansPersonel335Hesap?.Id;
+        }
+
+        await OnizlemeGuncelle();
     }
 
     private async Task KdvDurumDegistir(bool kdvDahil)
@@ -1378,6 +1454,8 @@
         girilenTutar = 0;
         secilenCari = null;
         avansPersonelId = 0;
+        avansPersonel195Hesap = null;
+        avansPersonel335Hesap = null;
         cariArama = "";
         personelArama = "";
         arananCariler = new();

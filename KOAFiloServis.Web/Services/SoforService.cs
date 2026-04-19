@@ -882,6 +882,18 @@ public class SoforService : ISoforService
         return cari?.PersonelAvansHesap;
     }
 
+    /// <summary>
+    /// Belirli bir personelin borç hesabını getirir (Cari.MuhasebeHesap - 335.xx.xxx)
+    /// </summary>
+    public async Task<MuhasebeHesap?> GetPersonelBorcHesabiAsync(int soforId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var cari = await context.Cariler
+            .Include(c => c.MuhasebeHesap)
+            .FirstOrDefaultAsync(c => c.SoforId == soforId && !c.IsDeleted);
+        return cari?.MuhasebeHesap;
+    }
+
     #endregion
 }
 

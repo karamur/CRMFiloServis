@@ -51,6 +51,8 @@ public class KolayMuhasebeGiris
     // Avans için (personel doğrudan seçimi)
     public int? PersonelId { get; set; }
     public string? PersonelAdSoyad { get; set; }
+    public int? PersonelAvansHesapId { get; set; }   // 195.01.XXX hesap Id
+    public int? PersonelBorcHesapId { get; set; }    // 335.xx.xxx hesap Id
 
     // Masraf için
     public int? MasrafKalemiId { get; set; }

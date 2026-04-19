@@ -25,6 +25,7 @@ public interface ISoforService
     Task<List<MuhasebeHesap>> GetPersonelMuhasebeHesaplariAsync();
     Task<List<MuhasebeHesap>> GetPersonelAvansHesaplariAsync();
     Task<MuhasebeHesap?> GetPersonelAvansHesabiAsync(int soforId);
+    Task<MuhasebeHesap?> GetPersonelBorcHesabiAsync(int soforId);
 
     // Excel Import/Export
     Task<byte[]> GetImportSablonAsync();
