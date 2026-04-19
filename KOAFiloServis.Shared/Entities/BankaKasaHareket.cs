@@ -54,6 +54,12 @@ public class BankaKasaHareket : BaseEntity
     public string? ProjeKodu { get; set; } // Proje kodu
     public string? MuhasebeAciklama { get; set; } // Muhasebe icin ek aciklama
 
+    /// <summary>
+    /// İlişkili muhasebe fişi
+    /// </summary>
+    public int? MuhasebeFisId { get; set; }
+    public virtual MuhasebeFis? MuhasebeFis { get; set; }
+
     [NotMapped]
     public string? MuhasebeFisNo { get; set; }
 

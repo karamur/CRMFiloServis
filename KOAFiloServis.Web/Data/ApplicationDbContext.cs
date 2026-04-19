@@ -701,6 +701,12 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.PersonelCebindenId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Muhasebe fişi ilişkisi
+            entity.HasOne(e => e.MuhasebeFis)
+                .WithMany()
+                .HasForeignKey(e => e.MuhasebeFisId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Sirket iliskisi (Multi-tenant)
             entity.HasOne(e => e.Sirket)
                 .WithMany()

@@ -845,6 +845,14 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             context.BankaKasaHareketleri.Add(hareket);
             await context.SaveChangesAsync();
             sonuc.BankaHareketId = hareket.Id;
+
+            // Muhasebe fişi ile geri bağlantı - Masraf banka hareketi
+            if (sonuc.MuhasebeFisId.HasValue)
+            {
+                hareket.MuhasebeFisId = sonuc.MuhasebeFisId;
+                context.BankaKasaHareketleri.Update(hareket);
+                await context.SaveChangesAsync();
+            }
         }
 
         // Personel cebinden ise PersonelBorc kaydı oluştur
@@ -940,6 +948,11 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         // Muhasebe fişi
         sonuc.MuhasebeFisId = await KaydetMuhasebeFisi(context, onizleme, FisKaynak.BankaHareket, hareket.Id);
 
+        // Muhasebe fişi ile geri bağlantı
+        hareket.MuhasebeFisId = sonuc.MuhasebeFisId;
+        context.BankaKasaHareketleri.Update(hareket);
+        await context.SaveChangesAsync();
+
         sonuc.Basarili = true;
         sonuc.Mesaj = $"Tahsilat kaydedildi. Tutar: {giris.GenelToplam:N2} TL";
         return sonuc;
@@ -977,6 +990,11 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         // Muhasebe fişi
         sonuc.MuhasebeFisId = await KaydetMuhasebeFisi(context, onizleme, FisKaynak.BankaHareket, hareket.Id);
 
+        // Muhasebe fişi ile geri bağlantı
+        hareket.MuhasebeFisId = sonuc.MuhasebeFisId;
+        context.BankaKasaHareketleri.Update(hareket);
+        await context.SaveChangesAsync();
+
         sonuc.Basarili = true;
         sonuc.Mesaj = $"Ödeme kaydedildi. Tutar: {giris.GenelToplam:N2} TL";
         return sonuc;
@@ -1013,6 +1031,11 @@ public class KolayMuhasebeService : IKolayMuhasebeService
 
         // Muhasebe fişi
         sonuc.MuhasebeFisId = await KaydetMuhasebeFisi(context, onizleme, FisKaynak.BankaHareket, hareket.Id);
+
+        // Muhasebe fişi ile geri bağlantı
+        hareket.MuhasebeFisId = sonuc.MuhasebeFisId;
+        context.BankaKasaHareketleri.Update(hareket);
+        await context.SaveChangesAsync();
 
         // Personel seçilmişse PersonelAvans kaydı oluştur
         if (giris.PersonelId.HasValue && giris.PersonelId.Value > 0)
@@ -1082,7 +1105,7 @@ public class KolayMuhasebeService : IKolayMuhasebeService
             HareketTipi = hareketTipi,
             Aciklama = $"Mahsup: {giris.CariUnvan} - {giris.BelgeNo}",
             CariId = giris.CariId,
-            IslemKaynak = IslemKaynak.Manuel,
+            IslemKaynak = IslemKaynak.CariMahsup,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -1091,6 +1114,11 @@ public class KolayMuhasebeService : IKolayMuhasebeService
         sonuc.BankaHareketId = hareket.Id;
 
         sonuc.MuhasebeFisId = await KaydetMuhasebeFisi(context, onizleme, FisKaynak.BankaHareket, hareket.Id);
+
+        // Muhasebe fişi ile geri bağlantı
+        hareket.MuhasebeFisId = sonuc.MuhasebeFisId;
+        context.BankaKasaHareketleri.Update(hareket);
+        await context.SaveChangesAsync();
 
         sonuc.Basarili = true;
         sonuc.Mesaj = $"Mahsup kaydedildi. Tutar: {giris.GenelToplam:N2} TL";
