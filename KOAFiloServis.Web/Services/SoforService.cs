@@ -858,6 +858,30 @@ public class SoforService : ISoforService
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Personel avans hesaplarını listeler (195.01 altındaki hesaplar)
+    /// </summary>
+    public async Task<List<MuhasebeHesap>> GetPersonelAvansHesaplariAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.MuhasebeHesaplari
+            .Where(h => h.HesapKodu.StartsWith("195.01.") && !h.IsDeleted && h.Aktif)
+            .OrderBy(h => h.HesapKodu)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Belirli bir personelin avans hesabını getirir (Cari.PersonelAvansHesap üzerinden)
+    /// </summary>
+    public async Task<MuhasebeHesap?> GetPersonelAvansHesabiAsync(int soforId)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var cari = await context.Cariler
+            .Include(c => c.PersonelAvansHesap)
+            .FirstOrDefaultAsync(c => c.SoforId == soforId && !c.IsDeleted);
+        return cari?.PersonelAvansHesap;
+    }
+
     #endregion
 }
 

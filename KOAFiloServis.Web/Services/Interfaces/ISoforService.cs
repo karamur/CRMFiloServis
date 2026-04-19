@@ -23,6 +23,8 @@ public interface ISoforService
     // Muhasebe Hesap Entegrasyonu
     Task<int> TopluMuhasebeHesabiOlusturAsync();
     Task<List<MuhasebeHesap>> GetPersonelMuhasebeHesaplariAsync();
+    Task<List<MuhasebeHesap>> GetPersonelAvansHesaplariAsync();
+    Task<MuhasebeHesap?> GetPersonelAvansHesabiAsync(int soforId);
 
     // Excel Import/Export
     Task<byte[]> GetImportSablonAsync();
