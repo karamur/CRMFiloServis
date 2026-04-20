@@ -1,22 +1,24 @@
 ﻿<div align="center">
 
-# 🚚 KOAFiloServis
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:1e3a5f,100:2563eb&height=160&section=header&text=KOAFiloServis&fontSize=48&fontColor=ffffff&fontAlignY=38&desc=Kurumsal%20Filo%20Yönetimi%20%26%20ERP%20Platformu&descSize=18&descAlignY=60&descColor=bfdbfe" width="100%" alt="KOAFiloServis" />
 
-**Kurumsal Filo Yönetimi, Servis ve ERP Platformu**
+<br/>
 
-.NET 10 • Blazor Server • PostgreSQL • Modüler ERP
+[![.NET](https://img.shields.io/badge/.NET_10-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![Blazor](https://img.shields.io/badge/Blazor_Server-512BD4?style=for-the-badge&logo=blazor&logoColor=white)](https://blazor.net/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL_14+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![EF Core](https://img.shields.io/badge/EF_Core_10-68217A?style=for-the-badge)](https://learn.microsoft.com/ef/core/)
+[![License](https://img.shields.io/badge/Lisans-Ticari-dc2626?style=for-the-badge)](#-lisans)
 
-[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![Blazor](https://img.shields.io/badge/Blazor-Server-512BD4?style=flat-square&logo=blazor&logoColor=white)](https://blazor.net/)
-[![EF Core](https://img.shields.io/badge/EF%20Core-10-68217A?style=flat-square)](https://learn.microsoft.com/ef/core/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Quartz](https://img.shields.io/badge/Quartz-Scheduler-orange?style=flat-square)](https://www.quartz-scheduler.net/)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](#)
-[![License](https://img.shields.io/badge/license-Proprietary-red?style=flat-square)](#-lisans)
+<br/>
 
-<sub>Taşımacılık ve filo operasyonları için uçtan uca dijital yönetim çözümü.</sub>
+> **Taşımacılık ve lojistik firmaları için** araç, sürücü, muhasebe, bordro, EBYS ve ihale süreçlerini tek platformda birleştiren modüler kurumsal çözüm.
 
-[✨ Özellikler](#-öne-çıkan-özellikler) • [🧩 Mimari](#-mimari) • [🚀 Kurulum](#-kurulum) • [⚙️ Yapılandırma](#️-yapılandırma) • [🧪 Test](#-test) • [📦 Yayınlama](#-yayınlama) • [🛡️ Güvenlik](#️-güvenlik)
+<br/>
+
+[🚀 Kurulum](#-kurulum) &nbsp;|&nbsp; [✨ Özellikler](#-öne-çıkan-özellikler) &nbsp;|&nbsp; [🧩 Mimari](#-mimari) &nbsp;|&nbsp; [⚙️ Yapılandırma](#️-yapılandırma) &nbsp;|&nbsp; [🧪 Test](#-test) &nbsp;|&nbsp; [📦 Yayınlama](#-yayınlama)
+
+<br/>
 
 </div>
 
@@ -24,80 +26,133 @@
 
 ## 📖 Genel Bakış
 
-**KOAFiloServis**, filo ve taşımacılık şirketlerinin günlük operasyonlarını tek platformdan yönetebilmesi için geliştirilmiş, **modüler** ve **çok firmalı (multi-tenant)** bir kurumsal çözümdür. Araç, sürücü, servis, cari, muhasebe, bordro, ihale ve raporlama süreçlerini modern bir **Blazor Server** arayüzü ile sunar; zamanlanmış işler, yedekleme, AI destekli analiz ve masaüstü kurulum/lisans araçları ile paketlenmiştir.
+**KOAFiloServis**, filo ve taşımacılık şirketlerinin tüm operasyonlarını tek platformdan yönetebilmesi için geliştirilmiş **modüler** ve **çok firmalı (multi-tenant)** bir kurumsal ERP çözümüdür.
 
-> 🎯 Hedef kitle: filo yönetim şirketleri, lojistik firmaları, servis/operasyon ekipleri, finans/muhasebe departmanları.
+Araç yönetiminden bordro hesaplamaya, ihale süreçlerinden e-fatura entegrasyonuna kadar **200+ ekran** ile tam kapsamlı bir dijital dönüşüm platformu sunar.
+
+<table>
+<tr>
+<td align="center" width="200">
+
+### 🏢 Kimler İçin?
+Filo yönetim firmaları, lojistik şirketleri, taşımacılık operatörleri, servis ve muhasebe ekipleri
+
+</td>
+<td align="center" width="200">
+
+### 🧩 Ne Sunar?
+Araç & sürücü, muhasebe, bordro, EBYS, ihale, raporlama ve AI destekli analiz
+
+</td>
+<td align="center" width="200">
+
+### ⚡ Teknoloji
+.NET 10 Blazor Server, PostgreSQL, Quartz.NET, SignalR, Redis, OpenAI/Ollama
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## ✨ Öne Çıkan Özellikler
 
+<table>
+<tr>
+<td valign="top" width="50%">
+
 ### 🚗 Filo & Araç Yönetimi
-- Araç envanteri, evrak/belge takibi (ruhsat, sigorta, muayene)
-- Kilometre, yakıt ve bakım/servis takibi
-- Araç alım/satım, plaka dönüşümü, komisyonculuk süreçleri
-- Canlı araç takip altyapısı ve GPS simülasyon
+- Araç envanteri ve evrak takibi (ruhsat, sigorta, muayene)
+- Kilometre, yakıt, bakım ve servis geçmişi
+- Araç alım/satım ve plaka dönüşüm süreçleri
+- Canlı GPS takip, Geofence ve alarm altyapısı
+- Komisyonculuk iş atamaları (Özmal / Kiralık / Komisyon)
 
 ### 👥 Personel & Bordro
 - Personel özlük ve evrak merkezi
-- Normal / AR-GE bordro, hesap pusulası, bordro icmali
-- Puantaj, izin, avans/borç takibi
+- Normal / AR-GE bordro ve hesap pusulası
+- Puantaj, izin, avans/borç ve maaşa mahsup
 - Banka ödeme listesi üretimi
 
 ### 💰 Muhasebe & Finans
-- Cari hesap, cari mutabakat ve risk analizi
-- Fatura, proforma, e-fatura akışları
-- Banka/kasa hareketleri, ödeme eşleştirme
-- Hesap planı, bütçe takvimi, hedef–gerçekleşen analizi
+- Cari hesap, ekstre ve mutabakat
+- Fatura, proforma ve e-fatura (GİB) akışları
+- Banka/kasa hareketleri ve ödeme eşleştirme
+- Hesap planı, bütçe takvimi, hedef-gerçekleşen analizi
 
-### 📊 Raporlama & BI
-- Araç kârlılık, masraf, yakıt verimlilik raporları
-- Cari ekstre, yaşlandırma ve ödeme raporları
-- Dashboard grafik bileşenleri
-- Excel (ClosedXML/EPPlus) ve PDF (QuestPDF) dışa aktarım
+### 🏗️ İhale & Proje Yönetimi
+- Proje bazlı maliyet ve AI destekli teklif tahmini
+- Teklif versiyonlama ve onay akışı
+- Rakip/piyasa benchmark karşılaştırması
+- Kazanılan proje gerçekleşen maliyet takibi
+
+</td>
+<td valign="top" width="50%">
 
 ### 🧾 EBYS & Belge Yönetimi
 - Gelen/giden evrak takibi ve atama iş akışı
-- Evrak kategorileri, gelişmiş arama ve detay görüntüleme
-- Çoklu dosya yükleme ve versiyon geçmişi (asıl nüsha takibi)
-- Kullanıcı/departman bazlı evrak atama ve hareket geçmişi
-- **Dashboard entegrasyonu:** Giriş yapan kullanıcıya atanmış bekleyen evraklar için uyarı banner'ı (acil/gecikmiş ayırımı) ve hızlı erişim modal'ı
-- Belge uyarı ve hatırlatma motoru (ruhsat, sigorta, muayene vb.)
+- OCR, otomatik sınıflandırma ve özet oluşturma
+- Vektör tabanlı semantik belge arama (Ollama)
+- Versiyon geçmişi, geri yükleme ve karşılaştırma
+
+### 📊 Raporlama & BI
+- Araç kârlılık, yakıt verimlilik raporları
+- Cari yaşlandırma ve ödeme raporları
+- Excel (ClosedXML/EPPlus) ve PDF (QuestPDF) export
+- CSV / JSON / Parquet veri dışa aktarım
 
 ### 🤖 AI & Otomasyon
-- Fatura AI içe aktarımı
-- Araç değerleme ve piyasa araştırma (HTTP + Playwright scraper)
-- OpenAI ve Ollama (local LLM) entegrasyonu
-- WhatsApp bildirimleri, e-posta bildirim servisi
-
-### 🕒 Zamanlanmış İşler
-- Otomatik veritabanı yedekleme
-- Belge uyarı kontrolü
-- Quartz tabanlı job altyapısı
+- Fatura AI içe aktarımı ve sınıflandırma
+- Araç değerleme ve piyasa araştırması
+- OpenAI + Ollama (yerel LLM) entegrasyonu
+- WhatsApp ve e-posta bildirim servisleri
 
 ### 🔐 Güvenlik & Çoklu Firma
-- ASP.NET Core Identity + JWT
-- Multi-tenant (firma bazlı izolasyon)
-- Data Protection anahtar yönetimi
-- Rol/yetki tabanlı erişim
+- ASP.NET Core Identity + JWT Bearer
+- Multi-tenant firma izolasyonu (Global Query Filters)
+- IP beyaz/kara liste ve KVKK uyumluluk araçları
+- Rol tabanlı yetkilendirme (Admin, Muhasebe, Operasyon)
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## 🧩 Mimari
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    KOAFiloServis.Web                         │
-│   (Blazor Server • Controllers • Hubs • Jobs • Services)     │
-└───────────────┬───────────────────────────┬──────────────────┘
-                │                           │
-                ▼                           ▼
-   ┌────────────────────┐       ┌────────────────────────┐
-   │  KOAFiloServis.    │       │  KOAFiloServis.Shared  │
-   │  LisansDesktop /   │       │  (Entity, DTO, Common) │
-   │  DataSync          │       └────────────────────────┘
-   │  (WinForms Tools)  │
-   └────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        KOAFiloServis.Web                            │
+│          Blazor Server · REST API · SignalR Hubs · Quartz Jobs      │
+│          Controllers · Services · Middleware · Background Jobs      │
+└───────────┬────────────────────────────────────┬────────────────────┘
+            │                                    │
+            ▼                                    ▼
+ ┌─────────────────────┐              ┌──────────────────────────┐
+ │  KOAFiloServis.     │              │   KOAFiloServis.Shared   │
+ │  LisansDesktop      │              │   Entity · DTO · Common  │
+ │  DataSync (WinForms)│              └──────────────────────────┘
+ └─────────────────────┘
+            │
+            ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │   PostgreSQL · SQLite · MySQL · SQL Server · Redis (Cache)   │
+ └──────────────────────────────────────────────────────────────┘
+```
+
+### 📁 Çözüm Yapısı
+
+| Proje | Açıklama | Framework |
+|---|---|:---:|
+| **`KOAFiloServis.Web`** | Ana Blazor Server uygulaması · REST API · SignalR · Quartz Jobs | `net10.0` |
+| **`KOAFiloServis.Shared`** | Entity, DTO ve yardımcı sınıflar | `net10.0` |
+| **`KOAFiloServis.Tests`** | xUnit birim ve entegrasyon testleri | `net10.0` |
+| **`KOAFiloServis.LisansDesktop`** | HWID tabanlı lisans üretim/aktivasyon aracı (WinForms) | `net10.0-windows` |
+| **`KOAFiloServis.DataSync`** | PostgreSQL → SQLite veri aktarım aracı (WinForms + CLI) | `net10.0-windows` |
+| **`setup/`** | Inno Setup 6 paketleme betikleri ve IIS otomasyonu | — |
+
+---
                 │
                 ▼
    ┌────────────────────────────────────────┐
