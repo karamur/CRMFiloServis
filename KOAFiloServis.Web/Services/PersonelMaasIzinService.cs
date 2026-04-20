@@ -349,6 +349,7 @@ public class PersonelMaasIzinService : IPersonelMaasIzinService
                 DamgaVergisi = m.DamgaVergisi,
                 ToplamEklemeler = m.ToplamEklemeler,
                 DigerEklemeler = m.DigerEklemeler,
+                Avans = m.Avans,
                 ToplamKesintiler = m.ToplamKesintiler,
                 OdenecekTutar = m.OdenecekTutar,
                 OdemeDurum = m.OdemeDurum.ToString(),

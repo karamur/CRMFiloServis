@@ -216,11 +216,22 @@
                                             <td class="text-end text-warning">@maas.SGKIsciPayi.ToString("N0") ₺</td>
                                             <td class="text-end text-danger">@maas.GelirVergisi.ToString("N0") ₺</td>
                                             <td class="text-end">@maas.NetMaas.ToString("N0") ₺</td>
-                                            <td class="text-end text-success">
-                                                +@maas.ToplamEklemeler.ToString("N0") ₺
+                                            <td class="text-end">
+                                                @if (maas.ToplamEklemeler > 0)
+                                                {
+                                                    <span class="text-success">+@maas.ToplamEklemeler.ToString("N0") ₺</span>
+                                                }
                                                 @if (maas.DigerEklemeler > 0)
                                                 {
                                                     <br /><small class="text-success" title="Personel Harcaması">+@maas.DigerEklemeler.ToString("N0") ₺ harcama</small>
+                                                }
+                                                @if (maas.Avans > 0)
+                                                {
+                                                    <br /><small class="text-danger" title="Avans Kesintisi">-@maas.Avans.ToString("N0") ₺ avans</small>
+                                                }
+                                                @if (maas.ToplamEklemeler == 0 && maas.Avans == 0)
+                                                {
+                                                    <span class="text-muted">-</span>
                                                 }
                                             </td>
                                             <td class="text-end text-danger">-@maas.ToplamKesintiler.ToString("N0") ₺</td>
@@ -432,16 +443,20 @@
                                         <td class="text-end text-warning">@h.SGKIsciPayi.ToString("N0") ₺</td>
                                         <td class="text-end text-danger">@h.GelirVergisi.ToString("N0") ₺</td>
                                         <td class="text-end">@h.NetMaas.ToString("N0") ₺</td>
-                                        <td class="text-end text-success">
+                                        <td class="text-end">
                                             @if (h.ToplamEklemeler > 0)
                                             {
-                                                <span>+@h.ToplamEklemeler.ToString("N0") ₺</span>
-                                                @if (h.DigerEklemeler > 0)
-                                                {
-                                                    <br /><small class="text-success" title="Personel Harcaması">+@h.DigerEklemeler.ToString("N0") ₺ harcama</small>
-                                                }
+                                                <span class="text-success">+@h.ToplamEklemeler.ToString("N0") ₺</span>
                                             }
-                                            else
+                                            @if (h.DigerEklemeler > 0)
+                                            {
+                                                <br /><small class="text-success" title="Personel Harcaması">+@h.DigerEklemeler.ToString("N0") ₺ harcama</small>
+                                            }
+                                            @if (h.Avans > 0)
+                                            {
+                                                <br /><small class="text-danger" title="Avans Kesintisi">-@h.Avans.ToString("N0") ₺ avans</small>
+                                            }
+                                            @if (h.ToplamEklemeler == 0 && h.Avans == 0)
                                             {
                                                 <span class="text-muted">-</span>
                                             }
