@@ -603,12 +603,20 @@
                                             }
                                         </td>
                                         <td class="text-center">
-                                            @if (atama.Aktif)
-                                            {
-                                                <button class="btn btn-sm btn-outline-warning" @onclick="() => AtamaKapat(atama.Id)" title="Eşleştirmeyi Kapat">
-                                                    <i class="bi bi-x-circle"></i>
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <button class="btn btn-sm btn-outline-primary" @onclick="() => AtamaDuzenleAc(atama)" title="Düzenle">
+                                                    <i class="bi bi-pencil"></i>
                                                 </button>
-                                            }
+                                                @if (atama.Aktif)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-warning" @onclick="() => AtamaKapat(atama.Id)" title="Eşleştirmeyi Kapat">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                }
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => AtamaSil(atama.Id)" title="Sil">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -818,6 +826,71 @@
     </div>
 }
 
+@* Araç Atama Düzenleme Modal *@
+@if (showDuzenleModal && duzenleAtama != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Araç Eşleştirmeyi Düzenle</h5>
+                    <button type="button" class="btn-close" @onclick="() => showDuzenleModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Araç (Plaka) *</label>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" placeholder="Plaka veya marka ara..."
+                                   value="@duzenleModalPlakaArama"
+                                   @oninput="DuzenleModalPlakaFiltrele"
+                                   @onfocus="() => duzenleModalDropAcik = true"
+                                   @onblur="DuzenleModalDropKapat" />
+                            @if (duzenleModalDropAcik && duzenleModalFiltreliAraclar.Any())
+                            {
+                                <div class="dropdown-menu show w-100" style="max-height:220px;overflow-y:auto;z-index:1060;">
+                                    @foreach (var a in duzenleModalFiltreliAraclar)
+                                    {
+                                        <button type="button" class="dropdown-item" @onmousedown="() => DuzenleModalAracSec(a)">
+                                            <strong>@a.AktifPlaka</strong> — @a.Marka @a.Model
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        @if (duzenleAtama.AracId > 0)
+                        {
+                            <small class="text-success"><i class="bi bi-check-circle me-1"></i>Seçili: @duzenleModalPlakaArama</small>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Başlangıç Tarihi *</label>
+                        <input type="date" class="form-control" @bind="duzenleAtama.BaslangicTarihi" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Bitiş Tarihi</label>
+                        <input type="date" class="form-control" @bind="duzenleAtama.BitisTarihi" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notlar</label>
+                        <input type="text" class="form-control" @bind="duzenleAtama.Notlar" placeholder="İsteğe bağlı açıklama..." maxlength="500" />
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="duzenleAktif" @bind="duzenleAtama.Aktif" />
+                        <label class="form-check-label" for="duzenleAktif">Aktif</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => showDuzenleModal = false">İptal</button>
+                    <button type="button" class="btn btn-primary" @onclick="AtamaDuzenleKaydet" disabled="@(duzenleAtama.AracId == 0 || atamaDuzenleSaving)">
+                        @if (atamaDuzenleSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        <i class="bi bi-check-lg me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @* Evrak Yükleme Modal *@
 @if (showEvrakYukleModal && seciliEvrakDetay != null)
 {
@@ -894,6 +967,14 @@
     private string modalPlakaArama = string.Empty;
     private bool modalPlakaDropAcik = false;
     private List<Arac> modalFiltreliAraclar = new();
+
+    // Araç Eşleştirme Düzenleme
+    private bool showDuzenleModal = false;
+    private PersonelAracAtama? duzenleAtama = null;
+    private bool atamaDuzenleSaving = false;
+    private string duzenleModalPlakaArama = string.Empty;
+    private bool duzenleModalDropAcik = false;
+    private List<Arac> duzenleModalFiltreliAraclar = new();
 
     // Firma listesi
     private List<Firma> firmalar = new();
@@ -1296,6 +1377,119 @@
         catch (Exception ex)
         {
             ToastService.ShowError($"İşlem sırasında hata: {ex.Message}");
+        }
+    }
+
+    private void AtamaDuzenleAc(PersonelAracAtama atama)
+    {
+        if (!aktifAraclar.Any())
+        {
+            _ = Task.Run(async () =>
+            {
+                aktifAraclar = await AracService.GetActiveAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+        }
+        duzenleAtama = new PersonelAracAtama
+        {
+            Id = atama.Id,
+            SoforId = atama.SoforId,
+            AracId = atama.AracId,
+            BaslangicTarihi = atama.BaslangicTarihi,
+            BitisTarihi = atama.BitisTarihi,
+            Aktif = atama.Aktif,
+            Notlar = atama.Notlar
+        };
+        var secilenArac = aktifAraclar.FirstOrDefault(a => a.Id == atama.AracId) ?? atama.Arac;
+        duzenleModalPlakaArama = secilenArac != null
+            ? $"{secilenArac.AktifPlaka} - {secilenArac.Marka} {secilenArac.Model}"
+            : atama.Arac?.AktifPlaka ?? "";
+        duzenleModalFiltreliAraclar = aktifAraclar;
+        duzenleModalDropAcik = false;
+        showDuzenleModal = true;
+    }
+
+    private void DuzenleModalPlakaFiltrele(ChangeEventArgs e)
+    {
+        duzenleModalPlakaArama = e.Value?.ToString() ?? string.Empty;
+        if (duzenleAtama != null) duzenleAtama.AracId = 0;
+        duzenleModalDropAcik = true;
+        var ara = duzenleModalPlakaArama.Trim().ToLowerInvariant();
+        duzenleModalFiltreliAraclar = string.IsNullOrEmpty(ara)
+            ? aktifAraclar
+            : aktifAraclar.Where(a =>
+                (a.AktifPlaka ?? string.Empty).ToLowerInvariant().Contains(ara) ||
+                (a.Marka ?? string.Empty).ToLowerInvariant().Contains(ara) ||
+                (a.Model ?? string.Empty).ToLowerInvariant().Contains(ara)).ToList();
+    }
+
+    private void DuzenleModalAracSec(Arac arac)
+    {
+        if (duzenleAtama == null) return;
+        duzenleAtama.AracId = arac.Id;
+        duzenleModalPlakaArama = $"{arac.AktifPlaka} - {arac.Marka} {arac.Model}";
+        duzenleModalDropAcik = false;
+        duzenleModalFiltreliAraclar = aktifAraclar;
+    }
+
+    private async Task DuzenleModalDropKapat()
+    {
+        await Task.Delay(150);
+        duzenleModalDropAcik = false;
+    }
+
+    private async Task AtamaDuzenleKaydet()
+    {
+        if (duzenleAtama == null || duzenleAtama.AracId == 0) return;
+        atamaDuzenleSaving = true;
+        try
+        {
+            await using var ctx = await DbContextFactory.CreateDbContextAsync();
+            var atama = await ctx.PersonelAracAtamalari.FindAsync(duzenleAtama.Id);
+            if (atama != null)
+            {
+                atama.AracId = duzenleAtama.AracId;
+                atama.BaslangicTarihi = duzenleAtama.BaslangicTarihi;
+                atama.BitisTarihi = duzenleAtama.BitisTarihi;
+                atama.Aktif = duzenleAtama.Aktif;
+                atama.Notlar = duzenleAtama.Notlar;
+                atama.UpdatedAt = DateTime.UtcNow;
+                await ctx.SaveChangesAsync();
+                ToastService.ShowSuccess("Araç eşleştirmesi güncellendi.");
+                showDuzenleModal = false;
+                await AracAtamalariniYukle();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Güncelleme sırasında hata: {ex.Message}");
+        }
+        finally
+        {
+            atamaDuzenleSaving = false;
+        }
+    }
+
+    private async Task AtamaSil(int atamaId)
+    {
+        var onay = await JS.InvokeAsync<bool>("confirm", "Bu araç eşleştirmesini silmek istediğinize emin misiniz?");
+        if (!onay) return;
+        try
+        {
+            await using var ctx = await DbContextFactory.CreateDbContextAsync();
+            var atama = await ctx.PersonelAracAtamalari.FindAsync(atamaId);
+            if (atama != null)
+            {
+                atama.IsDeleted = true;
+                atama.UpdatedAt = DateTime.UtcNow;
+                await ctx.SaveChangesAsync();
+                ToastService.ShowSuccess("Araç eşleştirmesi silindi.");
+                await AracAtamalariniYukle();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Silme sırasında hata: {ex.Message}");
         }
     }
 
