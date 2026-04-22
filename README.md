@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:1e3a5f,100:2563eb&height=160&section=header&text=KOAFiloServis&fontSize=48&fontColor=ffffff&fontAlignY=38&desc=Kurumsal%20Filo%20Yönetimi%20%26%20ERP%20Platformu&descSize=18&descAlignY=60&descColor=bfdbfe" width="100%" alt="KOAFiloServis" />
 
@@ -72,6 +72,8 @@ Araç & sürücü, muhasebe, bordro, EBYS, ihale, raporlama ve AI destekli anali
 - Personel özlük ve evrak merkezi
 - Normal / AR-GE bordro ve hesap pusulası
 - Puantaj, izin, avans/borç ve maaşa mahsup
+- **Tek tek maaş ödemesi:** Elden, Banka, Mahsup, Kredi Kartı seçenekleri
+- **Borç yönetimi:** Kısmi/tam ödeme, düzenleme ve anlık durum takibi
 - Banka ödeme listesi üretimi
 
 ### 💰 Muhasebe & Finans

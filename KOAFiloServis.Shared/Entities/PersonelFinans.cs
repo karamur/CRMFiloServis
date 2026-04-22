@@ -211,7 +211,8 @@ public enum BorcOdemeSekli
     BankaTransfer = 2,
     Cek = 3,
     MaastanKesinti = 4,
-    Mahsup = 5
+    Mahsup = 5,
+    KrediKarti = 6
 }
 
 public enum MahsupSekli

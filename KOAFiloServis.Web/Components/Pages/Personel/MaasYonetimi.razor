@@ -1,13 +1,13 @@
-@page "/personel/maas"
+﻿@page "/personel/maas"
 @using KOAFiloServis.Shared.Entities
 @using KOAFiloServis.Web.Services
-@using KOAFiloServis.Web.Services.Interfaces
-@using ClosedXML.Excel
+@using KOAFiloServis.Web.Services.Interfaces@using ClosedXML.Excel
 @inject IPersonelMaasIzinService PersonelService
 @inject IPersonelFinansService PersonelFinansService
 @inject ISoforService SoforService
 @inject IBordroService BordroService
 @inject IKullaniciService KullaniciService
+@inject IBankaHesapService BankaHesapService
 @inject IJSRuntime JS
 @implements IDisposable
 @rendermode InteractiveServer
@@ -370,7 +370,7 @@
                                             {
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-hover mb-0">
-                                                        <thead class="table-light"><tr><th>Tarih</th><th class="text-end">Tutar</th><th class="text-end">Kalan</th><th>Durum</th></tr></thead>
+                                                        <thead class="table-light"><tr><th>Tarih</th><th class="text-end">Tutar</th><th class="text-end">Kalan</th><th>Durum</th><th style="width:72px;"></th></tr></thead>
                                                         <tbody>
                                                             @foreach (var avans in durAvanslar.OrderByDescending(a => a.AvansTarihi))
                                                             {
@@ -379,6 +379,14 @@
                                                                     <td class="text-end"><small>@FormatPara(avans.Tutar)</small></td>
                                                                     <td class="text-end"><small class="fw-bold text-warning">@FormatPara(avans.Kalan)</small></td>
                                                                     <td><span class="badge @GetAvansDurumBadge(avans.Durum)" style="font-size:0.65rem;">@GetAvansDurumAdi(avans.Durum)</span></td>
+                                                                    <td class="text-end">
+                                                                        <button class="btn btn-sm btn-outline-primary py-0 px-1 me-1" title="Düzenle" @onclick="() => AvanssDuzenleAc(avans)">
+                                                                            <i class="bi bi-pencil"></i>
+                                                                        </button>
+                                                                        <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Sil" @onclick="() => AvansSil(avans)">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
+                                                                    </td>
                                                                 </tr>
                                                             }
                                                         </tbody>
@@ -387,7 +395,7 @@
                                                                 <td><strong>Toplam</strong></td>
                                                                 <td class="text-end"><strong>@FormatPara(durAvanslar.Sum(a => a.Tutar))</strong></td>
                                                                 <td class="text-end"><strong class="text-warning">@FormatPara(durAvanslar.Sum(a => a.Kalan))</strong></td>
-                                                                <td></td>
+                                                                <td></td><td></td>
                                                             </tr>
                                                         </tfoot>
                                                     </table>
@@ -401,7 +409,7 @@
                                             {
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-hover mb-0">
-                                                        <thead class="table-light"><tr><th>Tarih</th><th>Açıklama</th><th class="text-end">Tutar</th><th class="text-end">Kalan</th><th>Durum</th><th class="text-center" style="width:48px;">Sil</th></tr></thead>
+                                                        <thead class="table-light"><tr><th>Tarih</th><th>Açıklama</th><th class="text-end">Tutar</th><th class="text-end">Kalan</th><th>Durum</th><th style="width:90px;"></th></tr></thead>
                                                         <tbody>
                                                             @foreach (var borc in durBorclar.OrderByDescending(b => b.BorcTarihi))
                                                             {
@@ -411,16 +419,21 @@
                                                                     <td class="text-end"><small>@FormatPara(borc.Tutar)</small></td>
                                                                     <td class="text-end"><small class="fw-bold text-danger">@FormatPara(borc.KalanBorc)</small></td>
                                                                     <td><span class="badge @GetBorcDurumBadge(borc.OdemeDurum)" style="font-size:0.65rem;">@GetBorcDurumAdi(borc.OdemeDurum)</span></td>
-                                                                    <td class="text-center">
-                                                                        @if (CanBorcKaydiKaliciSil)
+                                                                    <td class="text-end">
+                                                                        @if (borc.OdemeDurum != BorcOdemeDurum.TamamenOdendi)
                                                                         {
-                                                                            <button class="btn btn-sm btn-outline-danger py-0 px-1" @onclick="() => DurumBorcKaydiniSil(borc)" title="Borç kaydını kalıcı sil">
-                                                                                <i class="bi bi-trash"></i>
+                                                                            <button class="btn btn-sm btn-outline-success py-0 px-1 me-1" title="Öde" @onclick="() => BorcOdemeModalAc(borc)">
+                                                                                <i class="bi bi-cash-coin"></i>
                                                                             </button>
                                                                         }
-                                                                        else
+                                                                        <button class="btn btn-sm btn-outline-primary py-0 px-1 me-1" title="Düzenle" @onclick="() => BorcDuzenleAc(borc)">
+                                                                            <i class="bi bi-pencil"></i>
+                                                                        </button>
+                                                                        @if (CanBorcKaydiKaliciSil)
                                                                         {
-                                                                            <span class="text-muted">-</span>
+                                                                            <button class="btn btn-sm btn-outline-danger py-0 px-1" @onclick="() => DurumBorcKaydiniSil(borc)" title="Kalıcı Sil">
+                                                                                <i class="bi bi-trash"></i>
+                                                                            </button>
                                                                         }
                                                                     </td>
                                                                 </tr>
@@ -431,8 +444,7 @@
                                                                 <td colspan="2"><strong>Toplam</strong></td>
                                                                 <td class="text-end"><strong>@FormatPara(durBorclar.Sum(b => b.Tutar))</strong></td>
                                                                 <td class="text-end"><strong class="text-danger">@FormatPara(durBorclar.Sum(b => b.KalanBorc))</strong></td>
-                                                                <td></td>
-                                                                <td></td>
+                                                                <td></td><td></td>
                                                             </tr>
                                                         </tfoot>
                                                     </table>
@@ -446,7 +458,7 @@
                                             {
                                                 <div class="table-responsive">
                                                     <table class="table table-sm table-hover mb-0">
-                                                        <thead class="table-light"><tr><th>Dönem</th><th class="text-end">Brüt</th><th class="text-end">Net</th><th>Durum</th></tr></thead>
+                                                        <thead class="table-light"><tr><th>Dönem</th><th class="text-end">Brüt</th><th class="text-end">Net</th><th>Durum</th><th style="width:60px;"></th></tr></thead>
                                                         <tbody>
                                                             @foreach (var maas in durMaasGecmisi.OrderByDescending(m => m.Yil * 100 + m.Ay))
                                                             {
@@ -457,6 +469,14 @@
                                                                     <td>
                                                                         @if (maas.OdemeTarihi.HasValue) { <span class="badge bg-success" style="font-size:0.6rem;">Ödendi</span> }
                                                                         else { <span class="badge bg-warning text-dark" style="font-size:0.6rem;">Bekliyor</span> }
+                                                                    </td>
+                                                                    <td class="text-end">
+                                                                        <button class="btn btn-sm btn-outline-primary py-0 px-1 me-1" title="Düzenle" @onclick="() => DuzenleAc(maas.Id)">
+                                                                            <i class="bi bi-pencil"></i>
+                                                                        </button>
+                                                                        <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Sil" @onclick="() => MaasSilOnay(maas)">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
                                                                     </td>
                                                                 </tr>
                                                             }
@@ -727,6 +747,31 @@
                             <strong>@secilenOdemeMaas.SoforAdSoyad</strong> - Ödenecek Tutar: <strong>@secilenOdemeMaas.OdenecekTutar.ToString("N2") ₺</strong>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label fw-semibold">Ödeme Yöntemi</label>
+                            <div class="d-flex gap-2 flex-wrap">
+                                @foreach (var yontem in new[] { ("Elden", "bi-hand-index-thumb", "btn-warning"), ("Banka", "bi-bank", "btn-primary"), ("Mahsup", "bi-arrow-left-right", "btn-secondary"), ("KrediKarti", "bi-credit-card", "btn-info") })
+                                {
+                                    <button type="button" class="btn btn-sm @(odemeYontemi == yontem.Item1 ? yontem.Item3 : "btn-outline-secondary")"
+                                            @onclick="() => { odemeYontemi = yontem.Item1; secilenOdemeBankaHesapId = null; }">
+                                        <i class="bi @yontem.Item2 me-1"></i>@(yontem.Item1 == "KrediKarti" ? "Kredi Kartı" : yontem.Item1)
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        @if (odemeYontemi == "Banka" || odemeYontemi == "KrediKarti")
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Hesap Seç</label>
+                                <select class="form-select" @bind="secilenOdemeBankaHesapId">
+                                    <option value="">-- Hesap Seçin --</option>
+                                    @foreach (var h in bankaHesapListesi)
+                                    {
+                                        <option value="@h.Id">@h.HesapAdi (@h.BankaAdi)</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        <div class="mb-3">
                             <label class="form-label">Ödeme Tarihi</label>
                             <input type="date" class="form-control" @bind="odemeTarihi" />
                         </div>
@@ -876,6 +921,172 @@
     </div>
 }
 
+<!-- Avans Düzenleme Modal -->
+@if (duzenlenenAvans != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-cash me-2"></i>Avans Düzenle</h5>
+                    <button type="button" class="btn-close" @onclick="AvansModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Avans Tarihi</label>
+                        <input type="date" class="form-control form-control-sm" @bind="duzenlenenAvans.AvansTarihi" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Tutar</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" @bind="duzenlenenAvans.Tutar" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Açıklama</label>
+                        <input type="text" class="form-control form-control-sm" @bind="duzenlenenAvans.Aciklama" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Ödeme Şekli</label>
+                        <select class="form-select form-select-sm" @bind="duzenlenenAvans.OdemeSekli">
+                            @foreach (AvansOdemeSekli s in Enum.GetValues(typeof(AvansOdemeSekli)))
+                            {
+                                <option value="@s">@(s switch { AvansOdemeSekli.Nakit => "Nakit", AvansOdemeSekli.BankaTransfer => "Banka Transferi", AvansOdemeSekli.Cek => "Çek", AvansOdemeSekli.Senet => "Senet", _ => s.ToString() })</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Durum</label>
+                        <select class="form-select form-select-sm" @bind="duzenlenenAvans.Durum">
+                            @foreach (AvansDurum d in Enum.GetValues(typeof(AvansDurum)))
+                            {
+                                <option value="@d">@GetAvansDurumAdi(d)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @onclick="AvansModalKapat">İptal</button>
+                    <button class="btn btn-warning btn-sm" @onclick="AvansKaydet" disabled="@isAvansKaydediliyor">
+                        @if (isAvansKaydediliyor) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        <i class="bi bi-save me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Borç Düzenleme Modal -->
+@if (duzenlenenBorc != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Borç Düzenle</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="BorcModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Borç Tarihi</label>
+                        <input type="date" class="form-control form-control-sm" @bind="duzenlenenBorc.BorcTarihi" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Tutar</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" @bind="duzenlenenBorc.Tutar" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Borç Nedeni / Açıklama</label>
+                        <input type="text" class="form-control form-control-sm" @bind="duzenlenenBorc.Aciklama" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Borç Tipi</label>
+                        <select class="form-select form-select-sm" @bind="duzenlenenBorc.BorcTipi">
+                            @foreach (BorcTipi t in Enum.GetValues(typeof(BorcTipi)))
+                            {
+                                <option value="@t">@(t switch { BorcTipi.MaasAlacagi => "Maaş Alacağı", BorcTipi.PrimAlacagi => "Prim Alacağı", BorcTipi.MesaiAlacagi => "Mesai Alacağı", BorcTipi.IkramiyeAlacagi => "İkramiye Alacağı", BorcTipi.TazminatAlacagi => "Tazminat Alacağı", BorcTipi.Diger => "Diğer", _ => t.ToString() })</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Durum</label>
+                        <select class="form-select form-select-sm" @bind="duzenlenenBorc.OdemeDurum">
+                            @foreach (BorcOdemeDurum d in Enum.GetValues(typeof(BorcOdemeDurum)))
+                            {
+                                <option value="@d">@GetBorcDurumAdi(d)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @onclick="BorcModalKapat">İptal</button>
+                    <button class="btn btn-danger btn-sm" @onclick="BorcKaydet" disabled="@isBorcKaydediliyor">
+                        @if (isBorcKaydediliyor) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        <i class="bi bi-save me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Borç Ödeme Modal -->
+@if (borcOdemeHedef != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Borç Öde</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="BorcOdemeModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        Kalan Borç: <strong>@FormatPara(borcOdemeHedef.KalanBorc)</strong>
+                        @if (!string.IsNullOrEmpty(borcOdemeHedef.Aciklama)) { <span class="ms-2 text-muted small">(@borcOdemeHedef.Aciklama)</span> }
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Ödeme Tutarı</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" @bind="borcOdemeTutari" max="@borcOdemeHedef.KalanBorc" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Ödeme Tarihi</label>
+                        <input type="date" class="form-control form-control-sm" @bind="borcOdemeTarihi" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Ödeme Yöntemi</label>
+                        <select class="form-select form-select-sm" @bind="borcOdemeYontemi">
+                            @foreach (BorcOdemeSekli s in Enum.GetValues(typeof(BorcOdemeSekli)))
+                            {
+                                <option value="@s">@(s switch { BorcOdemeSekli.Nakit => "Nakit (Elden)", BorcOdemeSekli.BankaTransfer => "Banka Transferi", BorcOdemeSekli.Cek => "Çek", BorcOdemeSekli.MaastanKesinti => "Maaştan Kesinti", BorcOdemeSekli.Mahsup => "Mahsup", BorcOdemeSekli.KrediKarti => "Kredi Kartı", _ => s.ToString() })</option>
+                            }
+                        </select>
+                    </div>
+                    @if (borcOdemeYontemi == BorcOdemeSekli.BankaTransfer || borcOdemeYontemi == BorcOdemeSekli.KrediKarti)
+                    {
+                        <div class="mb-2">
+                            <label class="form-label small">Hesap Seç</label>
+                            <select class="form-select form-select-sm" @bind="borcOdemeBankaHesapId">
+                                <option value="">-- Hesap Seçin --</option>
+                                @foreach (var h in bankaHesapListesi)
+                                {
+                                    <option value="@h.Id">@h.HesapAdi (@h.BankaAdi)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @onclick="BorcOdemeModalKapat">İptal</button>
+                    <button class="btn btn-success btn-sm" @onclick="BorcOdemeYap" disabled="@(isBorcOdemeYapiliyor || borcOdemeTutari <= 0)">
+                        @if (isBorcOdemeYapiliyor) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        <i class="bi bi-check-circle me-1"></i>Ödemeyi Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <!-- Bildirim Toast -->
 @if (!string.IsNullOrEmpty(bildirimMesaj))
 {
@@ -912,9 +1123,28 @@
     private System.Threading.Timer? bildirimTimer;
     private HashSet<string> kullaniciYetkileri = new();
 
+    // Ödeme yöntemi
+    private string odemeYontemi = "Elden"; // Elden | Banka | Mahsup | KrediKarti
+    private int? secilenOdemeBankaHesapId;
+    private List<BankaHesap> bankaHesapListesi = new();
+
     // Silme
     private PersonelMaas? silinecekMaas;
     private bool isSiliniyor = false;
+
+    // Avans düzenleme
+    private PersonelAvans? duzenlenenAvans;
+    private bool isAvansKaydediliyor = false;
+
+    // Borç düzenleme & ödeme
+    private PersonelBorc? duzenlenenBorc;
+    private bool isBorcKaydediliyor = false;
+    private PersonelBorc? borcOdemeHedef;
+    private decimal borcOdemeTutari;
+    private DateTime borcOdemeTarihi = DateTime.Today;
+    private BorcOdemeSekli borcOdemeYontemi = BorcOdemeSekli.Nakit;
+    private int? borcOdemeBankaHesapId;
+    private bool isBorcOdemeYapiliyor = false;
 
     // ===== MAAŞ HAREKETLERİ STATE =====
     private List<Sofor> soforler = new();
@@ -964,6 +1194,7 @@
     protected override async Task OnInitializedAsync()
     {
         kullaniciYetkileri = await KullaniciService.GetCurrentUserYetkilerAsync();
+        bankaHesapListesi = await BankaHesapService.GetActiveAsync();
         await YenileDurumData();
     }
 
@@ -1118,6 +1349,8 @@
                 await AcikAvanslariYukleAsync();
                 ModalKapat();
                 await YenileMaasData();
+                await YenileDurumData();
+                if (durSecilenPersonelId > 0) await DurumPersonelDetayYukle();
                 BildirimGoster("Maaş bilgileri güncellendi.", true);
             }
             catch (Exception ex)
@@ -1173,6 +1406,8 @@
         secilenOdemeMaas = maas;
         odemeTarihi = DateTime.Today;
         odemeAciklama = null;
+        odemeYontemi = "Elden";
+        secilenOdemeBankaHesapId = null;
         odemeOnayModal = true;
     }
 
@@ -1190,18 +1425,33 @@
         try
         {
             await PersonelService.MaasOdemeYapAsync(secilenOdemeMaas.MaasId, odemeTarihi);
-            if (!string.IsNullOrWhiteSpace(odemeAciklama))
+            var maas = await PersonelService.GetMaasByIdAsync(secilenOdemeMaas.MaasId);
+            if (maas != null)
             {
-                var maas = await PersonelService.GetMaasByIdAsync(secilenOdemeMaas.MaasId);
-                if (maas != null)
+                var yontemAdi = odemeYontemi switch
                 {
-                    maas.OdemeAciklama = odemeAciklama;
-                    await PersonelService.UpdateMaasAsync(maas);
+                    "Elden" => "Elden Ödeme",
+                    "Banka" => "Banka Transferi",
+                    "Mahsup" => "Mahsup",
+                    "KrediKarti" => "Kredi Kartı",
+                    _ => odemeYontemi
+                };
+                var aciklamaParçalar = new List<string> { yontemAdi };
+                if ((odemeYontemi == "Banka" || odemeYontemi == "KrediKarti") && secilenOdemeBankaHesapId.HasValue)
+                {
+                    var hesap = bankaHesapListesi.FirstOrDefault(h => h.Id == secilenOdemeBankaHesapId.Value);
+                    if (hesap != null) aciklamaParçalar.Add($"{hesap.HesapAdi}");
                 }
+                if (!string.IsNullOrWhiteSpace(odemeAciklama))
+                    aciklamaParçalar.Add(odemeAciklama);
+                maas.OdemeAciklama = string.Join(" - ", aciklamaParçalar);
+                await PersonelService.UpdateMaasAsync(maas);
             }
             OdemeModalKapat();
             await YenileMaasData();
-            BildirimGoster("Ödeme başarıyla kaydedildi.", true);
+            if (durSecilenPersonelId > 0) await DurumPersonelDetayYukle();
+            await YenileDurumData();
+            BildirimGoster($"Ödeme başarıyla kaydedildi ({(odemeYontemi == "KrediKarti" ? "Kredi Kartı" : odemeYontemi)}).", true);
         }
         catch (Exception ex)
         {
@@ -1256,6 +1506,8 @@
             silinecekMaas = null;
             await YenileMaasData();
             await HareketleriVeriYukle();
+            await YenileDurumData();
+            if (durSecilenPersonelId > 0) await DurumPersonelDetayYukle();
         }
         catch (Exception ex)
         {
@@ -1264,6 +1516,155 @@
         finally
         {
             isSiliniyor = false;
+        }
+    }
+
+    // ===== AVANS DÜZENLEME METHODS =====
+    private void AvanssDuzenleAc(PersonelAvans avans)
+    {
+        duzenlenenAvans = new PersonelAvans
+        {
+            Id = avans.Id,
+            PersonelId = avans.PersonelId,
+            FirmaId = avans.FirmaId,
+            AvansTarihi = avans.AvansTarihi,
+            Tutar = avans.Tutar,
+            Aciklama = avans.Aciklama,
+            OdemeSekli = avans.OdemeSekli,
+            Durum = avans.Durum,
+            MahsupEdilen = avans.MahsupEdilen
+        };
+    }
+
+    private void AvansModalKapat() => duzenlenenAvans = null;
+
+    private async Task AvansKaydet()
+    {
+        if (duzenlenenAvans == null) return;
+        isAvansKaydediliyor = true;
+        try
+        {
+            await PersonelFinansService.UpdateAvansAsync(duzenlenenAvans);
+            AvansModalKapat();
+            await YenileDurumData();
+            await DurumPersonelDetayYukle();
+            BildirimGoster("Avans kaydı güncellendi.", true);
+        }
+        catch (Exception ex)
+        {
+            BildirimGoster($"Avans kaydetme hatası: {ex.Message}", false);
+        }
+        finally
+        {
+            isAvansKaydediliyor = false;
+        }
+    }
+
+    private async Task AvansSil(PersonelAvans avans)
+    {
+        var onay = await JS.InvokeAsync<bool>("confirm",
+            $"{avans.AvansTarihi:dd.MM.yyyy} tarihli {avans.Tutar:N2} ₺ avans kaydı kalıcı olarak silinecek. Devam edilsin mi?");
+        if (!onay) return;
+        try
+        {
+            await PersonelFinansService.DeleteAvansAsync(avans.Id);
+            await YenileDurumData();
+            await DurumPersonelDetayYukle();
+            BildirimGoster("Avans kaydı silindi.", true);
+        }
+        catch (Exception ex)
+        {
+            BildirimGoster($"Avans silme hatası: {ex.Message}", false);
+        }
+    }
+
+    // ===== BORÇ DÜZENLEME METHODS =====
+    private void BorcDuzenleAc(PersonelBorc borc)
+    {
+        duzenlenenBorc = new PersonelBorc
+        {
+            Id = borc.Id,
+            PersonelId = borc.PersonelId,
+            FirmaId = borc.FirmaId,
+            BorcTarihi = borc.BorcTarihi,
+            Tutar = borc.Tutar,
+            BorcNedeni = borc.BorcNedeni,
+            Aciklama = borc.Aciklama,
+            BorcTipi = borc.BorcTipi,
+            OdemeDurum = borc.OdemeDurum,
+            OdenenTutar = borc.OdenenTutar
+        };
+    }
+
+    private void BorcModalKapat() => duzenlenenBorc = null;
+
+    private async Task BorcKaydet()
+    {
+        if (duzenlenenBorc == null) return;
+        isBorcKaydediliyor = true;
+        try
+        {
+            await PersonelFinansService.UpdateBorcAsync(duzenlenenBorc);
+            BorcModalKapat();
+            await YenileDurumData();
+            await DurumPersonelDetayYukle();
+            BildirimGoster("Borç kaydı güncellendi.", true);
+        }
+        catch (Exception ex)
+        {
+            BildirimGoster($"Borç kaydetme hatası: {ex.Message}", false);
+        }
+        finally
+        {
+            isBorcKaydediliyor = false;
+        }
+    }
+
+    // ===== BORÇ ÖDEME METHODS =====
+    private void BorcOdemeModalAc(PersonelBorc borc)
+    {
+        borcOdemeHedef = borc;
+        borcOdemeTutari = borc.KalanBorc;
+        borcOdemeTarihi = DateTime.Today;
+        borcOdemeYontemi = BorcOdemeSekli.Nakit;
+        borcOdemeBankaHesapId = null;
+    }
+
+    private void BorcOdemeModalKapat()
+    {
+        borcOdemeHedef = null;
+        borcOdemeTutari = 0;
+        borcOdemeBankaHesapId = null;
+    }
+
+    private async Task BorcOdemeYap()
+    {
+        if (borcOdemeHedef == null || borcOdemeTutari <= 0) return;
+        isBorcOdemeYapiliyor = true;
+        try
+        {
+            var odeme = new PersonelBorcOdeme
+            {
+                BorcId = borcOdemeHedef.Id,
+                OdemeTarihi = borcOdemeTarihi,
+                OdemeTutari = borcOdemeTutari,
+                OdemeSekli = borcOdemeYontemi,
+                BankaHesapId = (borcOdemeYontemi == BorcOdemeSekli.BankaTransfer || borcOdemeYontemi == BorcOdemeSekli.KrediKarti)
+                    ? borcOdemeBankaHesapId : null
+            };
+            await PersonelFinansService.OdemeYapBorcAsync(borcOdemeHedef.Id, odeme);
+            BorcOdemeModalKapat();
+            await YenileDurumData();
+            await DurumPersonelDetayYukle();
+            BildirimGoster("Borç ödemesi kaydedildi.", true);
+        }
+        catch (Exception ex)
+        {
+            BildirimGoster($"Borç ödeme hatası: {ex.Message}", false);
+        }
+        finally
+        {
+            isBorcOdemeYapiliyor = false;
         }
     }
 
