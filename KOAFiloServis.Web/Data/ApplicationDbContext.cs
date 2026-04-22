@@ -402,7 +402,7 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.FirmaId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.Property(e => e.SgkCalismaTuru).HasDefaultValue(SgkCalismaTuru.TamZamanli);
+            entity.Property(e => e.SgkCalismaTuru).HasDefaultValue(SgkCalismaTuru.TamZamanli).HasSentinel(null);
 
             // Global Query Filter: IsDeleted + Multi-tenant
             entity.HasQueryFilter(e => !e.IsDeleted && 

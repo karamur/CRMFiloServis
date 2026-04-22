@@ -55,7 +55,7 @@ public class Sofor : BaseEntity
     // SGK Bordro Ayarları
     public bool SGKBordroDahilMi { get; set; } = false;
     public PersonelBordroTipi BordroTipiPersonel { get; set; } = PersonelBordroTipi.Yok;
-    public SgkCalismaTuru SgkCalismaTuru { get; set; } = SgkCalismaTuru.TamZamanli;
+    public SgkCalismaTuru? SgkCalismaTuru { get; set; }
 
     // ARGE ve Toplu Maaş Bilgileri
     public bool ArgePersoneli { get; set; } = false; // Geriye dönük uyumluluk
