@@ -24,7 +24,7 @@ OutputBaseFilename=KOAFiloServisKurulumMusteri-{#MyAppVersion}
 #ifdef OutputDir
 OutputDir={#OutputDir}
 #else
-OutputDir=output
+OutputDir=output\v{#MyAppVersion}
 #endif
 Compression=lzma2/ultra64
 SolidCompression=yes

@@ -30,7 +30,7 @@ OutputBaseFilename=KOALisansArac-{#LisansAppVersion}
 #ifdef OutputDir
 OutputDir={#OutputDir}
 #else
-OutputDir=output
+OutputDir=output\v{#LisansAppVersion}
 #endif
 Compression=lzma2/ultra64
 SolidCompression=yes
