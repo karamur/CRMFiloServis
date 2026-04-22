@@ -366,6 +366,11 @@
                                         }
                                         @if (durAktifSekme == "avans")
                                         {
+                                            <div class="d-flex justify-content-end mb-2">
+                                                <button class="btn btn-sm btn-success" @onclick="YeniAvansModalAc" disabled="@(durSecilenPersonelId == 0)">
+                                                    <i class="bi bi-plus-circle me-1"></i>Yeni Avans
+                                                </button>
+                                            </div>
                                             @if (durAvanslar.Any())
                                             {
                                                 <div class="table-responsive">
@@ -401,7 +406,7 @@
                                                     </table>
                                                 </div>
                                             }
-                                            else { <div class="text-center text-muted py-3"><i class="bi bi-cash fs-3"></i><p class="small mt-1">Avans kaydı yok</p></div> }
+                                            else { <div class="text-center text-muted py-3"><i class="bi bi-cash fs-3"></i><p class="small mt-1">Avans kaydı yok</p><button class="btn btn-sm btn-success mt-1" @onclick="YeniAvansModalAc"><i class="bi bi-plus-circle me-1"></i>Yeni Avans Ekle</button></div> }
                                         }
                                         @if (durAktifSekme == "borc")
                                         {
@@ -975,6 +980,51 @@
     </div>
 }
 
+<!-- Yeni Avans Ekleme Modal -->
+@if (yeniAvans != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Yeni Avans Ekle</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="YeniAvansModalKapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Avans Tarihi</label>
+                        <input type="date" class="form-control form-control-sm" @bind="yeniAvans.AvansTarihi" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Tutar</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" @bind="yeniAvans.Tutar" placeholder="0,00" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Açıklama</label>
+                        <input type="text" class="form-control form-control-sm" @bind="yeniAvans.Aciklama" placeholder="Avans nedeni..." />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Ödeme Şekli</label>
+                        <select class="form-select form-select-sm" @bind="yeniAvans.OdemeSekli">
+                            @foreach (AvansOdemeSekli s in Enum.GetValues(typeof(AvansOdemeSekli)))
+                            {
+                                <option value="@s">@(s switch { AvansOdemeSekli.Nakit => "Nakit", AvansOdemeSekli.BankaTransfer => "Banka Transferi", AvansOdemeSekli.Cek => "Çek", AvansOdemeSekli.Senet => "Senet", _ => s.ToString() })</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @onclick="YeniAvansModalKapat">İptal</button>
+                    <button class="btn btn-success btn-sm" @onclick="YeniAvansKaydet" disabled="@isYeniAvansKaydediliyor">
+                        @if (isYeniAvansKaydediliyor) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        <i class="bi bi-save me-1"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <!-- Borç Düzenleme Modal -->
 @if (duzenlenenBorc != null)
 {
@@ -1135,6 +1185,10 @@
     // Avans düzenleme
     private PersonelAvans? duzenlenenAvans;
     private bool isAvansKaydediliyor = false;
+
+    // Yeni avans ekleme
+    private PersonelAvans? yeniAvans;
+    private bool isYeniAvansKaydediliyor = false;
 
     // Borç düzenleme & ödeme
     private PersonelBorc? duzenlenenBorc;
@@ -1537,6 +1591,42 @@
     }
 
     private void AvansModalKapat() => duzenlenenAvans = null;
+
+    private void YeniAvansModalAc()
+    {
+        if (durSecilenPersonelId == 0) return;
+        yeniAvans = new PersonelAvans
+        {
+            PersonelId = durSecilenPersonelId,
+            AvansTarihi = DateTime.Today,
+            OdemeSekli = AvansOdemeSekli.Nakit
+        };
+    }
+
+    private void YeniAvansModalKapat() => yeniAvans = null;
+
+    private async Task YeniAvansKaydet()
+    {
+        if (yeniAvans == null || yeniAvans.Tutar <= 0) return;
+        isYeniAvansKaydediliyor = true;
+        try
+        {
+            await PersonelFinansService.CreateAvansAsync(yeniAvans);
+            YeniAvansModalKapat();
+            durAktifSekme = "avans";
+            await DurumPersonelDetayYukle();
+            await YenileDurumData();
+            BildirimGoster("Avans kaydı oluşturuldu.", true);
+        }
+        catch (Exception ex)
+        {
+            BildirimGoster($"Avans kaydetme hatası: {ex.Message}", false);
+        }
+        finally
+        {
+            isYeniAvansKaydediliyor = false;
+        }
+    }
 
     private async Task AvansKaydet()
     {
