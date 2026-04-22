@@ -10,6 +10,7 @@
     <AssemblyName>KOAFiloServis.DataSync</AssemblyName>
     <RootNamespace>KOAFiloServis.DataSync</RootNamespace>
     <Version>1.0.0</Version>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
 
   <ItemGroup>
