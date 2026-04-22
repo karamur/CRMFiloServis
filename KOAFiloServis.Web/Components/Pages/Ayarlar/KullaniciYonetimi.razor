@@ -569,7 +569,7 @@
 
         var mevcutUri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var basePath = mevcutUri.GetLeftPart(UriPartial.Path);
-        var query = new Dictionary<string, string>();
+        var query = new Dictionary<string, string?>();
 
         if (_durumFiltresi != "tum") query["durum"] = _durumFiltresi;
         if (_rolFiltresi != "tum") query["rol"] = _rolFiltresi;
