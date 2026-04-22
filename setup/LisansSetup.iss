@@ -1,4 +1,4 @@
-; ============================================================
+﻿; ============================================================
 ; KOAFiloServis — Lisans Yonetim Araci (Bagimsiz Installer)
 ; ============================================================
 ; Bu paket SADECE KOAFiloServis.LisansDesktop.exe'yi kurar.
@@ -27,7 +27,11 @@ DefaultDirName={#LisansInstallDir}
 DisableDirPage=no
 DefaultGroupName={#LisansAppName}
 OutputBaseFilename=KOALisansArac-{#LisansAppVersion}
+#ifdef OutputDir
+OutputDir={#OutputDir}
+#else
 OutputDir=output
+#endif
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

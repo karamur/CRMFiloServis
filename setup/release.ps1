@@ -22,7 +22,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $SetupDir
-$pkgPath  = Join-Path $SetupDir "output\KOAFiloServisKurulum-$Version.exe"
+$pkgPath  = Join-Path $SetupDir "output\v$Version\KOAFiloServisKurulum-$Version.exe"
 $notesSrc = Join-Path $SetupDir "RELEASE-NOTES-v$Version.md"
 
 if (-not (Test-Path $pkgPath))  { throw "Paket bulunamadi: $pkgPath (once .\build.ps1 -Version $Version ile olustur)" }
@@ -38,7 +38,7 @@ $hash = (Get-FileHash -Algorithm SHA256 -Path $pkgPath).Hash
 Write-Host "       $hash"
 
 Write-Host "[2/4] Release notes guncelleniyor..." -ForegroundColor Green
-$notesFinal = Join-Path $SetupDir "output\RELEASE-NOTES-v$Version.md"
+$notesFinal = Join-Path $SetupDir "output\v$Version\RELEASE-NOTES-v$Version.md"
 $notesText  = (Get-Content $notesSrc -Raw) -replace '<sha256-hash-buraya>', $hash
 Set-Content -Path $notesFinal -Value $notesText -Encoding UTF8
 Write-Host "       $notesFinal"

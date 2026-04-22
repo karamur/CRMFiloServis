@@ -23,7 +23,11 @@ DefaultDirName={#MyInstallDir}
 DisableDirPage=yes
 DefaultGroupName={#MyAppName}
 OutputBaseFilename=KOAFiloServisKurulum-{#MyAppVersion}
+#ifdef OutputDir
+OutputDir={#OutputDir}
+#else
 OutputDir=output
+#endif
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

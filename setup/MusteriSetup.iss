@@ -1,4 +1,4 @@
-#define MyAppName "KOAFiloServis"
+﻿#define MyAppName "KOAFiloServis"
 #define MyAppPublisher "KOA Yazilim"
 #define MyAppURL "https://karamur.github.io/KOAFiloServis"
 #define MyAppExeName "KOAFiloServis.Web.exe"
@@ -21,7 +21,11 @@ DefaultDirName={#MyInstallDir}
 DisableDirPage=yes
 DefaultGroupName={#MyAppName}
 OutputBaseFilename=KOAFiloServisKurulumMusteri-{#MyAppVersion}
+#ifdef OutputDir
+OutputDir={#OutputDir}
+#else
 OutputDir=output
+#endif
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

@@ -41,7 +41,7 @@ $ProgressPreference = 'SilentlyContinue'
 $Root      = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $RepoRoot  = Split-Path -Parent $Root
 $Payload   = Join-Path $Root 'payload'
-$Output    = Join-Path $Root 'output'
+$Output    = Join-Path $Root "output\v$Version"
 
 $Web       = Join-Path $RepoRoot 'KOAFiloServis.Web\KOAFiloServis.Web.csproj'
 $Lisans    = Join-Path $RepoRoot 'KOAFiloServis.LisansDesktop\KOAFiloServis.LisansDesktop.csproj'
@@ -111,23 +111,27 @@ if (-not $SkipPublish) {
     Write-Host "[PUBLISH ATLANDI] -SkipPublish" -ForegroundColor Yellow
 }
 
+# ---- Output versiyonlu klasoru olustur ----
+New-Item -ItemType Directory -Force $Output | Out-Null
+Write-Host "Output klasoru : $Output" -ForegroundColor DarkGray
+
 # ---- Inno Setup derlemeleri ----
 if (-not $LisansOnly) {
     Write-Host "[4/6] Inno Setup - Ana paket (Setup.iss)..." -ForegroundColor Green
-    & $IsccExe "/DMyAppVersion=$Version" (Join-Path $Root 'Setup.iss')
+    & $IsccExe "/DMyAppVersion=$Version" "/DOutputDir=$Output" (Join-Path $Root 'Setup.iss')
     if ($LASTEXITCODE -ne 0) { throw "Inno Setup (Setup.iss) derleme basarisiz." }
 
     Write-Host "[5/6] Inno Setup - Guncelleme paketi (GuncelleSetup.iss)..." -ForegroundColor Green
-    & $IsccExe "/DMyAppVersion=$Version" (Join-Path $Root 'GuncelleSetup.iss')
+    & $IsccExe "/DMyAppVersion=$Version" "/DOutputDir=$Output" (Join-Path $Root 'GuncelleSetup.iss')
     if ($LASTEXITCODE -ne 0) { throw "Inno Setup (GuncelleSetup.iss) derleme basarisiz." }
 
     Write-Host "[6/7] Inno Setup - Musteri paketi (MusteriSetup.iss)..." -ForegroundColor Green
-    & $IsccExe "/DMyAppVersion=$Version" (Join-Path $Root 'MusteriSetup.iss')
+    & $IsccExe "/DMyAppVersion=$Version" "/DOutputDir=$Output" (Join-Path $Root 'MusteriSetup.iss')
     if ($LASTEXITCODE -ne 0) { throw "Inno Setup (MusteriSetup.iss) derleme basarisiz." }
 }
 
 Write-Host "[7/7] Inno Setup - Lisans araci (LisansSetup.iss)..." -ForegroundColor Green
-& $IsccExe "/DLisansAppVersion=$Version" (Join-Path $Root 'LisansSetup.iss')
+& $IsccExe "/DLisansAppVersion=$Version" "/DOutputDir=$Output" (Join-Path $Root 'LisansSetup.iss')
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup (LisansSetup.iss) derleme basarisiz." }
 
 $sonuclar = @()

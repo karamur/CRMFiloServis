@@ -1,4 +1,4 @@
-; ============================================================
+﻿; ============================================================
 ; KOAFiloServis — Guncelleme Paketi (Hafif / Sadece Web Dosyalari)
 ; ============================================================
 ; Bu installer SADECE uygulama dosyalarini gunceller:
@@ -37,7 +37,11 @@ DisableDirPage=yes
 DisableProgramGroupPage=yes
 ; Cikti
 OutputBaseFilename=KOAFiloServisGuncelle-{#MyAppVersion}
+#ifdef OutputDir
+OutputDir={#OutputDir}
+#else
 OutputDir=output
+#endif
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
