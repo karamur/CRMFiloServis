@@ -284,15 +284,29 @@ public class PersonelFinansService : IPersonelFinansService
         if (mahsup == null)
             throw new InvalidOperationException($"Mahsup kaydı bulunamadı. Id: {mahsupId}");
 
-        // Avans mahsup bilgisini güncelle
-        var avans = mahsup.Avans;
-        avans.MahsupEdilen -= mahsup.MahsupTutari;
-        avans.Durum = avans.Kalan > 0 ? AvansDurum.KismenMahsup : AvansDurum.TamamenMahsup;
-        if (avans.MahsupEdilen == 0)
-            avans.Durum = AvansDurum.Verildi;
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync();
 
-        mahsup.IsDeleted = true;
-        await context.SaveChangesAsync();
+            // Avans mahsup bilgisini güncelle
+            var avans = mahsup.Avans;
+            avans.MahsupEdilen -= mahsup.MahsupTutari;
+            if (avans.MahsupEdilen <= 0)
+            {
+                avans.MahsupEdilen = 0;
+                avans.Durum = AvansDurum.Verildi;
+            }
+            else
+            {
+                avans.Durum = AvansDurum.KismenMahsup;
+            }
+            avans.UpdatedAt = DateTime.UtcNow;
+
+            mahsup.IsDeleted = true;
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        });
     }
 
     #endregion
@@ -498,15 +512,43 @@ public class PersonelFinansService : IPersonelFinansService
         if (odeme == null)
             throw new InvalidOperationException($"Ödeme kaydı bulunamadı. Id: {odemeId}");
 
-        // Borç ödeme bilgisini güncelle
-        var borc = odeme.Borc;
-        borc.OdenenTutar -= odeme.OdemeTutari;
-        borc.OdemeDurum = borc.KalanBorc > 0 ? BorcOdemeDurum.KismenOdendi : BorcOdemeDurum.TamamenOdendi;
-        if (borc.OdenenTutar == 0)
-            borc.OdemeDurum = BorcOdemeDurum.Bekliyor;
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync();
 
-        odeme.IsDeleted = true;
-        await context.SaveChangesAsync();
+            // Muhasebe fişini sil
+            if (odeme.MuhasebeFisId.HasValue)
+            {
+                var fis = await context.Set<MuhasebeFis>()
+                    .IgnoreQueryFilters()
+                    .Include(f => f.Kalemler)
+                    .FirstOrDefaultAsync(f => f.Id == odeme.MuhasebeFisId.Value);
+                if (fis != null)
+                {
+                    context.Set<MuhasebeFisKalem>().RemoveRange(fis.Kalemler);
+                    context.Set<MuhasebeFis>().Remove(fis);
+                }
+            }
+
+            // Borç ödeme bilgisini güncelle
+            var borc = odeme.Borc;
+            borc.OdenenTutar -= odeme.OdemeTutari;
+            if (borc.OdenenTutar <= 0)
+            {
+                borc.OdenenTutar = 0;
+                borc.OdemeDurum = BorcOdemeDurum.Bekliyor;
+            }
+            else
+            {
+                borc.OdemeDurum = BorcOdemeDurum.KismenOdendi;
+            }
+            borc.UpdatedAt = DateTime.UtcNow;
+
+            odeme.IsDeleted = true;
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        });
     }
 
     #endregion
