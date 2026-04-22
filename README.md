@@ -8,6 +8,7 @@
 [![Blazor](https://img.shields.io/badge/Blazor_Server-512BD4?style=for-the-badge&logo=blazor&logoColor=white)](https://blazor.net/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL_14+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![EF Core](https://img.shields.io/badge/EF_Core_10-68217A?style=for-the-badge)](https://learn.microsoft.com/ef/core/)
+[![Version](https://img.shields.io/badge/Sürüm-1.0.8-22c55e?style=for-the-badge)](#-changelog)
 [![License](https://img.shields.io/badge/Lisans-Ticari-dc2626?style=for-the-badge)](#-lisans)
 
 <br/>
@@ -16,7 +17,7 @@
 
 <br/>
 
-[🚀 Kurulum](#-kurulum) &nbsp;|&nbsp; [✨ Özellikler](#-öne-çıkan-özellikler) &nbsp;|&nbsp; [🧩 Mimari](#-mimari) &nbsp;|&nbsp; [⚙️ Yapılandırma](#️-yapılandırma) &nbsp;|&nbsp; [🧪 Test](#-test) &nbsp;|&nbsp; [📦 Yayınlama](#-yayınlama)
+[🚀 Kurulum](#-kurulum) &nbsp;|&nbsp; [✨ Özellikler](#-öne-çıkan-özellikler) &nbsp;|&nbsp; [🧩 Mimari](#-mimari) &nbsp;|&nbsp; [⚙️ Yapılandırma](#️-yapılandırma) &nbsp;|&nbsp; [🧪 Test](#-test) &nbsp;|&nbsp; [📦 Yayınlama](#-yayınlama) &nbsp;|&nbsp; [📋 Changelog](CHANGELOG.md)
 
 <br/>
 
@@ -466,7 +467,7 @@ Kaynak PostgreSQL'den tüm tabloları (146+ DbSet) ortak şema temelinde hedef S
 
 ## 🗺️ Yol Haritası
 
-Detaylı yol haritası için [`ROADMAP.md`](ROADMAP.md), kurulum için [`INSTALL.md`](INSTALL.md) ve [`KURULUM_REHBERI.md`](KURULUM_REHBERI.md), geliştirme notları için [`DEVELOPMENT.md`](DEVELOPMENT.md) dosyalarına bakınız.
+Detaylı yol haritası için [`ROADMAP.md`](ROADMAP.md), kurulum için [`INSTALL.md`](INSTALL.md) ve [`KURULUM_REHBERI.md`](KURULUM_REHBERI.md), geliştirme notları için [`DEVELOPMENT.md`](DEVELOPMENT.md), sürüm geçmişi için [`CHANGELOG.md`](CHANGELOG.md) dosyalarına bakınız.
 
 ---
 
