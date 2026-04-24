@@ -104,7 +104,6 @@
                                 <th>Görev</th>
                                 <th>Banka / IBAN</th>
                                 <th class="text-end bg-info bg-opacity-10" style="width: 150px;" title="Banka hesabına yatırılacak resmi net maaş">Bankaya Yatan</th>
-                                <th class="text-end bg-success bg-opacity-25" style="width: 130px;"><strong>Elden Ödenecek</strong></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -145,9 +144,6 @@
                                             <span class="input-group-text">₺</span>
                                         </div>
                                     </td>
-                                    <td class="text-end bg-success bg-opacity-25">
-                                        <strong>@FormatPara(item.EldenOdenecek)</strong>
-                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -155,7 +151,6 @@
                             <tr>
                                 <td colspan="4" class="text-end"><strong>GENEL TOPLAM</strong></td>
                                 <td class="text-end bg-info"><strong>@FormatPara(personelListesi.Sum(p => p.BankayaYatan))</strong></td>
-                                <td class="text-end bg-success"><strong>@FormatPara(personelListesi.Sum(p => p.EldenOdenecek))</strong></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -177,7 +172,6 @@
                                     <th>Görev</th>
                                     <th class="text-center">Kişi</th>
                                     <th class="text-end">Bankaya Yatan</th>
-                                    <th class="text-end">Elden Ödenecek</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -189,7 +183,6 @@
                                         </td>
                                         <td class="text-center">@ozet.KisiSayisi</td>
                                         <td class="text-end">@FormatPara(ozet.ToplamBankayaYatan)</td>
-                                        <td class="text-end"><strong>@FormatPara(ozet.ToplamEldenOdenecek)</strong></td>
                                     </tr>
                                 }
                             </tbody>
@@ -198,7 +191,6 @@
                                     <td><strong>TOPLAM</strong></td>
                                     <td class="text-center"><strong>@gorevOzetleri.Sum(g => g.KisiSayisi)</strong></td>
                                     <td class="text-end"><strong>@FormatPara(gorevOzetleri.Sum(g => g.ToplamBankayaYatan))</strong></td>
-                                    <td class="text-end"><strong>@FormatPara(gorevOzetleri.Sum(g => g.ToplamEldenOdenecek))</strong></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -214,11 +206,7 @@
                         <table class="table table-sm mb-0">
                             <tr class="table-info">
                                 <td><i class="bi bi-bank text-info me-2"></i>Toplam Bankaya Yatan</td>
-                                <td class="text-end"><strong>@FormatPara(personelListesi.Sum(p => p.BankayaYatan))</strong></td>
-                            </tr>
-                            <tr class="table-success">
-                                <td><strong><i class="bi bi-cash-coin me-2"></i>Elden Ödenecek Tutar</strong></td>
-                                <td class="text-end"><strong class="fs-5">@FormatPara(personelListesi.Sum(p => p.EldenOdenecek))</strong></td>
+                                <td class="text-end"><strong class="fs-5">@FormatPara(personelListesi.Sum(p => p.BankayaYatan))</strong></td>
                             </tr>
                         </table>
                     </div>
