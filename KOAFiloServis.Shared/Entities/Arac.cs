@@ -54,6 +54,11 @@ public class Arac : BaseEntity
     public DateTime? TrafikSigortaBitisTarihi { get; set; }
     public DateTime? KaskoBitisTarihi { get; set; }
     public DateTime? MuayeneBitisTarihi { get; set; }
+    
+    // Koltuk sigortası tarihleri
+    public DateTime? KoltukSigortasiBaslangiçTarihi { get; set; }
+    public DateTime? KoltukSigortasiBitisTarihi { get; set; }
+    
     public int? KmDurumu { get; set; }
     public bool Aktif { get; set; } = true;
     public string? Notlar { get; set; }

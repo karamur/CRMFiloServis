@@ -96,10 +96,11 @@
                                 <th>Aktif Plaka</th>
                                 <th>Geçmiş Plakalar</th>
                                 <th>Marka/Model</th>
-                                <th>Tip</th>
+                                <th>Sınıf</th>
+                                <th>Sahiplik Tipi</th>
+                                <th>Durum</th>
                                 <th>Model Yılı</th>
                                 <th>Kayıt T.</th>
-                                <th>Durum</th>
                                 <th>Muayene</th>
                                 <th style="width: 120px;" class="text-center">İşlemler</th>
                             </tr>
@@ -134,8 +135,9 @@
                                     <td>
                                         <span class="badge bg-secondary">@GetTipText(arac.AracTipi)</span>
                                     </td>
-                                    <td>@arac.ModelYili</td>
-                                    <td><small>@arac.CreatedAt.ToLocalTime().ToString("MM/yyyy")</small></td>
+                                    <td>
+                                        <span class="badge bg-info">@GetSahiplikText(arac.SahiplikTipi)</span>
+                                    </td>
                                     <td>
                                         @if (arac.SatisaAcik)
                                         {
@@ -150,6 +152,8 @@
                                             <span class="badge bg-danger">Pasif</span>
                                         }
                                     </td>
+                                    <td>@arac.ModelYili</td>
+                                    <td><small>@arac.CreatedAt.ToLocalTime().ToString("MM/yyyy")</small></td>
                                     <td>
                                         @if (arac.MuayeneBitisTarihi.HasValue)
                                         {
@@ -578,6 +582,15 @@
         AracTipi.Otobus => "Otobüs",
         AracTipi.Otomobil => "Otomobil",
         AracTipi.Panelvan => "Panelvan",
+        _ => tip.ToString()
+    };
+
+    private string GetSahiplikText(AracSahiplikTipi tip) => tip switch
+    {
+        AracSahiplikTipi.Ozmal => "Özmal",
+        AracSahiplikTipi.Kiralik => "Kiralık",
+        AracSahiplikTipi.Komisyon => "Komisyon",
+        AracSahiplikTipi.Diger => "Diğer",
         _ => tip.ToString()
     };
 
