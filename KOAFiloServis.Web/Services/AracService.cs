@@ -242,6 +242,8 @@ public class AracService : IAracService
             existing.TrafikSigortaBitisTarihi = arac.TrafikSigortaBitisTarihi?.Date;
             existing.KaskoBitisTarihi = arac.KaskoBitisTarihi?.Date;
             existing.MuayeneBitisTarihi = arac.MuayeneBitisTarihi?.Date;
+            existing.KoltukSigortasiBaslangiçTarihi = arac.KoltukSigortasiBaslangiçTarihi?.Date;
+            existing.KoltukSigortasiBitisTarihi = arac.KoltukSigortasiBitisTarihi?.Date;
             existing.SatisaAcilmaTarihi = arac.SatisaAcilmaTarihi?.Date;
             
             // Sadece değiştirilebilir alanları güncelle
@@ -262,6 +264,7 @@ public class AracService : IAracService
             existing.SabitKomisyonTutari = arac.SabitKomisyonTutari;
             existing.KomisyonHesaplamaTipi = arac.KomisyonHesaplamaTipi;
             existing.KmDurumu = arac.KmDurumu;
+            existing.Durumu = arac.Durumu;
             existing.Aktif = arac.Aktif;
             existing.Notlar = arac.Notlar;
             existing.SatisaAcik = arac.SatisaAcik;
